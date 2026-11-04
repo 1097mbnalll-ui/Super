@@ -12,6 +12,7 @@
 //   TELEGRAM_BOT_TOKEN (Secret) مفتاح بوت تيليجرام اللي توصله الطلبات (من @BotFather)
 // والربط:
 //   LOCKS          (KV namespace) لحفظ الرقم السري الجديد وعدد المحاولات الغلط
+//   DB             (D1 database) الطلبات وحالاتها لصفحة المندوب ومتابعة الزبون
 
 const MAX_FAILS_PER_IP = 5;        // محاولات غلط لكل جهاز
 const IP_LOCK_SECONDS = 15 * 60;   // مدة القفل لكل جهاز
@@ -52,24 +53,68 @@ export default {
     // طلب من زبون: ما يحتاج رقم سري
     if (path === "/order") {
       if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
-      if (!env.TELEGRAM_BOT_TOKEN) return reply(503, { ok: false, code: "no_telegram" });
-      const chat = await env.LOCKS.get("tg_chat");
-      if (!chat) return reply(503, { ok: false, code: "no_telegram" });
+      const chat = env.TELEGRAM_BOT_TOKEN ? await env.LOCKS.get("tg_chat") : null;
+      if (!env.DB && !chat) return reply(503, { ok: false, code: "no_receiver" });
       if (await tooManyOrders(env, ip)) return reply(429, { ok: false, code: "slow_down" });
       let data;
       try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
       const priced = priceOrder(data, body);
       if (priced.error) return reply(400, { ok: false, code: priced.error });
-      const orderNo = await nextOrderNo(env);
-      const sent = await tgSend(env, chat, orderText(data, priced, body, orderNo), {
-        inline_keyboard: [[{ text: "افتح الموقع في قوقل ماب", url: mapsUrl(body.lat, body.lng) }]],
-      });
-      if (!sent.ok) return reply(502, { ok: false, code: "telegram" });
-      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, total: priced.total, count: priced.count });
+      const record = orderRecord(priced, body);
+      let orderNo;
+      if (env.DB) {
+        try { orderNo = await dbInsertOrder(env, record); } catch { return reply(502, { ok: false, code: "db" }); }
+      } else {
+        orderNo = await nextOrderNo(env);
+      }
+      if (chat) {
+        const sent = await tgSend(env, chat, orderText(data, priced, body, orderNo), {
+          inline_keyboard: [[{ text: "افتح الموقع في قوقل ماب", url: mapsUrl(body.lat, body.lng) }]],
+        });
+        if (!sent.ok && !env.DB) return reply(502, { ok: false, code: "telegram" });
+      }
+      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, total: priced.total, count: priced.count, track: !!env.DB });
+    }
+
+    // الزبون يتابع حالة طلبه (رقم الطلب + نفس رقم الجوال)
+    if (path === "/track") {
+      if (!env.DB) return reply(404, { ok: false, code: "no_tracking" });
+      const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
+      const phone = normPhone(body.phone);
+      if (!(n > 0) || !phone) return reply(400, { ok: false, code: "bad_request" });
+      await ensureSchema(env);
+      const row = await env.DB.prepare("SELECT status, updated FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
+      if (!row) return reply(404, { ok: false, code: "not_found" });
+      return reply(200, { ok: true, status: row.status, updated: row.updated });
     }
 
     const locked = await isLocked(env, ip);
     if (locked) return reply(429, { ok: false, code: "locked", retryAfter: locked });
+
+    // صفحة المندوب: رقم المندوب أو رقم الإدارة
+    if (path.startsWith("/driver/")) {
+      const who = await checkDriver(env, String(body.pin || ""));
+      if (!who) { await recordFail(env, ip); return reply(401, { ok: false, code: "bad_pin" }); }
+      await clearFails(env, ip);
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      if (path === "/driver/login") return reply(200, { ok: true, role: who });
+      if (path === "/driver/orders") {
+        const since = Date.now() - 3 * 864e5;
+        const rs = await env.DB.prepare("SELECT no, created, updated, status, data FROM orders WHERE created > ? OR status IN ('new','accepted','onway') ORDER BY no DESC LIMIT 150").bind(since).all();
+        const orders = (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status }));
+        return reply(200, { ok: true, orders, now: Date.now() });
+      }
+      if (path === "/driver/status") {
+        const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
+        const st = String(body.status || "");
+        if (!(n > 0) || !["new", "accepted", "onway", "delivered", "canceled"].includes(st)) return reply(400, { ok: false, code: "bad_request" });
+        const r = await env.DB.prepare("UPDATE orders SET status = ?, updated = ? WHERE no = ?").bind(st, Date.now(), n).run();
+        if (!r.meta || !r.meta.changes) return reply(404, { ok: false, code: "not_found" });
+        return reply(200, { ok: true });
+      }
+      return reply(404, { ok: false, code: "not_found" });
+    }
 
     const pinOk = await checkPin(env, String(body.pin || ""));
     if (!pinOk) {
@@ -82,7 +127,8 @@ export default {
 
     if (path === "/tg-status") {
       const title = env.LOCKS ? await env.LOCKS.get("tg_title") : null;
-      return reply(200, { ok: true, hasToken: !!env.TELEGRAM_BOT_TOKEN, linked: !!title, title: title || "" });
+      const driverSet = !!((env.LOCKS && (await env.LOCKS.get("driver_pin"))) || env.DRIVER_PIN);
+      return reply(200, { ok: true, hasToken: !!env.TELEGRAM_BOT_TOKEN, linked: !!title, title: title || "", hasDB: !!env.DB, driverSet });
     }
 
     // ربط تيليجرام: أرسل أي رسالة للبوت (أو في القروب اللي فيه البوت) ثم اضغط الزر في الإدارة
@@ -119,6 +165,12 @@ export default {
         if (!/^\d{4,12}$/.test(np)) return reply(400, { ok: false, code: "bad_new_pin" });
         if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
       }
+      if (body.newDriverPin != null && body.newDriverPin !== "") {
+        const dp = String(body.newDriverPin);
+        if (!/^\d{4,12}$/.test(dp)) return reply(400, { ok: false, code: "bad_driver_pin" });
+        if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
+        if (await checkPin(env, dp)) return reply(400, { ok: false, code: "driver_pin_same" });
+      }
       if (data.store) delete data.store.pinHash; // الرقم السري ما ينحفظ في الموقع العام
       try {
         await saveToGitHub(env, "data.json", JSON.stringify(data), "تحديث المتجر من صفحة الإدارة");
@@ -126,11 +178,45 @@ export default {
         return reply(502, { ok: false, code: e.code || "github", status: e.status || 0 });
       }
       if (body.newPin) await env.LOCKS.put("pin", await hashPin(env, String(body.newPin)));
+      if (body.newDriverPin) await env.LOCKS.put("driver_pin", await hashPin(env, "driver:" + String(body.newDriverPin)));
       return reply(200, { ok: true });
     }
     return reply(404, { ok: false, code: "not_found" });
   },
 };
+
+// ---------- قاعدة الطلبات (D1) ----------
+let schemaReady = false;
+async function ensureSchema(env) {
+  if (schemaReady) return;
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS orders (no INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER NOT NULL, updated INTEGER NOT NULL, status TEXT NOT NULL, phone TEXT NOT NULL, data TEXT NOT NULL)").run();
+  schemaReady = true;
+}
+function orderRecord(o, body) {
+  return {
+    lines: o.lines.map((l) => ({ name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, tag: l.tag || "" })),
+    subtotal: o.subtotal, fee: o.fee, total: o.total, count: o.count, phone: o.phone,
+    name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
+    pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
+  };
+}
+async function dbInsertOrder(env, rec) {
+  await ensureSchema(env);
+  const now = Date.now();
+  // نحذف الطلبات المنتهية الأقدم من ٣٠ يوم عشان بيانات الزبائن ما تتكدس
+  await env.DB.prepare("DELETE FROM orders WHERE created < ? AND status IN ('delivered','canceled')").bind(now - 30 * 864e5).run();
+  const row = await env.DB.prepare("INSERT INTO orders (created, updated, status, phone, data) VALUES (?, ?, 'new', ?, ?) RETURNING no")
+    .bind(now, now, rec.phone, JSON.stringify(rec)).first();
+  return "#" + (1000 + row.no);
+}
+async function checkDriver(env, pin) {
+  if (!pin || pin.length > 12) return "";
+  if (await checkPin(env, pin)) return "admin";
+  const stored = env.LOCKS ? await env.LOCKS.get("driver_pin") : null;
+  const expected = stored || (env.DRIVER_PIN ? await hashPin(env, "driver:" + String(env.DRIVER_PIN)) : "");
+  if (!expected) return "";
+  return sameText(await hashPin(env, "driver:" + pin), expected) ? "driver" : "";
+}
 
 // ---------- الطلبات ----------
 let dataCache = { at: 0, data: null };
