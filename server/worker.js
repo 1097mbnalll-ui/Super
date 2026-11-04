@@ -9,6 +9,7 @@
 //   REPO           (Text)   مثال: 1097mbnalll-ui/Super
 //   BRANCH         (Text)   gh-pages
 //   ALLOWED_ORIGIN (Text)   https://1097mbnalll-ui.github.io
+//   TELEGRAM_BOT_TOKEN (Secret) مفتاح بوت تيليجرام اللي توصله الطلبات (من @BotFather)
 // والربط:
 //   LOCKS          (KV namespace) لحفظ الرقم السري الجديد وعدد المحاولات الغلط
 
@@ -47,6 +48,26 @@ export default {
     try { body = await request.json(); } catch { return reply(400, { ok: false, code: "bad_json" }); }
 
     const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+
+    // طلب من زبون: ما يحتاج رقم سري
+    if (path === "/order") {
+      if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
+      if (!env.TELEGRAM_BOT_TOKEN) return reply(503, { ok: false, code: "no_telegram" });
+      const chat = await env.LOCKS.get("tg_chat");
+      if (!chat) return reply(503, { ok: false, code: "no_telegram" });
+      if (await tooManyOrders(env, ip)) return reply(429, { ok: false, code: "slow_down" });
+      let data;
+      try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+      const priced = priceOrder(data, body);
+      if (priced.error) return reply(400, { ok: false, code: priced.error });
+      const orderNo = await nextOrderNo(env);
+      const sent = await tgSend(env, chat, orderText(data, priced, body, orderNo), {
+        inline_keyboard: [[{ text: "افتح الموقع في قوقل ماب", url: mapsUrl(body.lat, body.lng) }]],
+      });
+      if (!sent.ok) return reply(502, { ok: false, code: "telegram" });
+      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, total: priced.total, count: priced.count });
+    }
+
     const locked = await isLocked(env, ip);
     if (locked) return reply(429, { ok: false, code: "locked", retryAfter: locked });
 
@@ -58,6 +79,36 @@ export default {
     await clearFails(env, ip);
 
     if (path === "/login") return reply(200, { ok: true });
+
+    if (path === "/tg-status") {
+      const title = env.LOCKS ? await env.LOCKS.get("tg_title") : null;
+      return reply(200, { ok: true, hasToken: !!env.TELEGRAM_BOT_TOKEN, linked: !!title, title: title || "" });
+    }
+
+    // ربط تيليجرام: أرسل أي رسالة للبوت (أو في القروب اللي فيه البوت) ثم اضغط الزر في الإدارة
+    if (path === "/tg-link") {
+      if (!env.TELEGRAM_BOT_TOKEN) return reply(400, { ok: false, code: "no_token" });
+      if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
+      const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/getUpdates?limit=50`);
+      const j = await r.json().catch(() => ({}));
+      if (!j.ok) return reply(400, { ok: false, code: "bad_token" });
+      const msgs = (j.result || []).map((u) => u.message || u.channel_post || u.my_chat_member).filter((m) => m && m.chat);
+      const last = msgs[msgs.length - 1];
+      if (!last) return reply(404, { ok: false, code: "no_message" });
+      const c = last.chat;
+      const title = c.title || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.username || String(c.id);
+      await env.LOCKS.put("tg_chat", String(c.id));
+      await env.LOCKS.put("tg_title", title);
+      await tgSend(env, String(c.id), "تم ربط طلبات متاجر أحد هنا ✅\nأي طلب جديد من الموقع بيوصل في هذي المحادثة.");
+      return reply(200, { ok: true, title });
+    }
+
+    if (path === "/tg-test") {
+      const chat = env.LOCKS ? await env.LOCKS.get("tg_chat") : null;
+      if (!chat || !env.TELEGRAM_BOT_TOKEN) return reply(400, { ok: false, code: "not_linked" });
+      const s = await tgSend(env, chat, "رسالة تجربة من صفحة الإدارة ✅ الطلبات بتوصل هنا.");
+      return reply(s.ok ? 200 : 502, { ok: !!s.ok });
+    }
 
     if (path === "/save") {
       const data = body.data;
@@ -80,6 +131,125 @@ export default {
     return reply(404, { ok: false, code: "not_found" });
   },
 };
+
+// ---------- الطلبات ----------
+let dataCache = { at: 0, data: null };
+async function loadData(env) {
+  if (dataCache.data && Date.now() - dataCache.at < 30000) return dataCache.data;
+  const r = await fetch(`https://api.github.com/repos/${env.REPO}/contents/data.json?ref=${encodeURIComponent(env.BRANCH)}`, {
+    headers: { "Authorization": "Bearer " + env.GITHUB_TOKEN, "Accept": "application/vnd.github.raw", "User-Agent": "ohod-admin-worker" },
+  });
+  if (!r.ok) throw new Error("data " + r.status);
+  dataCache = { at: Date.now(), data: await r.json() };
+  return dataCache.data;
+}
+
+// يوم الرياض (UTC+3) عشان عرض اليوم يتطابق مع اللي يشوفه الزبون
+function riyadhDayNo() { return Math.floor((Date.now() + 3 * 3600e3) / 864e5); }
+
+function priceOrder(data, body) {
+  const S = data.store || {};
+  const byId = {};
+  for (const p of data.products || []) byId[p.id] = p;
+  const items = body.items && typeof body.items === "object" ? body.items : {};
+  const phone = normPhone(body.phone);
+  if (!phone) return { error: "bad_phone" };
+  const lat = Number(body.lat), lng = Number(body.lng);
+  if (!(lat >= 16 && lat <= 33 && lng >= 34 && lng <= 56)) return { error: "bad_location" };
+
+  const DEAL = S.deal95 && S.deal95.on ? S.deal95 : null;
+  const DAILY = S.daily && S.daily.on ? S.daily : null;
+  let daily = null;
+  if (DAILY && Array.isArray(DAILY.list)) {
+    const l = DAILY.list.filter((x) => byId[x.id] && byId[x.id].stock && x.price > 0);
+    if (l.length) { const x = l[riyadhDayNo() % l.length]; daily = { id: x.id, price: Number(x.price) }; }
+  }
+  const lines = [];
+  let base = 0, dealSum = 0, count = 0;
+  const dealLines = [];
+  for (const [key, rawQty] of Object.entries(items)) {
+    const qty = Math.floor(Number(rawQty));
+    if (!(qty > 0 && qty <= 200)) continue;
+    const parts = String(key).split(":");
+    const kind = parts.length > 1 ? parts[0] : "r";
+    const p = byId[parts.length > 1 ? parts[1] : parts[0]];
+    if (!p || !p.stock) return { error: "unavailable", id: key };
+    if (kind === "t") {
+      if (!daily || daily.id !== p.id) { lines.push({ p, qty, price: Number(p.price), tag: "" }); base += qty * p.price; count += qty; continue; }
+      const lim = Number(DAILY.limit || 0);
+      const q = lim ? Math.min(qty, lim) : qty;
+      lines.push({ p, qty: q, price: daily.price, tag: "عرض اليوم" }); base += q * daily.price; count += q;
+    } else if (kind === "d") {
+      if (!DEAL || !(DEAL.ids || []).includes(p.id)) continue;
+      const lim = Number(DEAL.limit || 0);
+      const q = lim ? Math.min(qty, lim) : qty;
+      dealLines.push({ p, qty: q, price: Number(DEAL.price || 0.95), tag: "عرض " + DEAL.price });
+    } else {
+      lines.push({ p, qty, price: Number(p.price), tag: "" }); base += qty * p.price; count += qty;
+    }
+  }
+  if (DEAL && base >= Number(DEAL.min || 0)) for (const d of dealLines) { lines.push(d); dealSum += d.qty * d.price; count += d.qty; }
+  if (!count) return { error: "empty" };
+  const subtotal = round2(base + dealSum);
+  const fee = S.freeOver && subtotal >= S.freeOver ? 0 : Number(S.fee || 0);
+  return { lines, subtotal, fee, total: round2(subtotal + fee), count, phone };
+}
+
+function round2(n) { return Math.round(n * 100) / 100; }
+function normPhone(v) {
+  let s = String(v || "").replace(/[^\d+]/g, "").replace(/^\+?966/, "").replace(/^0/, "");
+  return /^5\d{8}$/.test(s) ? "0" + s : "";
+}
+function mapsUrl(lat, lng) { return `https://www.google.com/maps?q=${Number(lat).toFixed(6)},${Number(lng).toFixed(6)}`; }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+function money(n) { return (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, "") + " ر.س"; }
+
+function orderText(data, o, body, orderNo) {
+  const pay = body.pay === "card" ? "شبكة عند الاستلام" : "كاش عند الاستلام";
+  const lines = o.lines.map((l) => `• ${esc(l.p.name)} (${esc(l.p.unit)}) × ${l.qty} = ${money(l.qty * l.price)}${l.tag ? " [" + esc(l.tag) + "]" : ""}`).join("\n");
+  const t = new Date(Date.now() + 3 * 3600e3).toISOString().slice(11, 16);
+  return [
+    `🛒 <b>طلب جديد ${esc(orderNo)}</b>  · ${t}`,
+    "",
+    lines,
+    "",
+    `المنتجات: ${money(o.subtotal)}`,
+    `التوصيل: ${o.fee ? money(o.fee) : "مجاني"}`,
+    `<b>الإجمالي: ${money(o.total)}</b>`,
+    `الدفع: ${pay}`,
+    "",
+    `📞 الجوال: ${esc(o.phone)}`,
+    body.name ? `الاسم: ${esc(String(body.name).slice(0, 60))}` : null,
+    `📍 الموقع: ${mapsUrl(body.lat, body.lng)}`,
+    body.details ? `🏠 تفاصيل البيت: ${esc(String(body.details).slice(0, 200))}` : null,
+    body.note ? `📝 ملاحظات: ${esc(String(body.note).slice(0, 300))}` : null,
+  ].filter((x) => x !== null).join("\n");
+}
+
+async function tgSend(env, chat, text, markup) {
+  const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chat, text, parse_mode: "HTML", disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) }),
+  });
+  return r.json().catch(() => ({ ok: false }));
+}
+
+async function nextOrderNo(env) {
+  const n = Number((await env.LOCKS.get("order_seq")) || 1000) + 1;
+  await env.LOCKS.put("order_seq", String(n));
+  return "#" + n;
+}
+
+async function tooManyOrders(env, ip) {
+  const key = "ord:" + ip, now = Date.now();
+  const cur = (await env.LOCKS.get(key, "json")) || { n: 0, until: now + 600000 };
+  const fresh = cur.until > now ? cur : { n: 0, until: now + 600000 };
+  if (fresh.n >= 6) return true;
+  fresh.n += 1;
+  await env.LOCKS.put(key, JSON.stringify(fresh), { expirationTtl: 600 });
+  return false;
+}
 
 async function hashPin(env, pin) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
