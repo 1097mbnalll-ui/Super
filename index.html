@@ -324,7 +324,17 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
     if (!(window.crypto && crypto.subtle && window.TextEncoder)) return Promise.resolve("plain:" + s);
     return crypto.subtle.digest("SHA-256", new TextEncoder().encode("ohod:" + s)).then(function(b){ return Array.prototype.map.call(new Uint8Array(b), function(x){ return ("0" + x.toString(16)).slice(-2); }).join(""); });
   }
-  function checkPin(pin){ return sha(pin).then(function(h){ return S.pinHash ? h === S.pinHash : pin === "1234"; }); }
+  var adminPin = "";
+  function apiUrl(){ return String(S.api || "").replace(/\/+$/, ""); }
+  function api(path, body){
+    return fetch(apiUrl() + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().catch(function(){ return { ok: false, code: "http_" + r.status }; }).then(function(j){ j.status = r.status; return j; }); },
+            function(){ return { ok: false, code: "network" }; });
+  }
+  function checkPin(pin){
+    if (apiUrl()) return api("/login", { pin: pin }).then(function(j){ if (j.ok) return true; if (j.code === "bad_pin") return false; throw j; });
+    return sha(pin).then(function(h){ return S.pinHash ? h === S.pinHash : pin === "1234"; });
+  }
   var pinFails = 0, pinLockUntil = 0;
   function openPin(){
     var w = document.createElement("div");
@@ -341,9 +351,16 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
       e.preventDefault();
       var st = $("pinStatus"), v = $("pinIn").value.trim();
       if (Date.now() < pinLockUntil) { st.className = "status err"; st.textContent = "محاولات كثيرة. انتظر دقيقة وجرّب."; return; }
-      checkPin(v).then(function(ok){
+      st.className = "status"; st.textContent = "جاري التحقق…";
+      checkPin(v).catch(function(j){
+        st.className = "status err";
+        st.textContent = j && j.code === "locked" ? "انقفل الدخول بسبب محاولات غلط كثيرة. جرّب بعد " + Math.ceil((j.retryAfter || 900) / 60) + " دقيقة." :
+          j && j.code === "network" ? "ما قدرنا نوصل لخادم الإدارة. تأكد من النت." : "خادم الإدارة فيه مشكلة (" + ((j && j.code) || "?") + ").";
+        return null;
+      }).then(function(ok){
+        if (ok === null) return;
         if (!ok) { pinFails++; if (pinFails >= 5) { pinLockUntil = Date.now() + 60000; pinFails = 0; } st.className = "status err"; st.textContent = "الرقم السري غلط."; $("pinIn").select(); return; }
-        close(); canEdit = true; go("admin");
+        adminPin = v; close(); canEdit = true; go("admin");
       });
     });
   }
@@ -623,7 +640,7 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
       '<button class="btn btn-ghost" type="button" id="toStore">عرض المتجر</button></div></header>' +
       '<div class="admin-bar"><div class="wrap"><span class="grow" id="aState">كل شي محفوظ</span><span class="status" id="aStatus" aria-live="polite"></span>' +
       '<button class="btn btn-brand" type="button" id="aSave">احفظ وانشر</button></div></div>' +
-      '<main class="wrap" style="display:grid;gap:16px;padding-block:18px 40px">' + (GH ? '<section class="card" id="ghCard"></section>' : '') +
+      '<main class="wrap" style="display:grid;gap:16px;padding-block:18px 40px">' + (GH && !apiUrl() ? '<section class="card" id="ghCard"></section>' : '') +
         '<section class="card"><h2>بيانات المحل</h2><div class="fields">' +
           field("sName","اسم المحل",draft.store.name) + field("sTag","الوصف تحت الاسم",draft.store.tagline) +
           field("sPhone","رقم الاتصال",draft.store.phone,"tel") + field("sWa","رقم الواتساب (بالصيغة الدولية 9665…)",draft.store.wa,"tel") +
@@ -660,7 +677,7 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
     $("pickSheet").addEventListener("click", function(e){ if (e.target === this) this.hidden = true; });
     $("pickFile").addEventListener("change", onUpload);
     newPin = ""; $("sPin").addEventListener("input", function(){ newPin = this.value.trim(); if (newPin) markDirty(); });
-    if (GH) renderGh();
+    if (GH && !apiUrl()) renderGh();
     renderPromos(); renderACats(); renderAFilter(); renderAProds();
   }
   function field(id, label, val, type){ return '<label for="' + id + '">' + label + '<input id="' + id + '" type="' + (type || "text") + '" value="' + esc(val) + '"' + (type === "number" ? ' min="0" step="0.5" inputmode="decimal"' : '') + '></label>'; }
@@ -841,6 +858,25 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
     if (dyl.some(function(x){ return !dById(x.id) || !(x.price > 0); })) { st.className = "status err"; st.textContent = "فيه يوم في عرض اليوم بدون منتج أو سعره صفر."; return; }
     if (draft.store.deal95) draft.store.deal95.ids = draft.store.deal95.ids.filter(function(id){ return dById(id); });
     btn.disabled = true; st.className = "status"; st.textContent = "جاري الحفظ…";
+    if (newPin && !/^\d{4,12}$/.test(newPin)) { btn.disabled = false; st.className = "status err"; st.textContent = "الرقم السري الجديد لازم يكون أرقام بس، من ٤ إلى ١٢ رقم."; return; }
+    if (apiUrl()) {
+      var payload = gcData(JSON.parse(JSON.stringify(draft))); delete payload.store.pinHash;
+      api("/save", { pin: adminPin, data: payload, newPin: newPin || undefined }).then(function(j){
+        btn.disabled = false;
+        if (j.ok) {
+          applyData(payload); dirty = false; if (newPin) adminPin = newPin; newPin = ""; $("sPin").value = "";
+          st.className = "status"; st.textContent = "انحفظ. يوصل للزبائن خلال دقيقة تقريبًا."; $("aState").textContent = "كل شي محفوظ"; return;
+        }
+        st.className = "status err";
+        st.textContent = j.code === "bad_pin" ? "الرقم السري تغيّر من جهاز ثاني. اطلع من الإدارة وادخل بالرقم الجديد." :
+          j.code === "locked" ? "انقفل الدخول مؤقتًا بسبب محاولات غلط. جرّب بعد شوي." :
+          j.code === "too_large" ? "الصور كثيرة أو كبيرة. احذف بعض الصور المرفوعة وجرّب." :
+          j.code === "github_auth" ? "مفتاح GitHub اللي في الخادم انتهى أو ما له صلاحية. صاحب الحساب لازم يجدده." :
+          j.code === "network" ? "ما قدرنا نوصل لخادم الإدارة. تأكد من النت." :
+          "ما انحفظ (" + (j.code || "?") + "). جرّب مرة ثانية.";
+      });
+      return;
+    }
     var pinStep = newPin ? sha(newPin).then(function(h){ draft.store.pinHash = h; }) : Promise.resolve();
     if (GH) {
       pinStep.then(function(){ var data = gcData(JSON.parse(JSON.stringify(draft))); return ghSave(data).then(function(){ return data; }); }).then(function(data){
