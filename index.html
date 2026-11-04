@@ -158,6 +158,7 @@ svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .ltag{display:inline-block;background:var(--orange);color:#2A1404;border-radius:6px;padding:0 6px;font-size:.68rem;font-weight:800;margin-inline-end:6px}
 .ltag.day{background:var(--sale);color:#fff}
 .lines li.off{opacity:.6}
+.pin{font-size:1.4rem;letter-spacing:.5em;text-align:center;direction:ltr}
 
 /* categories grid */
 .catgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:14px 10px}
@@ -316,6 +317,36 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
   function onSale(p){ return p.old && p.old > p.price; }
 
   var DEAL = S.deal95 || null, DAILY = S.daily || null;
+  var GH = /\.github\.io$/.test(location.hostname);
+  var GHREPO = GH ? { owner: location.hostname.split(".")[0], repo: location.pathname.split("/")[1] || "" } : null;
+  function applyData(nd){ D = nd; S = D.store; DEAL = S.deal95 || null; DAILY = S.daily || null; }
+  function sha(s){
+    if (!(window.crypto && crypto.subtle && window.TextEncoder)) return Promise.resolve("plain:" + s);
+    return crypto.subtle.digest("SHA-256", new TextEncoder().encode("ohod:" + s)).then(function(b){ return Array.prototype.map.call(new Uint8Array(b), function(x){ return ("0" + x.toString(16)).slice(-2); }).join(""); });
+  }
+  function checkPin(pin){ return sha(pin).then(function(h){ return S.pinHash ? h === S.pinHash : pin === "1234"; }); }
+  var pinFails = 0, pinLockUntil = 0;
+  function openPin(){
+    var w = document.createElement("div");
+    w.innerHTML = '<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>الدخول للإدارة</h2><button class="btn btn-ghost" type="button" id="pinClose">إغلاق</button></div>' +
+      '<label for="pinIn">الرقم السري<input id="pinIn" class="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="off"></label>' +
+      '<div class="actions"><button class="btn btn-brand" type="submit">' + ic("lock") + 'دخول</button><span class="status" id="pinStatus" aria-live="polite"></span></div>' +
+      '<p class="hint">هذي الصفحة لصاحب المحل فقط.</p></form></div>';
+    document.body.appendChild(w.firstChild);
+    var close = function(){ var s = $("pinSheet"); if (s) s.remove(); };
+    $("pinClose").addEventListener("click", close);
+    $("pinSheet").addEventListener("click", function(e){ if (e.target === this) close(); });
+    $("pinIn").focus();
+    $("pinForm").addEventListener("submit", function(e){
+      e.preventDefault();
+      var st = $("pinStatus"), v = $("pinIn").value.trim();
+      if (Date.now() < pinLockUntil) { st.className = "status err"; st.textContent = "محاولات كثيرة. انتظر دقيقة وجرّب."; return; }
+      checkPin(v).then(function(ok){
+        if (!ok) { pinFails++; if (pinFails >= 5) { pinLockUntil = Date.now() + 60000; pinFails = 0; } st.className = "status err"; st.textContent = "الرقم السري غلط."; $("pinIn").select(); return; }
+        close(); canEdit = true; go("admin");
+      });
+    });
+  }
   function dayNo(){ var d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5); }
   function daily(){
     if (!DAILY || !DAILY.on || !DAILY.list) return null;
@@ -461,13 +492,13 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
         (S.freeOver ? '<div><dt>توصيل مجاني</dt><dd>فوق ' + rial(S.freeOver) + '</dd></div>' : '') +
         '<div><dt>أوقات العمل</dt><dd>' + esc(S.hours) + '</dd></div><div><dt>الدفع</dt><dd>عند الاستلام: كاش أو شبكة</dd></div><div><dt>رقم الطلبات</dt><dd style="direction:ltr;user-select:all">' + esc(S.phone) + '</dd></div></dl>' +
         '<div class="actions"><a class="btn btn-brand" href="tel:' + esc(S.phone) + '">' + ic("phone") + 'اتصل واطلب</a>' + (waNumber() ? '<a class="btn btn-soft" href="https://wa.me/' + waNumber() + '" target="_blank" rel="noopener">واتساب</a>' : '') + '<button class="btn btn-ghost" type="button" id="copyPhone">نسخ الرقم</button><span class="status" id="status" aria-live="polite"></span></div></div>' +
-        (canEdit ? '<div class="box"><b>إدارة المتجر</b><p class="hint">عدّل المنتجات والأسعار والصور وبيانات المحل. هذا القسم يظهر لك أنت بس.</p><button class="btn btn-orange" type="button" id="toAdmin">' + ic("gear") + 'افتح الإدارة</button></div>' : '') + '<p class="hint" style="margin-top:14px">صور بعض الخضار والفواكه من مجموعة Fruits-360 لـ Mihai Oltean (رخصة MIT).</p></main>';
+        '<div class="box"><b>الإدارة</b><p class="hint">لصاحب المحل: تعديل المنتجات والأسعار والعروض والصور وبيانات المحل.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">' + ic("gear") + 'الدخول للإدارة</button></div>' + '<p class="hint" style="margin-top:14px">صور بعض الخضار والفواكه من مجموعة Fruits-360 لـ Mihai Oltean (رخصة MIT).</p></main>';
     }
     app.innerHTML = h + navBar();
     if (screen === "home") { renderList(); startCarousel(); rotatePh(); }
     if (screen === "search") { renderSearch(); var qi = $("q"); qi.focus(); qi.addEventListener("input", function(){ q = this.value.trim(); renderSearch(); }); qi.addEventListener("change", function(){ remember(this.value.trim()); }); }
     if (screen === "cart") renderCart();
-    if ($("toAdmin")) $("toAdmin").addEventListener("click", function(){ go("admin"); });
+    if ($("toAdmin")) $("toAdmin").addEventListener("click", function(){ if (canEdit) go("admin"); else openPin(); });
     if ($("copyPhone")) $("copyPhone").addEventListener("click", function(){ copyText(S.phone, "انتسخ الرقم"); });
   }
   function subhead(t){ return '<div class="subhead"><div class="wrap"><button class="iconbtn" type="button" data-nav="back" aria-label="رجوع">' + ic("back") + '</button><h1>' + esc(t) + '</h1><span class="spacer"></span></div></div>'; }
@@ -592,13 +623,14 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
       '<button class="btn btn-ghost" type="button" id="toStore">عرض المتجر</button></div></header>' +
       '<div class="admin-bar"><div class="wrap"><span class="grow" id="aState">كل شي محفوظ</span><span class="status" id="aStatus" aria-live="polite"></span>' +
       '<button class="btn btn-brand" type="button" id="aSave">احفظ وانشر</button></div></div>' +
-      '<main class="wrap" style="display:grid;gap:16px;padding-block:18px 40px">' +
+      '<main class="wrap" style="display:grid;gap:16px;padding-block:18px 40px">' + (GH ? '<section class="card" id="ghCard"></section>' : '') +
         '<section class="card"><h2>بيانات المحل</h2><div class="fields">' +
           field("sName","اسم المحل",draft.store.name) + field("sTag","الوصف تحت الاسم",draft.store.tagline) +
           field("sPhone","رقم الاتصال",draft.store.phone,"tel") + field("sWa","رقم الواتساب (بالصيغة الدولية 9665…)",draft.store.wa,"tel") +
           field("sArea","منطقة التوصيل",draft.store.area) + field("sHours","أوقات العمل",draft.store.hours) +
           field("sEta","مدة التوصيل",draft.store.eta) + field("sFee","رسوم التوصيل (ريال)",draft.store.fee,"number") +
           field("sFree","توصيل مجاني فوق (ريال، ٠ = بدون)",draft.store.freeOver,"number") +
+          '<label for="sPin">رقم سري جديد للإدارة (اتركه فاضي إذا ما تبغى تغيّره)<input id="sPin" type="password" inputmode="numeric" maxlength="12" autocomplete="new-password"></label>' +
         '</div></section>' +
         '<section class="card" id="aPromos"></section>' +
         '<section class="card"><div class="sec-head" style="margin:0"><h2>الأقسام</h2><button class="btn btn-soft" type="button" id="addCat">+ قسم جديد</button></div><div class="alist" id="aCats"></div></section>' +
@@ -627,6 +659,8 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
     $("pickClose").addEventListener("click", function(){ $("pickSheet").hidden = true; });
     $("pickSheet").addEventListener("click", function(e){ if (e.target === this) this.hidden = true; });
     $("pickFile").addEventListener("change", onUpload);
+    newPin = ""; $("sPin").addEventListener("input", function(){ newPin = this.value.trim(); if (newPin) markDirty(); });
+    if (GH) renderGh();
     renderPromos(); renderACats(); renderAFilter(); renderAProds();
   }
   function field(id, label, val, type){ return '<label for="' + id + '">' + label + '<input id="' + id + '" type="' + (type || "text") + '" value="' + esc(val) + '"' + (type === "number" ? ' min="0" step="0.5" inputmode="decimal"' : '') + '></label>'; }
@@ -756,6 +790,41 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
     };
     r.readAsDataURL(f);
   }
+  var newPin = "";
+  function ghToken(){ try { return localStorage.getItem("ohod-gh-token") || ""; } catch(e){ return ""; } }
+  function renderGh(){
+    var has = !!ghToken();
+    $("ghCard").innerHTML = '<h2>ربط الحفظ</h2>' + (has
+      ? '<p class="hint">هذا الجهاز مربوط، وأي تعديل تحفظه يوصل للزبائن خلال دقيقة تقريبًا.</p><div class="actions"><button class="btn btn-ghost" type="button" id="ghRemove">فك الربط من هذا الجهاز</button></div>'
+      : '<p class="hint">عشان تنحفظ تعديلاتك وتوصل للزبائن، يحتاج هذا الجهاز رمز GitHub مرة وحدة بس. صاحب الحساب يسويه من <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">إعدادات GitHub</a>: يختار المستودع <b>' + esc(GHREPO.repo) + '</b> فقط، ويعطيه صلاحية <b>Contents: Read and write</b>.</p>' +
+        '<label for="ghTok">رمز GitHub<input id="ghTok" type="password" autocomplete="off" placeholder="github_pat_…" style="direction:ltr"></label><div class="actions"><button class="btn btn-brand" type="button" id="ghSaveTok">اربط هذا الجهاز</button></div>');
+    if ($("ghRemove")) $("ghRemove").addEventListener("click", function(){ try { localStorage.removeItem("ohod-gh-token"); } catch(e){} renderGh(); });
+    if ($("ghSaveTok")) $("ghSaveTok").addEventListener("click", function(){ var v = $("ghTok").value.trim(); if (!v) return; try { localStorage.setItem("ohod-gh-token", v); } catch(e){} renderGh(); });
+  }
+  function b64(str){ var bytes = new TextEncoder().encode(str), bin = ""; for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); }
+  function ghSave(data){
+    var tok = ghToken(); if (!tok) return Promise.reject({ code: "no_token" });
+    var url = "https://api.github.com/repos/" + GHREPO.owner + "/" + GHREPO.repo + "/contents/data.json";
+    var h = { "Authorization": "Bearer " + tok, "Accept": "application/vnd.github+json" };
+    return fetch(url + "?ref=gh-pages&t=" + Date.now(), { headers: h, cache: "no-store" }).then(function(r){
+      if (r.status === 401) throw { code: "bad_token" }; return r.ok ? r.json() : {};
+    }).then(function(cur){
+      var body = { message: "تحديث المتجر من صفحة الإدارة", content: b64(JSON.stringify(data)), branch: "gh-pages" };
+      if (cur && cur.sha) body.sha = cur.sha;
+      return fetch(url, { method: "PUT", headers: h, body: JSON.stringify(body) });
+    }).then(function(r){
+      if (r.status === 401 || r.status === 403 || r.status === 404) throw { code: "bad_token" };
+      if (r.status === 409) throw { code: "conflict_gh" };
+      if (!r.ok) throw { code: "gh_" + r.status };
+      return r.json();
+    });
+  }
+  function gcData(data){
+    var used = { logo: 1, e1f6d2: 1, e1f35e:1, e1f95b:1, e1f345:1, e1f34c:1, e1f950:1, e1f96c:1 };
+    data.products.forEach(function(p){ used[p.img] = 1; }); data.cats.forEach(function(c){ used[c.img] = 1; });
+    Object.keys(data.imgs).forEach(function(k){ if (isPhoto(k) && !used[k]) delete data.imgs[k]; });
+    return data;
+  }
   function buildHtml(data){
     var used = { logo: 1, e1f6d2: 1, e1f35e:1, e1f95b:1, e1f345:1, e1f34c:1, e1f950:1, e1f96c:1 };
     data.products.forEach(function(p){ used[p.img] = 1; }); data.cats.forEach(function(c){ used[c.img] = 1; });
@@ -772,8 +841,23 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
     if (dyl.some(function(x){ return !dById(x.id) || !(x.price > 0); })) { st.className = "status err"; st.textContent = "فيه يوم في عرض اليوم بدون منتج أو سعره صفر."; return; }
     if (draft.store.deal95) draft.store.deal95.ids = draft.store.deal95.ids.filter(function(id){ return dById(id); });
     btn.disabled = true; st.className = "status"; st.textContent = "جاري الحفظ…";
-    var html = buildHtml(JSON.parse(JSON.stringify(draft)));
-    claude.use("artifact").then(function(a){
+    var pinStep = newPin ? sha(newPin).then(function(h){ draft.store.pinHash = h; }) : Promise.resolve();
+    if (GH) {
+      pinStep.then(function(){ var data = gcData(JSON.parse(JSON.stringify(draft))); return ghSave(data).then(function(){ return data; }); }).then(function(data){
+        applyData(data); dirty = false; newPin = ""; $("sPin").value = ""; btn.disabled = false;
+        st.textContent = "انحفظ. يوصل للزبائن خلال دقيقة تقريبًا."; $("aState").textContent = "كل شي محفوظ";
+      }).catch(function(err){
+        btn.disabled = false; st.className = "status err"; var c = err && err.code;
+        st.textContent = c === "no_token" ? "اربط هذا الجهاز أول من خانة «ربط الحفظ» فوق." :
+          c === "bad_token" ? "رمز GitHub غلط أو انتهى أو ما له صلاحية على المستودع." :
+          c === "conflict_gh" ? "صار تعديل ثاني بنفس الوقت. اضغط احفظ مرة ثانية." :
+          "ما انحفظ. تأكد من النت وجرّب مرة ثانية.";
+        if (c === "no_token" && $("ghCard")) $("ghCard").scrollIntoView({ behavior: "smooth" });
+      });
+      return;
+    }
+    var html;
+    pinStep.then(function(){ html = buildHtml(JSON.parse(JSON.stringify(draft))); return claude.use("artifact"); }).then(function(a){
       if (!a) throw { code: "not_granted" };
       try { sessionStorage.setItem("ohod-mode", "admin"); } catch(e){}
       return a.publish(html);
@@ -794,6 +878,9 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--fg);background:va
   function go(m){ window.scrollTo(0,0); if (m === "admin" && canEdit) { mode = "admin"; adminShell(); } else { mode = "store"; screen = "home"; render(); } }
   var startAdmin = false; try { startAdmin = sessionStorage.getItem("ohod-mode") === "admin"; sessionStorage.removeItem("ohod-mode"); } catch(e){}
   go("store");
+  if (GH) fetch("data.json?v=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
+    if (nd && nd.store && nd.products && nd.imgs) { applyData(nd); if (mode === "store") render(); }
+  }).catch(function(){});
   if (window.claude && claude.use) {
     claude.use("user").then(function(u){ return u ? u.canEdit() : false; }).then(function(ok){
       canEdit = !!ok; if (!canEdit) return;
