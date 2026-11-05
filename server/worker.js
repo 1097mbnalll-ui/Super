@@ -12,7 +12,8 @@
 //   TELEGRAM_BOT_TOKEN (Secret) مفتاح بوت تيليجرام اللي توصله الطلبات (من @BotFather)
 // والربط:
 //   LOCKS          (KV namespace) لحفظ الرقم السري الجديد وعدد المحاولات الغلط
-//   DB             (D1 database) الطلبات وحالاتها لصفحة المندوب ومتابعة الزبون
+//   DB             (D1 database) الطلبات وحالاتها، المخزون، التحليل، واشتراكات الإشعارات
+// الإشعارات (Web Push) ما تحتاج مفاتيح منك: الخادم يسوي مفاتيحه أول مرة ويحفظها في LOCKS.
 
 const MAX_FAILS_PER_IP = 5;        // محاولات غلط لكل جهاز
 const IP_LOCK_SECONDS = 15 * 60;   // مدة القفل لكل جهاز
@@ -21,7 +22,8 @@ const GLOBAL_LOCK_SECONDS = 60 * 60;
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
+    const later = (p) => { const q = Promise.resolve(p).catch(() => {}); if (ctx && ctx.waitUntil) ctx.waitUntil(q); return q; };
     const origin = request.headers.get("Origin") || "";
     const allowed = (env.ALLOWED_ORIGIN || "").split(",").map((s) => s.trim()).filter(Boolean);
     const cors = {
@@ -37,6 +39,15 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const path = new URL(request.url).pathname.replace(/\/+$/, "");
     if (request.method === "GET" && (path === "" || path === "/ping")) return reply(200, { ok: true, service: "ohod-admin" });
+    // المخزون للزبائن: كم باقي من كل منتج عليه عدّ
+    if (request.method === "GET" && path === "/stock") {
+      const stock = env.DB ? await readStock(env) : {};
+      return new Response(JSON.stringify({ ok: true, stock }), { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=10" } });
+    }
+    if (request.method === "GET" && path === "/push/key") {
+      if (!env.LOCKS || !env.DB) return reply(404, { ok: false, code: "no_push" });
+      return reply(200, { ok: true, key: (await vapidKeys(env)).pub });
+    }
     if (request.method !== "POST") return reply(405, { ok: false, code: "method" });
     if (!allowed.includes(origin)) return reply(403, { ok: false, code: "origin" });
     for (const k of ["GITHUB_TOKEN", "ADMIN_PIN", "SECRET", "REPO", "BRANCH"]) {
@@ -61,9 +72,19 @@ export default {
       const priced = priceOrder(data, body);
       if (priced.error) return reply(400, { ok: false, code: priced.error });
       const record = orderRecord(priced, body);
-      let orderNo;
+      let orderNo, stockBefore = {};
       if (env.DB) {
-        try { orderNo = await dbInsertOrder(env, record); } catch { return reply(502, { ok: false, code: "db" }); }
+        try {
+          await ensureSchema(env);
+          stockBefore = await readStock(env);
+          const need = needOf(record);
+          for (const id of Object.keys(need)) {
+            if (stockBefore[id] != null && stockBefore[id] < need[id]) return reply(409, { ok: false, code: "unavailable", id, left: stockBefore[id] });
+          }
+          orderNo = await dbInsertOrder(env, record);
+          await moveStock(env, need, -1, stockBefore);
+        } catch { return reply(502, { ok: false, code: "db" }); }
+        later(afterOrder(env, data, record, orderNo, stockBefore));
       } else {
         orderNo = await nextOrderNo(env);
       }
@@ -88,6 +109,24 @@ export default {
       return reply(200, { ok: true, status: row.status, updated: row.updated });
     }
 
+    // الزبون يفعّل إشعارات حالة طلبه
+    if (path === "/push/order") {
+      if (!env.DB || !env.LOCKS) return reply(404, { ok: false, code: "no_push" });
+      const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
+      const phone = normPhone(body.phone);
+      if (!(n > 0) || !phone) return reply(400, { ok: false, code: "bad_request" });
+      await ensureSchema(env);
+      const row = await env.DB.prepare("SELECT status FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
+      if (!row) return reply(404, { ok: false, code: "not_found" });
+      if (!(await saveSub(env, body.sub, "customer", String(n)))) return reply(400, { ok: false, code: "bad_sub" });
+      later(pushTo(env, [body.sub], { title: "تم تفعيل الإشعارات", body: "بنبلغك أول ما تتغير حالة طلبك #" + (1000 + n), url: "./", tag: "order" + n }));
+      return reply(200, { ok: true });
+    }
+    if (path === "/push/unsub") {
+      if (env.DB && body.endpoint) { await ensureSchema(env); await env.DB.prepare("DELETE FROM subs WHERE endpoint = ?").bind(String(body.endpoint)).run(); }
+      return reply(200, { ok: true });
+    }
+
     const locked = await isLocked(env, ip);
     if (locked) return reply(429, { ok: false, code: "locked", retryAfter: locked });
 
@@ -99,6 +138,12 @@ export default {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
       if (path === "/driver/login") return reply(200, { ok: true, role: who });
+      if (path === "/driver/push") {
+        if (!env.LOCKS) return reply(404, { ok: false, code: "no_push" });
+        if (!(await saveSub(env, body.sub, "driver", ""))) return reply(400, { ok: false, code: "bad_sub" });
+        later(pushTo(env, [body.sub], { title: "تم تفعيل إشعارات المندوب", body: "بيوصلك تنبيه مع كل طلب جديد، حتى لو الصفحة مقفلة.", url: "./#driver", tag: "test" }));
+        return reply(200, { ok: true });
+      }
       if (path === "/driver/orders") {
         const since = Date.now() - 3 * 864e5;
         const rs = await env.DB.prepare("SELECT no, created, updated, status, data FROM orders WHERE created > ? OR status IN ('new','accepted','onway') ORDER BY no DESC LIMIT 150").bind(since).all();
@@ -109,8 +154,16 @@ export default {
         const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
         const st = String(body.status || "");
         if (!(n > 0) || !["new", "accepted", "onway", "delivered", "canceled"].includes(st)) return reply(400, { ok: false, code: "bad_request" });
-        const r = await env.DB.prepare("UPDATE orders SET status = ?, updated = ? WHERE no = ?").bind(st, Date.now(), n).run();
-        if (!r.meta || !r.meta.changes) return reply(404, { ok: false, code: "not_found" });
+        const old = await env.DB.prepare("SELECT status, data FROM orders WHERE no = ?").bind(n).first();
+        if (!old) return reply(404, { ok: false, code: "not_found" });
+        await env.DB.prepare("UPDATE orders SET status = ?, updated = ? WHERE no = ?").bind(st, Date.now(), n).run();
+        if (old.status !== st) {
+          // الإلغاء يرجّع الكميات للمخزون، والتراجع عن الإلغاء يخصمها مرة ثانية
+          let rec = null; try { rec = JSON.parse(old.data); } catch {}
+          if (rec && (st === "canceled") !== (old.status === "canceled")) await moveStock(env, needOf(rec), st === "canceled" ? 1 : -1);
+          const msg = STATUS_MSG[st];
+          if (msg) later(notifyRole(env, "customer", String(n), { title: "طلبك #" + (1000 + n), body: msg, url: "./", tag: "order" + n }));
+        }
         return reply(200, { ok: true });
       }
       return reply(404, { ok: false, code: "not_found" });
@@ -124,6 +177,34 @@ export default {
     await clearFails(env, ip);
 
     if (path === "/login") return reply(200, { ok: true });
+
+    if (path === "/admin/stock") {
+      if (!env.DB) return reply(200, { ok: true, stock: {}, hasDB: false });
+      return reply(200, { ok: true, stock: await readStock(env), hasDB: true });
+    }
+    if (path === "/admin/stats") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      return reply(200, { ok: true, ...(await readStats(env, Number(body.days) || 30)) });
+    }
+    if (path === "/push/sub") {
+      if (!env.DB || !env.LOCKS) return reply(404, { ok: false, code: "no_push" });
+      if (!(await saveSub(env, body.sub, "admin", ""))) return reply(400, { ok: false, code: "bad_sub" });
+      later(pushTo(env, [body.sub], { title: "تم تفعيل إشعارات الإدارة", body: "بيوصلك تنبيه مع كل طلب جديد، ولما منتج يقرب يخلص أو يخلص.", url: "./", tag: "test" }));
+      return reply(200, { ok: true });
+    }
+    if (path === "/push/status") {
+      if (!env.DB) return reply(200, { ok: true, admin: 0, driver: 0, customer: 0, ready: false });
+      await ensureSchema(env);
+      const rs = await env.DB.prepare("SELECT role, COUNT(*) n FROM subs GROUP BY role").all();
+      const out = { ok: true, admin: 0, driver: 0, customer: 0, ready: !!env.LOCKS };
+      for (const r of rs.results || []) out[r.role] = r.n;
+      return reply(200, out);
+    }
+    if (path === "/push/test") {
+      if (!env.DB || !env.LOCKS) return reply(404, { ok: false, code: "no_push" });
+      const sent = await notifyRole(env, body.role === "driver" ? "driver" : "admin", null, { title: "رسالة تجربة ✅", body: "الإشعارات شغالة على هذا الجهاز.", url: "./", tag: "test" });
+      return reply(200, { ok: true, sent });
+    }
 
     if (path === "/tg-status") {
       const title = env.LOCKS ? await env.LOCKS.get("tg_title") : null;
@@ -172,6 +253,8 @@ export default {
         if (await checkPin(env, dp)) return reply(400, { ok: false, code: "driver_pin_same" });
       }
       if (data.store) delete data.store.pinHash; // الرقم السري ما ينحفظ في الموقع العام
+      const stockSet = body.stock && typeof body.stock === "object" ? body.stock : null;
+      if (stockSet && !env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       try {
         await saveToGitHub(env, "data.json", JSON.stringify(data), "تحديث المتجر من صفحة الإدارة");
       } catch (e) {
@@ -179,7 +262,9 @@ export default {
       }
       if (body.newPin) await env.LOCKS.put("pin", await hashPin(env, String(body.newPin)));
       if (body.newDriverPin) await env.LOCKS.put("driver_pin", await hashPin(env, "driver:" + String(body.newDriverPin)));
-      return reply(200, { ok: true });
+      if (stockSet) await setStock(env, stockSet);
+      dataCache = { at: 0, data: null };
+      return reply(200, { ok: true, stock: stockSet ? await readStock(env) : undefined });
     }
     return reply(404, { ok: false, code: "not_found" });
   },
@@ -189,12 +274,19 @@ export default {
 let schemaReady = false;
 async function ensureSchema(env) {
   if (schemaReady) return;
-  await env.DB.prepare("CREATE TABLE IF NOT EXISTS orders (no INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER NOT NULL, updated INTEGER NOT NULL, status TEXT NOT NULL, phone TEXT NOT NULL, data TEXT NOT NULL)").run();
+  await env.DB.batch([
+    "CREATE TABLE IF NOT EXISTS orders (no INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER NOT NULL, updated INTEGER NOT NULL, status TEXT NOT NULL, phone TEXT NOT NULL, data TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS stock (id TEXT PRIMARY KEY, qty INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS subs (endpoint TEXT NOT NULL, role TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', p256dh TEXT NOT NULL, auth TEXT NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (endpoint, role, ref))",
+    "CREATE TABLE IF NOT EXISTS st_day (day TEXT PRIMARY KEY, orders INTEGER NOT NULL, revenue REAL NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS st_item (day TEXT NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, revenue REAL NOT NULL, orders INTEGER NOT NULL, PRIMARY KEY (day, id))",
+    "CREATE TABLE IF NOT EXISTS st_pair (a TEXT NOT NULL, b TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (a, b))",
+  ].map((q) => env.DB.prepare(q)));
   schemaReady = true;
 }
 function orderRecord(o, body) {
   return {
-    lines: o.lines.map((l) => ({ name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, tag: l.tag || "" })),
+    lines: o.lines.map((l) => ({ id: l.p.id, name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, tag: l.tag || "" })),
     subtotal: o.subtotal, fee: o.fee, total: o.total, count: o.count, phone: o.phone,
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
     pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
@@ -253,13 +345,17 @@ function priceOrder(data, body) {
   const lines = [];
   let base = 0, dealSum = 0, count = 0;
   const dealLines = [];
+  const used = {};
   for (const [key, rawQty] of Object.entries(items)) {
-    const qty = Math.floor(Number(rawQty));
+    let qty = Math.floor(Number(rawQty));
     if (!(qty > 0 && qty <= 200)) continue;
     const parts = String(key).split(":");
     const kind = parts.length > 1 ? parts[0] : "r";
     const p = byId[parts.length > 1 ? parts[1] : parts[0]];
     if (!p || !p.stock) return { error: "unavailable", id: key };
+    const max = Math.floor(Number(p.max || 0));
+    if (max > 0) { qty = Math.min(qty, max - (used[p.id] || 0)); if (qty <= 0) continue; }
+    used[p.id] = (used[p.id] || 0) + qty;
     if (kind === "t") {
       if (!daily || daily.id !== p.id) { lines.push({ p, qty, price: Number(p.price), tag: "" }); base += qty * p.price; count += qty; continue; }
       const lim = Number(DAILY.limit || 0);
@@ -430,3 +526,183 @@ async function saveToGitHub(env, file, text, message) {
   }
   throw { code: "github_conflict", status: 409 };
 }
+
+// ---------- المخزون ----------
+const STATUS_MSG = {
+  accepted: "انقبل طلبك وجاري تجهيزه",
+  onway: "المندوب طلع لك وفي الطريق 🚚",
+  delivered: "وصل طلبك. بالعافية عليك!",
+  canceled: "انلغى طلبك. للاستفسار اتصل على المحل.",
+};
+function needOf(rec) {
+  const need = {};
+  for (const l of rec.lines || []) if (l.id) need[l.id] = (need[l.id] || 0) + Number(l.qty || 0);
+  return need;
+}
+async function readStock(env) {
+  await ensureSchema(env);
+  const rs = await env.DB.prepare("SELECT id, qty FROM stock").all();
+  const out = {};
+  for (const r of rs.results || []) out[r.id] = r.qty;
+  return out;
+}
+async function moveStock(env, need, sign, known) {
+  const cur = known || (await readStock(env));
+  const st = Object.keys(need).filter((id) => cur[id] != null)
+    .map((id) => env.DB.prepare("UPDATE stock SET qty = MAX(qty + ?, 0) WHERE id = ?").bind(sign * need[id], id));
+  if (st.length) await env.DB.batch(st);
+}
+async function setStock(env, map) {
+  await ensureSchema(env);
+  const st = [];
+  for (const [id, v] of Object.entries(map).slice(0, 5000)) {
+    if (v === null || v === "") st.push(env.DB.prepare("DELETE FROM stock WHERE id = ?").bind(String(id)));
+    else {
+      const q = Math.floor(Number(v));
+      if (q >= 0 && q <= 1e6) st.push(env.DB.prepare("INSERT INTO stock (id, qty) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET qty = excluded.qty").bind(String(id), q));
+    }
+  }
+  if (st.length) await env.DB.batch(st);
+}
+
+// بعد الطلب: التحليل + إشعار الإدارة والمندوب + تنبيه المخزون
+async function afterOrder(env, data, rec, orderNo, before) {
+  await recordStats(env, rec).catch(() => {});
+  if (!env.LOCKS) return;
+  const n = Number(String(orderNo).replace(/\D/g, ""));
+  const msg = { title: "طلب جديد " + orderNo, body: rec.count + " منتج · " + money(rec.total) + " · " + (rec.pay === "card" ? "شبكة" : "كاش") + (rec.name ? " · " + rec.name : ""), url: "./#driver", tag: "new" + n };
+  await Promise.all([notifyRole(env, "admin", null, msg), notifyRole(env, "driver", null, msg)]);
+  const lowAt = Math.max(0, Number((data.store || {}).lowAt ?? 3));
+  const need = needOf(rec), names = {};
+  for (const p of data.products || []) names[p.id] = p.name;
+  const alerts = [];
+  for (const id of Object.keys(need)) {
+    if (before[id] == null) continue;
+    const was = before[id], now = Math.max(0, was - need[id]);
+    if (now === 0) alerts.push({ title: "نفد: " + (names[id] || id), body: "المنتج خلص من المخزون وصار يطلع «نفد» للزبائن.", url: "./", tag: "stock-" + id });
+    else if (now <= lowAt && was > lowAt) alerts.push({ title: "قرب يخلص: " + (names[id] || id), body: "باقي " + now + " بس في المخزون.", url: "./", tag: "stock-" + id });
+  }
+  for (const a of alerts) await notifyRole(env, "admin", null, a);
+}
+
+// ---------- التحليل ----------
+function riyadhDate(offsetDays = 0) { return new Date(Date.now() + 3 * 3600e3 + offsetDays * 864e5).toISOString().slice(0, 10); }
+async function recordStats(env, rec) {
+  const day = riyadhDate();
+  const per = {};
+  for (const l of rec.lines || []) {
+    if (!l.id) continue;
+    const x = per[l.id] || (per[l.id] = { qty: 0, rev: 0 });
+    x.qty += Number(l.qty || 0); x.rev += Number(l.qty || 0) * Number(l.price || 0);
+  }
+  const ids = Object.keys(per).sort().slice(0, 40);
+  const st = [env.DB.prepare("INSERT INTO st_day (day, orders, revenue) VALUES (?, 1, ?) ON CONFLICT(day) DO UPDATE SET orders = orders + 1, revenue = revenue + excluded.revenue").bind(day, Number(rec.total || 0))];
+  for (const id of ids) st.push(env.DB.prepare("INSERT INTO st_item (day, id, qty, revenue, orders) VALUES (?, ?, ?, ?, 1) ON CONFLICT(day, id) DO UPDATE SET qty = qty + excluded.qty, revenue = revenue + excluded.revenue, orders = orders + 1").bind(day, id, per[id].qty, round2(per[id].rev)));
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++)
+    st.push(env.DB.prepare("INSERT INTO st_pair (a, b, n) VALUES (?, ?, 1) ON CONFLICT(a, b) DO UPDATE SET n = n + 1").bind(ids[i], ids[j]));
+  await env.DB.batch(st);
+}
+async function readStats(env, days) {
+  await ensureSchema(env);
+  days = Math.min(365, Math.max(1, Math.floor(days)));
+  const from = riyadhDate(-(days - 1));
+  const [d, it, all, pr, sts] = await Promise.all([
+    env.DB.prepare("SELECT day, orders, revenue FROM st_day WHERE day >= ? ORDER BY day").bind(from).all(),
+    env.DB.prepare("SELECT id, SUM(qty) qty, SUM(revenue) revenue, SUM(orders) orders FROM st_item WHERE day >= ? GROUP BY id ORDER BY qty DESC LIMIT 60").bind(from).all(),
+    env.DB.prepare("SELECT id, SUM(orders) orders FROM st_item GROUP BY id").all(),
+    env.DB.prepare("SELECT a, b, n FROM st_pair WHERE n >= 2 ORDER BY n DESC LIMIT 80").all(),
+    env.DB.prepare("SELECT status, COUNT(*) n FROM orders WHERE created > ? GROUP BY status").bind(Date.now() - days * 864e5).all(),
+  ]);
+  const withId = {};
+  for (const r of all.results || []) withId[r.id] = r.orders;
+  return { days, from, daily: d.results || [], items: it.results || [], ordersWith: withId, pairs: pr.results || [], statuses: sts.results || [] };
+}
+
+// ---------- الإشعارات (Web Push) ----------
+async function saveSub(env, sub, role, ref) {
+  if (!sub || typeof sub !== "object" || !sub.keys) return false;
+  const ep = String(sub.endpoint || ""), p = String(sub.keys.p256dh || ""), a = String(sub.keys.auth || "");
+  if (!/^https:\/\/[^\s]{10,900}$/.test(ep) || !/^[\w-]{80,100}$/.test(p) || !/^[\w-]{16,30}$/.test(a)) return false;
+  await ensureSchema(env);
+  if (role === "customer") await env.DB.prepare("DELETE FROM subs WHERE role = 'customer' AND created < ?").bind(Date.now() - 3 * 864e5).run();
+  await env.DB.prepare("INSERT INTO subs (endpoint, role, ref, p256dh, auth, created) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(endpoint, role, ref) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth, created = excluded.created")
+    .bind(ep, role, ref || "", p, a, Date.now()).run();
+  return true;
+}
+async function notifyRole(env, role, ref, msg) {
+  if (!env.DB || !env.LOCKS) return 0;
+  await ensureSchema(env);
+  const rs = ref == null
+    ? await env.DB.prepare("SELECT endpoint, p256dh, auth FROM subs WHERE role = ? LIMIT 50").bind(role).all()
+    : await env.DB.prepare("SELECT endpoint, p256dh, auth FROM subs WHERE role = ? AND ref = ? LIMIT 10").bind(role, ref).all();
+  return pushTo(env, (rs.results || []).map((r) => ({ endpoint: r.endpoint, keys: { p256dh: r.p256dh, auth: r.auth } })), msg);
+}
+async function pushTo(env, subs, msg) {
+  let ok = 0;
+  await Promise.all(subs.map(async (s) => {
+    try {
+      const st = await webPush(env, s, msg);
+      if (st >= 200 && st < 300) ok++;
+      else if (st === 404 || st === 410) await env.DB.prepare("DELETE FROM subs WHERE endpoint = ?").bind(s.endpoint).run();
+    } catch {}
+  }));
+  return ok;
+}
+let vapidCache = null;
+async function vapidKeys(env) {
+  if (vapidCache) return vapidCache;
+  let v = await env.LOCKS.get("vapid", "json");
+  if (!v) {
+    const k = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    v = { pub: b64u(new Uint8Array(await crypto.subtle.exportKey("raw", k.publicKey))), jwk: await crypto.subtle.exportKey("jwk", k.privateKey) };
+    await env.LOCKS.put("vapid", JSON.stringify(v));
+  }
+  vapidCache = { pub: v.pub, key: await crypto.subtle.importKey("jwk", v.jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]) };
+  return vapidCache;
+}
+async function webPush(env, sub, msg) {
+  const v = await vapidKeys(env);
+  const aud = new URL(sub.endpoint).origin;
+  const site = ((env.ALLOWED_ORIGIN || "").split(",")[0] || "").trim() || "https://example.com";
+  const enc = (o) => b64u(new TextEncoder().encode(JSON.stringify(o)));
+  const unsigned = enc({ typ: "JWT", alg: "ES256" }) + "." + enc({ aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: site });
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, v.key, new TextEncoder().encode(unsigned)));
+  const body = await encryptPush(sub.keys.p256dh, sub.keys.auth, new TextEncoder().encode(JSON.stringify(msg)));
+  const r = await fetch(sub.endpoint, {
+    method: "POST",
+    headers: { "TTL": "86400", "Urgency": "high", "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", "Authorization": `vapid t=${unsigned}.${b64u(sig)}, k=${v.pub}` },
+    body,
+  });
+  return r.status;
+}
+// تشفير الرسالة حسب RFC 8291 (aes128gcm)
+async function encryptPush(p256dh, auth, plain) {
+  const uaPub = unb64u(p256dh), secret = unb64u(auth);
+  const as = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const asPub = new Uint8Array(await crypto.subtle.exportKey("raw", as.publicKey));
+  const uaKey = await crypto.subtle.importKey("raw", uaPub, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: uaKey }, as.privateKey, 256));
+  const te = (t) => new TextEncoder().encode(t);
+  const ikm = await hmac(await hmac(secret, shared), cat(te("WebPush: info\0"), uaPub, asPub, [1]));
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const prk = await hmac(salt, ikm);
+  const cek = (await hmac(prk, cat(te("Content-Encoding: aes128gcm\0"), [1]))).slice(0, 16);
+  const nonce = (await hmac(prk, cat(te("Content-Encoding: nonce\0"), [1]))).slice(0, 12);
+  const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, cat(plain, [2])));
+  const head = new Uint8Array(86);
+  head.set(salt, 0); new DataView(head.buffer).setUint32(16, 4096); head[20] = 65; head.set(asPub, 21);
+  return cat(head, ct);
+}
+async function hmac(key, data) {
+  const k = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC", k, data));
+}
+function cat(...parts) {
+  const arrs = parts.map((p) => (p instanceof Uint8Array ? p : new Uint8Array(p)));
+  const out = new Uint8Array(arrs.reduce((n, a) => n + a.length, 0));
+  let o = 0; for (const a of arrs) { out.set(a, o); o += a.length; }
+  return out;
+}
+function b64u(bytes) { let s = ""; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+function unb64u(s) { const b = atob(String(s).replace(/-/g, "+").replace(/_/g, "/") + "===".slice((String(s).length + 3) % 4)); return Uint8Array.from(b, (c) => c.charCodeAt(0)); }
