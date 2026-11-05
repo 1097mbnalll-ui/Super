@@ -37,6 +37,12 @@ export default {
       new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8" } });
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+    try {
+      return await route();
+    } catch (e) {
+      return reply(500, { ok: false, code: "server" });
+    }
+    async function route() {
     const path = new URL(request.url).pathname.replace(/\/+$/, "");
     if (request.method === "GET" && (path === "" || path === "/ping")) return reply(200, { ok: true, service: "ohod-admin" });
     // المخزون للزبائن: كم باقي من كل منتج عليه عدّ
@@ -78,13 +84,20 @@ export default {
           await ensureSchema(env);
           stockBefore = await readStock(env);
           const need = needOf(record);
-          for (const id of Object.keys(need)) {
-            if (stockBefore[id] != null && stockBefore[id] < need[id]) return reply(409, { ok: false, code: "unavailable", id, left: stockBefore[id] });
+          const short = () => Object.keys(need).find((id) => stockBefore[id] != null && stockBefore[id] < need[id]);
+          let sid = short();
+          if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
+          try {
+            orderNo = await dbInsertOrder(env, record, need, Date.now());
+          } catch (e) {
+            // ممكن طلب ثاني سبقه على آخر حبة: نشيّك المخزون مرة ثانية
+            stockBefore = await readStock(env); sid = short();
+            if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
+            throw e;
           }
-          orderNo = await dbInsertOrder(env, record, (data.store || {}).keepDays);
-          await moveStock(env, need, -1, stockBefore);
+          later(cleanupOld(env, (data.store || {}).keepDays));
         } catch { return reply(502, { ok: false, code: "db" }); }
-        later(afterOrder(env, data, record, orderNo, stockBefore, Date.now()));
+        later(afterOrder(env, data, record, orderNo, stockBefore));
       } else {
         orderNo = await nextOrderNo(env);
       }
@@ -162,21 +175,10 @@ export default {
         const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
         const st = String(body.status || "");
         if (!(n > 0) || !["new", "accepted", "onway", "delivered", "canceled"].includes(st)) return reply(400, { ok: false, code: "bad_request" });
-        const old = await env.DB.prepare("SELECT status, data, created FROM orders WHERE no = ?").bind(n).first();
-        if (!old) return reply(404, { ok: false, code: "not_found" });
-        await env.DB.prepare("UPDATE orders SET status = ?, updated = ? WHERE no = ?").bind(st, Date.now(), n).run();
-        if (old.status !== st) {
-          // الإلغاء يرجّع الكميات للمخزون، والتراجع عن الإلغاء يخصمها مرة ثانية
-          let rec = null; try { rec = JSON.parse(old.data); } catch {}
-          if (rec && (st === "canceled") !== (old.status === "canceled")) {
-            const back = st === "canceled";
-            await moveStock(env, needOf(rec), back ? 1 : -1);
-            // الطلب الملغي ينشال من المبيعات والتحليل، ويرجع لو تراجعت عن الإلغاء
-            if (rec.st) await applyStats(env, rec, old.created, back ? -1 : 1, back ? 1 : -1).catch(() => {});
-          }
-          if (st === "delivered" && old.status !== "delivered") {
-            await env.DB.prepare("UPDATE st_day SET deliv_ms = deliv_ms + ?, deliv_n = deliv_n + 1 WHERE day = ?").bind(Math.max(0, Date.now() - old.created), riyadhDateAt(old.created)).run().catch(() => {});
-          }
+        let res;
+        try { res = await changeStatus(env, n, st); } catch { return reply(502, { ok: false, code: "db" }); }
+        if (!res) return reply(404, { ok: false, code: "not_found" });
+        if (res.changed) {
           const msg = STATUS_MSG[st];
           if (msg) later(notifyRole(env, "customer", String(n), { title: "طلبك #" + (1000 + n), body: msg, url: "./", tag: "order" + n }));
         }
@@ -201,10 +203,27 @@ export default {
     if (path === "/admin/orders") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
-      const lim = Math.min(5000, Math.max(1, Math.floor(Number(body.limit) || 300)));
-      const rs = await env.DB.prepare("SELECT no, created, updated, status, data FROM orders ORDER BY no DESC LIMIT ?").bind(lim).all();
-      const orders = (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status }));
-      return reply(200, { ok: true, orders, now: Date.now() });
+      // صفحات: كل طلب ٥٠٠ طلب كحد أعلى عشان الخادم ما يتعب
+      const lim = Math.min(500, Math.max(1, Math.floor(Number(body.limit) || 300)));
+      const bn = Number(String(body.before || "").replace(/\D/g, ""));
+      const before = bn > 1000 ? bn - 1000 : 1e12;
+      const since = Number(body.since) || 0;
+      const rs = await env.DB.prepare("SELECT no, created, updated, status, data, anon FROM orders WHERE no < ? AND created >= ? ORDER BY no DESC LIMIT ?").bind(before, since, lim).all();
+      const orders = (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, anon: !!r.anon }));
+      return reply(200, { ok: true, orders, more: orders.length === lim, now: Date.now() });
+    }
+    if (path === "/admin/order-edit") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      let data;
+      try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+      let r;
+      try { r = await editOrder(env, data, body); } catch { return reply(502, { ok: false, code: "db" }); }
+      if (r.error) return reply(400, { ok: false, code: r.error });
+      return reply(200, { ok: true, order: r.order });
+    }
+    if (path === "/admin/verify") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      try { return reply(200, { ok: true, ...(await verifyStats(env, String(body.from || ""), String(body.to || ""), !!body.fix)) }); } catch { return reply(502, { ok: false, code: "db" }); }
     }
     if (path === "/admin/stats") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
@@ -286,11 +305,12 @@ export default {
       }
       if (body.newPin) await env.LOCKS.put("pin", await hashPin(env, String(body.newPin)));
       if (body.newDriverPin) await env.LOCKS.put("driver_pin", await hashPin(env, "driver:" + String(body.newDriverPin)));
-      if (stockSet) await setStock(env, stockSet);
+      if (stockSet) { try { await setStock(env, stockSet); } catch { return reply(502, { ok: false, code: "stock" }); } }
       dataCache = { at: 0, data: null };
       return reply(200, { ok: true, stock: stockSet ? await readStock(env) : undefined });
     }
     return reply(404, { ok: false, code: "not_found" });
+    }
   },
 };
 
@@ -313,8 +333,19 @@ async function ensureSchema(env) {
   ].map((q) => env.DB.prepare(q)));
   // أعمدة إضافية للتحليل (تنضاف مرة وحدة للقاعدة القديمة بدون ما تمس بياناتها)
   const have = ((await env.DB.prepare("PRAGMA table_info(st_day)").all()).results || []).map((r) => r.name);
-  const add = ["items", "card", "fees", "canceled", "newc", "deliv_ms", "deliv_n", "visits", "carts", "checkouts"].filter((c) => !have.includes(c));
+  const add = ["items", "card", "fees", "canceled", "newc", "deliv_ms", "deliv_n", "deliv_rev", "visits", "carts", "checkouts"].filter((c) => !have.includes(c));
   if (add.length) await env.DB.batch(add.map((c) => env.DB.prepare(`ALTER TABLE st_day ADD COLUMN ${c} REAL NOT NULL DEFAULT 0`)));
+  // سجل الطلبات هو المرجع: أعمدة للأرقام + جدول لسطور كل طلب
+  const oh = ((await env.DB.prepare("PRAGMA table_info(orders)").all()).results || []).map((r) => r.name);
+  const ocols = { day: "TEXT", hour: "INTEGER", total: "REAL", fee: "REAL", items: "INTEGER", pay: "TEXT", ch: "TEXT", tail: "TEXT", dms: "INTEGER NOT NULL DEFAULT 0", anon: "INTEGER NOT NULL DEFAULT 0" };
+  const oadd = Object.keys(ocols).filter((c) => !oh.includes(c));
+  const more = oadd.map((c) => `ALTER TABLE orders ADD COLUMN ${c} ${ocols[c]}`).concat([
+    "CREATE TABLE IF NOT EXISTS oline (no INTEGER NOT NULL, k INTEGER NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, price REAL NOT NULL, PRIMARY KEY (no, k))",
+    "CREATE INDEX IF NOT EXISTS orders_day ON orders (day)",
+    "CREATE INDEX IF NOT EXISTS orders_ch ON orders (ch)",
+    "CREATE INDEX IF NOT EXISTS oline_id ON oline (id)",
+  ]);
+  await env.DB.batch(more.map((q) => env.DB.prepare(q)));
   schemaReady = true;
 }
 function orderRecord(o, body) {
@@ -326,16 +357,91 @@ function orderRecord(o, body) {
     st: 1, // انحسب في التحليل
   };
 }
-async function dbInsertOrder(env, rec, keepDays) {
-  await ensureSchema(env);
-  const now = Date.now();
-  // نحذف تفاصيل الطلبات المنتهية الأقدم من المدة اللي تحددها الإدارة (الافتراضي ٩٠ يوم).
-  // أرقام التحليل ما تنحذف، لأنها محفوظة في جداول لحالها بدون بيانات الزبائن.
-  const keep = Math.min(730, Math.max(7, Math.floor(Number(keepDays) || 90)));
-  await env.DB.prepare("DELETE FROM orders WHERE created < ? AND status IN ('delivered','canceled')").bind(now - keep * 864e5).run();
-  const row = await env.DB.prepare("INSERT INTO orders (created, updated, status, phone, data) VALUES (?, ?, 'new', ?, ?) RETURNING no")
-    .bind(now, now, rec.phone, JSON.stringify(rec)).first();
+// يحفظ الطلب وسطوره والمخزون والتحليل في خطوة وحدة (يا كلها تنحفظ، يا ولا شي)
+async function dbInsertOrder(env, rec, need, now) {
+  const P = (q, ...a) => env.DB.prepare(q).bind(...a);
+  const day = riyadhDateAt(now), hour = riyadhHour(now);
+  const ch = rec.phone ? (await hashPin(env, "cust:" + rec.phone)).slice(0, 32) : "";
+  const items = (rec.lines || []).reduce((n, l) => n + Number(l.qty || 0), 0);
+  const NO = "(SELECT MAX(no) FROM orders)";
+  const st = [P("INSERT INTO orders (created, updated, status, phone, data, day, hour, total, fee, items, pay, ch, tail) VALUES (?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    now, now, rec.phone, JSON.stringify(rec), day, hour, Number(rec.total), Number(rec.fee || 0), items, rec.pay, ch, String(rec.phone || "").slice(-4))];
+  (rec.lines || []).forEach((l, k) => st.push(P(`INSERT INTO oline (no, k, id, qty, price) VALUES (${NO}, ?, ?, ?, ?)`, k, l.id || "", Number(l.qty), Number(l.price))));
+  // المخزون: لو ما يكفي، هالسطر يوقف كل الحفظ (الطلب ما ينحفظ)
+  for (const id of Object.keys(need)) {
+    st.push(P("SELECT CASE WHEN qty < ? THEN json('stock') ELSE 1 END x FROM stock WHERE id = ?", need[id], id));
+    st.push(P("UPDATE stock SET qty = qty - ? WHERE id = ?", need[id], id));
+  }
+  st.push(...statsStmts(env, rec, day, hour, 1, 0));
+  await env.DB.batch(st);
+  const row = await env.DB.prepare("SELECT MAX(no) no FROM orders WHERE created = ? AND ch = ?").bind(now, ch).first();
   return "#" + (1000 + row.no);
+}
+// تفاصيل الزبون (الجوال والعنوان) تنمسح بعد المدة، والطلب نفسه وأرقامه تبقى دايم
+async function cleanupOld(env, keepDays) {
+  const keep = Math.min(730, Math.max(7, Math.floor(Number(keepDays) || 90)));
+  await env.DB.prepare("UPDATE orders SET phone = '', anon = 1, data = json_set(json_remove(data, '$.name', '$.details', '$.note', '$.lat', '$.lng', '$.map'), '$.phone', '') WHERE anon = 0 AND created < ? AND status IN ('delivered','canceled')")
+    .bind(Date.now() - keep * 864e5).run();
+}
+async function changeStatus(env, n, st, now = Date.now()) {
+  await ensureSchema(env);
+  const old = await env.DB.prepare("SELECT status, data, created, day, hour, total, dms FROM orders WHERE no = ?").bind(n).first();
+  if (!old) return null;
+  if (old.status === st) return { changed: false };
+  const P = (q, ...a) => env.DB.prepare(q).bind(...a);
+  let rec = {}; try { rec = JSON.parse(old.data); } catch {}
+  const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created), counted = !!rec.st;
+  const dms = st === "delivered" ? Math.max(0, now - old.created) : 0;
+  const stmts = [P("UPDATE orders SET status = ?, updated = ?, dms = ? WHERE no = ?", st, now, dms, n)];
+  if ((st === "canceled") !== (old.status === "canceled")) {
+    const back = st === "canceled";
+    const need = needOf(rec), cur = await readStock(env);
+    for (const id of Object.keys(need)) if (cur[id] != null) stmts.push(P("UPDATE stock SET qty = MAX(qty + ?, 0) WHERE id = ?", (back ? 1 : -1) * need[id], id));
+    if (counted) stmts.push(...statsStmts(env, rec, day, hour, back ? -1 : 1, back ? 1 : -1));
+  }
+  const dl = (sign, ms) => P("INSERT INTO st_day (day, orders, revenue, deliv_n, deliv_ms, deliv_rev) VALUES (?, 0, 0, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET deliv_n = deliv_n + excluded.deliv_n, deliv_ms = deliv_ms + excluded.deliv_ms, deliv_rev = deliv_rev + excluded.deliv_rev", day, sign, sign * ms, round2(sign * Number(rec.total || 0)));
+  if (counted && old.status === "delivered") stmts.push(dl(-1, Number(old.dms || 0)));
+  if (counted && st === "delivered") stmts.push(dl(1, dms));
+  await env.DB.batch(stmts);
+  return { changed: true };
+}
+// تعديل الطلب بعد اتصال الزبون: المبالغ والمخزون والتحليل تتعدل مع بعض
+async function editOrder(env, data, body) {
+  await ensureSchema(env);
+  const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
+  const old = n > 0 ? await env.DB.prepare("SELECT status, data, created, day, hour FROM orders WHERE no = ?").bind(n).first() : null;
+  if (!old) return { error: "not_found" };
+  if (old.status === "canceled") return { error: "canceled" };
+  let rec; try { rec = JSON.parse(old.data); } catch { return { error: "bad_order" }; }
+  const byId = {}; for (const p of data.products || []) byId[p.id] = p;
+  const oldBy = {}; for (const l of rec.lines || []) oldBy[l.id] = l;
+  const lines = [];
+  for (const x of Array.isArray(body.lines) ? body.lines.slice(0, 200) : []) {
+    const id = String(x.id || ""), q = Math.floor(Number(x.qty)), pr = Number(x.price);
+    const p = byId[id] || oldBy[id];
+    if (!p || !(q > 0 && q <= 500) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
+    lines.push({ id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "" });
+  }
+  if (!lines.length) return { error: "empty" };
+  const fee = Math.max(0, Number(body.fee ?? rec.fee) || 0);
+  const subtotal = round2(lines.reduce((s, l) => s + l.qty * l.price, 0));
+  const nr = { ...rec, lines, subtotal, fee, total: round2(subtotal + fee), count: lines.reduce((s, l) => s + l.qty, 0), st: 1,
+    edits: (rec.edits || []).concat([{ at: Date.now(), before: rec.total, after: round2(subtotal + fee) }]).slice(-20) };
+  const P = (q, ...a) => env.DB.prepare(q).bind(...a);
+  const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created);
+  const stmts = [P("UPDATE orders SET data = ?, total = ?, fee = ?, items = ?, updated = ?, day = ?, hour = ? WHERE no = ?", JSON.stringify(nr), nr.total, fee, nr.count, Date.now(), day, hour, n),
+    P("DELETE FROM oline WHERE no = ?", n)];
+  lines.forEach((l, k) => stmts.push(P("INSERT INTO oline (no, k, id, qty, price) VALUES (?, ?, ?, ?, ?)", n, k, l.id, l.qty, l.price)));
+  if (rec.st) stmts.push(...statsStmts(env, rec, day, hour, -1, 0));
+  stmts.push(...statsStmts(env, nr, day, hour, 1, 0));
+  if (old.status === "delivered" && rec.st) stmts.push(P("UPDATE st_day SET deliv_rev = deliv_rev + ? WHERE day = ?", round2(nr.total - Number(rec.total || 0)), day));
+  const a = needOf(rec), b = needOf(nr), cur = await readStock(env);
+  for (const id of new Set(Object.keys(a).concat(Object.keys(b)))) {
+    const d = (b[id] || 0) - (a[id] || 0);
+    if (d && cur[id] != null) stmts.push(P("UPDATE stock SET qty = MAX(qty - ?, 0) WHERE id = ?", d, id));
+  }
+  await env.DB.batch(stmts);
+  return { order: { ...nr, no: "#" + (1000 + n), status: old.status, created: old.created } };
 }
 async function checkDriver(env, pin) {
   if (!pin || pin.length > 12) return "";
@@ -604,8 +710,7 @@ async function setStock(env, map) {
 }
 
 // بعد الطلب: التحليل + إشعار الإدارة والمندوب + تنبيه المخزون
-async function afterOrder(env, data, rec, orderNo, before, created) {
-  await applyStats(env, rec, created, 1, 0).catch(() => {});
+async function afterOrder(env, data, rec, orderNo, before) {
   if (!env.LOCKS) return;
   const n = Number(String(orderNo).replace(/\D/g, ""));
   const msg = { title: "طلب جديد " + orderNo, body: rec.count + " منتج · " + money(rec.total) + " · " + (rec.pay === "card" ? "شبكة" : "كاش") + (rec.name ? " · " + rec.name : ""), url: "./#driver", tag: "new" + n };
@@ -628,10 +733,9 @@ function riyadhDate(offsetDays = 0) { return riyadhDateAt(Date.now() + offsetDay
 function riyadhDateAt(ms) { return new Date(Number(ms) + 3 * 3600e3).toISOString().slice(0, 10); }
 function riyadhHour(ms) { return new Date(Number(ms) + 3 * 3600e3).getUTCHours(); }
 
-// sign = 1 طلب جديد، -1 إلغاء. cancelDelta يعدّ الطلبات الملغية.
-async function applyStats(env, rec, created, sign, cancelDelta) {
-  await ensureSchema(env);
-  const day = riyadhDateAt(created), hour = riyadhHour(created);
+// أوامر التحليل لطلب واحد. sign = 1 يضيف، -1 يشيل. cancelDelta يعدّ الطلبات الملغية.
+// ما تنفّذ لحالها: تنضاف لنفس خطوة حفظ الطلب عشان ما يصير فرق بينهم أبد.
+function statsStmts(env, rec, day, hour, sign, cancelDelta) {
   const per = {};
   let items = 0;
   for (const l of rec.lines || []) {
@@ -641,24 +745,89 @@ async function applyStats(env, rec, created, sign, cancelDelta) {
     x.qty += q; x.rev += q * Number(l.price || 0);
   }
   const total = Number(rec.total || 0), fee = Number(rec.fee || 0), card = rec.pay === "card" ? 1 : 0;
-  const ids = Object.keys(per).sort().slice(0, 40);
-  let newc = 0, ck = "";
-  if (rec.phone) {
-    ck = (await hashPin(env, "cust:" + rec.phone)).slice(0, 32);
-    if (sign > 0 && !cancelDelta) newc = (await env.DB.prepare("SELECT 1 x FROM st_cust WHERE h = ?").bind(ck).first()) ? 0 : 1;
-  }
+  const ids = Object.keys(per).sort();
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   const st = [
-    P("INSERT INTO st_day (day, orders, revenue, items, card, fees, canceled, newc) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET orders = orders + excluded.orders, revenue = revenue + excluded.revenue, items = items + excluded.items, card = card + excluded.card, fees = fees + excluded.fees, canceled = canceled + excluded.canceled, newc = newc + excluded.newc",
-      day, sign, round2(sign * total), sign * items, sign * card, round2(sign * fee), cancelDelta, newc),
+    P("INSERT INTO st_day (day, orders, revenue, items, card, fees, canceled) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET orders = orders + excluded.orders, revenue = revenue + excluded.revenue, items = items + excluded.items, card = card + excluded.card, fees = fees + excluded.fees, canceled = canceled + excluded.canceled",
+      day, sign, round2(sign * total), sign * items, sign * card, round2(sign * fee), cancelDelta),
     P("INSERT INTO st_hour (day, hour, orders, revenue) VALUES (?, ?, ?, ?) ON CONFLICT(day, hour) DO UPDATE SET orders = orders + excluded.orders, revenue = revenue + excluded.revenue", day, hour, sign, round2(sign * total)),
   ];
   for (const id of ids) st.push(P("INSERT INTO st_item (day, id, qty, revenue, orders) VALUES (?, ?, ?, ?, ?) ON CONFLICT(day, id) DO UPDATE SET qty = qty + excluded.qty, revenue = revenue + excluded.revenue, orders = orders + excluded.orders", day, id, sign * per[id].qty, round2(sign * per[id].rev), sign));
   for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++)
     st.push(P("INSERT INTO st_pair (a, b, n) VALUES (?, ?, ?) ON CONFLICT(a, b) DO UPDATE SET n = n + excluded.n", ids[i], ids[j], sign));
-  if (ck) st.push(P("INSERT INTO st_cust (h, tail, first, last, orders, revenue) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(h) DO UPDATE SET orders = orders + excluded.orders, revenue = revenue + excluded.revenue, last = CASE WHEN excluded.orders > 0 AND excluded.last > last THEN excluded.last ELSE last END",
-    ck, String(rec.phone).slice(-4), day, day, sign, round2(sign * total)));
-  await env.DB.batch(st);
+  return st;
+}
+
+// مراجعة: يعيد حساب التحليل من سجل الطلبات ويقارن. fix = يصحّح أي فرق.
+async function verifyStats(env, from, to, fix) {
+  await ensureSchema(env);
+  const okDay = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d);
+  if (!okDay(from)) from = "2000-01-01";
+  if (!okDay(to)) to = "2999-12-31";
+  await backfillOrders(env);
+  const Q = (q, ...a) => env.DB.prepare(q).bind(...a).all().then((r) => r.results || []);
+  const TRUTH_DAY = "SELECT day, SUM(status != 'canceled') orders, ROUND(SUM(CASE WHEN status != 'canceled' THEN total ELSE 0 END), 2) revenue, SUM(CASE WHEN status != 'canceled' THEN items ELSE 0 END) items, SUM(status != 'canceled' AND pay = 'card') card, ROUND(SUM(CASE WHEN status != 'canceled' THEN fee ELSE 0 END), 2) fees, SUM(status = 'canceled') canceled, SUM(status = 'delivered') deliv_n, SUM(CASE WHEN status = 'delivered' THEN dms ELSE 0 END) deliv_ms, ROUND(SUM(CASE WHEN status = 'delivered' THEN total ELSE 0 END), 2) deliv_rev FROM orders WHERE total IS NOT NULL AND day BETWEEN ? AND ? GROUP BY day";
+  const TRUTH_ITEM = "SELECT o.day day, l.id id, SUM(l.qty) qty, ROUND(SUM(l.qty * l.price), 2) revenue, COUNT(DISTINCT l.no) orders FROM oline l JOIN orders o ON o.no = l.no WHERE o.status != 'canceled' AND l.id != '' AND o.day BETWEEN ? AND ? GROUP BY o.day, l.id";
+  const TRUTH_HOUR = "SELECT day, hour, SUM(status != 'canceled') orders, ROUND(SUM(CASE WHEN status != 'canceled' THEN total ELSE 0 END), 2) revenue FROM orders WHERE total IS NOT NULL AND day BETWEEN ? AND ? GROUP BY day, hour";
+  const [td, sd, ti, si, th, sh] = await Promise.all([
+    Q(TRUTH_DAY, from, to), Q("SELECT * FROM st_day WHERE day BETWEEN ? AND ?", from, to),
+    Q(TRUTH_ITEM, from, to), Q("SELECT * FROM st_item WHERE day BETWEEN ? AND ? AND (qty != 0 OR orders != 0)", from, to),
+    Q(TRUTH_HOUR, from, to), Q("SELECT * FROM st_hour WHERE day BETWEEN ? AND ? AND orders != 0", from, to),
+  ]);
+  const F = ["orders", "revenue", "items", "card", "fees", "canceled", "deliv_n", "deliv_ms", "deliv_rev"];
+  const diffs = [], sdm = {}, tdm = {};
+  for (const r of sd) sdm[r.day] = r;
+  for (const r of td) tdm[r.day] = r;
+  for (const d of new Set(Object.keys(sdm).concat(Object.keys(tdm)))) for (const k of F) {
+    const a = Number((tdm[d] || {})[k] || 0), b = Number((sdm[d] || {})[k] || 0);
+    if (Math.abs(a - b) > 0.009) diffs.push({ day: d, field: k, truth: a, stats: b });
+  }
+  const keyed = (rows, kf) => { const m = {}; for (const r of rows) m[kf(r)] = r; return m; };
+  const ti2 = keyed(ti, (r) => r.day + "|" + r.id), si2 = keyed(si, (r) => r.day + "|" + r.id);
+  let itemDiffs = 0;
+  for (const k of new Set(Object.keys(ti2).concat(Object.keys(si2)))) for (const f of ["qty", "revenue", "orders"]) if (Math.abs(Number((ti2[k] || {})[f] || 0) - Number((si2[k] || {})[f] || 0)) > 0.009) { itemDiffs++; break; }
+  const th2 = keyed(th, (r) => r.day + "|" + r.hour), sh2 = keyed(sh, (r) => r.day + "|" + r.hour);
+  let hourDiffs = 0;
+  for (const k of new Set(Object.keys(th2).concat(Object.keys(sh2)))) if (Math.abs(Number((th2[k] || {}).orders || 0) - Number((sh2[k] || {}).orders || 0)) > 0 || Math.abs(Number((th2[k] || {}).revenue || 0) - Number((sh2[k] || {}).revenue || 0)) > 0.009) hourDiffs++;
+  const tp = await Q("SELECT a.id a, b.id b, COUNT(*) n FROM (SELECT DISTINCT no, id FROM oline WHERE id != '') a JOIN (SELECT DISTINCT no, id FROM oline WHERE id != '') b ON a.no = b.no AND a.id < b.id JOIN orders o ON o.no = a.no WHERE o.status != 'canceled' GROUP BY a.id, b.id");
+  const sp = await Q("SELECT a, b, n FROM st_pair WHERE n != 0");
+  const tp2 = keyed(tp, (r) => r.a + "|" + r.b), sp2 = keyed(sp, (r) => r.a + "|" + r.b);
+  let pairDiffs = 0;
+  for (const k of new Set(Object.keys(tp2).concat(Object.keys(sp2)))) if (Number((tp2[k] || {}).n || 0) !== Number((sp2[k] || {}).n || 0)) pairDiffs++;
+  const tot = td.reduce((o, r) => { o.orders += r.orders; o.revenue += r.revenue; o.canceled += r.canceled; o.delivered += r.deliv_n; return o; }, { orders: 0, revenue: 0, canceled: 0, delivered: 0 });
+  tot.revenue = round2(tot.revenue);
+  const legacy = (await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE total IS NULL").first()).n;
+  const clean = !diffs.length && !itemDiffs && !hourDiffs && !pairDiffs;
+  let fixed = false;
+  if (fix && !clean) {
+    const P = (q, ...a) => env.DB.prepare(q).bind(...a);
+    await env.DB.batch([
+      P("UPDATE st_day SET " + F.map((k) => k + " = 0").join(", ") + " WHERE day BETWEEN ? AND ?", from, to),
+      P("INSERT INTO st_day (day, " + F.join(", ") + ") " + TRUTH_DAY + " ON CONFLICT(day) DO UPDATE SET " + F.map((k) => k + " = excluded." + k).join(", "), from, to),
+      P("DELETE FROM st_item WHERE day BETWEEN ? AND ?", from, to),
+      P("INSERT INTO st_item (day, id, qty, revenue, orders) " + TRUTH_ITEM, from, to),
+      P("DELETE FROM st_hour WHERE day BETWEEN ? AND ?", from, to),
+      P("INSERT INTO st_hour (day, hour, orders, revenue) " + TRUTH_HOUR, from, to),
+      P("DELETE FROM st_pair"),
+      P("INSERT INTO st_pair (a, b, n) SELECT a.id, b.id, COUNT(*) FROM (SELECT DISTINCT no, id FROM oline WHERE id != '') a JOIN (SELECT DISTINCT no, id FROM oline WHERE id != '') b ON a.no = b.no AND a.id < b.id JOIN orders o ON o.no = a.no WHERE o.status != 'canceled' GROUP BY a.id, b.id"),
+    ]);
+    fixed = true;
+  }
+  return { from, to, clean, fixed, totals: tot, dayDiffs: diffs.slice(0, 50), dayDiffCount: diffs.length, itemDiffs, hourDiffs, pairDiffs, legacy };
+}
+// الطلبات المسجلة قبل هالتحديث: نعبّي أعمدتها من تفاصيلها
+async function backfillOrders(env) {
+  const rs = await env.DB.prepare("SELECT no, created, phone, data FROM orders WHERE total IS NULL LIMIT 300").all();
+  const st = [];
+  for (const r of rs.results || []) {
+    let rec; try { rec = JSON.parse(r.data); } catch { continue; }
+    const ch = r.phone ? (await hashPin(env, "cust:" + r.phone)).slice(0, 32) : "";
+    st.push(env.DB.prepare("UPDATE orders SET day = ?, hour = ?, total = ?, fee = ?, items = ?, pay = ?, ch = ?, tail = ? WHERE no = ?")
+      .bind(riyadhDateAt(r.created), riyadhHour(r.created), Number(rec.total || 0), Number(rec.fee || 0), (rec.lines || []).reduce((n, l) => n + Number(l.qty || 0), 0), rec.pay === "card" ? "card" : "cash", ch, String(r.phone || "").slice(-4), r.no));
+    st.push(env.DB.prepare("DELETE FROM oline WHERE no = ?").bind(r.no));
+    (rec.lines || []).forEach((l, k) => st.push(env.DB.prepare("INSERT INTO oline (no, k, id, qty, price) VALUES (?, ?, ?, ?, ?)").bind(r.no, k, l.id || "", Number(l.qty || 0), Number(l.price || 0))));
+  }
+  if (st.length) await env.DB.batch(st);
 }
 
 async function rateHit(env, key, max, secs) {
@@ -707,8 +876,8 @@ async function readStats(env, days) {
     Q("SELECT day, hour, orders FROM st_hour WHERE day >= ? AND orders > 0", from),
     Q("SELECT id, SUM(views) views, SUM(carts) carts FROM st_view WHERE day >= ? GROUP BY id", from),
     Q("SELECT q, SUM(n) n, SUM(miss) miss FROM st_search WHERE day >= ? GROUP BY q ORDER BY n DESC LIMIT 80", from),
-    Q("SELECT COUNT(*) total, SUM(CASE WHEN first >= ? THEN 1 ELSE 0 END) fresh, SUM(CASE WHEN last >= ? THEN 1 ELSE 0 END) active, SUM(CASE WHEN orders >= 2 THEN 1 ELSE 0 END) loyal, SUM(CASE WHEN orders >= 2 AND last < ? THEN 1 ELSE 0 END) gone FROM st_cust WHERE orders > 0", from, from, riyadhDate(-30)),
-    Q("SELECT tail, first, last, orders, revenue FROM st_cust WHERE orders > 0 ORDER BY revenue DESC LIMIT 15"),
+    Q("SELECT COUNT(*) total, SUM(f >= ?) fresh, SUM(f >= ? AND f < ?) freshPrev, SUM(l >= ?) active, SUM(n >= 2) loyal, SUM(n >= 2 AND l < ?) gone FROM (SELECT MIN(day) f, MAX(day) l, COUNT(*) n FROM orders WHERE status != 'canceled' AND ch != '' AND day <= ? GROUP BY ch)", from, prev, from, from, riyadhDate(-30), riyadhDate()),
+    Q("SELECT MAX(tail) tail, MIN(day) first, MAX(day) last, COUNT(*) orders, ROUND(SUM(total), 2) revenue FROM orders WHERE status != 'canceled' AND ch != '' GROUP BY ch ORDER BY revenue DESC LIMIT 15"),
   ]);
   const withId = {};
   for (const r of all) withId[r.id] = r.orders;
