@@ -66,7 +66,7 @@ export default {
       if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
       const chat = env.TELEGRAM_BOT_TOKEN ? await env.LOCKS.get("tg_chat") : null;
       if (!env.DB && !chat) return reply(503, { ok: false, code: "no_receiver" });
-      if (await tooManyOrders(env, ip)) return reply(429, { ok: false, code: "slow_down" });
+      if (env.DB ? await rateHit(env, "ord:" + ip, 6, 600) : await tooManyOrders(env, ip)) return reply(429, { ok: false, code: "slow_down" });
       let data;
       try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
       const priced = priceOrder(data, body);
@@ -81,10 +81,10 @@ export default {
           for (const id of Object.keys(need)) {
             if (stockBefore[id] != null && stockBefore[id] < need[id]) return reply(409, { ok: false, code: "unavailable", id, left: stockBefore[id] });
           }
-          orderNo = await dbInsertOrder(env, record);
+          orderNo = await dbInsertOrder(env, record, (data.store || {}).keepDays);
           await moveStock(env, need, -1, stockBefore);
         } catch { return reply(502, { ok: false, code: "db" }); }
-        later(afterOrder(env, data, record, orderNo, stockBefore));
+        later(afterOrder(env, data, record, orderNo, stockBefore, Date.now()));
       } else {
         orderNo = await nextOrderNo(env);
       }
@@ -107,6 +107,14 @@ export default {
       const row = await env.DB.prepare("SELECT status, updated FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
       if (!row) return reply(404, { ok: false, code: "not_found" });
       return reply(200, { ok: true, status: row.status, updated: row.updated });
+    }
+
+    // تحليل التصفح: مشاهدات المنتجات، الإضافة للسلة، البحث (بدون أي بيانات شخصية)
+    if (path === "/ev") {
+      if (!env.DB) return reply(200, { ok: true });
+      if (await rateHit(env, "ev:" + ip, 40, 3600)) return reply(429, { ok: false, code: "slow_down" });
+      await recordEvents(env, body).catch(() => {});
+      return reply(200, { ok: true });
     }
 
     // الزبون يفعّل إشعارات حالة طلبه
@@ -154,13 +162,21 @@ export default {
         const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
         const st = String(body.status || "");
         if (!(n > 0) || !["new", "accepted", "onway", "delivered", "canceled"].includes(st)) return reply(400, { ok: false, code: "bad_request" });
-        const old = await env.DB.prepare("SELECT status, data FROM orders WHERE no = ?").bind(n).first();
+        const old = await env.DB.prepare("SELECT status, data, created FROM orders WHERE no = ?").bind(n).first();
         if (!old) return reply(404, { ok: false, code: "not_found" });
         await env.DB.prepare("UPDATE orders SET status = ?, updated = ? WHERE no = ?").bind(st, Date.now(), n).run();
         if (old.status !== st) {
           // الإلغاء يرجّع الكميات للمخزون، والتراجع عن الإلغاء يخصمها مرة ثانية
           let rec = null; try { rec = JSON.parse(old.data); } catch {}
-          if (rec && (st === "canceled") !== (old.status === "canceled")) await moveStock(env, needOf(rec), st === "canceled" ? 1 : -1);
+          if (rec && (st === "canceled") !== (old.status === "canceled")) {
+            const back = st === "canceled";
+            await moveStock(env, needOf(rec), back ? 1 : -1);
+            // الطلب الملغي ينشال من المبيعات والتحليل، ويرجع لو تراجعت عن الإلغاء
+            if (rec.st) await applyStats(env, rec, old.created, back ? -1 : 1, back ? 1 : -1).catch(() => {});
+          }
+          if (st === "delivered" && old.status !== "delivered") {
+            await env.DB.prepare("UPDATE st_day SET deliv_ms = deliv_ms + ?, deliv_n = deliv_n + 1 WHERE day = ?").bind(Math.max(0, Date.now() - old.created), riyadhDateAt(old.created)).run().catch(() => {});
+          }
           const msg = STATUS_MSG[st];
           if (msg) later(notifyRole(env, "customer", String(n), { title: "طلبك #" + (1000 + n), body: msg, url: "./", tag: "order" + n }));
         }
@@ -181,6 +197,14 @@ export default {
     if (path === "/admin/stock") {
       if (!env.DB) return reply(200, { ok: true, stock: {}, hasDB: false });
       return reply(200, { ok: true, stock: await readStock(env), hasDB: true });
+    }
+    if (path === "/admin/orders") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const lim = Math.min(5000, Math.max(1, Math.floor(Number(body.limit) || 300)));
+      const rs = await env.DB.prepare("SELECT no, created, updated, status, data FROM orders ORDER BY no DESC LIMIT ?").bind(lim).all();
+      const orders = (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status }));
+      return reply(200, { ok: true, orders, now: Date.now() });
     }
     if (path === "/admin/stats") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
@@ -279,9 +303,18 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS stock (id TEXT PRIMARY KEY, qty INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS subs (endpoint TEXT NOT NULL, role TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', p256dh TEXT NOT NULL, auth TEXT NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (endpoint, role, ref))",
     "CREATE TABLE IF NOT EXISTS st_day (day TEXT PRIMARY KEY, orders INTEGER NOT NULL, revenue REAL NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS st_hour (day TEXT NOT NULL, hour INTEGER NOT NULL, orders INTEGER NOT NULL, revenue REAL NOT NULL, PRIMARY KEY (day, hour))",
+    "CREATE TABLE IF NOT EXISTS st_cust (h TEXT PRIMARY KEY, tail TEXT NOT NULL, first TEXT NOT NULL, last TEXT NOT NULL, orders INTEGER NOT NULL, revenue REAL NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS st_view (day TEXT NOT NULL, id TEXT NOT NULL, views INTEGER NOT NULL, carts INTEGER NOT NULL, PRIMARY KEY (day, id))",
+    "CREATE TABLE IF NOT EXISTS st_search (day TEXT NOT NULL, q TEXT NOT NULL, n INTEGER NOT NULL, miss INTEGER NOT NULL, PRIMARY KEY (day, q))",
+    "CREATE TABLE IF NOT EXISTS rl (k TEXT PRIMARY KEY, n INTEGER NOT NULL, until INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS st_item (day TEXT NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, revenue REAL NOT NULL, orders INTEGER NOT NULL, PRIMARY KEY (day, id))",
     "CREATE TABLE IF NOT EXISTS st_pair (a TEXT NOT NULL, b TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (a, b))",
   ].map((q) => env.DB.prepare(q)));
+  // أعمدة إضافية للتحليل (تنضاف مرة وحدة للقاعدة القديمة بدون ما تمس بياناتها)
+  const have = ((await env.DB.prepare("PRAGMA table_info(st_day)").all()).results || []).map((r) => r.name);
+  const add = ["items", "card", "fees", "canceled", "newc", "deliv_ms", "deliv_n", "visits", "carts", "checkouts"].filter((c) => !have.includes(c));
+  if (add.length) await env.DB.batch(add.map((c) => env.DB.prepare(`ALTER TABLE st_day ADD COLUMN ${c} REAL NOT NULL DEFAULT 0`)));
   schemaReady = true;
 }
 function orderRecord(o, body) {
@@ -290,13 +323,16 @@ function orderRecord(o, body) {
     subtotal: o.subtotal, fee: o.fee, total: o.total, count: o.count, phone: o.phone,
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
     pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
+    st: 1, // انحسب في التحليل
   };
 }
-async function dbInsertOrder(env, rec) {
+async function dbInsertOrder(env, rec, keepDays) {
   await ensureSchema(env);
   const now = Date.now();
-  // نحذف الطلبات المنتهية الأقدم من ٣٠ يوم عشان بيانات الزبائن ما تتكدس
-  await env.DB.prepare("DELETE FROM orders WHERE created < ? AND status IN ('delivered','canceled')").bind(now - 30 * 864e5).run();
+  // نحذف تفاصيل الطلبات المنتهية الأقدم من المدة اللي تحددها الإدارة (الافتراضي ٩٠ يوم).
+  // أرقام التحليل ما تنحذف، لأنها محفوظة في جداول لحالها بدون بيانات الزبائن.
+  const keep = Math.min(730, Math.max(7, Math.floor(Number(keepDays) || 90)));
+  await env.DB.prepare("DELETE FROM orders WHERE created < ? AND status IN ('delivered','canceled')").bind(now - keep * 864e5).run();
   const row = await env.DB.prepare("INSERT INTO orders (created, updated, status, phone, data) VALUES (?, ?, 'new', ?, ?) RETURNING no")
     .bind(now, now, rec.phone, JSON.stringify(rec)).first();
   return "#" + (1000 + row.no);
@@ -372,6 +408,8 @@ function priceOrder(data, body) {
   }
   if (DEAL && base >= Number(DEAL.min || 0)) for (const d of dealLines) { lines.push(d); dealSum += d.qty * d.price; count += d.qty; }
   if (!count) return { error: "empty" };
+  if (S.closed) return { error: "closed" };
+  if (Number(S.minOrder) > 0 && base + dealSum < Number(S.minOrder)) return { error: "min_order", min: Number(S.minOrder) };
   const subtotal = round2(base + dealSum);
   const fee = S.freeOver && subtotal >= S.freeOver ? 0 : Number(S.fee || 0);
   return { lines, subtotal, fee, total: round2(subtotal + fee), count, phone };
@@ -566,8 +604,8 @@ async function setStock(env, map) {
 }
 
 // بعد الطلب: التحليل + إشعار الإدارة والمندوب + تنبيه المخزون
-async function afterOrder(env, data, rec, orderNo, before) {
-  await recordStats(env, rec).catch(() => {});
+async function afterOrder(env, data, rec, orderNo, before, created) {
+  await applyStats(env, rec, created, 1, 0).catch(() => {});
   if (!env.LOCKS) return;
   const n = Number(String(orderNo).replace(/\D/g, ""));
   const msg = { title: "طلب جديد " + orderNo, body: rec.count + " منتج · " + money(rec.total) + " · " + (rec.pay === "card" ? "شبكة" : "كاش") + (rec.name ? " · " + rec.name : ""), url: "./#driver", tag: "new" + n };
@@ -586,36 +624,95 @@ async function afterOrder(env, data, rec, orderNo, before) {
 }
 
 // ---------- التحليل ----------
-function riyadhDate(offsetDays = 0) { return new Date(Date.now() + 3 * 3600e3 + offsetDays * 864e5).toISOString().slice(0, 10); }
-async function recordStats(env, rec) {
-  const day = riyadhDate();
+function riyadhDate(offsetDays = 0) { return riyadhDateAt(Date.now() + offsetDays * 864e5); }
+function riyadhDateAt(ms) { return new Date(Number(ms) + 3 * 3600e3).toISOString().slice(0, 10); }
+function riyadhHour(ms) { return new Date(Number(ms) + 3 * 3600e3).getUTCHours(); }
+
+// sign = 1 طلب جديد، -1 إلغاء. cancelDelta يعدّ الطلبات الملغية.
+async function applyStats(env, rec, created, sign, cancelDelta) {
+  await ensureSchema(env);
+  const day = riyadhDateAt(created), hour = riyadhHour(created);
   const per = {};
+  let items = 0;
   for (const l of rec.lines || []) {
+    const q = Number(l.qty || 0); items += q;
     if (!l.id) continue;
     const x = per[l.id] || (per[l.id] = { qty: 0, rev: 0 });
-    x.qty += Number(l.qty || 0); x.rev += Number(l.qty || 0) * Number(l.price || 0);
+    x.qty += q; x.rev += q * Number(l.price || 0);
   }
+  const total = Number(rec.total || 0), fee = Number(rec.fee || 0), card = rec.pay === "card" ? 1 : 0;
   const ids = Object.keys(per).sort().slice(0, 40);
-  const st = [env.DB.prepare("INSERT INTO st_day (day, orders, revenue) VALUES (?, 1, ?) ON CONFLICT(day) DO UPDATE SET orders = orders + 1, revenue = revenue + excluded.revenue").bind(day, Number(rec.total || 0))];
-  for (const id of ids) st.push(env.DB.prepare("INSERT INTO st_item (day, id, qty, revenue, orders) VALUES (?, ?, ?, ?, 1) ON CONFLICT(day, id) DO UPDATE SET qty = qty + excluded.qty, revenue = revenue + excluded.revenue, orders = orders + 1").bind(day, id, per[id].qty, round2(per[id].rev)));
+  let newc = 0, ck = "";
+  if (rec.phone) {
+    ck = (await hashPin(env, "cust:" + rec.phone)).slice(0, 32);
+    if (sign > 0 && !cancelDelta) newc = (await env.DB.prepare("SELECT 1 x FROM st_cust WHERE h = ?").bind(ck).first()) ? 0 : 1;
+  }
+  const P = (q, ...a) => env.DB.prepare(q).bind(...a);
+  const st = [
+    P("INSERT INTO st_day (day, orders, revenue, items, card, fees, canceled, newc) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET orders = orders + excluded.orders, revenue = revenue + excluded.revenue, items = items + excluded.items, card = card + excluded.card, fees = fees + excluded.fees, canceled = canceled + excluded.canceled, newc = newc + excluded.newc",
+      day, sign, round2(sign * total), sign * items, sign * card, round2(sign * fee), cancelDelta, newc),
+    P("INSERT INTO st_hour (day, hour, orders, revenue) VALUES (?, ?, ?, ?) ON CONFLICT(day, hour) DO UPDATE SET orders = orders + excluded.orders, revenue = revenue + excluded.revenue", day, hour, sign, round2(sign * total)),
+  ];
+  for (const id of ids) st.push(P("INSERT INTO st_item (day, id, qty, revenue, orders) VALUES (?, ?, ?, ?, ?) ON CONFLICT(day, id) DO UPDATE SET qty = qty + excluded.qty, revenue = revenue + excluded.revenue, orders = orders + excluded.orders", day, id, sign * per[id].qty, round2(sign * per[id].rev), sign));
   for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++)
-    st.push(env.DB.prepare("INSERT INTO st_pair (a, b, n) VALUES (?, ?, 1) ON CONFLICT(a, b) DO UPDATE SET n = n + 1").bind(ids[i], ids[j]));
+    st.push(P("INSERT INTO st_pair (a, b, n) VALUES (?, ?, ?) ON CONFLICT(a, b) DO UPDATE SET n = n + excluded.n", ids[i], ids[j], sign));
+  if (ck) st.push(P("INSERT INTO st_cust (h, tail, first, last, orders, revenue) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(h) DO UPDATE SET orders = orders + excluded.orders, revenue = revenue + excluded.revenue, last = CASE WHEN excluded.orders > 0 AND excluded.last > last THEN excluded.last ELSE last END",
+    ck, String(rec.phone).slice(-4), day, day, sign, round2(sign * total)));
   await env.DB.batch(st);
 }
+
+async function rateHit(env, key, max, secs) {
+  await ensureSchema(env);
+  const now = Date.now();
+  const row = await env.DB.prepare("INSERT INTO rl (k, n, until) VALUES (?, 1, ?) ON CONFLICT(k) DO UPDATE SET n = CASE WHEN until < ? THEN 1 ELSE n + 1 END, until = CASE WHEN until < ? THEN excluded.until ELSE until END RETURNING n")
+    .bind(key, now + secs * 1000, now, now).first();
+  if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM rl WHERE until < ?").bind(now).run();
+  return !!row && row.n > max;
+}
+
+async function recordEvents(env, b) {
+  await ensureSchema(env);
+  const day = riyadhDate(), P = (q, ...a) => env.DB.prepare(q).bind(...a);
+  const okId = (k) => typeof k === "string" && /^[\w-]{1,40}$/.test(k);
+  const num = (v, m) => Math.max(0, Math.min(m, Math.floor(Number(v) || 0)));
+  const views = b.v && typeof b.v === "object" ? Object.entries(b.v).filter(([k]) => okId(k)).slice(0, 60) : [];
+  const carts = b.c && typeof b.c === "object" ? b.c : {};
+  const ids = new Set(views.map(([k]) => k).concat(Object.keys(carts).filter(okId).slice(0, 60)));
+  const st = [P("INSERT INTO st_day (day, orders, revenue, visits, carts, checkouts) VALUES (?, 0, 0, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET visits = visits + excluded.visits, carts = carts + excluded.carts, checkouts = checkouts + excluded.checkouts",
+    day, b.visit ? 1 : 0, Object.keys(carts).length ? 1 : 0, b.co ? 1 : 0)];
+  for (const id of ids) {
+    const v = num(b.v && b.v[id], 30), c = num(carts[id], 30);
+    if (v || c) st.push(P("INSERT INTO st_view (day, id, views, carts) VALUES (?, ?, ?, ?) ON CONFLICT(day, id) DO UPDATE SET views = views + excluded.views, carts = carts + excluded.carts", day, id, v, c));
+  }
+  const seen = {};
+  for (const x of Array.isArray(b.s) ? b.s.slice(0, 15) : []) {
+    const q = String((x && x.q) || "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 40);
+    if (q.length < 2 || seen[q]) continue; seen[q] = 1;
+    st.push(P("INSERT INTO st_search (day, q, n, miss) VALUES (?, ?, 1, ?) ON CONFLICT(day, q) DO UPDATE SET n = n + 1, miss = miss + excluded.miss", day, q, Number(x.f) > 0 ? 0 : 1));
+  }
+  await env.DB.batch(st);
+}
+
 async function readStats(env, days) {
   await ensureSchema(env);
   days = Math.min(365, Math.max(1, Math.floor(days)));
-  const from = riyadhDate(-(days - 1));
-  const [d, it, all, pr, sts] = await Promise.all([
-    env.DB.prepare("SELECT day, orders, revenue FROM st_day WHERE day >= ? ORDER BY day").bind(from).all(),
-    env.DB.prepare("SELECT id, SUM(qty) qty, SUM(revenue) revenue, SUM(orders) orders FROM st_item WHERE day >= ? GROUP BY id ORDER BY qty DESC LIMIT 60").bind(from).all(),
-    env.DB.prepare("SELECT id, SUM(orders) orders FROM st_item GROUP BY id").all(),
-    env.DB.prepare("SELECT a, b, n FROM st_pair WHERE n >= 2 ORDER BY n DESC LIMIT 80").all(),
-    env.DB.prepare("SELECT status, COUNT(*) n FROM orders WHERE created > ? GROUP BY status").bind(Date.now() - days * 864e5).all(),
+  const from = riyadhDate(-(days - 1)), prev = riyadhDate(-(2 * days - 1));
+  const Q = (q, ...a) => env.DB.prepare(q).bind(...a).all().then((r) => r.results || []);
+  const [daily, items, all, pairs, sts, hours, views, searches, cust, top] = await Promise.all([
+    Q("SELECT * FROM st_day WHERE day >= ? ORDER BY day", prev),
+    Q("SELECT id, SUM(CASE WHEN day >= ? THEN qty ELSE 0 END) qty, SUM(CASE WHEN day >= ? THEN revenue ELSE 0 END) revenue, SUM(CASE WHEN day >= ? THEN orders ELSE 0 END) orders, SUM(CASE WHEN day < ? THEN qty ELSE 0 END) prev FROM st_item WHERE day >= ? GROUP BY id ORDER BY qty DESC", from, from, from, from, prev),
+    Q("SELECT id, SUM(orders) orders FROM st_item GROUP BY id"),
+    Q("SELECT a, b, n FROM st_pair WHERE n >= 2 ORDER BY n DESC LIMIT 120"),
+    Q("SELECT status, COUNT(*) n FROM orders WHERE created > ? GROUP BY status", Date.now() - days * 864e5),
+    Q("SELECT day, hour, orders FROM st_hour WHERE day >= ? AND orders > 0", from),
+    Q("SELECT id, SUM(views) views, SUM(carts) carts FROM st_view WHERE day >= ? GROUP BY id", from),
+    Q("SELECT q, SUM(n) n, SUM(miss) miss FROM st_search WHERE day >= ? GROUP BY q ORDER BY n DESC LIMIT 80", from),
+    Q("SELECT COUNT(*) total, SUM(CASE WHEN first >= ? THEN 1 ELSE 0 END) fresh, SUM(CASE WHEN last >= ? THEN 1 ELSE 0 END) active, SUM(CASE WHEN orders >= 2 THEN 1 ELSE 0 END) loyal, SUM(CASE WHEN orders >= 2 AND last < ? THEN 1 ELSE 0 END) gone FROM st_cust WHERE orders > 0", from, from, riyadhDate(-30)),
+    Q("SELECT tail, first, last, orders, revenue FROM st_cust WHERE orders > 0 ORDER BY revenue DESC LIMIT 15"),
   ]);
   const withId = {};
-  for (const r of all.results || []) withId[r.id] = r.orders;
-  return { days, from, daily: d.results || [], items: it.results || [], ordersWith: withId, pairs: pr.results || [], statuses: sts.results || [] };
+  for (const r of all) withId[r.id] = r.orders;
+  return { days, from, prevFrom: prev, daily, items, ordersWith: withId, pairs, statuses: sts, hours, views, searches, customers: cust[0] || {}, topCustomers: top };
 }
 
 // ---------- الإشعارات (Web Push) ----------
