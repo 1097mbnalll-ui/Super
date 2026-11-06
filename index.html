@@ -936,6 +936,74 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-img img.photo{width:92%;height:92%;object-fit:contain;mix-blend-mode:multiply}
 .kq-card.out .kq-img img{filter:grayscale(1);opacity:.45}
 .kq-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;background:#E8394F;color:#fff;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:700;z-index:2}
+/* ---------- banners v2 ---------- */
+.kq-ban.kb{padding:0;display:block;isolation:isolate}
+.kq-ban.kb::before,.kq-ban.kb::after{display:none}
+.kb .t{position:absolute;z-index:3;top:9%;inset-inline-start:5.5%;max-width:56%;display:grid;gap:5px;justify-items:start}
+.kb .t .k{font-size:12px;font-weight:700}
+.kb .t h2{margin:0;font-size:clamp(19px,calc(var(--banh,200px) / 7.6),34px);line-height:1.15;font-weight:700}
+.kb .t p{margin:0;font-size:12px;opacity:.9}
+.kb .t .go{margin-top:4px;border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:700}
+.kb-p{position:absolute;object-fit:contain;filter:drop-shadow(0 12px 14px rgba(0,0,0,.26));pointer-events:none;transition:opacity .2s}
+.kb-p.boxed{background:#fff;border-radius:22px;padding:6%;box-sizing:border-box;filter:drop-shadow(0 8px 14px rgba(0,0,0,.18))}
+@media (prefers-reduced-motion:no-preference){.kb-p.ready{animation:kbFloat 5s ease-in-out infinite}}
+@keyframes kbFloat{50%{translate:0 -4px}}
+/* 1 night */
+.kb.s-night{background:var(--bc,#0E1430);color:#fff}
+.kb.s-night .kb-glow{position:absolute;width:85%;aspect-ratio:1;inset-inline-end:-14%;top:-20%;border-radius:50%;background:radial-gradient(circle,#FF7A2F 0,rgba(255,122,47,.35) 35%,rgba(14,20,48,0) 70%);z-index:0}
+.kb.s-night .k{color:#FDBA74}
+.kb.s-night .kb-cd{direction:ltr;display:flex;gap:4px;font-size:15px;font-weight:700;letter-spacing:.06em;background:rgba(255,255,255,.12);border-radius:9px;padding:3px 9px;font-variant-numeric:tabular-nums}
+.kb.s-night .go{background:#FF7A2F;color:#111}
+.kb.s-night .p1{inset-inline-end:-2%;top:12%;width:52%;height:72%;transform:rotate(-8deg);z-index:2}
+.kb-burst{position:absolute;z-index:4;inset-inline-end:36%;bottom:6%;width:26%;aspect-ratio:1;max-width:96px;display:grid;place-items:center;align-content:center;color:#111;line-height:1;rotate:-10deg}
+.kb-burst::before{content:"";position:absolute;inset:0;background:#FFD21F;clip-path:polygon(50% 0,61% 13%,77% 6%,80% 23%,96% 26%,89% 41%,100% 50%,89% 59%,96% 74%,80% 77%,77% 94%,61% 87%,50% 100%,39% 87%,23% 94%,20% 77%,4% 74%,11% 59%,0 50%,11% 41%,4% 26%,20% 23%,23% 6%,39% 13%);z-index:-1}
+.kb-burst b{font-size:clamp(17px,calc(var(--banh,200px) / 8.5),26px)}.kb-burst s{font-size:11px;opacity:.7}.kb-burst small{font-size:10px;font-weight:700}
+@media (prefers-reduced-motion:no-preference){.kb-burst{animation:kbPulse 2.6s ease-in-out infinite}}
+@keyframes kbPulse{50%{scale:1.06}}
+/* 4 shelf */
+.kb.s-shelf{background:var(--bc,#DDF3E4);color:#0F3D2A}
+.kb.s-shelf .kb-shelf{position:absolute;left:0;right:0;bottom:0;height:27%;background:color-mix(in srgb,var(--bc,#DDF3E4) 78%,#000 10%);z-index:0}
+.kb.s-shelf .go{background:#13213C;color:#fff}
+.kb.s-shelf .kb-p{bottom:14%;height:62%;z-index:2}
+.kb.s-shelf .q1{inset-inline-end:22%;width:24%}.kb.s-shelf .q2{inset-inline-end:2%;width:24%;height:52%;z-index:3}.kb.s-shelf .q3{inset-inline-end:38%;width:16%;height:44%;z-index:3}
+.kb.s-shelf .q1.n1{inset-inline-end:8%;width:38%;height:70%}.kb.s-shelf .q1.n2{inset-inline-end:24%;width:22%}.kb.s-shelf .q2.n2{inset-inline-end:4%;width:24%;height:58%}
+.kb-tag{position:absolute;z-index:4;inset-inline-end:4.5%;top:8%;background:#13213C;color:#fff;border-radius:12px;padding:6px 10px;font-size:11.5px;font-weight:700}
+/* 6 calm */
+.kb.s-calm{background:var(--bc,#F6F2EA);color:#111}
+.kb.s-calm .kb-ring{position:absolute;inset-inline-end:7%;top:11%;width:42%;aspect-ratio:1;max-height:82%;border-radius:50%;background:#fff;box-shadow:0 20px 40px rgba(0,0,0,.08);z-index:0}
+.kb.s-calm h2 u{text-decoration:none;background:linear-gradient(transparent 62%,#FFB54A 62%)}
+.kb.s-calm .kb-pr{font-size:12.5px;color:#444}.kb.s-calm .kb-pr b{font-size:20px;color:#111}.kb.s-calm .kb-pr s{color:#888}
+.kb.s-calm .go{background:#111;color:#fff}
+.kb.s-calm .c1{inset-inline-end:12%;top:9%;width:32%;height:82%;transform:rotate(-4deg);z-index:2}
+/* 7 split */
+.kb.s-split{background:#fff;color:var(--bc,#123B7A)}
+.kb.s-split .kb-cut{position:absolute;inset:0;background:var(--bc,#123B7A);clip-path:polygon(0 0,58% 0,44% 100%,0 100%);z-index:0}
+[dir="ltr"] .kb.s-split .kb-cut{clip-path:polygon(42% 0,100% 0,100% 100%,56% 100%)}
+.kb.s-split .go{background:var(--bc,#123B7A);color:#fff}
+.kb.s-split .s1{inset-inline-end:28%;top:6%;width:24%;height:86%;transform:rotate(8deg);z-index:3}
+.kb-big{position:absolute;z-index:4;inset-inline-end:5%;bottom:9%;color:#fff;line-height:1;display:grid;gap:2px}
+.kb-big b{font-size:clamp(28px,calc(var(--banh,200px) / 5),46px);letter-spacing:-.02em}.kb-big b.sm{font-size:16px;max-width:110px;line-height:1.3}.kb-big small{font-size:12px;opacity:.85}.kb-big s{font-size:13px;opacity:.7}
+/* 9 bundle */
+.kb.s-bundle{background:var(--bc,#F1ECFF);color:#2E1A6B}
+.kb.s-bundle .t.wide{max-width:none;inset-inline-end:5.5%}
+.kb.s-bundle .k{color:#7C5CE0}
+.kb-eq{position:absolute;z-index:3;left:4%;right:4%;bottom:8%;display:flex;align-items:center;justify-content:space-between;gap:2px}
+.kb-eq .cell{flex:1;height:calc(var(--banh,200px) * .42);position:relative;display:block}
+.kb-eq .cell .kb-p{position:absolute;inset:0;width:100%;height:100%;transform:none}
+.kb-eq .op{font-size:22px;font-weight:700;color:#7C5CE0}
+.kb-eq .eq{background:#2E1A6B;color:#fff;border-radius:14px;padding:7px 11px;display:grid;line-height:1.05;text-align:center;flex:none}.kb-eq .eq b{font-size:22px}.kb-eq .eq s{font-size:11px;opacity:.7}.kb-eq .eq small{font-size:10px}
+/* 11 glass */
+.kb.s-glass{background:#F7F3FF;color:#2A2140}
+.kb-mesh{position:absolute;inset:0;z-index:0;background:radial-gradient(circle at 15% 20%,color-mix(in srgb,var(--bc,#FF8FB8) 45%,#fff) 0,transparent 45%),radial-gradient(circle at 85% 80%,#C7E9FF 0,transparent 50%),radial-gradient(circle at 70% 10%,#FFF1B8 0,transparent 45%)}
+.kb.s-glass .go{background:#2A2140;color:#fff}.kb.s-glass .k{color:#B0346B}
+.kb.s-glass .g1{inset-inline-end:6%;top:8%;width:36%;height:58%;transform:rotate(-6deg);z-index:2}.kb.s-glass .g2{inset-inline-end:36%;top:14%;width:16%;height:56%;transform:rotate(10deg);z-index:1}
+.kb-glass{position:absolute;z-index:4;inset-inline-end:4.5%;bottom:8%;background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.8);border-radius:16px;padding:7px 12px;display:grid;line-height:1.15;box-shadow:0 8px 20px rgba(42,33,64,.12)}
+.kb-glass small{font-size:10.5px;color:#5B5470}.kb-glass b{font-size:20px;color:#2A2140}
+.kb.dk{color:#111}.kb.s-night.dk,.kb.s-split.dk{color:#fff}
+/* bundle line in cart */
+.line.bund .bimgs{display:flex;align-items:center;justify-content:center;gap:0}
+.line.bund .bimgs img,.line.bund .bimgs .noimg{width:34px;height:34px;margin-inline-start:-10px}
+.line.bund .bimgs img:first-child{margin-inline-start:0}
 /* ---------- driver app ---------- */
 .dv-ghint{margin:0;padding:10px 16px 0;font-size:12px;color:#5B6474;line-height:1.6}
 .dv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -1336,6 +1404,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   document.addEventListener("visibilitychange", function(){ if (document.hidden) evFlush(); });
   window.addEventListener("pagehide", evFlush);
   setInterval(function(){ if (EV.s.length || Object.keys(EV.v).length > 20) evFlush(); }, 120000);
+  function sToast(m){ var x = document.createElement("div"); x.className = "dv-toast"; x.setAttribute("role", "status"); x.textContent = m; document.body.appendChild(x); setTimeout(function(){ x.remove(); }, 2200); }
   function banOf(id){ var l = S.bans || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
   function idsToList(ids){ return (ids || []).map(byId).filter(function(p){ return avail(p); }); }
   var LAYOUT_DEF = ["promos","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["daily","offers","deals","bakery"];
@@ -1358,7 +1427,9 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   function dealOn(){ return !!(DEAL && DEAL.on); }
   function dealsList(){ return dealOn() ? (DEAL.ids || []).map(byId).filter(function(p){ return avail(p); }) : []; }
   function lineOf(key){
-    var k = String(key).split(":"), kind = k.length > 1 ? k[0] : "r", p = byId(k.length > 1 ? k[1] : k[0]);
+    var k = String(key).split(":");
+    if (k[0] === "x" && k.length === 3) { var bb = banOf(k[1]), al = bundleAlloc(bb), bp = byId(k[2]); if (!al || !bp || al.alloc[bp.id] == null) return null; return { key: key, p: bp, kind: "x", ban: bb.id, price: al.alloc[bp.id], limit: 0 }; }
+    var kind = k.length > 1 ? k[0] : "r", p = byId(k.length > 1 ? k[1] : k[0]);
     if (!p) return null;
     if (kind === "d") return { key: key, p: p, kind: "d", price: Number(DEAL && DEAL.price || 0.95), limit: capOf(p, DEAL && DEAL.limit) };
     if (kind === "t") { var dd = daily(); return { key: key, p: p, kind: "t", price: dd ? dd.price : p.price, limit: capOf(p, DAILY && DAILY.limit) }; }
@@ -1369,6 +1440,11 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   var cart = {}; try { cart = JSON.parse(localStorage.getItem("ohod-cart") || "{}") || {}; } catch(e) { cart = {}; }
   function saveCart(){ try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} }
   function normalize(){
+    // الباقة لازم تكون كاملة وبنفس العدد من كل منتج، وإلا تنشال
+    var bq = {}; Object.keys(cart).forEach(function(k){ var x = k.split(":"); if (x[0] === "x") (bq[x[1]] = bq[x[1]] || []).push(k); });
+    Object.keys(bq).forEach(function(bid){ var al = bundleAlloc(banOf(bid)), keys = bq[bid], qs = keys.map(function(k){ return cart[k]; });
+      var ok = al && al.ids.every(function(id){ var p = byId(id); return cart["x:" + bid + ":" + id] && avail(p); }) && keys.length === al.ids.length && qs.every(function(v){ return v === qs[0]; });
+      if (!ok) keys.forEach(function(k){ delete cart[k]; }); });
     var dd = daily(), deals = dealsList().map(function(p){ return p.id; });
     Object.keys(cart).forEach(function(k){
       var parts = k.split(":"); if (parts.length < 2) return;
@@ -1463,18 +1539,74 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var list = S.forOnly && fy.length ? [] : D.products.filter(function(p){ return avail(p) && !fyId[p.id]; }).slice().sort(function(a,b){ return (onSale(b) ? 1 : 0) - (onSale(a) ? 1 : 0); });
     return (dd && !fyId[dd.p.id] ? [card(dd.p, "t")] : []).concat(fy.concat(list).map(function(p){ return card(p); }));
   }
-  function banHTML(id, spec, o){
-    o = o || {};
-    var txt = function(k){ var v = (LANG === "en" && o[k + "_en"]) || o[k]; return v ? esc(v) : (spec[k] || ""); };
-    var cls = "kq-ban " + (o.color ? "bx" : spec.cls) + (o.dark ? " dk" : "") + (o.img && D.imgs[o.img] ? " img" : "");
-    var st = o.color ? ' style="--bc:' + esc(o.color) + (o.color2 ? ';--bc2:' + esc(o.color2) : '') + '"' : '';
-    var n = o.picsN == null ? 3 : Number(o.picsN), list = (spec.pics || []).filter(function(k){ return isPhoto(k) && D.imgs[k]; }).slice(0, n);
-    var pics = list.length && !(o.img && D.imgs[o.img]) ? '<span class="kq-pics n' + list.length + '">' + list.map(function(k){ return '<img src="' + D.imgs[k] + '" alt="">'; }).join("") + '</span>' : '';
-    var showT = !(o.img && D.imgs[o.img]) || o.showText;
-    var t = showT ? '<div class="t">' + (txt("k") ? '<span class="k">' + txt("k") + '</span>' : '') + '<h2>' + txt("title") + '</h2>' + (txt("sub") ? '<p>' + txt("sub") + '</p>' : '') + (o.noGo ? '' : '<span class="go">' + txt("go") + '</span>') + '</div>' : '';
-    var bg = o.img && D.imgs[o.img] ? '<img class="kq-banimg" src="' + D.imgs[o.img] + '" alt="' + esc((LANG === "en" && o.title_en) || o.title || spec.alt || "") + '">' : '';
-    return '<' + spec.tag + (spec.tag === "button" ? ' type="button"' : '') + ' class="' + cls + '"' + st + ' data-bid="' + esc(id) + '" ' + spec.act + '>' + bg + t + pics + '</' + spec.tag + '>';
+  /* ---------- banners: 6 designs + product cut-outs ---------- */
+  var BAN_STYLES = ["night", "shelf", "calm", "split", "bundle", "glass"];
+  function bundleAlloc(b){
+    if (!b || b.style !== "bundle") return null;
+    var seen = {}, ids = (b.ids || []).filter(function(id){ if (!id || seen[id]) return false; seen[id] = 1; return true; }).slice(0, 4);
+    if (ids.length < 2) return null;
+    var ps = ids.map(byId); if (ps.some(function(p){ return !p || !p.stock; })) return null;
+    var sum = Math.round(ps.reduce(function(a, p){ return a + Number(p.price); }, 0) * 100) / 100, bp = Number(b.bprice);
+    if (!(bp > 0 && bp < sum)) return null;
+    var alloc = {}, acc = 0;
+    ps.forEach(function(p, i){ if (i < ps.length - 1) { var v = Math.round(Number(p.price) * bp / sum * 100) / 100; alloc[p.id] = v; acc += v; } });
+    alloc[ps[ps.length - 1].id] = Math.round((bp - acc) * 100) / 100;
+    return { ids: ids, alloc: alloc, sum: sum, price: bp };
   }
+  function kbImg(id, cls){ var p = byId(id); if (!p || !isPhoto(p.img) || !D.imgs[p.img]) return ''; var c = CUT[p.img];
+    return '<img class="kb-p ' + cls + (c && c.boxed ? ' boxed' : '') + '" src="' + (c ? c.src : D.imgs[p.img]) + '" data-cut="' + esc(p.img) + '" alt="' + esc(nm(p)) + '">'; }
+  function banHTML(id, M, o){
+    o = o || {};
+    var txt = function(k){ var v = (LANG === "en" && o[k + "_en"]) || o[k]; return v ? esc(v) : (M[k] || ""); };
+    var full = o.img && D.imgs[o.img];
+    var style = BAN_STYLES.indexOf(o.style) > -1 ? o.style : M.style;
+    if (style === "bundle" && !M.bundle) style = "shelf";
+    var cls = "kq-ban kb s-" + style + (o.dark ? " dk" : "") + (full ? " img" : "");
+    var st = o.color ? ' style="--bc:' + esc(o.color) + (o.color2 ? ';--bc2:' + esc(o.color2) : '') + '"' : '';
+    var n = o.picsN == null ? 3 : Number(o.picsN), ids = (M.ids || []).filter(function(x){ var p = byId(x); return p && isPhoto(p.img) && D.imgs[p.img]; }).slice(0, n);
+    var go = o.noGo ? '' : '<span class="go">' + txt("go") + '</span>';
+    var head = (txt("k") ? '<span class="k">' + txt("k") + '</span>' : '') + '<h2>' + txt("title") + '</h2>';
+    var body = '';
+    if (full) body = '<img class="kq-banimg" src="' + D.imgs[o.img] + '" alt="' + esc((LANG === "en" && o.title_en) || o.title || "") + '">' + (o.showText ? '<div class="t">' + head + (txt("sub") ? '<p>' + txt("sub") + '</p>' : '') + go + '</div>' : '');
+    else if (style === "night") body = '<span class="kb-glow"></span><div class="t">' + (M.cd ? '<span class="k">' + txt("k") + '</span><span class="kb-cd" id="cd">' + countdown() + '</span><h2>' + txt("title") + '</h2>' : head) + (txt("sub") && !M.price ? '<p>' + txt("sub") + '</p>' : '') + go + '</div>' +
+      (ids[0] ? kbImg(ids[0], "p1") : '') + (M.price ? '<span class="kb-burst"><small>' + tr("بـ", "for") + '</small><b>' + M.price + '</b>' + (M.old ? '<s>' + M.old + '</s>' : '') + '</span>' : '');
+    else if (style === "shelf") body = '<span class="kb-shelf"></span><div class="t">' + head + (txt("sub") ? '<p>' + txt("sub") + '</p>' : '') + go + '</div>' +
+      ids.map(function(x, i){ return kbImg(x, "q" + (i + 1) + " n" + ids.length); }).join("") + (M.chip ? '<span class="kb-tag">' + M.chip + '</span>' : '');
+    else if (style === "calm") body = '<span class="kb-ring"></span><div class="t">' + (txt("k") ? '<span class="k">' + txt("k") + '</span>' : '') + '<h2>' + txt("title") + (txt("sub") ? '<br><u>' + txt("sub") + '</u>' : '') + '</h2>' + (M.price ? '<span class="kb-pr">' + (M.old ? '<s>' + M.old + '</s> ' : '') + '<b>' + M.price + '</b> ' + tr("ريال", "SAR") + '</span>' : '') + go + '</div>' + (ids[0] ? kbImg(ids[0], "c1") : '');
+    else if (style === "split") body = '<span class="kb-cut"></span><div class="t">' + head + (txt("sub") ? '<p>' + txt("sub") + '</p>' : '') + go + '</div>' + (ids[0] ? kbImg(ids[0], "s1") : '') +
+      (M.price ? '<span class="kb-big">' + (M.old ? '<s>' + M.old + '</s>' : '') + '<b>' + M.price + '</b><small>' + tr("ريال", "SAR") + '</small></span>' : (M.chip ? '<span class="kb-big"><b class="sm">' + M.chip + '</b></span>' : ''));
+    else if (style === "bundle") { var bu = M.bundle;
+      body = '<div class="t wide">' + head + '</div><div class="kb-eq"><span class="eq"><s>' + num(bu.sum) + '</s><b>' + num(bu.price) + '</b><small>' + tr("ريال", "SAR") + '</small></span>' +
+        bu.ids.map(function(x){ return '<span class="op">' + (x === bu.ids[0] ? '=' : '+') + '</span><span class="cell">' + kbImg(x, "e") + '</span>'; }).join("") + '</div>'; }
+    else body = '<span class="kb-mesh"></span><div class="t">' + head + (txt("sub") ? '<p>' + txt("sub") + '</p>' : '') + go + '</div>' + ids.slice(0, 2).map(function(x, i){ return kbImg(x, "g" + (i + 1)); }).join("") +
+      (M.chip ? '<span class="kb-glass">' + M.chip + '</span>' : '');
+    return '<' + M.tag + (M.tag === "button" ? ' type="button"' : '') + ' class="' + cls + '"' + st + ' data-bid="' + esc(id) + '" ' + M.act + '>' + body + '</' + M.tag + '>';
+  }
+  // يشيل الخلفية البيضاء من صورة المنتج (مرة وحدة لكل صورة)
+  var CUT = {}, CUTQ = {};
+  function cutImg(key){
+    if (CUT[key] || CUTQ[key]) return CUTQ[key] || Promise.resolve(CUT[key]);
+    var SRC = D.imgs[key];
+    CUTQ[key] = new Promise(function(res){ var im = new Image(); im.onload = function(){ try {
+      var w = im.naturalWidth, h = im.naturalHeight, c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(im, 0, 0);
+      var d = x.getImageData(0, 0, w, h), p = d.data, seen = new Uint8Array(w * h), st = [], cleared = 0;
+      var light = function(i){ var r = p[i * 4], g = p[i * 4 + 1], b = p[i * 4 + 2], mn = Math.min(r, g, b); return mn > 228 && Math.max(r, g, b) - mn < 28; };
+      for (var i = 0; i < w; i++) st.push(i, (h - 1) * w + i); for (var j = 0; j < h; j++) st.push(j * w, j * w + w - 1);
+      while (st.length) { var k = st.pop(); if (seen[k]) continue; seen[k] = 1; if (!light(k)) continue; var m = Math.min(p[k * 4], p[k * 4 + 1], p[k * 4 + 2]); p[k * 4 + 3] = m > 244 ? 0 : Math.round(255 * (244 - m) / 16); cleared++;
+        var xx = k % w, yy = (k / w) | 0; if (xx > 0) st.push(k - 1); if (xx < w - 1) st.push(k + 1); if (yy > 0) st.push(k - w); if (yy < h - 1) st.push(k + w); }
+      for (var pass = 0; pass < 2; pass++) { var al = new Uint8Array(w * h); for (var q = 0; q < w * h; q++) al[q] = p[q * 4 + 3];
+        for (var y2 = 1; y2 < h - 1; y2++) for (var x2 = 1; x2 < w - 1; x2++) { var k2 = y2 * w + x2; if (al[k2] < 250) continue; if (al[k2 - 1] > 20 && al[k2 + 1] > 20 && al[k2 - w] > 20 && al[k2 + w] > 20) continue;
+          var m2 = Math.min(p[k2 * 4], p[k2 * 4 + 1], p[k2 * 4 + 2]), sat = Math.max(p[k2 * 4], p[k2 * 4 + 1], p[k2 * 4 + 2]) - m2; if (m2 > 190 && sat < 40) p[k2 * 4 + 3] = Math.max(0, Math.round(255 * (1 - (m2 - 190) / 65))); } }
+      if (cleared < w * h * 0.08) { CUT[key] = { src: SRC, boxed: true }; return res(CUT[key]); }
+      x.putImageData(d, 0, 0);
+      var a1 = w, b1 = h, c1 = 0, d1 = 0; for (var y3 = 0; y3 < h; y3++) for (var x3 = 0; x3 < w; x3++) if (p[(y3 * w + x3) * 4 + 3] > 20) { if (x3 < a1) a1 = x3; if (y3 < b1) b1 = y3; if (x3 > c1) c1 = x3; if (y3 > d1) d1 = y3; }
+      var o = document.createElement("canvas"); o.width = Math.max(1, c1 - a1 + 1); o.height = Math.max(1, d1 - b1 + 1); o.getContext("2d").drawImage(c, a1, b1, o.width, o.height, 0, 0, o.width, o.height);
+      CUT[key] = { src: o.toDataURL("image/png"), boxed: false }; res(CUT[key]);
+    } catch(e){ CUT[key] = { src: SRC, boxed: true }; res(CUT[key]); } }; im.onerror = function(){ CUT[key] = { src: SRC, boxed: true }; res(CUT[key]); }; im.src = SRC; });
+    return CUTQ[key];
+  }
+  function applyCuts(root){ Array.prototype.forEach.call((root || document).querySelectorAll("img[data-cut]"), function(el){ var k = el.dataset.cut; if (!D.imgs[k]) return;
+    cutImg(k).then(function(c){ if (el.getAttribute("src") !== c.src) el.setAttribute("src", c.src); el.classList.toggle("boxed", !!c.boxed); el.classList.add("ready"); }); }); }
   function banTarget(b){
     var tg = String(b.target || "");
     if (tg.indexOf("cat:") === 0 && catOf(tg.slice(4))) return 'data-opencat="' + esc(tg.slice(4)) + '"';
@@ -1485,13 +1617,22 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   function banners(){
     var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && onSale(p); }), bakery = catOf("bakery") || D.cats[0];
     var maxOff = offers.reduce(function(m, p){ return Math.max(m, Math.round((1 - p.price / p.old) * 100)); }, 0);
-    var E = S.banEdit || {}, B = {}, pk = function(id, def){ var ids = S.banPicks && S.banPicks[id]; return ids && ids.length ? photosOf(ids.map(byId).filter(Boolean)) : def; };
+    var E = S.banEdit || {}, B = {}, pk = function(id, def){ var ids = S.banPicks && S.banPicks[id]; return ids && ids.length ? ids.filter(function(x){ return byId(x); }) : def; };
+    var idsOf = function(list){ return list.map(function(p){ return p.id; }); };
     (S.bans || []).forEach(function(b){
-      B[b.id] = banHTML(b.id, { tag: "button", cls: "bx", act: banTarget(b), go: tr("تسوّق الحين", "Shop now"), pics: photosOf((b.ids || []).map(byId).filter(Boolean)) }, b); });
-    if (dd) B.daily = banHTML("daily", { tag: "div", cls: "b1", act: 'data-open="' + dd.p.id + '"', k: tr("عرض اليوم · ينتهي ", "Deal of the day · ends in ") + '<b id="cd">' + countdown() + '</b>', title: esc(nm(dd.p)) + tr(" بـ ", " for ") + num(dd.price) + ' ' + tr("ر.س", "SAR"), sub: tr("بدل ", "instead of ") + rial(dd.p.price), go: tr("اطلب الآن", "Order now"), pics: pk("daily", [dd.p.img]) }, E.daily);
-    if (deals.length) B.deals = banHTML("deals", { tag: "button", cls: "b2", act: 'data-chip="deals"', k: t.unlocked ? tr("انفتحت لك!", "Unlocked!") : tr("لطلبات فوق ", "For orders over ") + rial(DEAL.min), title: tr("كل منتج بـ ", "Everything for ") + num(DEAL.price) + ' ' + tr("ر.س", "SAR"), sub: t.unlocked ? tr("ضيف اللي تبغاه", "Add what you like") : tr("باقي ", "Add ") + rial(t.left) + tr(" وتنفتح لك", " more to unlock"), go: tr("شوف المنتجات", "See items"), pics: pk("deals", deals.map(function(p){ return p.img; })) }, E.deals);
-    if (bakery) B.bakery = banHTML("bakery", { tag: "button", cls: "b3", act: 'data-opencat="' + bakery.id + '"', k: tr("طالع من الفرن", "Fresh from the oven"), title: tr("نفسك في خبز حار؟", "Craving hot bread?"), sub: tr("مخبوزات حلوة توصلك لين بابك", "Fresh bakes delivered to your door"), go: tr("اطلب الآن", "Order now"), pics: pk("bakery", heroImgs()) }, E.bakery);
-    if (offers.length) B.offers = banHTML("offers", { tag: "button", cls: "b4", act: 'data-chip="offers"', k: tr("عروض الأسبوع", "Weekly offers"), title: tr("خصم لين ", "Up to ") + maxOff + tr("٪", "% off"), sub: tr("على ", "on ") + offers.length + tr(" منتج", " products"), go: tr("تسوّق العروض", "Shop offers"), pics: pk("offers", offers.map(function(p){ return p.img; })) }, E.offers);
+      var ps = (b.ids || []).map(byId).filter(Boolean), one = ps.length === 1 ? ps[0] : null, bu = bundleAlloc(b);
+      var minP = ps.length ? Math.min.apply(null, ps.map(function(p){ return p.price; })) : 0;
+      B[b.id] = banHTML(b.id, { tag: "button", style: one ? "calm" : "shelf", act: bu ? 'data-addbund="' + esc(b.id) + '"' : banTarget(b), go: bu ? tr("أضف الباقة", "Add bundle") : tr("تسوّق الحين", "Shop now"), ids: idsOf(ps),
+        price: one ? num(one.price) : 0, old: one && onSale(one) ? num(one.old) : 0, bundle: bu,
+        chip: one ? '' : (ps.length ? (b.style === "glass" ? '<small>' + tr("تبدأ من", "From") + '</small><b>' + num(minP) + ' ' + tr("ريال", "SAR") + '</b>' : tr("تبدأ من ", "From ") + num(minP)) : '') }, b); });
+    if (dd) B.daily = banHTML("daily", { tag: "div", style: "night", act: 'data-open="' + dd.p.id + '"', cd: true, k: tr("عرض اليوم · ينتهي بعد", "Deal of the day · ends in"), title: esc(nm(dd.p)), go: tr("اطلبه الحين", "Order now"),
+      ids: pk("daily", [dd.p.id]), price: num(dd.price), old: dd.p.price > dd.price ? num(dd.p.price) : 0 }, E.daily);
+    if (deals.length) B.deals = banHTML("deals", { tag: "button", style: "split", act: 'data-chip="deals"', k: t.unlocked ? tr("انفتحت لك!", "Unlocked!") : tr("مكافأة السلة الكبيرة", "Big-basket reward"), title: tr("منتجات بسعر رمزي", "Items at a token price"),
+      sub: t.unlocked ? tr("ضيف اللي تبغاه", "Add what you like") : tr("تنفتح لطلبك فوق ", "Unlocks over ") + rial(DEAL.min), go: tr("شوف المنتجات", "See items"), ids: pk("deals", idsOf(deals)), price: num(DEAL.price) }, E.deals);
+    if (bakery) B.bakery = banHTML("bakery", { tag: "button", style: "shelf", act: 'data-opencat="' + bakery.id + '"', k: tr("من فرن ", "From the oven of ") + esc(sv("name")), title: tr("الخبز طالع<br>من الفرن", "Fresh bread<br>from the oven"),
+      go: tr("اطلبه حار", "Order it hot"), ids: pk("bakery", idsOf(D.products.filter(function(p){ return p.cat === bakery.id && avail(p) && isPhoto(p.img) && D.imgs[p.img]; }))), chip: tr("يوصلك حار", "Arrives hot") }, E.bakery);
+    if (offers.length) B.offers = banHTML("offers", { tag: "button", style: "glass", act: 'data-chip="offers"', k: tr("عروض الأسبوع", "Weekly offers"), title: tr("خصومات على<br>", "Discounts on<br>") + num(offers.length) + tr(" منتج", " items"),
+      go: tr("تسوّق العروض", "Shop offers"), ids: pk("offers", idsOf(offers)), chip: '<small>' + tr("خصم لين", "Up to") + '</small><b>' + num(maxOff) + tr("٪", "% off") + '</b>' }, E.offers);
     var list = orderOf(S.promos, promoDefs()).filter(function(x){ return x.on && B[x.id]; }).map(function(x){ return B[x.id]; });
     if (!list.length) return "";
     return '<div class="kq-bans" id="kqBans">' + list.join("") + '</div><div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
@@ -1585,7 +1726,11 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var h = head + '<div style="display:grid;gap:12px;margin-top:16px">';
     if (S.freeOver) h += '<div class="darkbar"><div class="r"><span style="display:flex;gap:8px;align-items:center">' + ic("truck") + (t.fee ? tr('باقي ', 'Add ') + rial(S.freeOver - t.s) + tr(' وتوصيلك مجاني', ' more for free delivery') : tr('توصيلك مجاني', 'Free delivery unlocked')) + '</span><span>' + num(t.s) + ' / ' + num(S.freeOver) + '</span></div><div class="meter"><i style="width:' + Math.min(100, t.s / S.freeOver * 100) + '%"></i></div></div>';
     if (dealOn() && dealsList().length) h += '<div class="box lockbox' + (t.unlocked ? ' on' : '') + '"><span class="ic">' + ic(t.unlocked ? "unlock" : "lock") + '</span><span class="t"><div><b>' + (t.unlocked ? tr('عروض ', '') + num(DEAL.price) + tr(' ر.س مفتوحة لك', ' SAR offers unlocked') : tr('باقي ', 'Add ') + rial(t.left) + tr(' وتفتح عروض ', ' more to unlock items for ') + num(DEAL.price) + tr(' ر.س', ' SAR')) + '</b></div>' + (t.unlocked ? '' : '<div class="meter"><i style="width:' + Math.min(100, t.base / Number(DEAL.min || 1) * 100) + '%"></i></div>') + '</span></div>';
-    h += '<div class="lines">' + Object.keys(cart).map(function(k){ var L = lineOf(k); if (!L) return ""; var p = L.p, off = L.kind === "d" && !t.unlocked, full = L.limit && cart[k] >= L.limit;
+    var bseen = {};
+    h += '<div class="lines">' + Object.keys(cart).map(function(k){ var L = lineOf(k); if (!L) return "";
+      if (L.kind === "x") { if (bseen[L.ban]) return ""; bseen[L.ban] = 1; var bb = banOf(L.ban), al = bundleAlloc(bb), bq2 = cart[k];
+        return '<div class="line bund"><span class="plate bimgs">' + al.ids.slice(0, 3).map(function(id){ var bp = byId(id); return bp ? imgTag(bp.img, "") : ''; }).join("") + '</span><span class="nm"><b>' + esc((LANG === "en" && bb.title_en) || bb.title || tr("باقة", "Bundle")) + '<span class="ltag day">' + tr("باقة", "Bundle") + '</span></b><span>' + al.ids.map(function(id){ var bp = byId(id); return bp ? esc(nm(bp)) : ''; }).join(" + ") + '</span><span class="price sale" style="font-size:14px">' + rial(al.price * bq2) + ' <s style="color:var(--muted);font-weight:400;font-size:12px">' + rial(al.sum * bq2) + '</s></span></span>' +
+          '<span class="stepper"><button type="button" data-bund="' + esc(L.ban) + '" data-bd="-1" aria-label="' + tr("نقص", "Decrease") + '">' + ic("minus") + '</button><b>' + bq2 + '</b><button type="button" data-bund="' + esc(L.ban) + '" data-bd="1" aria-label="' + tr("زيادة", "Increase") + '">' + ic("plus") + '</button></span></div>'; } var p = L.p, off = L.kind === "d" && !t.unlocked, full = L.limit && cart[k] >= L.limit;
       var tag = L.kind === "d" ? tr('<span class="ltag deal">عرض ', '<span class="ltag deal">') + num(L.price) + '</span>' : L.kind === "t" ? tr('<span class="ltag day">عرض اليوم</span>', '<span class="ltag day">Deal of the day</span>') : '';
       return '<div class="line' + (off ? ' off' : '') + '"><span class="plate" style="background:' + tint(p.cat) + '">' + imgTag(p.img, "") + '</span><span class="nm"><b>' + esc(nm(p)) + tag + '</b><span>' + esc(un(p)) + '</span><span class="price' + (L.kind !== "r" ? ' sale' : '') + '" style="font-size:14px">' + (off ? tr('مقفول', 'Locked') : rial(L.price * cart[k])) + '</span></span>' +
         '<span class="stepper"><button type="button" data-act="dec" data-id="' + k + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button><b>' + cart[k] + '</b><button type="button" data-act="inc" data-id="' + k + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full || off ? ' disabled' : '') + '>' + ic("plus") + '</button></span></div>'; }).join("") + '</div>';
@@ -1653,7 +1798,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var noNav = screen === "product" || screen === "checkout" || screen === "sent" || screen === "cart";
     document.body.style.paddingBottom = noNav ? "0" : ""; document.body.setAttribute("data-screen", screen);
     app.innerHTML = h + (noNav ? "" : navBar());
-    if (screen === "home") { timers.push(setInterval(function(){ var el = $("cd"); if (el) el.textContent = countdown(); }, 1000)); kqBanners(); kqPlaceholder(); }
+    if (screen === "home") { timers.push(setInterval(function(){ var el = $("cd"); if (el) el.textContent = countdown(); }, 1000)); kqBanners(); kqPlaceholder(); applyCuts($("kqBans")); }
     if (screen === "search") { renderSearch(); var qi = $("q"); qi.focus(); qi.addEventListener("input", function(){ q = this.value.trim(); renderSearch(); }); qi.addEventListener("change", function(){ var v = this.value.trim(); if (v) { recent = [v].concat(recent.filter(function(r){ return r !== v; })).slice(0, 8); try { localStorage.setItem("ohod-recent", JSON.stringify(recent)); } catch(e){} } }); }
     if (screen === "checkout") initCheckout();
     if ($("toAdmin")) $("toAdmin").addEventListener("click", function(){ if (canEdit) go("admin"); else openPin(); });
@@ -1778,6 +1923,11 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var lb = e.target.closest("[data-lang]"); if (lb) { setLang(lb.dataset.lang); return; }
     if (mode !== "store") return;
     var t;
+    if ((t = e.target.closest("[data-addbund]")) || (t = e.target.closest("[data-bund]"))) {
+      var bid = t.dataset.addbund || t.dataset.bund, d = t.dataset.addbund ? 1 : Number(t.dataset.bd), al = bundleAlloc(banOf(bid)); if (!al) return;
+      if (d > 0 && al.ids.some(function(id){ return !avail(byId(id)); })) { sToast(tr("فيه منتج من الباقة خلص", "An item in this bundle is out of stock")); return; }
+      al.ids.forEach(function(id){ var k = "x:" + bid + ":" + id, n = (cart[k] || 0) + d; if (n <= 0) delete cart[k]; else cart[k] = n; if (d > 0) evAdd("c", id); });
+      saveCart(); refresh(); if (t.dataset.addbund) sToast(tr("انضافت الباقة للسلة", "Bundle added to cart")); return; }
     if ((t = e.target.closest("[data-act]"))) {
       var id = t.dataset.id, inc = t.dataset.act !== "dec", L0 = lineOf(id), n = (cart[id] || 0) + (inc ? 1 : -1);
       if (!L0 || (inc && L0.limit && n > L0.limit) || (inc && L0.kind === "d" && !totals().unlocked)) return;
@@ -2658,7 +2808,17 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var f = function(k, label, ph, dir){ return '<label>' + label + '<input data-be="' + id + ':' + k + '" value="' + esc(o[k] || "") + '" placeholder="' + esc(ph || "") + '"' + (dir ? ' dir="' + dir + '"' : '') + '></label>'; };
     var chk = function(k, label){ return '<label class="chk"><input type="checkbox" data-be="' + id + ':' + k + '"' + (o[k] ? ' checked' : '') + '>' + label + '</label>'; };
     var hasImg = o.img && draft.imgs[o.img], col = o.color || "";
+    var STY = [["night","ليلي (عرض اليوم)"],["shelf","رف (مقاضي)"],["calm","هادي (منتج واحد)"],["split","نص ونص (سعر بارز)"],["glass","ناعم (زجاج)"]].concat(custom ? [["bundle","باقة بسعر واحد"]] : []);
+    var cur = o.style || (custom ? ((o.ids || []).length === 1 ? "calm" : "shelf") : { daily: "night", deals: "split", bakery: "shelf", offers: "glass" }[id]);
+    var bsum = 0, bcost = 0, bok = true; if (custom && cur === "bundle") (o.ids || []).slice(0, 4).forEach(function(pid){ var p = dById(pid); if (!p) { bok = false; return; } bsum += Number(p.price); var c = costOf(pid); if (c == null) bok = false; else bcost += c; });
+    var bp = Number(o.bprice) || 0;
     return '<details class="bed" data-bed="' + id + '"' + (banOpen[id] ? ' open' : '') + '><summary data-bedsum="' + id + '">' + ic("palette") + 'صمّم البنر على كيفك</summary><div class="bed-in">' +
+      '<div class="bed-sec"><b>الشكل</b><div class="pays seg mini">' + STY.map(function(x){ return '<button type="button" data-bestyle="' + id + ':' + x[0] + '" aria-pressed="' + (cur === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div>' +
+        (custom && cur === "bundle" ? '<div class="fields"><label>سعر الباقة (ريال)<input type="number" min="0" step="0.5" inputmode="decimal" data-be="' + id + ':bprice" value="' + esc(o.bprice || "") + '" placeholder="أقل من ' + num(Math.round(bsum * 100) / 100) + '"></label></div>' +
+          '<p class="hint">اختر من ٢ إلى ٤ منتجات للباقة. المنتجات منفصلة بـ ' + num(Math.round(bsum * 100) / 100) + ' ريال. السعر يتطبّق فعليًا في السلة لما الزبون يضغط «أضف الباقة».</p>' +
+          (bp && bp >= bsum ? '<p class="sg-marg bad">سعر الباقة لازم يكون أقل من مجموع المنتجات (' + num(Math.round(bsum * 100) / 100) + ' ريال)، وإلا ما تطلع كباقة.</p>' : '') +
+          ((o.ids || []).length < 2 ? '<p class="sg-marg mid">اختر منتجين على الأقل من «منتجات البنر».</p>' : '') +
+          (bp && bp < bsum && bok && bcost ? '<p class="sg-marg ' + (bp < bcost ? 'bad' : (bp - bcost) / bp < 0.1 ? 'mid' : 'good') + '">' + (bp < bcost ? 'انتبه: سعر الباقة تحت التكلفة (' + num(Math.round(bcost * 100) / 100) + ' ريال)، تخسر في كل باقة.' : 'ربحك في كل باقة ' + num(Math.round((bp - bcost) * 100) / 100) + ' ريال (' + Math.round((bp - bcost) / bp * 100) + '٪).') + '</p>' : (bp ? '<p class="hint">حط «سعر الشراء» لمنتجات الباقة عشان يطلع ربحك.</p>' : '')) : '') + '</div>' +
       '<div class="bed-sec"><b>الكلام</b><div class="fields">' + f("title", "العنوان", custom ? "" : "الافتراضي") + f("sub", "الوصف تحت", custom ? "مثال: خصومات على الألبان" : "الافتراضي") + f("k", "سطر صغير فوق", custom ? "مثال: لفترة محدودة" : "الافتراضي") + f("go", "نص الزر", custom ? "تسوّق الحين" : "الافتراضي") + '</div>' +
         '<details class="bed-en"><summary>بالإنجليزي (اختياري)</summary><div class="fields">' + f("title_en", "Title", "", "ltr") + f("sub_en", "Subtitle", "", "ltr") + f("k_en", "Small line", "", "ltr") + f("go_en", "Button", "", "ltr") + '</div></details>' +
         '<div class="chks">' + chk("noGo", "بدون زر") + chk("dark", "كتابة غامقة (للألوان الفاتحة)") + '</div></div>' +
@@ -2680,7 +2840,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var st = draft.store; st.banPicks = st.banPicks || {}; st.bans = st.bans || []; st.banEdit = st.banEdit || {}; st.forYou = (st.forYou || []).filter(function(id){ return dById(id); });
     var saved = S, savedImgs = D.imgs; S = st; D.imgs = draft.imgs; var prev = {};
     try { var tmp = document.createElement("div"); tmp.innerHTML = banners(); Array.prototype.forEach.call(tmp.querySelectorAll(".kq-ban"), function(b){ prev[b.dataset.bid] = b.outerHTML; }); } catch(e){}
-    S = saved; D.imgs = savedImgs;
+    S = saved; D.imgs = savedImgs; setTimeout(function(){ var bx = $("aBans"); if (bx) { var sv2 = D.imgs; D.imgs = draft.imgs; applyCuts(bx); D.imgs = sv2; } }, 0);
     box.innerHTML = '<div class="card"><h2>بنرات العروض</h2><p class="hint">كل بنر تقدر تغيّر كلامه ولونه وصوره، أو ترفع له تصميم جاهز. التغيير يبان في المعاينة على طول. ترتيب البنرات وإخفاؤها من «ترتيب الواجهة».</p><div class="alist">' +
         PROMO_DEF.map(function(id){ var o = st.banEdit[id] || {};
           return '<div class="banrow"><div class="ban-prev">' + (prev[id] || '<div class="ban-off">البنر مو ظاهر الحين (العرض مو مفعّل)</div>') + '</div><div class="ban-side"><b>' + PROMO_LABEL[id] + '</b>' + thumbs(st.banPicks[id], "الصور تلقائية") + banEditor(id, o, false) + '</div></div>'; }).join("") + '</div></div>' +
@@ -2696,6 +2856,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var k = e.target.dataset.be.split(":"), o = beObj(k[0]), f = k[1], t = e.target;
     if (t.type === "checkbox") { if (t.checked) o[f] = true; else delete o[f]; }
     else if (f === "picsN") { if (Number(t.value) === 3) delete o.picsN; else o.picsN = Number(t.value); }
+    else if (f === "bprice") { var bv = Number(t.value); if (bv > 0) o.bprice = Math.round(bv * 100) / 100; else delete o.bprice; }
     else if (t.value.trim()) o[f] = t.value; else if (f !== "title" || !o.ids) delete o[f]; else o[f] = "";
     markDirty();
     if (e.type === "change" || t.type === "color") { var y = window.scrollY; renderBans(); window.scrollTo(0, y); }
@@ -2706,6 +2867,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if (mode !== "admin" || !draft) return;
     var t, st = draft.store;
     if ((t = e.target.closest("[data-banpick]"))) { var id = t.dataset.banpick; ppOpen("صور بنر: " + PROMO_LABEL[id], "أول ٣ منتجات تطلع صورها داخل البنر (المنتجات اللي لها صورة حقيقية بس).", st.banPicks[id] || [], function(ids){ if (ids.length) st.banPicks[id] = ids; else delete st.banPicks[id]; renderBans(); }); return; }
+    if ((t = e.target.closest("[data-bestyle]"))) { var ks = t.dataset.bestyle.split(":"), os = beObj(ks[0]); os.style = ks[1]; markDirty(); var ys = window.scrollY; renderBans(); window.scrollTo(0, ys); return; }
     if ((t = e.target.closest("[data-bedsum]"))) { var bd = t.parentNode; banOpen[t.dataset.bedsum] = !bd.open; return; }
     if ((t = e.target.closest("[data-becolor]"))) { var kc2 = t.dataset.becolor.split(":"), ob = beObj(kc2[0]); if (kc2[1]) ob.color = kc2[1]; else { delete ob.color; delete ob.color2; } markDirty(); var y1 = window.scrollY; renderBans(); window.scrollTo(0, y1); return; }
     if ((t = e.target.closest("[data-begrad]"))) { var og = beObj(t.dataset.begrad); if (og.color2) delete og.color2; else { og.color2 = "#FFD84D"; if (!og.color) og.color = "#E8394F"; } markDirty(); var y2 = window.scrollY; renderBans(); window.scrollTo(0, y2); return; }

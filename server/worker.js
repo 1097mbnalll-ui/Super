@@ -627,11 +627,20 @@ function priceOrder(data, body) {
   const lines = [];
   let base = 0, dealSum = 0, count = 0;
   const dealLines = [];
-  const used = {};
+  const used = {}, bund = {};
   for (const [key, rawQty] of Object.entries(items)) {
     let qty = Math.floor(Number(rawQty));
     if (!(qty > 0 && qty <= 200)) continue;
     const parts = String(key).split(":");
+    // باقة: x:<رقم البنر>:<المنتج>. سعرها من بيانات المتجر، مو من الجوال
+    if (parts[0] === "x" && parts.length === 3) {
+      const ban = (S.bans || []).find((b) => b.id === parts[1]), bp = byId[parts[2]];
+      if (!bp || !bp.stock) return { error: "unavailable", id: key };
+      const al = ban && bundleAlloc(ban, byId);
+      if (!al || al.alloc[bp.id] == null) continue;
+      (bund[ban.id] || (bund[ban.id] = { al, q: {} })).q[bp.id] = qty;
+      continue;
+    }
     const kind = parts.length > 1 ? parts[0] : "r";
     const p = byId[parts.length > 1 ? parts[1] : parts[0]];
     if (!p || !p.stock) return { error: "unavailable", id: key };
@@ -650,6 +659,16 @@ function priceOrder(data, body) {
       dealLines.push({ p, qty: q, price: Number(DEAL.price || 0.95), tag: "عرض " + DEAL.price });
     } else {
       lines.push({ p, qty, price: Number(p.price), tag: "" }); base += qty * p.price; count += qty;
+    }
+  }
+  // الباقات: عدد الباقات الكاملة بسعر الباقة، والزايد بالسعر العادي
+  for (const { al, q } of Object.values(bund)) {
+    const n = Math.min(...al.ids.map((id) => q[id] || 0));
+    for (const id of al.ids) {
+      const p = byId[id];
+      if (n > 0) { lines.push({ p, qty: n, price: al.alloc[id], tag: "باقة" }); base += n * al.alloc[id]; count += n; }
+      const extra = (q[id] || 0) - n;
+      if (extra > 0) { lines.push({ p, qty: extra, price: Number(p.price), tag: "" }); base += extra * p.price; count += extra; }
     }
   }
   if (DEAL && base >= Number(DEAL.min || 0)) for (const d of dealLines) { lines.push(d); dealSum += d.qty * d.price; count += d.qty; }
@@ -1258,4 +1277,19 @@ async function dailyReport(env) {
   const chat = env.TELEGRAM_BOT_TOKEN && env.LOCKS ? await env.LOCKS.get("tg_chat") : null;
   if (chat) await tgSend(env, chat, "📊 <b>" + esc(msg.title) + "</b>\n" + lines.map(esc).join("\n"));
   return msg;
+}
+
+// يوزّع سعر الباقة على منتجاتها بنسبة أسعارها (نفس الحساب في المتجر بالضبط)
+function bundleAlloc(b, byId) {
+  if (!b || b.style !== "bundle") return null;
+  const ids = [...new Set((b.ids || []).filter(Boolean))].slice(0, 4);
+  if (ids.length < 2) return null;
+  const ps = ids.map((id) => byId[id]);
+  if (ps.some((p) => !p || !p.stock)) return null;
+  const sum = Math.round(ps.reduce((a, p) => a + Number(p.price), 0) * 100) / 100, bp = Number(b.bprice);
+  if (!(bp > 0 && bp < sum)) return null;
+  const alloc = {}; let acc = 0;
+  ps.forEach((p, i) => { if (i < ps.length - 1) { const v = Math.round(Number(p.price) * bp / sum * 100) / 100; alloc[p.id] = v; acc += v; } });
+  alloc[ps[ps.length - 1].id] = Math.round((bp - acc) * 100) / 100;
+  return { ids, alloc, sum, price: bp };
 }
