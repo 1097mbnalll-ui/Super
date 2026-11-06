@@ -854,6 +854,8 @@ button.stat:hover{border-color:var(--teal)}
 [dir="ltr"] .sg-scale>.sg{transform-origin:top left}
 @media (max-width:980px){.sign-wrap{grid-template-columns:1fr}.sign-prev{position:static}}
 
+.adm-dmap{height:260px;border-radius:16px;overflow:hidden;margin-top:10px}
+
 @media (min-width:700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* ---------- kiu-style experience ---------- */
 body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{background:#fff}
@@ -1148,6 +1150,22 @@ body[data-screen="driver"]{background:#F3F4F6}
 .dv-cash .lbl{padding:10px 0 4px;font-size:13px}
 .dv-toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:40;background:#13213C;color:#fff;border-radius:14px;padding:12px 16px;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:90vw}
 .dv-toast.bad{background:#B91C1C}
+.dv-geo{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:10px;margin:0;padding:10px 16px;background:#EEF2F7;color:#13213C;border-bottom:1px solid #E3E6EB;font-size:12.5px}
+.dv-geo>i{flex:none;width:10px;height:10px;border-radius:50%;background:#94A3B8}
+.dv-geo>span{flex:1;display:grid;gap:1px;min-width:0}.dv-geo b{font-size:13.5px}.dv-geo>span>span{color:#5B6475}
+.dv-geo button{flex:none;border:0;border-radius:12px;padding:9px 12px;font:inherit;font-weight:700;background:#13213C;color:#fff;cursor:pointer}
+.dv-geo.ok{background:#E7F7EF}.dv-geo.ok>i{background:#16A34A;box-shadow:0 0 0 0 rgba(22,163,74,.5);animation:geoPing 1.6s infinite}
+.dv-geo.bad{background:#FDECEC}.dv-geo.bad>i{background:#DC2626}.dv-geo.mid{background:#FFF5E6}.dv-geo.mid>i{background:#F59E0B}
+@keyframes geoPing{70%{box-shadow:0 0 0 9px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}
+.sent .trk{border-radius:20px;overflow:hidden;background:rgba(255,255,255,.06)}
+.sent .trk-map{height:230px;background:#1d2b44}
+.sent .trk-info{display:grid;gap:3px;padding:12px 14px}.sent .trk-info b{font-family:var(--display);font-size:16px;color:#fff}
+.sent .trk-info span{font-size:12px;color:#8FB0A7;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.sent .trk-info .lv{width:8px;height:8px;border-radius:50%;background:#94A3B8;display:inline-block}.sent .trk-info .lv.on{background:#22C55E;animation:geoPing 1.6s infinite}
+.trk-pin{display:grid;place-items:center;border-radius:50%;box-shadow:0 6px 16px rgba(0,0,0,.3);border:3px solid #fff}
+.trk-pin svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2}
+.trk-pin.car{background:#F26B1D;transition:none}.trk-pin.home{background:#13213C}
+@media (prefers-reduced-motion:reduce){.dv-geo.ok>i,.sent .trk-info .lv.on{animation:none}}
 .kq-badge svg.i{width:12px;height:12px}
 .pays.subs{grid-template-columns:repeat(3,minmax(0,1fr))}
 .pays.subs button{font-size:12.5px;padding:0 6px}
@@ -1505,9 +1523,51 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var tick = function(){
       if (screen !== "sent" || mode !== "store") return clearInterval(trackTimer);
       fetch(String(S.api).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: lastOrder.no, phone: lastOrder.phone }) })
-        .then(function(r){ return r.json(); }).then(function(j){ if (j.ok && j.status !== lastOrder.status) { lastOrder.status = j.status; saveLast(); if (screen === "sent") render(); } }).catch(function(){});
+        .then(function(r){ return r.json(); }).then(function(j){ if (!j.ok) return; lastOrder.drv = j.driver || null;
+          if (j.status !== lastOrder.status) { lastOrder.status = j.status; saveLast(); if (screen === "sent") render(); } else trkUpdate(); }).catch(function(){});
     };
-    tick(); trackTimer = setInterval(tick, 15000);
+    var every = lastOrder.status === "onway" ? 4000 : 15000;
+    tick(); trackTimer = setInterval(function(){ tick(); var want = lastOrder.status === "onway" ? 4000 : 15000; if (want !== every) trackPoll(); }, every);
+  }
+
+  /* ----- الزبون يتابع المندوب على الخريطة لحظة بلحظة ----- */
+  var trk = { map: null, car: null, home: null, from: null, to: null, t0: 0, raf: 0, fit: false };
+  function trkInfo(){
+    var d = lastOrder && lastOrder.drv;
+    if (!d) return '<b>' + tr("المندوب طلع بطلبك", "The driver is on the way") + '</b><span>' + tr("ننتظر موقعه يوصلنا…", "Waiting for the driver’s location…") + '</span>';
+    var ago = Math.max(0, Math.round((Date.now() - d.at) / 1000));
+    var when = ago < 20 ? tr("مباشر", "Live") : ago < 60 ? tr("قبل ", "") + ago + tr(" ثانية", "s ago") : tr("قبل ", "") + Math.round(ago / 60) + tr(" دقيقة", " min ago");
+    var head = d.near ? tr("المندوب قريب منك، جهّز نفسك", "The driver is close, get ready") : d.eta ? tr("يوصلك تقريباً خلال ", "Arriving in about ") + num(d.eta) + tr(d.eta > 10 ? " دقيقة" : " دقايق", " min") : tr("المندوب في الطريق", "The driver is on the way");
+    var sub = (d.m != null ? (d.m >= 1000 ? String(Math.round(d.m / 100) / 10) + tr(" كم", " km") : num(Math.round(d.m / 10) * 10) + tr(" متر", " m")) + tr(" عنك", " away") : "") +
+      (d.before ? ' · ' + tr("قبلك ", "") + num(d.before) + tr(d.before > 1 ? " توصيلات" : " توصيلة", d.before > 1 ? " stops before you" : " stop before you") : "");
+    return '<b>' + head + '</b><span>' + (sub ? sub + ' · ' : '') + '<i class="lv' + (ago < 20 ? ' on' : '') + '"></i>' + when + '</span>';
+  }
+  function trkIcon(cls, svg){ return L.divIcon({ className: "trk-pin " + cls, html: svg, iconSize: [40, 40], iconAnchor: [20, 20] }); }
+  function trkMapInit(){
+    trk.map = null; trk.car = null; cancelAnimationFrame(trk.raf);
+    if (!$("trkMap")) return;
+    loadLeaflet(function(){
+      var el = $("trkMap"); if (!el || el._leaflet_id) return;
+      var o = lastOrder || {}, home = o.lat ? [o.lat, o.lng] : (form.lat ? [form.lat, form.lng] : (S.mapCenter || DEFAULT_CENTER));
+      trk.map = L.map(el, { zoomControl: false, attributionControl: true }).setView(home, 15);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(trk.map);
+      trk.home = L.marker(home, { icon: trkIcon("home", ic("home")), keyboard: false }).addTo(trk.map);
+      trk.fit = false; trkUpdate();
+    });
+  }
+  function trkUpdate(){
+    var inf = $("trkInfo"); if (inf) inf.innerHTML = trkInfo();
+    var d = lastOrder && lastOrder.drv; if (!trk.map || !d || !window.L) return;
+    var to = L.latLng(d.lat, d.lng);
+    if (!trk.car) { trk.car = L.marker(to, { icon: trkIcon("car", ic("truck")), keyboard: false, zIndexOffset: 500 }).addTo(trk.map); trk.from = to; }
+    else { trk.from = trk.car.getLatLng(); }
+    trk.to = to; trk.t0 = performance.now(); cancelAnimationFrame(trk.raf);
+    var step = function(now){ var k = Math.min(1, (now - trk.t0) / 3600), e = k * (2 - k);
+      trk.car.setLatLng([trk.from.lat + (trk.to.lat - trk.from.lat) * e, trk.from.lng + (trk.to.lng - trk.from.lng) * e]);
+      if (k < 1) trk.raf = requestAnimationFrame(step); };
+    trk.raf = requestAnimationFrame(step);
+    if (!trk.fit) { trk.fit = true; trk.map.fitBounds(L.latLngBounds([to, trk.home.getLatLng()]).pad(0.35), { maxZoom: 17 }); }
+    else if (!trk.map.getBounds().pad(-0.1).contains(to)) trk.map.panTo(to);
   }
 
   function navBar(){
@@ -1765,6 +1825,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       (o.status === "delivered" ? tr('<p>وصل طلبك. بالعافية عليك!</p>', '<p>Your order has been delivered. Enjoy!</p>') : o.status === "onway" ? tr('<p>المندوب في الطريق لموقعك الحين.</p>', '<p>The driver is on the way to you now.</p>') : tr('<p>بنتصل عليك على <b dir="ltr" style="color:#fff">', '<p>We will call you at <b dir="ltr" style="color:#fff">') + esc(o.phone || "") + tr('</b> لو احتجنا،<br>والمندوب يجيك على الموقع اللي حددته.</p>', '</b> if needed,<br>and the driver will come to the location you picked.</p>')) +
       tr('<div class="card"><div class="r"><span>رقم الطلب</span><b dir="ltr">', '<div class="card"><div class="r"><span>Order number</span><b dir="ltr">') + esc(o.no || "") + '</b></div>' +
       stepsHTML(o.status || "new") +
+      (o.status === "onway" && o.track && apiUrl() ? '<div class="trk"><div class="trk-map" id="trkMap"></div><div class="trk-info" id="trkInfo">' + trkInfo() + '</div></div>' : '') +
       (o.track && apiUrl() && o.status !== "delivered" && o.status !== "canceled" ? (o.push ? '<div class="r push-on">' + ic("bell") + '<span>' + tr("بيوصلك إشعار مع كل تغيير في حالة طلبك", "You will get a notification for every status change") + '</span></div>' :
         '<button class="btn btn-ghost pushbtn" type="button" id="pushMe">' + ic("bell") + '<span>' + tr("نبّهني لما تتغير حالة طلبي", "Notify me about my order") + '</span></button><p class="pushmsg" id="pushMsg"' + (pushWhy() && (isIOS() && !isApp()) ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</p>') : '') +
       tr('<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>الإجمالي · ', '<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>Total · ') + (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + tr(' عند الاستلام</span><b>', ' on delivery</span><b>') + rial(o.total || 0) + '</b></div></div>' +
@@ -1803,7 +1864,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if (screen === "checkout") initCheckout();
     if ($("toAdmin")) $("toAdmin").addEventListener("click", function(){ if (canEdit) go("admin"); else openPin(); });
     if ($("toDriver")) $("toDriver").addEventListener("click", openDriver);
-    if (screen === "sent") { trackPoll(); if ($("pushMe")) $("pushMe").addEventListener("click", function(){ orderPush(this); }); }
+    if (screen === "sent") { trkMapInit(); trackPoll(); if ($("pushMe")) $("pushMe").addEventListener("click", function(){ orderPush(this); }); }
     if ($("pushPref")) $("pushPref").addEventListener("click", function(){ var b = this, m = $("pushPrefMsg"); b.disabled = true;
       pushSub().then(function(){ b.disabled = false; render(); }).catch(function(e){ b.disabled = false; m.hidden = false; m.textContent = pushErrText(e); }); });
     if ($("emptyCart")) $("emptyCart").addEventListener("click", function(){ if (this.dataset.c !== "1") { this.dataset.c = "1"; this.style.background = "var(--sale)"; this.style.color = "#fff"; return; } cart = {}; saveCart(); render(); });
@@ -1837,11 +1898,14 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   /* ---------- checkout: map + send ---------- */
   var map = null;
   var DEFAULT_CENTER = [24.8414, 46.8299];
+  var LQ = null;
   function loadLeaflet(cb){
     if (window.L) return cb();
+    if (LQ) { LQ.push(cb); return; }
+    LQ = [cb];
     var css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(css);
-    var s = document.createElement("script"); s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; s.onload = cb;
-    s.onerror = function(){ var n = $("mapNote"); if (n) n.textContent = tr("ما قدرنا نحمّل الخريطة. اضغط «موقعي الحالي» أو تأكد من النت.", "We could not load the map. Tap Use my location or check your connection."); };
+    var s = document.createElement("script"); s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; s.onload = function(){ var q = LQ; LQ = null; q.forEach(function(f){ try { f(); } catch(e){} }); };
+    s.onerror = function(){ LQ = null; css.remove(); s.remove(); var n = $("mapNote"); if (n) n.textContent = tr("ما قدرنا نحمّل الخريطة. اضغط «موقعي الحالي» أو تأكد من النت.", "We could not load the map. Tap Use my location or check your connection."); };
     document.head.appendChild(s);
   }
   function setLoc(lat, lng){
@@ -1900,7 +1964,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       .then(function(j){
         btn.disabled = false; btn.firstChild.textContent = tr("أرسل الطلب", "Place order");
         if (j.ok) {
-          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: form.pay, at: Date.now(), status: "new", track: !!j.track }; saveLast();
+          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: form.pay, at: Date.now(), status: "new", track: !!j.track, lat: form.lat, lng: form.lng }; saveLast();
           if (j.track && PUSH_PREF && pushOn()) orderPush(null);
           Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           cart = {}; saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; render(); window.scrollTo(0, 0); return;
@@ -2036,7 +2100,70 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       });
     });
   }
-  function leaveDriver(){ appManifest(false); clearInterval(drv.timer); drv.timer = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} document.title = tr("متاجر أحد", "Matajer Ohod"); go("store"); }
+  /* ----- تتبع المندوب: موقعه يتشارك بس وفيه طلب «في الطريق»، وينقطع أول ما يخلص ----- */
+  var geo = { watch: null, pos: null, sentAt: 0, sentPos: null, st: "", wake: null, admin: false, share: false, busy: false };
+  function geoMeters(a, b){ var r = Math.PI / 180, x = (b.lng - a.lng) * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r; return Math.sqrt(x * x + y * y) * 6371000; }
+  function geoNeed(){ return mode === "driver" && !!drv.pin && drvGroups().way.length > 0 && (!geo.admin || geo.share); }
+  function geoSync(){
+    if (geoNeed()) { if (geo.watch == null && geo.st !== "denied" && geo.st !== "nosupport") geoStart(); else geoSend(false); }
+    else if (geo.watch != null || geo.sentAt) geoStop(true);
+    geoBar();
+  }
+  function geoWake(){ try { if (navigator.wakeLock && !geo.wake && geo.watch != null && !document.hidden) navigator.wakeLock.request("screen").then(function(l){ geo.wake = l; l.addEventListener("release", function(){ geo.wake = null; }); }).catch(function(){}); } catch(e){} }
+  function geoStart(){
+    if (!navigator.geolocation) { geo.st = "nosupport"; return; }
+    geo.st = "wait";
+    geo.watch = navigator.geolocation.watchPosition(function(p){
+      geo.pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 0 };
+      if (geo.st !== "on") { geo.st = "on"; geoBar(); }
+      geoSend(false);
+    }, function(err){
+      if (err && err.code === 1) { geoStop(false); geo.st = "denied"; } else if (geo.st !== "on") geo.st = "weak";
+      geoBar();
+    }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+    geoWake();
+  }
+  // يرسل كل ٤ ثواني وهو يتحرك، وكل ١٥ ثانية لو واقف
+  function geoSend(force){
+    if (!geo.pos || geo.busy || !geoNeed()) return;
+    var now = Date.now(), moved = geo.sentPos ? geoMeters(geo.sentPos, geo.pos) : 1e9, gap = now - geo.sentAt;
+    if (!force && !(gap >= 15000 || (gap >= 4000 && moved >= 8))) return;
+    geo.busy = true; var p = geo.pos;
+    api("/driver/loc", { pin: drv.pin, lat: p.lat, lng: p.lng, acc: p.acc, share: geo.share }).then(function(j){
+      geo.busy = false;
+      if (!j.ok) return;
+      if (j.skipped === "admin") { geo.admin = true; geoStop(false); geoBar(); return; }
+      geo.sentAt = now; geo.sentPos = p;
+      if (j.near && j.near.length) dToast(tr("وصل للزبون تنبيه إنك قريب منه ", "The customer was told you are close ") + j.near.join(" "));
+    });
+  }
+  function geoStop(sendOff){
+    if (geo.watch != null) try { navigator.geolocation.clearWatch(geo.watch); } catch(e){}
+    geo.watch = null; geo.pos = null; geo.sentPos = null;
+    try { if (geo.wake) geo.wake.release(); } catch(e){} geo.wake = null;
+    if (sendOff && geo.sentAt && drv.pin) api("/driver/loc-off", { pin: drv.pin });
+    geo.sentAt = 0; if (geo.st !== "denied" && geo.st !== "nosupport") geo.st = "";
+  }
+  function geoBar(){
+    var old = $("dvGeo"); if (old) old.remove();
+    var box = $("dv"); if (mode !== "driver" || !box || !box.firstElementChild || !drvGroups().way.length) return;
+    var h, cls = "", btn = "";
+    if (geo.admin && !geo.share) { cls = "mid"; h = [tr("داخل برقم الإدارة، فموقعك ما يتشارك", "Signed in as admin, your location is not shared"), tr("لو أنت اللي توصّل الحين، شاركه عشان الزبون يتابعك", "If you are delivering now, share it so the customer can follow")]; btn = '<button type="button" data-geoshare>' + tr("شارك موقعي", "Share my location") + '</button>'; }
+    else if (geo.st === "on") { cls = "ok"; h = [tr("الزبون يشوفك على الخريطة الحين", "The customer can see you on the map"), tr("خلّ الصفحة مفتوحة لين توصّل", "Keep this page open until you deliver")]; }
+    else if (geo.st === "denied") { cls = "bad"; h = [tr("الزبون ما يشوف وين أنت", "The customer cannot see where you are"), tr("اسمح بالموقع للمتصفح من إعدادات الجوال، وبعدها اضغط «جرّب»", "Allow location for the browser in your phone settings, then tap Retry")]; btn = '<button type="button" data-georetry>' + tr("جرّب", "Retry") + '</button>'; }
+    else if (geo.st === "nosupport") { cls = "bad"; h = [tr("جوالك ما يدعم مشاركة الموقع", "Your phone does not support location sharing"), tr("الزبون يشوف حالة الطلب بس", "The customer only sees the order status")]; }
+    else if (geo.st === "weak") { cls = "mid"; h = [tr("إشارة الموقع ضعيفة", "Weak location signal"), tr("نحاول نحدد مكانك…", "Trying to find you…")]; }
+    else { h = [tr("جاري تحديد موقعك…", "Finding your location…"), tr("اسمح بالموقع لو طلب منك الجوال", "Allow location if your phone asks")]; }
+    box.firstElementChild.insertAdjacentHTML("afterend", '<div class="dv-geo ' + cls + '" id="dvGeo" role="status"><i></i><span><b>' + h[0] + '</b><span>' + h[1] + '</span></span>' + btn + '</div>');
+  }
+  document.addEventListener("click", function(e){
+    if (mode !== "driver") return;
+    if (e.target.closest("[data-geoshare]")) { geo.share = true; geo.st = ""; geoSync(); return; }
+    if (e.target.closest("[data-georetry]")) { geo.st = ""; geoSync(); }
+  });
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "driver") { geoWake(); geoSend(true); } });
+
+  function leaveDriver(){ geoStop(true); geo.admin = false; geo.share = false; appManifest(false); clearInterval(drv.timer); drv.timer = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} document.title = tr("متاجر أحد", "Matajer Ohod"); go("store"); }
   /* ----- new driver app: list → pick with photos → product → missing → deliver → my cash ----- */
   drv.view = "list"; drv.no = ""; drv.pid = ""; drv.miss = ""; drv.given = 0; drv.cash = null;
   var PICK = {}; try { PICK = JSON.parse(localStorage.getItem("ohod-pick") || "{}") || {}; } catch(e){ PICK = {}; }
@@ -2053,7 +2180,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var avg = done.length ? Math.round(done.reduce(function(a, o){ return a + (o.updated - o.created); }, 0) / done.length / 60000) : 0; return { done: done, avg: avg }; }
   function setSt(no, st, cb){ api("/driver/status", { pin: drv.pin, no: no, status: st }).then(function(j){
     if (!j.ok) { dToast(tr("ما انحفظ، تأكد من النت وجرّب مرة ثانية", "Not saved, check your connection and try again"), true); if (cb) cb(false); return; }
-    var o = dOrder(no); if (o) { o.status = st; o.updated = Date.now(); drv.seen[no] = "old"; } if (cb) cb(true); }); }
+    var o = dOrder(no); if (o) { o.status = st; o.updated = Date.now(); drv.seen[no] = "old"; } if (cb) cb(true); geoSync(); }); }
   function dToast(t, bad){ var x = document.createElement("div"); x.className = "dv-toast" + (bad ? " bad" : ""); x.setAttribute("role", "status"); x.textContent = t; document.body.appendChild(x); setTimeout(function(){ x.remove(); }, 2600); }
   function loadDrvCash(){ api("/driver/cash", { pin: drv.pin }).then(function(j){ if (j.ok) { drv.cash = j; if (drv.view === "list" || drv.view === "cash") drvRender(); } }); }
   function drvShell(){ app.innerHTML = '<div class="dv" id="dv"></div>'; drvRender(); loadDrvCash(); }
@@ -2066,6 +2193,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if (mode !== "driver" || !$("dv")) return;
     var box = $("dv"), y = window.scrollY;
     box.innerHTML = drv.view === "pick" ? dvPick() : drv.view === "prod" ? dvProd() : drv.view === "deliver" ? dvDeliver() : drv.view === "cash" ? dvCash() : dvList();
+    geoBar();
     if (drv.view === "pick" && drv.miss) box.insertAdjacentHTML("beforeend", dvMissing());
     var g = drvGroups(); document.title = (g["new"].length ? "(" + g["new"].length + ") " : "") + tr("طلبات التوصيل", "Delivery orders");
     if (drv.view === "list" || drv.view === "pick") window.scrollTo(0, y);
@@ -2194,7 +2322,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
         var fresh = 0;
         j.orders.forEach(function(o){ if (!drv.seen[o.no]) { drv.seen[o.no] = drv.first ? "old" : "fresh"; if (!drv.first && o.status === "new") fresh++; } });
         var cur = drv.no && dOrder(drv.no), nowCur = drv.no && j.orders.filter(function(o){ return o.no === drv.no; })[0];
-        drv.orders = j.orders; drv.first = false;
+        drv.orders = j.orders; drv.first = false; geoSync();
         if (fresh) { beep(); if (drv.view === "list") drv.tab = "new"; else dToast(tr("وصل طلب جديد", "A new order arrived")); }
         if (drv.view !== "list" && cur && nowCur && nowCur.status === "canceled" && cur.status !== "canceled") { dToast(tr("الطلب انلغى من الإدارة", "The order was cancelled by the store"), true); drv.view = "list"; drv.miss = ""; }
         if (drv.view === "list" || drv.view === "cash") drvRender();
@@ -2429,13 +2557,14 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var noEn = ps.filter(function(p){ return !p.name_en; }).length;
     var stat = function(n, l, tab){ return '<button type="button" class="stat" data-atab="' + tab + '"><b>' + n + '</b><span>' + l + '</span></button>'; };
     box.innerHTML = staffBox() + (apiUrl() ? '<div class="card today" id="aToday"><p class="hint">جاري تحميل أرقام اليوم…</p></div><div class="card tips" id="aTips"></div>' : '') + '<div class="stats">' + stat(ps.length, "منتج", "prods") + stat(draft.cats.length, "قسم", "cats") + stat(sale, "منتج عليه خصم", "prods") + stat(out, "منتج نافد", "prods") + '</div>' +
+      (apiUrl() ? '<div class="card" id="aDrvLoc"><div class="sec-head" style="margin:0"><h2>وين المندوب الحين</h2><button class="btn btn-soft" type="button" id="aDrvRe">تحديث</button></div><p class="hint" id="aDrvTxt">جاري التحميل…</p><div class="adm-dmap" id="aDrvMap" hidden></div></div>' : '') +
       (apiUrl() ? '<div class="card"><div class="sec-head" style="margin:0"><h2>آخر الطلبات</h2><button class="btn btn-soft" type="button" id="aOpenDrv">صفحة المندوب</button></div><div id="aOrders" class="hint">جاري التحميل…</div></div>' : '') +
       '<div class="card openbox' + (draft.store.closed ? ' closed' : '') + '"><span class="ic">' + ic(draft.store.closed ? "lock" : "unlock") + '</span><span class="t"><b>' + (draft.store.closed ? 'المحل مقفل، والطلبات واقفة' : 'المحل مفتوح ويستقبل الطلبات') + '</b><span>' + (draft.store.minOrder ? 'أقل مبلغ للطلب ' + num(draft.store.minOrder) + ' ر.س' : 'بدون حد أدنى للطلب') + '</span></span><button class="btn ' + (draft.store.closed ? 'btn-brand' : 'btn-ghost') + '" type="button" id="aToggleOpen">' + (draft.store.closed ? 'افتح المحل' : 'اقفل المحل مؤقتًا') + '</button></div>' +
       '<div class="card"><h2>اختصارات</h2><div class="quick">' +
         '<button type="button" class="btn btn-brand" data-onew>+ طلب بالتلفون أو الواتساب</button><button type="button" class="btn btn-ghost" data-atab="prods">تعديل الأسعار</button><button type="button" class="btn btn-ghost" data-atab="offers">عرض اليوم والعروض</button>' +
         '<button type="button" class="btn btn-ghost" data-atab="layout">ترتيب الصفحة الرئيسية</button><button type="button" class="btn btn-ghost" data-atab="look">الألوان واللغة</button></div>' +
         lowHTML() + (noEn ? '<p class="hint">فيه ' + noEn + ' منتج بدون اسم إنجليزي، ويطلعون بالعربي في النسخة الإنجليزية.</p>' : '') + '</div>';
-    if (apiUrl()) loadToday();
+    if (apiUrl()) { loadToday(); loadDrvLoc(); $("aDrvRe").addEventListener("click", loadDrvLoc); }
     $("aToggleOpen").addEventListener("click", function(){ if (draft.store.closed) delete draft.store.closed; else draft.store.closed = true; if ($("sClosed")) $("sClosed").checked = !!draft.store.closed; markDirty(); renderOver(); publish(); });
     if ($("aOpenDrv")) $("aOpenDrv").addEventListener("click", function(){ if (dirty) { $("aStatus").className = "status err"; $("aStatus").textContent = "احفظ تعديلاتك أول."; return; } drv.pin = adminPin; openDriver(); });
     if (apiUrl()) api("/driver/orders", { pin: adminPin }).then(function(j){
@@ -2447,6 +2576,31 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       el.className = "";
       el.innerHTML = '<div class="stats mini"><div class="stat"><b>' + today.length + '</b><span>طلب اليوم</span></div><div class="stat"><b>' + num(sum) + '</b><span>ريال مبيعات اليوم</span></div><div class="stat"><b>' + j.orders.filter(function(o){ return o.status === "new"; }).length + '</b><span>ينتظر المندوب</span></div></div>' +
         (j.orders.length ? '<div class="olist">' + j.orders.slice(0, 6).map(function(o){ return '<div class="orow"><b dir="ltr">' + esc(o.no) + '</b><span>' + esc(o.phone) + '</span><span>' + num(o.total) + ' ر.س</span><span class="spill ' + o.status + '">' + lbl[o.status] + '</span></div>'; }).join("") + '</div>' : '<p class="hint">ما فيه طلبات للحين.</p>');
+    });
+  }
+  var admMap = null, admLayer = null, admTimer = null;
+  function loadDrvLoc(){
+    clearTimeout(admTimer);
+    api("/admin/driver-loc", { pin: adminPin }).then(function(j){
+      var t = $("aDrvTxt"), m = $("aDrvMap"); if (!t || !m) return;
+      if (!j.ok) { t.textContent = j.code === "not_found" ? "حدّث الخادم في Cloudflare عشان يشتغل التتبع." : "ما قدرنا نجيب موقع المندوب."; return; }
+      var fresh = j.loc && j.now - j.loc.at < 10 * 60e3;
+      if (!fresh) { t.textContent = j.onway.length ? "فيه " + j.onway.length + " طلب في الطريق، بس المندوب ما يشارك موقعه (يمكن قافل الصفحة أو ما سمح بالموقع)." : "موقع المندوب يطلع هنا بس لما يكون فيه طلب «في الطريق»."; m.hidden = true; }
+      else {
+        var ago = Math.round((j.now - j.loc.at) / 1000);
+        t.textContent = "آخر تحديث " + (ago < 20 ? "الحين" : ago < 60 ? "قبل " + ago + " ثانية" : "قبل " + Math.round(ago / 60) + " دقيقة") + (j.onway.length ? " · معه " + j.onway.length + " طلب في الطريق" : "");
+        m.hidden = false;
+        loadLeaflet(function(){
+          if (!$("aDrvMap")) return;
+          if (!admMap || admMap.getContainer() !== $("aDrvMap")) { admMap = L.map("aDrvMap", { zoomControl: true }); L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(admMap); admLayer = L.layerGroup().addTo(admMap); }
+          admLayer.clearLayers();
+          var pts = [[j.loc.lat, j.loc.lng]];
+          L.marker(pts[0], { icon: L.divIcon({ className: "trk-pin car", html: ic("truck"), iconSize: [40, 40], iconAnchor: [20, 20] }) }).addTo(admLayer).bindTooltip("المندوب");
+          j.onway.forEach(function(o){ if (o.lat == null) return; pts.push([o.lat, o.lng]); L.marker([o.lat, o.lng], { icon: L.divIcon({ className: "trk-pin home", html: ic("home"), iconSize: [40, 40], iconAnchor: [20, 20] }) }).addTo(admLayer).bindTooltip(o.no + (o.name ? " · " + o.name : "")); });
+          admMap.fitBounds(L.latLngBounds(pts).pad(0.3), { maxZoom: 16 });
+        });
+      }
+      if (aTab === "over" && mode === "admin") admTimer = setTimeout(loadDrvLoc, 10000);
     });
   }
   function lowHTML(){

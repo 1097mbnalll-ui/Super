@@ -123,9 +123,11 @@ export default {
       const phone = normPhone(body.phone);
       if (!(n > 0) || !phone) return reply(400, { ok: false, code: "bad_request" });
       await ensureSchema(env);
-      const row = await env.DB.prepare("SELECT status, updated FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
+      const row = await env.DB.prepare("SELECT status, updated, data FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
       if (!row) return reply(404, { ok: false, code: "not_found" });
-      return reply(200, { ok: true, status: row.status, updated: row.updated });
+      const out = { ok: true, status: row.status, updated: row.updated };
+      if (row.status === "onway") { try { out.driver = await driverFor(env, n, safeJson(row.data)); } catch { /* التتبع إضافة، ما يوقف الحالة */ } }
+      return reply(200, out);
     }
 
     // تحليل التصفح: مشاهدات المنتجات، الإضافة للسلة، البحث (بدون أي بيانات شخصية)
@@ -208,6 +210,34 @@ export default {
         return reply(200, { ok: true, order: r.order });
       }
       if (path === "/driver/cash") return reply(200, { ok: true, ...(await readCash(env)) });
+      // تتبع المندوب: آخر نقطة بس (بدون سجل تحركات)، وتنمسح لما يخلص التوصيل
+      if (path === "/driver/loc") {
+        if (who === "admin" && body.share !== true) return reply(200, { ok: true, skipped: "admin" });
+        const lat = Number(body.lat), lng = Number(body.lng), acc = Math.min(5000, Math.max(0, Number(body.acc) || 0));
+        if (!(lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) || (!lat && !lng)) return reply(400, { ok: false, code: "bad_loc" });
+        const now = Date.now();
+        const up = await env.DB.prepare("INSERT INTO dloc (id, lat, lng, acc, at) VALUES (1, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET lat = excluded.lat, lng = excluded.lng, acc = excluded.acc, at = excluded.at WHERE excluded.at - dloc.at >= 2500")
+          .bind(lat, lng, acc, now).run();
+        const near = [];
+        if (up.meta && up.meta.changes) {
+          const rs = await env.DB.prepare("SELECT no, data FROM orders WHERE status = 'onway' LIMIT 20").all();
+          for (const r of rs.results || []) {
+            const d = safeJson(r.data);
+            if (d.lat == null || d.lng == null || !isFinite(d.lat) || !isFinite(d.lng)) continue;
+            if (distM(lat, lng, d.lat, d.lng) > NEAR_M) continue;
+            const ins = await env.DB.prepare("INSERT OR IGNORE INTO onear (no, at) VALUES (?, ?)").bind(r.no, now).run();
+            if (ins.meta && ins.meta.changes) {
+              near.push("#" + (1000 + r.no));
+              later(notifyRole(env, "customer", String(r.no), { title: "المندوب قريب منك", body: "طلبك #" + (1000 + r.no) + " بيوصلك خلال دقايق. جهّز نفسك.", url: "./", tag: "order" + r.no }));
+            }
+          }
+        }
+        return reply(200, { ok: true, near });
+      }
+      if (path === "/driver/loc-off") {
+        await env.DB.batch([env.DB.prepare("DELETE FROM dloc"), env.DB.prepare("DELETE FROM onear WHERE at < ?").bind(Date.now() - 2 * 864e5)]);
+        return reply(200, { ok: true });
+      }
       if (path === "/driver/status") {
         const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
         const st = String(body.status || "");
@@ -288,6 +318,14 @@ export default {
     if (path === "/admin/report-test") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       return reply(200, { ok: true, report: await dailyReport(env) });
+    }
+    if (path === "/admin/driver-loc") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const loc = await env.DB.prepare("SELECT lat, lng, acc, at FROM dloc WHERE id = 1").first();
+      const rs = await env.DB.prepare("SELECT no, data FROM orders WHERE status = 'onway' ORDER BY no LIMIT 20").all();
+      const onway = (rs.results || []).map((r) => { const d = safeJson(r.data); return { no: "#" + (1000 + r.no), name: d.name || "", lat: d.lat, lng: d.lng, total: d.total }; });
+      return reply(200, { ok: true, loc: loc || null, onway, now: Date.now() });
     }
     if (path === "/admin/today") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
@@ -465,6 +503,8 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS oline (no INTEGER NOT NULL, k INTEGER NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, price REAL NOT NULL, PRIMARY KEY (no, k))",
     "CREATE TABLE IF NOT EXISTS oline (no INTEGER NOT NULL, k INTEGER NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, price REAL NOT NULL, PRIMARY KEY (no, k))",
     "CREATE INDEX IF NOT EXISTS orders_day ON orders (day)",
+    "CREATE TABLE IF NOT EXISTS dloc (id INTEGER PRIMARY KEY, lat REAL NOT NULL, lng REAL NOT NULL, acc REAL NOT NULL DEFAULT 0, at INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS onear (no INTEGER PRIMARY KEY, at INTEGER NOT NULL)",
     "CREATE INDEX IF NOT EXISTS orders_ch ON orders (ch)",
     "CREATE INDEX IF NOT EXISTS oline_id ON oline (id)",
   ]);
@@ -1292,4 +1332,29 @@ function bundleAlloc(b, byId) {
   ps.forEach((p, i) => { if (i < ps.length - 1) { const v = Math.round(Number(p.price) * bp / sum * 100) / 100; alloc[p.id] = v; acc += v; } });
   alloc[ps[ps.length - 1].id] = Math.round((bp - acc) * 100) / 100;
   return { ids, alloc, sum, price: bp };
+}
+
+// ---------- تتبع المندوب ----------
+const NEAR_M = 600;           // «المندوب قريب منك» تنرسل مرة وحدة لكل طلب
+const LOC_FRESH_MS = 10 * 60e3; // آخر موقع أقدم من كذا ما ينعرض
+function distM(a1, o1, a2, o2) {
+  const R = 6371000, r = Math.PI / 180, da = (a2 - a1) * r, dn = (o2 - o1) * r;
+  const h = Math.sin(da / 2) ** 2 + Math.cos(a1 * r) * Math.cos(a2 * r) * Math.sin(dn / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+// الطريق أطول من الخط المستقيم (×1.4) وسرعة الحي تقريباً ٢٥ كم/س، وكل توصيلة قبلك تزيد ٤ دقايق
+function etaMin(m, before) { return Math.max(1, Math.round((m * 1.4) / (25000 / 60) + before * 4)); }
+async function driverFor(env, n, d) {
+  const loc = await env.DB.prepare("SELECT lat, lng, acc, at FROM dloc WHERE id = 1").first();
+  if (!loc || Date.now() - loc.at > LOC_FRESH_MS) return null;
+  const out = { lat: loc.lat, lng: loc.lng, acc: loc.acc, at: loc.at };
+  if (d.lat != null && d.lng != null && isFinite(d.lat) && isFinite(d.lng)) {
+    const mine = distM(loc.lat, loc.lng, d.lat, d.lng);
+    // كم توصيلة قبلك: الطلبات اللي في الطريق وأقرب للمندوب منك
+    const rs = await env.DB.prepare("SELECT data FROM orders WHERE status = 'onway' AND no != ? LIMIT 20").bind(n).all();
+    let before = 0;
+    for (const r of rs.results || []) { const o = safeJson(r.data); if (o.lat != null && isFinite(o.lat) && distM(loc.lat, loc.lng, o.lat, o.lng) < mine) before++; }
+    Object.assign(out, { m: Math.round(mine), before, eta: etaMin(mine, before), near: mine <= NEAR_M });
+  }
+  return out;
 }
