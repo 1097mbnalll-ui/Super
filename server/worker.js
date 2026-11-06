@@ -256,6 +256,35 @@ export default {
       }
       return reply(200, { ok: true, ...(await readCash(env)) });
     }
+    // زبائن ما رجعوا: قائمة للمراسلة بالواتساب، ومتابعة مين رجع بعد الرسالة
+    if (path === "/admin/winback") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const days = Math.min(365, Math.max(7, Math.floor(Number(body.days) || 30)));
+      const kind = ["once", "loyal", "all"].includes(body.kind) ? body.kind : "once";
+      const cut = Date.now() - days * 864e5;
+      const rs = await env.DB.prepare(`SELECT a.ch, a.n, a.rev, a.last, a.first, o.phone, json_extract(o.data, '$.name') name, w.at cat, w.who cwho, w.n cn
+        FROM (SELECT ch, COUNT(*) n, ROUND(SUM(total), 2) rev, MAX(created) last, MIN(created) first, MAX(CASE WHEN phone != '' THEN no END) pno FROM orders WHERE status != 'canceled' AND ch != '' GROUP BY ch) a
+        LEFT JOIN orders o ON o.no = a.pno LEFT JOIN winback w ON w.ch = a.ch
+        WHERE a.last < ? AND (? = 'all' OR (? = 'once' AND a.n = 1) OR (? = 'loyal' AND a.n >= 2))
+        ORDER BY a.rev DESC LIMIT 400`).bind(cut, kind, kind, kind).all();
+      const all = rs.results || [], list = all.filter((r) => r.phone);
+      const st = await env.DB.prepare(`SELECT COUNT(*) contacted,
+        SUM(CASE WHEN EXISTS (SELECT 1 FROM orders o WHERE o.ch = w.ch AND o.created > w.at AND o.status != 'canceled') THEN 1 ELSE 0 END) back,
+        ROUND(IFNULL(SUM((SELECT IFNULL(SUM(total), 0) FROM orders o WHERE o.ch = w.ch AND o.created > w.at AND o.status != 'canceled')), 0), 2) rev
+        FROM winback w WHERE w.at > ?`).bind(Date.now() - 120 * 864e5).first();
+      return reply(200, { ok: true, days, kind, list: list.slice(0, 300), noPhone: all.length - list.length, stats: st || {} });
+    }
+    if (path === "/admin/winback-mark") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const ch = String(body.ch || "");
+      if (!/^[0-9a-f]{32}$/.test(ch)) return reply(400, { ok: false, code: "bad_request" });
+      const who = staff(body);
+      await env.DB.batch([env.DB.prepare("INSERT INTO winback (ch, at, who, n) VALUES (?, ?, ?, 1) ON CONFLICT(ch) DO UPDATE SET at = excluded.at, who = excluded.who, n = n + 1").bind(ch, Date.now(), who),
+        logStmt(env, who, "winback", "", { tail: String(body.tail || "").slice(-4) })]);
+      return reply(200, { ok: true });
+    }
     if (path === "/admin/report-test") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       return reply(200, { ok: true, report: await dailyReport(env) });
@@ -418,6 +447,7 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS st_search (day TEXT NOT NULL, q TEXT NOT NULL, n INTEGER NOT NULL, miss INTEGER NOT NULL, PRIMARY KEY (day, q))",
     "CREATE TABLE IF NOT EXISTS rl (k TEXT PRIMARY KEY, n INTEGER NOT NULL, until INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS pcost (id TEXT PRIMARY KEY, cost REAL NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS winback (ch TEXT PRIMARY KEY, at INTEGER NOT NULL, who TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 1)",
     "CREATE TABLE IF NOT EXISTS alog (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, who TEXT NOT NULL, act TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', info TEXT NOT NULL DEFAULT '{}')",
     "CREATE TABLE IF NOT EXISTS cash (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, day TEXT NOT NULL, who TEXT NOT NULL, amount REAL NOT NULL, note TEXT NOT NULL DEFAULT '')",
     "CREATE TABLE IF NOT EXISTS st_item (day TEXT NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, revenue REAL NOT NULL, orders INTEGER NOT NULL, PRIMARY KEY (day, id))",

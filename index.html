@@ -821,6 +821,21 @@ button.stat:hover{border-color:var(--teal)}
   .tip{flex-wrap:wrap}.tip .btn{margin-inline-start:44px}
   .trow.cashd .v.muted{display:none}.trow.cashd{grid-template-columns:minmax(0,1fr) auto auto}
 }
+/* win back */
+.wb-res{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0 4px}
+.wb-res div{background:var(--tile);border-radius:14px;padding:10px 12px;display:grid;gap:2px}.wb-res b{font-size:1.3rem}.wb-res span{font-size:.75rem;color:var(--muted)}
+.wb-res .ok{background:#EEF8F2}.wb-res .ok b{color:#1F8A55}
+.wb-f{display:grid;gap:8px;margin-top:8px}
+.wb-tpl{margin-top:8px}.wb-tpl summary{cursor:pointer;font-weight:700;font-size:.85rem}
+.wb-tpl textarea{width:100%;margin-top:6px;border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:.88rem;line-height:1.7;box-sizing:border-box}
+.wbl{display:grid;gap:6px;margin-top:10px}
+.wbr{display:flex;align-items:center;gap:10px;background:var(--tile);border-radius:14px;padding:10px 12px}
+.wbr .ic{width:38px;height:38px;border-radius:12px;background:var(--surface);display:grid;place-items:center;flex:none;color:var(--muted)}
+.wbr .t{flex:1;display:grid;gap:2px;min-width:0;font-size:.78rem;color:var(--muted)}
+.wbr .t b{color:var(--ink);font-size:.92rem}.wbr .ph{font-weight:500;color:var(--muted);font-size:.8rem}
+.wbr em{font-style:normal;font-size:.72rem;color:#8A5A10}.wbr em.back{color:#1F8A55;font-weight:700}
+.wbr .btn{flex:none}
+@media (max-width:760px){.wb-res{grid-template-columns:1fr 1fr 1fr}.wb-res b{font-size:1.05rem}}
 
 @media (min-width:700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* ---------- kiu-style experience ---------- */
@@ -2112,7 +2127,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   function markDirty(){ dirty = true; var s = $("aState"); if (s) { s.textContent = "فيه تعديلات ما انحفظت"; s.className = "adm-state dirty"; } }
   function adminShell(){
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
-    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
+    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
       '<aside class="adm-side"><div class="adm-brand"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b>' + esc(D.store.name) + '</b><span>لوحة الإدارة</span></div></div>' +
       '<nav class="adm-nav" aria-label="أقسام الإدارة">' + TABS.map(function(x){ return '<button type="button" data-atab="' + x[0] + '"' + (x[0] === aTab ? ' aria-current="page"' : '') + '>' + ic(x[2]) + '<span>' + x[1] + '</span>' + (x[0] === "prods" ? '<em class="n">' + draft.products.length + '</em>' : x[0] === "cats" ? '<em class="n">' + draft.cats.length + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
@@ -2123,6 +2138,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       '<section class="adm-panel" data-panel="stats" id="aStats"></section>' +
       '<section class="adm-panel" data-panel="olist" id="aOList"></section>' +
       '<section class="adm-panel" data-panel="log" id="aLog"></section>' +
+      '<section class="adm-panel" data-panel="cust" id="aCust"></section>' +
       '<section class="adm-panel" data-panel="bans" id="aBans"></section>' +
       '<section class="adm-panel" data-panel="prods"><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث عن منتج…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
         '<p class="hint">«قبل الخصم» اختياري: لو كتبته أكبر من السعر، يطلع المنتج في العروض مع نسبة الخصم. اضغط على الصورة لتغييرها أو رفع صورة من جهازك. الأسهم ترتّب المنتج داخل قسمه.</p></div><div class="alist prods" id="aProds"></div></section>' +
@@ -2204,7 +2220,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if (apiUrl()) renderPush();
     renderPromos(); renderLayout(); renderBans(); renderLook(); renderACats(); renderAFilter(); renderAProds(); renderOver();
   }
-  var TAB_TITLE = { stats: "التحليل", bans: "البنرات ومنتجات «لك»", over: "نظرة عامة", prods: "المنتجات", cats: "الأقسام", offers: "العروض", layout: "ترتيب الواجهة", look: "المظهر واللغة", store: "بيانات المحل", orders: "المندوب والإشعارات", olist: "الطلبات", log: "سجل العمليات" };
+  var TAB_TITLE = { stats: "التحليل", bans: "البنرات ومنتجات «لك»", over: "نظرة عامة", prods: "المنتجات", cats: "الأقسام", offers: "العروض", layout: "ترتيب الواجهة", look: "المظهر واللغة", store: "بيانات المحل", orders: "المندوب والإشعارات", olist: "الطلبات", log: "سجل العمليات", cust: "استرجاع الزبائن" };
   function showTab(id){
     aTab = id;
     Array.prototype.forEach.call(document.querySelectorAll(".adm-panel"), function(p){ p.hidden = p.dataset.panel !== id; });
@@ -2214,6 +2230,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if (id === "stats") renderStats();
     if (id === "olist") renderOList();
     if (id === "log") renderLog();
+    if (id === "cust") renderWinback();
     if (id === "orders") renderCash();
     if (id === "bans") renderBans();
     window.scrollTo(0, 0);
@@ -3122,7 +3139,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       out.push({ ic: "truck", html: 'أكثر وقت طلبات: <b>' + DOW[bd] + '</b> والساعة <b>' + (bh % 12 || 12) + (bh < 12 ? ' الصبح' : bh < 17 ? ' الظهر' : ' بالليل') + '</b>. خلّ المندوب جاهز، والخبز الحار يطلع قبلها بشوي.' }); }
     // 4) lost customers
     var C = j.customers || {};
-    if (C.gone >= 3) out.push({ ic: "user", k: "warn", html: '<b>' + num(C.gone) + ' زبون</b> كانوا يطلبون منك أكثر من مرة وما طلبوا من شهر. رسالة عرض بسيطة ممكن ترجّعهم.' });
+    if (C.gone >= 3) out.push({ ic: "user", k: "warn", html: '<b>' + num(C.gone) + ' زبون</b> كانوا يطلبون منك أكثر من مرة وما طلبوا من شهر. رسالة عرض بسيطة ممكن ترجّعهم.', act: ['data-atab="cust"', 'راسلهم'] });
     // 5) searched but not found
     var miss = (j.searches || []).filter(function(x){ return x.miss >= 3; }).sort(function(a, b){ return b.miss - a.miss; })[0];
     if (miss) out.push({ ic: "search", html: 'الزبائن دوّروا على <b>«' + esc(miss.q) + '»</b> ' + num(miss.miss) + ' مرة وما لقوه. فكّر تضيفه للمتجر.' });
@@ -3179,6 +3196,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     order_new: function(i, r){ return 'سجّل طلب ' + ({ phone: "بالاتصال", whatsapp: "بالواتساب", store: "في المحل" }[i.src] || "") + ' <b dir="ltr">' + esc(r) + '</b> بـ ' + num(i.total) + ' ر.س' + (i.force ? ' (تجاوز المخزون)' : ''); },
     order_edit: function(i, r){ return 'عدّل الطلب <b dir="ltr">' + esc(r) + '</b> من ' + num(i.before) + ' إلى ' + num(i.after) + ' ر.س'; },
     status: function(i, r){ return (i.to === "canceled" ? '<b class="down">لغى</b> الطلب ' : i.from === "canceled" ? 'رجّع الطلب الملغي ' : 'غيّر حالة الطلب ') + '<b dir="ltr">' + esc(r) + '</b>' + (i.to !== "canceled" && i.from !== "canceled" ? ' إلى «' + (OST[i.to] || i.to) + '»' : '') + ' (' + num(i.total) + ' ر.س)'; },
+    winback: function(i){ return 'راسل زبون ما رجع (…' + esc(i.tail || "") + ') بالواتساب'; },
     cash_in: function(i){ return 'استلم <b>' + num(i.amount) + ' ر.س</b> كاش من المندوب' + (i.note ? ' (' + esc(i.note) + ')' : ''); }
   };
   var logState = { list: null, f: "imp" };
@@ -3198,6 +3216,44 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     $("logRef").addEventListener("click", function(){ renderLog(true); });
   }
   document.addEventListener("click", function(e){ if (mode !== "admin") return; var t = e.target.closest("[data-logf]"); if (t) { logState.f = t.dataset.logf; renderLog(); } });
+
+  /* ---------- win back customers who did not return ---------- */
+  var wb = { kind: "once", days: 30, data: null, loading: false };
+  var WB_DEF = "هلا {الاسم}، معك {المتجر}\nاشتقنا لك! طلبك الجاي نوصّله لين بابك، والطلب صار أسهل من الموقع:\n{الرابط}";
+  function wbMsg(){ try { return localStorage.getItem("ohod-wb-msg") || WB_DEF; } catch(e){ return WB_DEF; } }
+  function wbAgo(t){ var d = Math.floor((Date.now() - t) / 864e5); return d < 1 ? "اليوم" : d === 1 ? "أمس" : "قبل " + num(d) + " يوم"; }
+  function renderWinback(force){
+    var box = $("aCust"); if (!box) return;
+    if (!apiUrl()) { box.innerHTML = '<div class="card"><p class="hint">هذي الميزة تحتاج خادم الطلبات.</p></div>'; return; }
+    if ((!wb.data || force) && !wb.loading) { wb.loading = true; api("/admin/winback", { pin: adminPin, kind: wb.kind, days: wb.days }).then(function(j){ wb.loading = false; wb.data = j; if (aTab === "cust") renderWinback(); }); }
+    var seg = function(arr, key){ return '<div class="pays seg mini" role="group">' + arr.map(function(x){ return '<button type="button" data-wbf="' + key + ':' + x[0] + '" aria-pressed="' + (String(wb[key]) === String(x[0])) + '">' + x[1] + '</button>'; }).join("") + '</div>'; };
+    var j = wb.data, st = (j && j.stats) || {};
+    var h = '<div class="card"><h2>زبائن ما رجعوا</h2><p class="hint">زبائن طلبوا منك قبل وما رجعوا. أرسل لكل واحد رسالة واتساب بضغطة، والنظام يتابع مين رجع بعدها وكم طلب.</p>' +
+      (st.contacted ? '<div class="wb-res"><div><b>' + num(st.contacted) + '</b><span>زبون راسلته</span></div><div class="ok"><b>' + num(st.back || 0) + '</b><span>رجعوا وطلبوا (' + num(Math.round((st.back || 0) / st.contacted * 100)) + '٪)</span></div><div class="ok"><b>' + num(Math.round(st.rev || 0)) + '</b><span>ريال طلبوا بعد الرسالة</span></div></div>' : '') +
+      '<div class="wb-f">' + seg([["once","طلبوا مرة وحدة"],["loyal","كانوا يتكررون ووقفوا"],["all","الكل"]], "kind") + seg([[14,"من أسبوعين"],[30,"من شهر"],[60,"من شهرين"],[90,"من ٣ شهور"]], "days") + '</div>' +
+      '<details class="wb-tpl"><summary>نص الرسالة</summary><label for="wbMsg" class="hint">تقدر تكتب {الاسم} و{المتجر} و{الرابط} وتتبدل لحالها.</label><textarea id="wbMsg" rows="4">' + esc(wbMsg()) + '</textarea><button type="button" class="linkbtn" id="wbReset">رجّع النص الأصلي</button></details></div>';
+    if (!j) { box.innerHTML = h + '<div class="card"><p class="hint">جاري التحميل…</p></div>'; bindWb(); return; }
+    if (!j.ok) { box.innerHTML = h + '<div class="card"><p class="status err">' + (j.code === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : "ما قدرنا نجيب القائمة (" + esc(j.code || "?") + ").") + '</p></div>'; bindWb(); return; }
+    h += '<div class="card"><div class="sec-head" style="margin:0"><b>' + num(j.list.length) + ' زبون</b>' + (j.noPhone ? '<span class="hint">و' + num(j.noPhone) + ' ما بقى رقمهم (انمسح بعد مدة الحفظ في «بيانات المحل»)</span>' : '') + '</div>' +
+      (j.list.length ? '<div class="wbl">' + j.list.slice().sort(function(x, y){ return ((x.cat ? 1 : 0) - (y.cat ? 1 : 0)) || (x.cat && y.cat ? x.cat - y.cat : y.rev - x.rev); }).map(function(c){ var back = c.cat && c.last > c.cat;
+        return '<div class="wbr"><span class="ic">' + ic("user") + '</span><span class="t"><b>' + esc(c.name || "زبون") + ' <span dir="ltr" class="ph">' + esc(c.phone) + '</span></b><span>' + (c.n > 1 ? num(c.n) + ' طلبات' : 'طلب مرة وحدة') + ' · ' + num(Math.round(c.rev)) + ' ر.س · آخر طلب ' + wbAgo(c.last) + '</span>' +
+          (c.cat ? '<em class="' + (back ? 'back' : '') + '">' + (back ? 'رجع وطلب بعد رسالتك ✓' : 'راسلته ' + wbAgo(c.cat) + (c.cwho ? ' (' + esc(c.cwho) + ')' : '')) + '</em>' : '') + '</span>' +
+          '<a class="btn btn-teal sm" target="_blank" rel="noopener" data-wbsend="' + esc(c.ch) + '" data-tail="' + esc(String(c.phone).slice(-4)) + '" href="https://wa.me/966' + esc(String(c.phone).replace(/^0/, "")) + '?text=' + encodeURIComponent(wbText(c)) + '">' + (c.cat ? 'راسله مرة ثانية' : 'واتساب') + '</a></div>'; }).join("") + '</div>'
+        : '<p class="empty">ما فيه زبائن بهذا الفلتر. جرّب مدة أقصر أو «الكل».</p>') + '<p class="hint">نصيحة: لا ترسل لنفس الزبون أكثر من مرة في الشهر، عشان ما يحسها إزعاج.</p></div>';
+    box.innerHTML = h; bindWb();
+  }
+  function wbText(c){ return wbMsg().replace(/\{الاسم\}/g, c.name || "").replace(/\{المتجر\}/g, D.store.name || "").replace(/\{الرابط\}/g, location.origin + location.pathname).replace(/هلا ،/g, "هلا،"); }
+  function bindWb(){
+    var t = $("wbMsg"); if (t) t.addEventListener("change", function(){ try { localStorage.setItem("ohod-wb-msg", this.value); } catch(e){} renderWinback(); });
+    var r = $("wbReset"); if (r) r.addEventListener("click", function(){ try { localStorage.removeItem("ohod-wb-msg"); } catch(e){} renderWinback(); });
+  }
+  document.addEventListener("click", function(e){
+    if (mode !== "admin") return;
+    var t;
+    if ((t = e.target.closest("[data-wbf]"))) { var k = t.dataset.wbf.split(":"); wb[k[0]] = k[0] === "days" ? Number(k[1]) : k[1]; wb.data = null; renderWinback(); return; }
+    if ((t = e.target.closest("[data-wbsend]"))) { var ch = t.dataset.wbsend; api("/admin/winback-mark", { pin: adminPin, ch: ch, tail: t.dataset.tail });
+      (wb.data && wb.data.list || []).forEach(function(c){ if (c.ch === ch) { c.cat = Date.now(); c.cwho = STAFF || ""; } }); setTimeout(function(){ if (aTab === "cust") renderWinback(); }, 300); }
+  });
 
   /* ---------- routing ---------- */
   function go(m){ window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
