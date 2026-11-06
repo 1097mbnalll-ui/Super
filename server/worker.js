@@ -210,6 +210,14 @@ export default {
         return reply(200, { ok: true, order: r.order });
       }
       if (path === "/driver/cash") return reply(200, { ok: true, ...(await readCash(env)) });
+      // تطبيق الأندرويد يسأل كل ثواني: آخر رقم طلب، كم طلب جديد، كم طلب في الطريق (خفيف: بدون قراءة الطلبات نفسها)
+      if (path === "/driver/pending") {
+        const a = await env.DB.prepare("SELECT COALESCE(MAX(no), 0) AS last FROM orders").first();
+        const b = await env.DB.prepare("SELECT status, COUNT(*) AS c FROM orders WHERE status IN ('new', 'onway') GROUP BY status").all();
+        const cnt = {}; for (const r of b.results || []) cnt[r.status] = r.c;
+        const last = (a && a.last) || 0;
+        return reply(200, { ok: true, last: last ? 1000 + last : 0, new: cnt["new"] || 0, onway: cnt["onway"] || 0, now: Date.now() });
+      }
       // تتبع المندوب: آخر نقطة بس (بدون سجل تحركات)، وتنمسح لما يخلص التوصيل
       if (path === "/driver/loc") {
         if (who === "admin" && body.share !== true) return reply(200, { ok: true, skipped: "admin" });
@@ -820,7 +828,10 @@ async function recordFail(env, ip) {
 }
 
 async function clearFails(env, ip) {
-  if (env.LOCKS) await env.LOCKS.delete("fail:" + ip);
+  if (!env.LOCKS) return;
+  // كل delete في KV يُحسب كتابة (الحد المجاني ١٠٠٠ باليوم)، وهالدالة تنادى مع كل طلب ناجح من المندوب والإدارة،
+  // فنمسح بس لو فيه محاولات غلط مسجلة. القراءة رخيصة (١٠٠ ألف باليوم).
+  if (await env.LOCKS.get("fail:" + ip)) await env.LOCKS.delete("fail:" + ip);
 }
 
 function validate(d) {
