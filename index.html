@@ -782,6 +782,45 @@ button.stat:hover{border-color:var(--teal)}
 .nf-done .actions{justify-content:center}
 .orow2 .src{font-style:normal;font-size:.7rem;font-weight:700;border-radius:999px;padding:1px 8px;margin-inline-end:6px;background:#EEE8FF;color:#5B3DB8}
 .orow2 .src.whatsapp{background:#E3F7EA;color:#1C7A43}.orow2 .src.store{background:#FFF1E0;color:#9A5410}
+/* staff, today, tips, cash, log */
+.staffline{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted);padding:2px 4px}
+.staffline svg.i{width:16px;height:16px}
+.linkbtn{background:none;border:0;color:var(--teal);font:inherit;font-weight:700;cursor:pointer;padding:2px 4px;text-decoration:underline}
+.staffask{border:1.5px dashed var(--teal)}
+.staffask input{flex:1;min-width:160px;min-height:42px}
+.mtag{font-style:normal;font-size:.68rem;font-weight:700;border-radius:999px;padding:1px 7px;margin-inline-start:4px}
+.mtag.good{background:#E3F7EA;color:#1C7A43}.mtag.mid{background:#FFF4E0;color:#8A5A10}.mtag.bad{background:#FDECEA;color:#B42318}
+.card.today{background:linear-gradient(135deg,var(--surface),var(--tile))}
+.today-tiles{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;margin-top:10px}
+.today-tiles .stat small{font-size:.7rem;color:var(--muted)}
+.stat.ghost{border-style:dashed;background:transparent}
+.tips-box{border:1px solid var(--line);border-radius:18px;padding:14px;margin-top:12px;background:var(--surface)}
+.card.tips h2,.tips-box h2{display:flex;align-items:center;gap:8px;font-size:1rem;margin:0 0 8px}
+.card.tips h2 svg.i,.tips-box h2 svg.i{width:18px;height:18px;color:var(--teal)}
+.tips-list{display:grid;gap:8px}
+.tip{display:flex;align-items:center;gap:10px;background:var(--tile);border-radius:14px;padding:10px 12px;font-size:.85rem;line-height:1.6}
+.tip .ic{width:34px;height:34px;border-radius:11px;background:var(--surface);display:grid;place-items:center;flex:none;color:var(--teal)}
+.tip .ic svg.i{width:17px;height:17px}
+.tip .t{flex:1;min-width:0}
+.tip.warn{background:#FFF5EA}.tip.warn .ic{color:#C25E12}
+.tip.good{background:#EEF8F2}.tip.good .ic{color:#1F8A55}
+.tip .btn{flex:none}
+.cash-bal{display:grid;gap:2px;border-radius:16px;padding:14px 16px;background:var(--tile);margin:10px 0}
+.cash-bal span{font-size:.8rem;color:var(--muted)}.cash-bal b{font-size:1.6rem}.cash-bal small{font-size:.72rem;color:var(--muted)}
+.cash-bal.due{background:#FFF5EA}.cash-bal.due b{color:#B4470B}
+.cash-bal + .o-tools input{min-height:42px}
+.trow.cashd{grid-template-columns:minmax(0,1fr) auto auto auto}
+.logl{display:grid;gap:4px;margin-top:10px}
+.logday{font-size:.78rem;font-weight:700;color:var(--muted);margin-top:10px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.logrow{display:grid;grid-template-columns:64px 90px minmax(0,1fr);gap:10px;align-items:baseline;padding:7px 4px;font-size:.85rem;border-bottom:1px dashed var(--line)}
+.logrow .tm{color:var(--muted);font-size:.75rem}
+.logrow .who{font-weight:700;font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logrow.bad{background:#FFF7F5}
+@media (max-width:760px){
+  .logrow{grid-template-columns:52px minmax(0,1fr)}.logrow .what{grid-column:1/-1}
+  .tip{flex-wrap:wrap}.tip .btn{margin-inline-start:44px}
+  .trow.cashd .v.muted{display:none}.trow.cashd{grid-template-columns:minmax(0,1fr) auto auto}
+}
 
 @media (min-width:700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* ---------- kiu-style experience ---------- */
@@ -1742,7 +1781,9 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   /* ---------- admin access ---------- */
   var adminPin = "";
   function apiUrl(){ return String(S.api || "").replace(/\/+$/, ""); }
+  var STAFF = ""; try { STAFF = localStorage.getItem("ohod-staff") || ""; } catch(e){}
   function api(path, body){
+    if (body && body.pin && STAFF && !body.by) body.by = STAFF;
     return fetch(apiUrl() + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       .then(function(r){ return r.json().catch(function(){ return { ok: false, code: "http_" + r.status }; }).then(function(j){ j.status = r.status; return j; }); },
             function(){ return { ok: false, code: "network" }; });
@@ -1788,17 +1829,18 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
 
   /* ---------- admin console ---------- */
   var draft = null, dirty = false, pickTarget = null, aFilter = { cat: "all", q: "" }, aTab = "over";
-  var STK = {}, STK_OK = false, stockEdit = {}, pp = null, statDays = 30, statCache = null;
+  var STK = {}, STK_OK = false, stockEdit = {}, pp = null, statDays = 30, statCache = null, COST = {}, costEdit = {}, stat30 = null, todayCache = null;
+  function costOf(id){ return Object.prototype.hasOwnProperty.call(costEdit, id) ? costEdit[id] : (COST[id] == null ? null : COST[id]); }
   function qtyOf(id){ return Object.prototype.hasOwnProperty.call(stockEdit, id) ? stockEdit[id] : (STK[id] == null ? null : STK[id]); }
   function loadAdminStock(){
     if (!apiUrl()) return;
-    api("/admin/stock", { pin: adminPin }).then(function(j){ if (!j.ok) return; STK = j.stock || {}; STK_OK = !!j.hasDB; if (mode === "admin") { renderAProds(); renderOver(); } });
+    api("/admin/stock", { pin: adminPin }).then(function(j){ if (!j.ok) return; STK = j.stock || {}; COST = j.costs || {}; STK_OK = !!j.hasDB; if (mode === "admin") { renderAProds(); renderOver(); } });
   }
   function uid(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
   function markDirty(){ dirty = true; var s = $("aState"); if (s) { s.textContent = "فيه تعديلات ما انحفظت"; s.className = "adm-state dirty"; } }
   function adminShell(){
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
-    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"]];
+    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
       '<aside class="adm-side"><div class="adm-brand"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b>' + esc(D.store.name) + '</b><span>لوحة الإدارة</span></div></div>' +
       '<nav class="adm-nav" aria-label="أقسام الإدارة">' + TABS.map(function(x){ return '<button type="button" data-atab="' + x[0] + '"' + (x[0] === aTab ? ' aria-current="page"' : '') + '>' + ic(x[2]) + '<span>' + x[1] + '</span>' + (x[0] === "prods" ? '<em class="n">' + draft.products.length + '</em>' : x[0] === "cats" ? '<em class="n">' + draft.cats.length + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
@@ -1808,6 +1850,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       '<section class="adm-panel" data-panel="over" id="aOver"></section>' +
       '<section class="adm-panel" data-panel="stats" id="aStats"></section>' +
       '<section class="adm-panel" data-panel="olist" id="aOList"></section>' +
+      '<section class="adm-panel" data-panel="log" id="aLog"></section>' +
       '<section class="adm-panel" data-panel="bans" id="aBans"></section>' +
       '<section class="adm-panel" data-panel="prods"><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث عن منتج…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
         '<p class="hint">«قبل الخصم» اختياري: لو كتبته أكبر من السعر، يطلع المنتج في العروض مع نسبة الخصم. اضغط على الصورة لتغييرها أو رفع صورة من جهازك. الأسهم ترتّب المنتج داخل قسمه.</p></div><div class="alist prods" id="aProds"></div></section>' +
@@ -1835,7 +1878,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
           '<label for="sPin">رقم سري جديد للإدارة (اتركه فاضي إذا ما تبغى تغيّره)<input id="sPin" type="password" inputmode="numeric" maxlength="12" autocomplete="new-password"></label>' +
           (apiUrl() ? '<label for="sDPin">رقم سري المندوب (اكتبه لتعيينه أو تغييره)<input id="sDPin" type="password" inputmode="numeric" maxlength="12" autocomplete="new-password"></label>' : '') +
         '</div></div></section>' +
-      '<section class="adm-panel" data-panel="orders">' + (apiUrl() ? '<div class="card" id="pushCard"></div><div class="card" id="tgCard"></div>' : '') + (GH && !apiUrl() ? '<div class="card" id="ghCard"></div>' : '') + (!apiUrl() && !GH ? '<div class="card"><p class="hint">الطلبات تشتغل من نسخة الموقع على GitHub.</p></div>' : '') + '</section>' +
+      '<section class="adm-panel" data-panel="orders">' + (apiUrl() ? '<div class="card" id="cashCard"></div><div class="card" id="pushCard"></div><div class="card" id="tgCard"></div>' : '') + (GH && !apiUrl() ? '<div class="card" id="ghCard"></div>' : '') + (!apiUrl() && !GH ? '<div class="card"><p class="hint">الطلبات تشتغل من نسخة الموقع على GitHub.</p></div>' : '') + '</section>' +
       '</div></div></div>' +
       '<div class="sheet" id="pickSheet" hidden><div class="panel" role="dialog" aria-modal="true" aria-labelledby="pickTitle">' +
         '<div class="panel-head"><h2 id="pickTitle">اختر صورة</h2><button class="btn btn-ghost" id="pickClose" type="button">إغلاق</button></div>' +
@@ -1881,7 +1924,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     $("ppDone").addEventListener("click", ppClose);
     $("ppSheet").addEventListener("click", function(e){ if (e.target === this) ppClose(); });
     $("ppQ").addEventListener("input", ppRender);
-    stockEdit = {}; loadAdminStock();
+    stockEdit = {}; costEdit = {}; loadAdminStock();
     newPin = ""; newDPin = ""; $("sPin").addEventListener("input", function(){ newPin = this.value.trim(); if (newPin) markDirty(); });
     if ($("sDPin")) $("sDPin").addEventListener("input", function(){ newDPin = this.value.trim(); if (newDPin) markDirty(); });
     if (GH && !apiUrl()) renderGh();
@@ -1889,7 +1932,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if (apiUrl()) renderPush();
     renderPromos(); renderLayout(); renderBans(); renderLook(); renderACats(); renderAFilter(); renderAProds(); renderOver();
   }
-  var TAB_TITLE = { stats: "التحليل", bans: "البنرات ومنتجات «لك»", over: "نظرة عامة", prods: "المنتجات", cats: "الأقسام", offers: "العروض", layout: "ترتيب الواجهة", look: "المظهر واللغة", store: "بيانات المحل", orders: "المندوب والإشعارات", olist: "الطلبات" };
+  var TAB_TITLE = { stats: "التحليل", bans: "البنرات ومنتجات «لك»", over: "نظرة عامة", prods: "المنتجات", cats: "الأقسام", offers: "العروض", layout: "ترتيب الواجهة", look: "المظهر واللغة", store: "بيانات المحل", orders: "المندوب والإشعارات", olist: "الطلبات", log: "سجل العمليات" };
   function showTab(id){
     aTab = id;
     Array.prototype.forEach.call(document.querySelectorAll(".adm-panel"), function(p){ p.hidden = p.dataset.panel !== id; });
@@ -1898,6 +1941,8 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if (id === "over") renderOver();
     if (id === "stats") renderStats();
     if (id === "olist") renderOList();
+    if (id === "log") renderLog();
+    if (id === "orders") renderCash();
     if (id === "bans") renderBans();
     window.scrollTo(0, 0);
   }
@@ -1923,13 +1968,14 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     var ps = draft.products, out = ps.filter(function(p){ return !p.stock; }).length, sale = ps.filter(function(p){ return p.old && p.old > p.price; }).length;
     var noEn = ps.filter(function(p){ return !p.name_en; }).length;
     var stat = function(n, l, tab){ return '<button type="button" class="stat" data-atab="' + tab + '"><b>' + n + '</b><span>' + l + '</span></button>'; };
-    box.innerHTML = '<div class="stats">' + stat(ps.length, "منتج", "prods") + stat(draft.cats.length, "قسم", "cats") + stat(sale, "منتج عليه خصم", "prods") + stat(out, "منتج نافد", "prods") + '</div>' +
+    box.innerHTML = staffBox() + (apiUrl() ? '<div class="card today" id="aToday"><p class="hint">جاري تحميل أرقام اليوم…</p></div><div class="card tips" id="aTips"></div>' : '') + '<div class="stats">' + stat(ps.length, "منتج", "prods") + stat(draft.cats.length, "قسم", "cats") + stat(sale, "منتج عليه خصم", "prods") + stat(out, "منتج نافد", "prods") + '</div>' +
       (apiUrl() ? '<div class="card"><div class="sec-head" style="margin:0"><h2>آخر الطلبات</h2><button class="btn btn-soft" type="button" id="aOpenDrv">صفحة المندوب</button></div><div id="aOrders" class="hint">جاري التحميل…</div></div>' : '') +
       '<div class="card openbox' + (draft.store.closed ? ' closed' : '') + '"><span class="ic">' + ic(draft.store.closed ? "lock" : "unlock") + '</span><span class="t"><b>' + (draft.store.closed ? 'المحل مقفل، والطلبات واقفة' : 'المحل مفتوح ويستقبل الطلبات') + '</b><span>' + (draft.store.minOrder ? 'أقل مبلغ للطلب ' + num(draft.store.minOrder) + ' ر.س' : 'بدون حد أدنى للطلب') + '</span></span><button class="btn ' + (draft.store.closed ? 'btn-brand' : 'btn-ghost') + '" type="button" id="aToggleOpen">' + (draft.store.closed ? 'افتح المحل' : 'اقفل المحل مؤقتًا') + '</button></div>' +
       '<div class="card"><h2>اختصارات</h2><div class="quick">' +
         '<button type="button" class="btn btn-brand" data-onew>+ طلب بالتلفون أو الواتساب</button><button type="button" class="btn btn-ghost" data-atab="prods">تعديل الأسعار</button><button type="button" class="btn btn-ghost" data-atab="offers">عرض اليوم والعروض</button>' +
         '<button type="button" class="btn btn-ghost" data-atab="layout">ترتيب الصفحة الرئيسية</button><button type="button" class="btn btn-ghost" data-atab="look">الألوان واللغة</button></div>' +
         lowHTML() + (noEn ? '<p class="hint">فيه ' + noEn + ' منتج بدون اسم إنجليزي، ويطلعون بالعربي في النسخة الإنجليزية.</p>' : '') + '</div>';
+    if (apiUrl()) loadToday();
     $("aToggleOpen").addEventListener("click", function(){ if (draft.store.closed) delete draft.store.closed; else draft.store.closed = true; if ($("sClosed")) $("sClosed").checked = !!draft.store.closed; markDirty(); renderOver(); publish(); });
     if ($("aOpenDrv")) $("aOpenDrv").addEventListener("click", function(){ if (dirty) { $("aStatus").className = "status err"; $("aStatus").textContent = "احفظ تعديلاتك أول."; return; } drv.pin = adminPin; openDriver(); });
     if (apiUrl()) api("/driver/orders", { pin: adminPin }).then(function(j){
@@ -2017,6 +2063,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
         '<label>قبل الخصم<input data-f="old" type="number" min="0" step="0.25" inputmode="decimal" value="' + esc(p.old || "") + '" placeholder="—"></label>' +
         '<label class="wide">القسم<select data-f="cat">' + catOptions(p.cat) + '</select></label>' +
         '<label>الكمية بالمخزون<input data-f="qty" type="number" min="0" step="1" inputmode="numeric" value="' + (qtyOf(p.id) == null ? '' : qtyOf(p.id)) + '" placeholder="' + (STK_OK ? 'بدون عدّ' : 'يحتاج قاعدة الطلبات') + '"' + (STK_OK ? '' : ' disabled') + (qtyOf(p.id) != null && qtyOf(p.id) <= (draft.store.lowAt == null ? 3 : draft.store.lowAt) ? ' class="lowq"' : '') + '></label>' +
+        '<label>سعر الشراء' + marginTag(p) + '<input data-f="cost" type="number" min="0" step="0.05" inputmode="decimal" value="' + (costOf(p.id) == null ? '' : costOf(p.id)) + '" placeholder="' + (STK_OK ? 'سري، ما يشوفه الزبون' : 'يحتاج قاعدة الطلبات') + '"' + (STK_OK ? '' : ' disabled') + '></label>' +
         '<label>الحد لكل طلب<input data-f="max" type="number" min="0" step="1" inputmode="numeric" value="' + esc(p.max || "") + '" placeholder="بدون حد"></label>' +
         '<div class="tools wide"><label class="chk"><input type="checkbox" data-f="stock"' + (p.stock ? ' checked' : '') + '>متوفر</label>' +
         '<input data-f="badge" value="' + esc(p.badge || "") + '" placeholder="شارة: يُخبز يوميًا" aria-label="شارة المنتج" style="width:150px">' +
@@ -2074,6 +2121,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if (f === "stock") { p.stock = t.checked; row.classList.toggle("off", !t.checked); }
     else if (f === "price") p.price = Number(t.value || 0);
     else if (f === "old") { var v = Number(t.value || 0); if (v) p.old = v; else delete p.old; }
+    else if (f === "cost") { costEdit[p.id] = t.value === "" ? null : Math.max(0, Number(t.value) || 0); var mt = row.querySelector(".mtag"); if (mt) mt.outerHTML = marginTag(p); else { var lb = t.closest("label"); if (lb) lb.insertAdjacentHTML("afterbegin", ""); } }
     else if (f === "qty") { stockEdit[p.id] = t.value === "" ? null : Math.max(0, Math.floor(Number(t.value) || 0)); }
     else if (f === "max") { var mx = Math.floor(Number(t.value || 0)); if (mx > 0) p.max = mx; else delete p.max; }
     else if (f === "badge") { if (t.value.trim()) p.badge = t.value.trim(); else delete p.badge; }
@@ -2216,11 +2264,11 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if (newPin && !/^\d{4,12}$/.test(newPin)) { btn.disabled = false; st.className = "status err"; st.textContent = "الرقم السري الجديد لازم يكون أرقام بس، من ٤ إلى ١٢ رقم."; return; }
     if (apiUrl()) {
       var payload = gcData(JSON.parse(JSON.stringify(draft))); delete payload.store.pinHash;
-      var stockSend = Object.keys(stockEdit).length ? stockEdit : undefined;
-      api("/save", { pin: adminPin, data: payload, newPin: newPin || undefined, newDriverPin: newDPin || undefined, stock: stockSend }).then(function(j){
+      var stockSend = Object.keys(stockEdit).length ? stockEdit : undefined, costSend = Object.keys(costEdit).length ? costEdit : undefined;
+      api("/save", { pin: adminPin, data: payload, newPin: newPin || undefined, newDriverPin: newDPin || undefined, stock: stockSend, costs: costSend }).then(function(j){
         btn.disabled = false;
         if (j.ok) {
-          if (j.stock) { STK = j.stock; LIVE = j.stock; } stockEdit = {};
+          if (j.stock) { STK = j.stock; LIVE = j.stock; } stockEdit = {}; Object.keys(costEdit).forEach(function(k){ if (costEdit[k] == null) delete COST[k]; else COST[k] = costEdit[k]; }); costEdit = {};
           applyData(payload); dirty = false; if (newPin) adminPin = newPin; newPin = ""; $("sPin").value = ""; newDPin = ""; if ($("sDPin")) $("sDPin").value = ""; if ($("tgCard")) renderTg();
           st.className = "status"; st.textContent = "انحفظ. يوصل للزبائن خلال دقيقة تقريبًا."; $("aState").textContent = "كل شي محفوظ"; return;
         }
@@ -2374,16 +2422,22 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   }
   function pname(id){ var p = dById(id); return p ? p.name : "منتج محذوف"; }
   function pct(a, b){ return b ? Math.round(a / b * 100) : 0; }
-  function delta(cur, prev, invert){ if (!prev) return cur ? '<em class="dl up">جديد</em>' : ''; var d = Math.round((cur - prev) / Math.abs(prev) * 100); if (!d) return '<em class="dl">نفس الفترة اللي قبل</em>'; var good = invert ? d < 0 : d > 0; return '<em class="dl ' + (good ? 'up' : 'down') + '">' + (d > 0 ? '▲ ' : '▼ ') + Math.abs(d) + '٪ عن الفترة اللي قبل</em>'; }
-  function sumDays(list){ var o = { orders: 0, revenue: 0, items: 0, card: 0, fees: 0, canceled: 0, newc: 0, deliv_ms: 0, deliv_n: 0, deliv_rev: 0, visits: 0, carts: 0, checkouts: 0 }; list.forEach(function(d){ Object.keys(o).forEach(function(k){ o[k] += Number(d[k] || 0); }); }); return o; }
+  var PREV_OK = true;
+  function prevOk(j){ var old = j.daily.filter(function(d){ return d.day < j.from && d.orders > 0; }).length; return old >= Math.max(1, Math.floor(j.days * 0.7)); }
+  function delta(cur, prev, invert){ if (!PREV_OK) return ''; if (!prev) return cur ? '<em class="dl up">جديد</em>' : ''; var d = Math.round((cur - prev) / Math.abs(prev) * 100); if (!d) return '<em class="dl">نفس الفترة اللي قبل</em>'; var good = invert ? d < 0 : d > 0; return '<em class="dl ' + (good ? 'up' : 'down') + '">' + (d > 0 ? '▲ ' : '▼ ') + Math.abs(d) + '٪ عن الفترة اللي قبل</em>'; }
+  function sumDays(list){ var o = { cost: 0, orders: 0, revenue: 0, items: 0, card: 0, fees: 0, canceled: 0, newc: 0, deliv_ms: 0, deliv_n: 0, deliv_rev: 0, visits: 0, carts: 0, checkouts: 0 }; list.forEach(function(d){ Object.keys(o).forEach(function(k){ o[k] += Number(d[k] || 0); }); }); return o; }
   function sec(title, body, hint){ return '<section class="an-sec"><h3>' + title + '</h3>' + (hint ? '<p class="hint">' + hint + '</p>' : '') + body + '</section>'; }
   var DOW = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
   function statsHTML(j){
     var cur = j.daily.filter(function(d){ return d.day >= j.from; }), old = j.daily.filter(function(d){ return d.day < j.from; });
     var A = sumDays(cur), B = sumDays(old), avg = A.orders ? A.revenue / A.orders : 0, avgB = B.orders ? B.revenue / B.orders : 0;
+    PREV_OK = prevOk(j);
     var tile = function(v, l, d){ return '<div class="stat"><b>' + v + '</b><span>' + l + '</span>' + (d || '') + '</div>'; };
     var dmin = A.deliv_n ? Math.round(A.deliv_ms / A.deliv_n / 60000) : null;
-    var h = '<div class="stats mini an-tiles">' +
+    var withCost = j.items.filter(function(x){ return x.qty > 0 && x.cost > 0; }), revC = withCost.reduce(function(a, x){ return a + x.revenue; }, 0), costC = withCost.reduce(function(a, x){ return a + x.cost; }, 0);
+    var tipsH = tipsHTML(insights(j), true);
+    var h = tipsH + '<div class="stats mini an-tiles">' +
+      (costC > 0 ? tile(num(Math.round(revC - costC)), "ريال ربح" + (withCost.length < j.items.filter(function(x){ return x.qty > 0; }).length ? " (للمنتجات اللي لها سعر شراء)" : ""), delta(A.revenue - A.cost, B.revenue - B.cost)) + tile(pct(revC - costC, revC) + '٪', "هامش الربح", '') : '') +
       tile(num(A.orders), "طلب", delta(A.orders, B.orders)) + tile(num(Math.round(A.revenue)), "ريال مبيعات", delta(A.revenue, B.revenue)) +
       tile(A.orders ? num(Math.round(avg * 10) / 10) : '—', "ريال متوسط الطلب", delta(avg, avgB)) + tile(num(A.items), "قطعة انباعت", delta(A.items, B.items)) +
       tile(num((j.customers || {}).fresh || 0), "زبون جديد", delta((j.customers || {}).fresh || 0, (j.customers || {}).freshPrev || 0)) + tile(A.orders + A.canceled ? pct(A.canceled, A.orders + A.canceled) + '٪' : '—', "نسبة الإلغاء (" + num(A.canceled) + ")", delta(A.canceled, B.canceled, true)) +
@@ -2419,7 +2473,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     // top products with trend
     var sold = j.items.filter(function(x){ return x.qty > 0; }), tmax = sold.length ? sold[0].qty : 1;
     if (sold.length) h += sec("الأكثر مبيعًا", '<div class="tbl">' + sold.slice(0, 15).map(function(x, i){ var p = dById(x.id);
-      return '<div class="trow"><span class="pos">' + (i + 1) + '</span>' + (p ? imgTag(p.img, "") : '<span></span>') + '<span class="nm">' + esc(pname(x.id)) + '<i class="meter"><i style="width:' + pct(x.qty, tmax) + '%"></i></i></span><span class="v">' + num(x.qty) + ' قطعة' + (x.prev ? (x.qty > x.prev ? ' <em class="dl up">▲</em>' : x.qty < x.prev ? ' <em class="dl down">▼</em>' : '') : '') + '</span><span class="v">' + num(Math.round(x.revenue)) + ' ر.س</span><span class="v muted">في ' + pct(x.orders, A.orders) + '٪ من الطلبات</span></div>'; }).join("") + '</div>');
+      return '<div class="trow"><span class="pos">' + (i + 1) + '</span>' + (p ? imgTag(p.img, "") : '<span></span>') + '<span class="nm">' + esc(pname(x.id)) + '<i class="meter"><i style="width:' + pct(x.qty, tmax) + '%"></i></i></span><span class="v">' + num(x.qty) + ' قطعة' + (x.prev ? (x.qty > x.prev ? ' <em class="dl up">▲</em>' : x.qty < x.prev ? ' <em class="dl down">▼</em>' : '') : '') + '</span><span class="v">' + num(Math.round(x.revenue)) + ' ر.س</span><span class="v muted">' + (x.cost > 0 ? '<b class="' + (x.revenue - x.cost < x.revenue * 0.1 ? 'down' : 'up') + '">ربح ' + num(Math.round(x.revenue - x.cost)) + '</b> · ' : '') + 'في ' + pct(x.orders, A.orders) + '٪ من الطلبات</span></div>'; }).join("") + '</div>');
     // movers
     var movers = j.items.filter(function(x){ return x.prev > 0 || x.qty > 0; }).map(function(x){ return { id: x.id, d: x.qty - x.prev, qty: x.qty, prev: x.prev }; });
     var up = movers.filter(function(m){ return m.d > 0 && m.prev; }).sort(function(a, b){ return b.d - a.d; }).slice(0, 5), down = movers.filter(function(m){ return m.d < 0; }).sort(function(a, b){ return a.d - b.d; }).slice(0, 5);
@@ -2491,7 +2545,11 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       '<div class="push-stat" id="pushStat">جاري الفحص…</div>' +
       '<div class="actions"><button class="btn btn-brand" type="button" id="pushAdm">' + ic("bell") + 'فعّل الإشعارات على هذا الجهاز</button><button class="btn btn-soft" type="button" id="pushTest">أرسل إشعار تجربة</button></div><p class="status" id="pushMsgA" aria-live="polite"></p>' +
       (isIOS() && !isApp() ? '<p class="hint">على الآيفون: الإشعارات تشتغل بس لما تضيف المتجر للشاشة الرئيسية (زر المشاركة ← «إضافة إلى الشاشة الرئيسية») وتفتحه من الأيقونة.</p>' : '') +
+      '<h2 style="margin-top:14px">تقرير آخر اليوم</h2><p class="hint">يوصل أجهزة الإدارة اللي مفعّلة الإشعارات (وتيليجرام لو مربوط) كل ليلة: الطلبات، المبيعات، الربح، كاش المندوب، والمنتجات اللي بتخلص. يحتاج تفعيل مرة وحدة في Cloudflare (الدليل، القسم ٩).</p>' +
+      '<div class="actions"><button class="btn btn-soft" type="button" id="repTest">أرسل تقرير اليوم الحين</button></div><p class="status" id="repMsg" style="white-space:pre-line"></p>' +
       '<div class="fields" style="max-width:420px"><label for="sLow">نبّهني لما يبقى من المنتج (قطعة أو أقل)، ويطلع للزبون «باقي X بس»<input id="sLow" type="number" min="0" step="1" inputmode="numeric" value="' + esc(la) + '"></label></div>';
+    $("repTest").addEventListener("click", function(){ var m = $("repMsg"); m.className = "status"; m.textContent = "جاري الإرسال…";
+      api("/admin/report-test", { pin: adminPin }).then(function(j){ if (!j.ok) { m.className = "status err"; m.textContent = j.code === "not_found" ? "حدّث كود الخادم أول." : "ما انرسل."; return; } m.textContent = "انرسل:\n" + j.report.title + "\n" + j.report.body; }); });
     $("sLow").addEventListener("input", function(){ var v = Math.max(0, Math.floor(Number(this.value || 0))); draft.store.lowAt = v; markDirty(); });
     $("pushAdm").addEventListener("click", function(){ var b = this, m = $("pushMsgA"); b.disabled = true; m.className = "status"; m.textContent = "جاري التفعيل…";
       pushSub().then(function(sub){ return api("/push/sub", { pin: adminPin, sub: sub }); }).then(function(j){ b.disabled = false; if (!j.ok) throw j; m.textContent = "تفعّلت. بيوصلك إشعار تأكيد الحين."; pushStat(); })
@@ -2736,6 +2794,134 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       nf.lines = []; (last.lines || []).forEach(function(l){ if (l.id && dById(l.id)) nfAdd(l.id, l.qty); }); nfRender(); return; }
     if (e.target.closest("#nfSave")) { nfSave(); return; }
   });
+
+  /* ---------- staff name (for the activity log) ---------- */
+  function staffBox(){
+    if (STAFF) return '<div class="staffline">' + ic("user") + '<span>أنت داخل باسم <b>' + esc(STAFF) + '</b></span><button type="button" class="linkbtn" data-staffchg>غيّر</button></div>';
+    return '<div class="card staffask"><b>وش اسمك؟</b><p class="hint">عشان يطلع اسمك في «سجل العمليات» لما تغيّر سعر أو تلغي طلب. ينحفظ على هذا الجهاز بس.</p><div class="o-tools"><input id="staffIn" maxlength="30" placeholder="مثال: فهد"><button class="btn btn-brand" type="button" id="staffSave">احفظ</button></div></div>';
+  }
+  document.addEventListener("click", function(e){
+    if (mode !== "admin") return;
+    if (e.target.closest("[data-staffchg]")) { STAFF = ""; try { localStorage.removeItem("ohod-staff"); } catch(x){} renderOver(); var i = $("staffIn"); if (i) i.focus(); return; }
+    if (e.target.closest("#staffSave")) { var v = ($("staffIn").value || "").trim().slice(0, 30); if (!v) return; STAFF = v; try { localStorage.setItem("ohod-staff", v); } catch(x){} renderOver(); }
+  });
+  function marginTag(p){ var c = costOf(p.id); if (c == null || !(p.price > 0)) return ''; var m = Math.round((p.price - c) / p.price * 100); return ' <em class="mtag ' + (m < 10 ? 'bad' : m < 20 ? 'mid' : 'good') + '">ربح ' + m + '٪</em>'; }
+
+  /* ---------- today so far + tips ---------- */
+  function loadToday(){
+    api("/admin/today", { pin: adminPin }).then(function(j){ var el = $("aToday"); if (!el) return;
+      if (!j.ok) { el.innerHTML = '<p class="hint">' + (j.code === "not_found" ? "حدّث كود الخادم في Cloudflare عشان تطلع أرقام اليوم." : "ما قدرنا نجيب أرقام اليوم.") + '</p>'; return; }
+      todayCache = j; el.innerHTML = todayHTML(j); });
+    if (!stat30) api("/admin/stats", { pin: adminPin, days: 30 }).then(function(j){ if (!j.ok) return; stat30 = j; var el = $("aTips"); if (el) el.innerHTML = tipsHTML(insights(j).slice(0, 4), false); });
+    else { var el = $("aTips"); if (el) el.innerHTML = tipsHTML(insights(stat30).slice(0, 4), false); }
+  }
+  function todayHTML(j){
+    var d = j.today, w = j.lastWeek, hl = (j.hour % 12 || 12) + (j.hour < 12 ? ' الصبح' : j.hour < 17 ? ' الظهر' : ' بالليل');
+    var cmp = function(a, b){ if (!b) return a ? '<em class="dl up">أول مرة</em>' : '<em class="dl">—</em>'; var x = Math.round((a - b) / b * 100); return '<em class="dl ' + (x >= 0 ? 'up' : 'down') + '">' + (x >= 0 ? '▲ ' : '▼ ') + Math.abs(x) + '٪</em>'; };
+    var open = 0; (j.open || []).forEach(function(o){ open += o.n; });
+    var profit = d.cost > 0 ? Math.round(d.revenue - d.cost) : null, profitW = w.cost > 0 ? Math.round(w.revenue - w.cost) : null;
+    return '<div class="sec-head" style="margin:0"><h2>اليوم حتى الحين</h2><span class="hint">مقارنة بنفس اليوم الأسبوع اللي طاف لين الساعة ' + hl + '</span></div>' +
+      '<div class="stats mini today-tiles"><div class="stat"><b>' + num(d.orders) + '</b><span>طلب</span>' + cmp(d.orders, w.orders) + '<small>الأسبوع اللي طاف: ' + num(w.orders) + '</small></div>' +
+      '<div class="stat"><b>' + num(Math.round(d.revenue)) + '</b><span>ريال مبيعات</span>' + cmp(d.revenue, w.revenue) + '<small>الأسبوع اللي طاف: ' + num(Math.round(w.revenue)) + '</small></div>' +
+      (profit != null ? '<div class="stat"><b>' + num(profit) + '</b><span>ريال ربح</span>' + (profitW != null ? cmp(profit, profitW) : '') + '</div>' : '<button type="button" class="stat ghost" data-atab="prods"><b>؟</b><span>الربح</span><small>حط «سعر الشراء» للمنتجات عشان يطلع ربحك</small></button>') +
+      '<button type="button" class="stat" data-atab="olist"><b>' + num(open) + '</b><span>طلب جاري الحين</span><small>' + (open ? 'اضغط تشوفها' : 'كل الطلبات خلصت') + '</small></button>' +
+      '<button type="button" class="stat" data-atab="orders"><b>' + num(Math.round(j.cashBalance || 0)) + '</b><span>ريال كاش عند المندوب</span><small>اضغط تسجّل الاستلام</small></button></div>';
+  }
+  function tipsHTML(list, inStats){
+    if (!list.length) return inStats ? '' : '<h2>نصائح</h2><p class="hint">النصائح تطلع لما يتجمع شوية طلبات.</p>';
+    return (inStats ? '<div class="tips-box">' : '') + '<h2>' + ic("spark") + 'نصائح من أرقامك</h2><div class="tips-list">' + list.map(function(t){ return '<div class="tip ' + (t.k || '') + '"><span class="ic">' + ic(t.ic) + '</span><span class="t">' + t.html + '</span>' + (t.act ? '<button type="button" class="btn btn-soft sm" ' + t.act[0] + '>' + t.act[1] + '</button>' : '') + '</div>'; }).join("") + '</div>' + (inStats ? '</div>' : '');
+  }
+  function insights(j){
+    var out = [], cur = j.daily.filter(function(d){ return d.day >= j.from; }), old = j.daily.filter(function(d){ return d.day < j.from; });
+    var A = sumDays(cur), B = sumDays(old);
+    // 1) stock running out soon
+    var per = {}; j.items.forEach(function(x){ per[x.id] = x.qty / j.days; });
+    var soon = draft.products.filter(function(p){ var q = qtyOf(p.id); return q != null && per[p.id] > 0 && q / per[p.id] <= 3; }).map(function(p){ return { p: p, d: qtyOf(p.id) / per[p.id] }; }).sort(function(a, b){ return a.d - b.d; });
+    soon.slice(0, 2).forEach(function(x){ out.push({ ic: "box", k: "warn", html: '<b>' + esc(x.p.name) + '</b> ' + (x.d < 1 ? 'يخلص اليوم' : 'يخلص خلال ' + Math.ceil(x.d) + ' يوم') + ' حسب سرعة البيع (باقي ' + num(qtyOf(x.p.id)) + '). اطلب من المورّد.', act: ['data-gostock="' + x.p.id + '"', 'عدّل الكمية'] }); });
+    // 2) trend
+    if (prevOk(j) && B.revenue > 0 && A.revenue > 0) { var ch = Math.round((A.revenue - B.revenue) / B.revenue * 100); if (Math.abs(ch) >= 10) out.push({ ic: "chart", k: ch > 0 ? "good" : "warn", html: 'المبيعات ' + (ch > 0 ? 'زادت' : 'نقصت') + ' <b>' + Math.abs(ch) + '٪</b> عن الفترة اللي قبلها (' + num(Math.round(A.revenue)) + ' مقابل ' + num(Math.round(B.revenue)) + ' ريال).' }); }
+    // 3) busiest time
+    if (j.hours.length >= 5) { var byDow = [0,0,0,0,0,0,0], byH = {}; j.hours.forEach(function(x){ byDow[new Date(x.day + "T12:00:00Z").getUTCDay()] += x.orders; byH[x.hour] = (byH[x.hour] || 0) + x.orders; });
+      var bd = byDow.indexOf(Math.max.apply(null, byDow)), bh = Number(Object.keys(byH).sort(function(a, b){ return byH[b] - byH[a]; })[0]);
+      out.push({ ic: "truck", html: 'أكثر وقت طلبات: <b>' + DOW[bd] + '</b> والساعة <b>' + (bh % 12 || 12) + (bh < 12 ? ' الصبح' : bh < 17 ? ' الظهر' : ' بالليل') + '</b>. خلّ المندوب جاهز، والخبز الحار يطلع قبلها بشوي.' }); }
+    // 4) lost customers
+    var C = j.customers || {};
+    if (C.gone >= 3) out.push({ ic: "user", k: "warn", html: '<b>' + num(C.gone) + ' زبون</b> كانوا يطلبون منك أكثر من مرة وما طلبوا من شهر. رسالة عرض بسيطة ممكن ترجّعهم.' });
+    // 5) searched but not found
+    var miss = (j.searches || []).filter(function(x){ return x.miss >= 3; }).sort(function(a, b){ return b.miss - a.miss; })[0];
+    if (miss) out.push({ ic: "search", html: 'الزبائن دوّروا على <b>«' + esc(miss.q) + '»</b> ' + num(miss.miss) + ' مرة وما لقوه. فكّر تضيفه للمتجر.' });
+    // 6) low margin best seller
+    var lm = j.items.filter(function(x){ return x.qty > 0 && x.cost > 0 && dById(x.id); }).slice(0, 10).filter(function(x){ return (x.revenue - x.cost) / x.revenue < 0.1; })[0];
+    if (lm) out.push({ ic: "tag", k: "warn", html: '<b>' + esc(pname(lm.id)) + '</b> من الأكثر مبيعًا بس ربحه <b>' + Math.round((lm.revenue - lm.cost) / lm.revenue * 100) + '٪</b> بس. راجع سعره أو سعر شرائه.', act: ['data-gostock="' + lm.id + '"', 'افتح المنتج'] });
+    // 7) viewed but not bought
+    var sm = {}; j.items.forEach(function(x){ sm[x.id] = x.qty; });
+    var cold = (j.views || []).filter(function(v){ return v.views >= 10 && dById(v.id) && (sm[v.id] || 0) <= v.views * 0.1; }).sort(function(a, b){ return b.views - a.views; })[0];
+    if (cold) out.push({ ic: "spark", html: '<b>' + esc(pname(cold.id)) + '</b> انفتح ' + num(cold.views) + ' مرة وانباع ' + num(sm[cold.id] || 0) + ' بس. يمكن السعر عالي أو الصورة ما توضح.' });
+    // 8) frequent pair not yet suggested
+    var bestPair = null;
+    (j.pairs || []).forEach(function(pr){ [[pr.a, pr.b], [pr.b, pr.a]].forEach(function(ab){ var base = j.ordersWith[ab[0]] || 0, px = dById(ab[0]); if (base >= 5 && px && dById(ab[1]) && (px.sugg || []).indexOf(ab[1]) < 0) { var c = pr.n / base; if (c >= 0.35 && (!bestPair || c > bestPair.c)) bestPair = { x: ab[0], y: ab[1], c: c }; } }); });
+    if (bestPair) out.push({ ic: "plus", k: "good", html: '<b>' + Math.round(bestPair.c * 100) + '٪</b> من اللي ياخذون ' + esc(pname(bestPair.x)) + ' ياخذون معه <b>' + esc(pname(bestPair.y)) + '</b>. حطه مقترح في صفحة المنتج.', act: ['data-mksugg="' + bestPair.x + ':' + bestPair.y + '"', 'حطه مقترح'] });
+    // 9) cancel rate
+    if (A.orders + A.canceled >= 20 && A.canceled / (A.orders + A.canceled) > 0.08) out.push({ ic: "lock", k: "warn", html: 'نسبة الإلغاء <b>' + pct(A.canceled, A.orders + A.canceled) + '٪</b>. راجع «الطلبات ← ملغية» وشوف السبب.' });
+    // 10) missing purchase prices
+    var noCost = draft.products.filter(function(p){ return p.stock && costOf(p.id) == null; }).length;
+    if (noCost && STK_OK) out.push({ ic: "tag", html: '<b>' + num(noCost) + ' منتج</b> بدون «سعر الشراء»، فالربح ما ينحسب لها.', act: ['data-atab="prods"', 'حط الأسعار'] });
+    return out.slice(0, 7);
+  }
+
+  /* ---------- driver cash ---------- */
+  function renderCash(){
+    var box = $("cashCard"); if (!box) return;
+    box.innerHTML = '<h2>كاش المندوب</h2><p class="hint">جاري التحميل…</p>';
+    api("/admin/cash", { pin: adminPin }).then(cashRender);
+  }
+  function cashRender(j){
+    var box = $("cashCard"); if (!box) return;
+    if (!j.ok) { box.innerHTML = '<h2>كاش المندوب</h2><p class="status err">' + (j.code === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : "ما قدرنا نجيب الحساب.") + '</p>'; return; }
+    box.innerHTML = '<div class="sec-head" style="margin:0"><h2>كاش المندوب</h2>' + (j.since ? '<span class="hint">من ' + new Date(j.since).toLocaleDateString("ar-SA-u-nu-latn") + '</span>' : '') + '</div>' +
+      '<div class="cash-bal' + (j.balance > 0 ? ' due' : '') + '"><span>عند المندوب الحين</span><b>' + num(j.balance) + ' ر.س</b><small>كل طلب كاش يتوصّل يزيد، وكل استلام تسجله ينقص.</small></div>' +
+      '<div class="o-tools"><input id="cashAmt" type="number" min="0" step="0.5" inputmode="decimal" placeholder="المبلغ اللي استلمته"><input id="cashNote" maxlength="100" placeholder="ملاحظة (اختياري)"><button class="btn btn-brand" type="button" id="cashAdd">سجّل الاستلام</button>' + (j.balance > 0 ? '<button class="btn btn-soft" type="button" id="cashAll" data-v="' + j.balance + '">استلمت الكل (' + num(j.balance) + ')</button>' : '') + '</div><p class="status" id="cashMsg"></p>' +
+      (j.days.length ? '<div class="tbl"><b>آخر الأيام</b>' + j.days.map(function(d){ return '<div class="trow cashd"><span class="nm">' + esc(d.day) + '</span><span class="v">' + num(d.n) + ' طلب كاش</span><span class="v">' + num(d.cash) + ' ر.س</span><span class="v muted">استلمت ' + num(d.got) + '</span></div>'; }).join("") + '</div>' : '') +
+      (j.history.length ? '<div class="tbl"><b>الاستلامات</b>' + j.history.slice(0, 10).map(function(h){ return '<div class="trow cashd"><span class="nm">' + oTime(h.at) + '</span><span class="v">' + esc(h.who) + '</span><span class="v">' + num(h.amount) + ' ر.س</span><span class="v muted">' + esc(h.note || "") + '</span></div>'; }).join("") + '</div>' : '');
+    var send = function(v){ var m = $("cashMsg"); if (!(v > 0)) { m.className = "status err"; m.textContent = "اكتب المبلغ."; return; } m.className = "status"; m.textContent = "جاري الحفظ…";
+      api("/admin/cash", { pin: adminPin, add: v, note: $("cashNote").value }).then(function(r){ if (!r.ok) { m.className = "status err"; m.textContent = "ما انحفظ."; return; } cashRender(r); if (todayCache) { todayCache.cashBalance = r.balance; } }); };
+    $("cashAdd").addEventListener("click", function(){ send(Number($("cashAmt").value)); });
+    if ($("cashAll")) $("cashAll").addEventListener("click", function(){ send(Number(this.dataset.v)); });
+  }
+
+  /* ---------- activity log ---------- */
+  var LOGACT = {
+    price: function(i){ return 'غيّر سعر <b>' + esc(i.name) + '</b> من ' + num(i.from) + ' إلى ' + num(i.to) + ' ر.س'; },
+    sale: function(i){ return i.to ? 'حط خصم على <b>' + esc(i.name) + '</b> (قبل الخصم ' + num(i.to) + ')' : 'شال الخصم عن <b>' + esc(i.name) + '</b>'; },
+    avail_on: function(i){ return 'رجّع <b>' + esc(i.name) + '</b> متوفر'; }, avail_off: function(i){ return 'خلّى <b>' + esc(i.name) + '</b> غير متوفر'; },
+    prod_add: function(i){ return 'أضاف منتج <b>' + esc(i.name) + '</b> بـ ' + num(i.price) + ' ر.س'; }, prod_del: function(i){ return 'حذف منتج <b>' + esc(i.name) + '</b>'; },
+    stock: function(i){ return 'عدّل مخزون <b>' + esc(i.name) + '</b> من ' + (i.from == null ? 'بدون عدّ' : num(i.from)) + ' إلى ' + (i.to == null ? 'بدون عدّ' : num(i.to)); },
+    cost: function(i){ return 'عدّل سعر الشراء لـ <b>' + esc(i.name) + '</b>'; },
+    store_close: function(){ return '<b>قفل المحل</b> (وقف الطلبات)'; }, store_open: function(){ return '<b>فتح المحل</b>'; },
+    fees: function(i){ return 'غيّر رسوم التوصيل إلى ' + num(i.fee) + ' ر.س' + (i.freeOver ? '، ومجاني فوق ' + num(i.freeOver) : ''); },
+    pin_admin: function(){ return 'غيّر <b>الرقم السري للإدارة</b>'; }, pin_driver: function(){ return 'غيّر <b>رقم المندوب</b>'; },
+    order_new: function(i, r){ return 'سجّل طلب ' + ({ phone: "بالاتصال", whatsapp: "بالواتساب", store: "في المحل" }[i.src] || "") + ' <b dir="ltr">' + esc(r) + '</b> بـ ' + num(i.total) + ' ر.س' + (i.force ? ' (تجاوز المخزون)' : ''); },
+    order_edit: function(i, r){ return 'عدّل الطلب <b dir="ltr">' + esc(r) + '</b> من ' + num(i.before) + ' إلى ' + num(i.after) + ' ر.س'; },
+    status: function(i, r){ return (i.to === "canceled" ? '<b class="down">لغى</b> الطلب ' : i.from === "canceled" ? 'رجّع الطلب الملغي ' : 'غيّر حالة الطلب ') + '<b dir="ltr">' + esc(r) + '</b>' + (i.to !== "canceled" && i.from !== "canceled" ? ' إلى «' + (OST[i.to] || i.to) + '»' : '') + ' (' + num(i.total) + ' ر.س)'; },
+    cash_in: function(i){ return 'استلم <b>' + num(i.amount) + ' ر.س</b> كاش من المندوب' + (i.note ? ' (' + esc(i.note) + ')' : ''); }
+  };
+  var logState = { list: null, f: "imp" };
+  function renderLog(force){
+    var box = $("aLog"); if (!box) return;
+    if (!apiUrl()) { box.innerHTML = '<div class="card"><p class="hint">السجل يحتاج خادم الطلبات.</p></div>'; return; }
+    if (!logState.list || force) { box.innerHTML = '<div class="card"><p class="hint">جاري التحميل…</p></div>'; api("/admin/log", { pin: adminPin }).then(function(j){ logState.list = j.ok ? j.log : []; logState.err = j.ok ? "" : j.code; renderLog(); }); return; }
+    var F = { imp: "المهم", all: "الكل", price: "الأسعار", order: "الطلبات", cancel: "الإلغاء", stock: "المخزون", cash: "الكاش" };
+    var match = function(x){ var f = logState.f; return f === "all" || (f === "imp" && !(x.act === "status" && x.info.to !== "canceled" && x.info.from !== "canceled")) || (f === "price" && (x.act === "price" || x.act === "sale" || x.act === "cost")) || (f === "order" && /^order_|status/.test(x.act)) || (f === "cancel" && x.act === "status" && (x.info.to === "canceled" || x.info.from === "canceled")) || (f === "stock" && /^stock|avail_/.test(x.act)) || (f === "cash" && x.act === "cash_in"); };
+    var l = logState.list.filter(match), lastDay = "";
+    box.innerHTML = '<div class="card"><div class="sec-head" style="margin:0"><h2>سجل العمليات</h2><button class="btn btn-soft" type="button" id="logRef">تحديث</button></div><p class="hint">كل تغيير في الأسعار والمخزون والطلبات، مين سواه ومتى. الأسماء من «وش اسمك؟» في النظرة العامة.</p>' +
+      '<div class="pays seg mini" role="group">' + Object.keys(F).map(function(k){ return '<button type="button" data-logf="' + k + '" aria-pressed="' + (logState.f === k) + '">' + F[k] + '</button>'; }).join("") + '</div>' +
+      (logState.err ? '<p class="status err">' + (logState.err === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : "ما قدرنا نجيب السجل.") + '</p>' :
+        l.length ? '<div class="logl">' + l.map(function(x){ var d = new Date(x.at), day = d.toLocaleDateString("ar-SA-u-nu-latn", { weekday: "long", day: "numeric", month: "long" }), f = LOGACT[x.act];
+          var head = day !== lastDay ? '<div class="logday">' + esc(day) + '</div>' : ''; lastDay = day;
+          return head + '<div class="logrow' + (x.act === "status" && x.info.to === "canceled" ? ' bad' : '') + '"><span class="tm">' + d.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" }) + '</span><span class="who">' + esc(x.who) + '</span><span class="what">' + (f ? f(x.info || {}, x.ref) : esc(x.act)) + '</span></div>'; }).join("") + '</div>' : '<p class="empty">ما فيه عمليات بهذا الفلتر.</p>') + '</div>';
+    $("logRef").addEventListener("click", function(){ renderLog(true); });
+  }
+  document.addEventListener("click", function(e){ if (mode !== "admin") return; var t = e.target.closest("[data-logf]"); if (t) { logState.f = t.dataset.logf; renderLog(); } });
 
   /* ---------- routing ---------- */
   function go(m){ window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
