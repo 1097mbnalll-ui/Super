@@ -904,7 +904,136 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-img img.photo{width:92%;height:92%;object-fit:contain;mix-blend-mode:multiply}
 .kq-card.out .kq-img img{filter:grayscale(1);opacity:.45}
 .kq-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;background:#E8394F;color:#fff;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:700;z-index:2}
+/* ---------- driver app ---------- */
+body[data-screen="driver"]{background:#F3F4F6}
+.dv{min-height:100vh;background:#F3F4F6;color:#13213C;padding-bottom:110px;max-width:560px;margin:0 auto}
+.dv svg.i{width:20px;height:20px}
+.dv-top{background:#13213C;color:#fff;padding:16px 16px 14px;display:grid;gap:14px}
+.dv-row{display:flex;align-items:center;gap:10px}
+.dv-row .lg{width:42px;height:42px;border-radius:12px;background:#fff;object-fit:contain;padding:3px;box-sizing:border-box}
+.dv-row .t{flex:1;display:grid;gap:2px;min-width:0}.dv-row .t b{font-size:18px}
+.dv .live{font-size:12px;color:#B8C2D6;display:flex;align-items:center;gap:6px}.dv .live i{width:8px;height:8px;border-radius:50%;background:#4ADE80}.dv .live.off i{background:#F87171}
+.dv-sq{width:44px;height:44px;border-radius:14px;border:0;background:#fff;color:#13213C;display:grid;place-items:center;cursor:pointer;flex:none;text-decoration:none}
+.dv-sq.dark{background:rgba(255,255,255,.1);color:#fff}
+.dv-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;background:none;border:0;padding:0;font:inherit;color:#fff;cursor:pointer;text-align:start}
+.dv-stats span{background:rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;display:grid;gap:2px;font-size:11px;color:#B8C2D6}
+.dv-stats b{font-size:20px;color:#fff}.dv-stats .hot{background:#FDBA74;color:#13213C}.dv-stats .hot b{color:#13213C}
+.dv-push{display:flex;align-items:center;gap:10px;background:#FFF4E8;margin:12px 16px 0;border-radius:16px;padding:10px 12px;font-size:12px}
+.dv-push .t{flex:1;display:grid;gap:2px}.dv-push b{font-size:14px}
+.dv-tabs{display:flex;gap:8px;padding:14px 16px 6px;overflow-x:auto;scrollbar-width:none}
+.dv-tabs button{flex:none;height:42px;padding:0 14px;border-radius:999px;border:1px solid #E3E6EB;background:#fff;color:#13213C;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.dv-tabs button[aria-pressed="true"]{background:#13213C;color:#fff;border-color:#13213C}
+.dv-tabs em{font-style:normal;background:#C2410C;color:#fff;border-radius:999px;padding:0 7px;font-size:12px;margin-inline-start:4px}
+.dv-list{display:grid;gap:12px;padding:8px 16px}
+.dv-card{background:#fff;border-radius:22px;padding:16px;display:grid;gap:10px}
+.dv-card.hot{box-shadow:0 0 0 2px #C2410C,0 10px 24px rgba(194,65,12,.12)}
+.dv-card.fresh{animation:dvPulse 1.2s ease 3}
+@keyframes dvPulse{50%{box-shadow:0 0 0 5px #FDBA74}}
+.dv-card .h{display:flex;align-items:center;gap:8px}.dv-card .h b{font-size:18px}
+.dv-card .ago{font-size:12px;color:#5B6474;margin-inline-start:auto}
+.dv .src{font-size:11px;font-weight:600;border-radius:999px;padding:3px 9px;background:#EDE9FE;color:#5B21B6}.dv .src.whatsapp{background:#DCFCE7;color:#166534}.dv .src.store{background:#FFEDD5;color:#9A3412}
+.dv-card .who{display:grid;gap:2px}.dv-card .who b{font-size:15px}.dv-card .who span{font-size:13px;color:#5B6474}
+.dv-card .ths{display:flex;gap:6px;flex-wrap:wrap}
+.dv .th{width:48px;height:48px;border-radius:12px;background:#F3F4F6;object-fit:contain;padding:4px;box-sizing:border-box}
+.dv .th.more{display:grid;place-items:center;font-size:13px;font-weight:600;color:#5B6474}
+.dv .noph{display:grid;place-items:center;color:#9AA3B2;background:#F3F4F6}
+.dv-card .money{display:flex;gap:6px;align-items:center;font-size:13px}.dv-card .money b{font-size:16px}.dv-card .money span{color:#5B6474}
+.dv-card .note,.dv-note{display:flex;align-items:center;gap:8px;background:#FFF7ED;color:#9A3412;border-radius:12px;padding:8px 10px;font-size:12.5px}
+.dv-note.blue{background:#EFF6FF;color:#1E3A8A}
+.dv-card .note svg.i,.dv-note svg.i{width:16px;height:16px}
+.dv-card .acts{display:flex;align-items:center;gap:10px}
+.dv-btn{min-height:52px;border-radius:16px;border:0;font:inherit;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;padding:0 16px;text-decoration:none;box-sizing:border-box}
+.dv-btn.go{flex:1;background:#C2410C;color:#fff}.dv-btn.ink{flex:1;background:#13213C;color:#fff}
+.dv-btn.ok{background:#15803D;color:#fff}.dv-btn.off{background:#CBD2DC;color:#3F4A5C}
+.dv-btn.miss{background:#fff;color:#B91C1C;border:1.5px solid #FCA5A5}
+.dv-btn.wa{background:#DCFCE7;color:#166534}.dv-btn.line{background:#fff;color:#13213C;border:1px solid #E3E6EB}
+.dv-btn.wide{flex:1}
+.dv-btn:disabled{opacity:.6}
+.dv-link{background:none;border:0;font:inherit;font-size:13px;color:#B91C1C;font-weight:600;cursor:pointer;padding:10px}
+.dv-empty{display:grid;justify-items:center;gap:6px;text-align:center;padding:40px 20px;color:#5B6474}
+.dv-empty svg.i{width:40px;height:40px;color:#9AA3B2}.dv-empty b{color:#13213C}
+.dv-bar{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #E3E6EB;padding:12px 16px;display:flex;align-items:center;gap:10px}
+.dv-bar .dv-sq{background:#F3F4F6}
+.dv-bar .t{display:grid;gap:1px}.dv-bar b{font-size:17px}.dv-bar .t span{font-size:12px;color:#5B6474}
+.dv-prog{background:#fff;padding:0 16px 12px;display:grid;gap:8px;border-bottom:1px solid #E3E6EB}
+.dv-prog .l{display:flex;justify-content:space-between;font-size:12.5px}.dv-prog .l span{color:#5B6474}
+.dv-prog .bar{height:10px;border-radius:6px;background:#E3E6EB;overflow:hidden}.dv-prog .bar i{display:block;height:100%;background:#15803D;border-radius:6px;transition:width .3s}
+.dv-prog .chips{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:500}
+.dv-prog .c1{background:#FFF7ED;color:#9A3412;border-radius:10px;padding:6px 10px}.dv-prog .c2{background:#EFF6FF;color:#1E3A8A;border-radius:10px;padding:6px 10px}
+.dv-pick{padding:12px 16px;display:grid;gap:10px}
+.dv-pick h2{margin:6px 0 0;font-size:13px;font-weight:600;color:#5B6474;display:flex;align-items:center;gap:6px}.dv-pick h2 svg.i{width:15px;height:15px}
+.dv-item{background:#fff;border-radius:18px;padding:10px;display:grid;gap:10px}
+.dv-item .r{display:flex;align-items:center;gap:12px}
+.dv-item .ph{border:0;background:none;padding:0;cursor:zoom-in;flex:none}
+.dv-item .im{width:68px;height:68px;border-radius:14px;background:#F3F4F6;object-fit:contain;padding:4px;box-sizing:border-box;display:block}
+.dv-item .t{flex:1;display:grid;gap:3px;min-width:0}.dv-item .t b{font-size:14.5px}
+.dv-item .unit{font-size:13.5px;font-weight:700;background:#FEF3C7;color:#78350F;border-radius:8px;padding:1px 8px;justify-self:start}
+.dv-item .sm{font-size:11.5px;color:#5B6474}
+.dv-item .q{display:grid;justify-items:center;line-height:1}.dv-item .q small{font-size:10.5px;color:#5B6474}.dv-item .q b{font-size:24px}
+.dv-item .chk{width:46px;height:46px;border-radius:14px;border:2px solid #CBD2DC;background:#fff;color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+.dv-item.got{background:#F0FDF4;box-shadow:inset 0 0 0 1px #BBF7D0}
+.dv-item.got .im{opacity:.7}.dv-item.got .t b{text-decoration:line-through;color:#3F4A5C}.dv-item.got .q b{color:#166534}
+.dv-item.got .chk{background:#15803D;border-color:#15803D}
+.dv-item.cur{box-shadow:0 0 0 2px #13213C,0 10px 22px rgba(19,33,60,.12)}
+.dv-item.cur .im{width:96px;height:96px}.dv-item.cur .q b{font-size:30px}
+.dv-item .r2{display:flex;gap:8px}.dv-item .r2 .ok{flex:1}.dv-item .r2 .miss{min-width:120px;white-space:nowrap;padding:0 12px}
+.dv-foot .miss{white-space:nowrap}
+.dv-foot{position:fixed;left:0;right:0;bottom:0;z-index:8;background:#fff;border-top:1px solid #E3E6EB;padding:12px 16px calc(14px + env(safe-area-inset-bottom));display:flex;gap:10px;max-width:560px;margin:0 auto}
+.dv-foot .dv-sq{border:1px solid #E3E6EB;width:54px;height:54px}
+.dv-hero{position:relative;height:340px;background:#fff;display:grid;place-items:center}
+.dv-hero .big{width:280px;height:280px;object-fit:contain}.dv-hero .noph{width:200px;height:200px;border-radius:24px}
+.dv-hero .fl{position:absolute;top:14px;right:14px;box-shadow:0 4px 14px rgba(19,33,60,.14)}
+[dir="ltr"] .dv-hero .fl{right:auto;left:14px}
+.dv-prod{background:#fff;padding:16px 18px;display:grid;gap:14px;border-top:1px solid #E3E6EB}
+.dv-prod .top{display:flex;gap:12px;align-items:flex-start}.dv-prod .top .t{flex:1;display:grid;gap:6px}
+.dv-prod .cat{font-size:12px;color:#5B6474}.dv-prod h1{margin:0;font-size:24px}
+.dv-prod .unit{font-size:18px;font-weight:700;background:#FEF3C7;color:#78350F;border-radius:10px;padding:2px 10px;justify-self:start}
+.dv-prod .qty{width:86px;height:86px;border-radius:22px;background:#13213C;color:#fff;display:grid;place-items:center;align-content:center;line-height:1.1}
+.dv-prod .qty small{font-size:12px;color:#B8C2D6}.dv-prod .qty b{font-size:36px}
+.dv-prod .loc{display:flex;align-items:center;gap:10px;background:#F3F4F6;border-radius:16px;padding:12px 14px;font-size:14px}.dv-prod .loc svg.i{color:#C2410C}
+.dv-prod .chk{display:grid;gap:8px;border:1px solid #E3E6EB;border-radius:16px;padding:12px 14px;font-size:13.5px}
+.dv-prod .chk span{display:flex;gap:8px;align-items:center}.dv-prod .chk svg.i{width:16px;height:16px;color:#15803D;flex:none}
+.dv-prod .price{display:flex;justify-content:space-between;font-size:13px;color:#5B6474}.dv-prod .price b{color:#13213C}
+.dv-sheet{position:fixed;inset:0;z-index:20;background:rgba(19,33,60,.55);display:flex;align-items:flex-end;justify-content:center}
+.dv-sheet .pan{background:#fff;width:100%;max-width:560px;border-radius:28px 28px 0 0;padding:10px 18px calc(22px + env(safe-area-inset-bottom));display:grid;gap:12px;max-height:92vh;overflow:auto}
+.dv-sheet .grab{justify-self:center;width:44px;height:5px;border-radius:3px;background:#CBD2DC}
+.dv-sheet .hd{display:flex;gap:12px;align-items:center}.dv-sheet .hd h2{margin:0;font-size:18px}.dv-sheet .hd span{font-size:12.5px;color:#5B6474}
+.dv-sheet .im{width:64px;height:64px;border-radius:14px;background:#F3F4F6;object-fit:contain;padding:4px;box-sizing:border-box;flex:none}
+.dv-sheet .im.gray{filter:grayscale(1);opacity:.7}
+.dv-sheet .pref{display:flex;gap:10px;align-items:center;background:#EFF6FF;color:#1E3A8A;border-radius:14px;padding:10px 12px;font-size:13px}
+.dv-sheet .lbl{font-size:14px}
+.dv-sheet .sub{display:flex;align-items:center;gap:12px;border:2px solid #E3E6EB;border-radius:18px;padding:10px;background:#fff;font:inherit;color:#13213C;text-align:start;cursor:pointer}
+.dv-sheet .sub:hover,.dv-sheet .sub:focus-visible{border-color:#13213C}
+.dv-sheet .sub .t{flex:1;display:grid;gap:3px}.dv-sheet .sub .t b{font-size:14px}.dv-sheet .sub .t span{font-size:12px;color:#5B6474}.dv-sheet .sub em{font-style:normal;font-size:12px;color:#166534;font-weight:600}
+.dv-sheet .sub .go{background:#15803D;color:#fff;border-radius:12px;padding:10px 14px;font-weight:700;font-size:13px}
+.dv-sheet .acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dv-sheet .acts .wide,.dv-sheet .acts .dv-link{grid-column:1/-1}
+.dv-del{padding:14px 16px;display:grid;gap:12px}
+.dv-map{display:flex;align-items:center;gap:12px;background:#13213C;color:#fff;border-radius:18px;padding:14px 16px;text-decoration:none}
+.dv-map span{flex:1;display:grid;gap:2px;font-size:12px;color:#B8C2D6}.dv-map b{font-size:15px;color:#fff}.dv-map.off{background:#E3E6EB;color:#3F4A5C}.dv-map.off b{color:#13213C}.dv-map.off span{color:#5B6474}
+.dv-del .cust{background:#fff;border-radius:20px;padding:14px 16px;display:grid;gap:6px;font-size:13.5px}.dv-del .cust b{font-size:17px}
+.dv-del .cust .ph{color:#5B6474;text-align:end}.dv-del .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:4px}
+.dv-del .pay{background:#13213C;color:#fff;border-radius:22px;padding:16px;display:grid;gap:10px}
+.dv-del .pay>span{font-size:12.5px;color:#B8C2D6}.dv-del .pay>b{font-size:34px;line-height:1.1}.dv-del .pay small{font-size:15px}
+.dv-del .pay.card{background:#1E3A8A}
+.dv-del .giv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dv-del .giv button{height:46px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.dv-del .giv button[aria-pressed="true"]{background:#FDBA74;color:#13213C;border-color:#FDBA74}
+.dv-del .chg{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 12px}.dv-del .chg b{font-size:20px;color:#FDBA74}
+.dv .hint{font-size:12px;color:#5B6474;margin:0;line-height:1.7}
+.dv-cash{padding:14px 16px;display:grid;gap:12px}
+.dv-cash .bal{background:#13213C;color:#fff;border-radius:24px;padding:18px;display:grid;gap:8px}
+.dv-cash .bal>span{font-size:13px;color:#B8C2D6}.dv-cash .bal b{font-size:40px;line-height:1}.dv-cash .bal small{font-size:16px}.dv-cash .bal .s2{font-size:12px}
+.dv-cash .st{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dv-cash .st div{background:#fff;border-radius:16px;padding:12px;display:grid;gap:2px}.dv-cash .st b{font-size:22px}.dv-cash .st span{font-size:11.5px;color:#5B6474}
+.dv-cash .ls{background:#fff;border-radius:20px;padding:6px 14px;display:grid}
+.dv-cash .ls>div{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #EEF0F3;font-size:13px}.dv-cash .ls>div:last-child{border:0}
+.dv-cash .ls span{flex:1}.dv-cash .ls em{font-style:normal;font-size:12px;color:#5B6474}
+.dv-cash .lbl{padding:10px 0 4px;font-size:13px}
+.dv-toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:40;background:#13213C;color:#fff;border-radius:14px;padding:12px 16px;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:90vw}
+.dv-toast.bad{background:#B91C1C}
 .kq-badge svg.i{width:12px;height:12px}
+.pays.subs{grid-template-columns:repeat(3,minmax(0,1fr))}
+.pays.subs button{font-size:12.5px;padding:0 6px}
 .srcpill{font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;background:#EEE8FF;color:#5B3DB8}
 .closedbar{display:flex;gap:10px;align-items:center;background:#1E1E2A;color:#fff;border-radius:16px;padding:10px 14px;margin-bottom:10px;font-size:12px;line-height:1.5}
 .closedbar b{display:block;font-size:13.5px}
@@ -1237,7 +1366,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   /* ---------- screens ---------- */
   var screen = "home", openCat = null, openProd = null, q = "", stack = [], mode = "store", canEdit = false, timers = [];
   var recent = []; try { recent = JSON.parse(localStorage.getItem("ohod-recent") || "[]") || []; } catch(e){}
-  var form = { name: "", phone: "", details: "", note: "", pay: "cash", lat: null, lng: null };
+  var form = { name: "", phone: "", details: "", note: "", pay: "cash", lat: null, lng: null, sub: "call" };
   try { var f0 = JSON.parse(localStorage.getItem("ohod-form2") || "null"); if (f0) for (var k0 in f0) form[k0] = f0[k0]; } catch(e){}
   function saveForm(){ try { localStorage.setItem("ohod-form2", JSON.stringify(form)); } catch(e){} }
   var lastOrder = null, pdQty = 1;
@@ -1429,6 +1558,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       tr('<div class="fld"><span>رقم الجوال</span><span class="phone" id="phoneBox"><span>+966</span><input id="cPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="5X XXX XXXX" value="', '<div class="fld"><span>Mobile number</span><span class="phone" id="phoneBox"><span>+966</span><input id="cPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="5X XXX XXXX" value="') + esc(form.phone) + tr('" aria-label="رقم الجوال"></span><span class="err" id="phoneErr" hidden></span></div>', '" aria-label="Mobile number"></span><span class="err" id="phoneErr" hidden></span></div>') +
       tr('<label class="fld" for="cDetails">تفاصيل البيت <small>رقم البيت، لون الباب، علامة قريبة</small><input id="cDetails" type="text" value="', '<label class="fld" for="cDetails">Home details <small>House number, door color, a nearby landmark</small><input id="cDetails" type="text" value="') + esc(form.details) + tr('" placeholder="مثال: فيلا ٨، باب بني، جنب المسجد"></label>', '" placeholder="e.g. Villa 8, brown door, next to the mosque"></label>') +
       tr('<label class="fld" for="cName">الاسم <small>(اختياري)</small><input id="cName" type="text" autocomplete="name" value="', '<label class="fld" for="cName">Name <small>(optional)</small><input id="cName" type="text" autocomplete="name" value="') + esc(form.name) + '"></label>' +
+      '<div class="fld"><span>' + tr("لو منتج ناقص وقت التجهيز", "If an item is out of stock") + '</span><div class="pays subs">' + [["swap", tr("بدّلوه بمشابه", "Replace it")], ["remove", tr("شيلوه", "Remove it")], ["call", tr("اتصلوا علي", "Call me")]].map(function(x){ return '<button type="button" data-sub="' + x[0] + '" aria-pressed="' + ((form.sub || "call") === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div></div>' +
       tr('<div class="fld"><span>الدفع عند الاستلام</span><div class="pays"><button type="button" data-pay="cash" aria-pressed="', '<div class="fld"><span>Pay on delivery</span><div class="pays"><button type="button" data-pay="cash" aria-pressed="') + (form.pay !== "card") + tr('">كاش</button><button type="button" data-pay="card" aria-pressed="', '">Cash</button><button type="button" data-pay="card" aria-pressed="') + (form.pay === "card") + tr('">شبكة</button></div></div>', '">Card</button></div></div>') +
       tr('<label class="fld" for="cNote">ملاحظات <small>(اختياري)</small><textarea id="cNote" rows="2" placeholder="مثلاً: الخبز يكون حار">', '<label class="fld" for="cNote">Notes <small>(optional)</small><textarea id="cNote" rows="2" placeholder="e.g. I want the bread hot">') + esc(form.note) + '</textarea></label>' +
       tr('<div class="box totals"><div><span>المنتجات (', '<div class="box totals"><div><span>Items (') + t.n + ')</span><span>' + rial(t.s) + tr('</span></div><div><span>التوصيل</span><span>', '</span></div><div><span>Delivery</span><span>') + (t.fee ? rial(t.fee) : tr("مجاني", "Free")) + tr('</span></div><div class="grand"><b>الإجمالي</b><span class="price">', '</span></div><div class="grand"><b>Total</b><span class="price">') + num(t.all) + tr(' <small>ر.س</small></span></div></div>', ' <small>SAR</small></span></div></div>') +
@@ -1571,7 +1701,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     btn.disabled = true; btn.firstChild.textContent = tr("جاري الإرسال…", "Sending…");
     var items = {}; Object.keys(cart).forEach(function(k){ items[k] = cart[k]; });
     fetch(String(S.api).replace(/\/+$/, "") + "/order", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: items, phone: phone, name: form.name, details: form.details, note: form.note, pay: form.pay, lat: form.lat, lng: form.lng }) })
+      body: JSON.stringify({ items: items, phone: phone, name: form.name, details: form.details, note: form.note, pay: form.pay, sub: form.sub || "call", lat: form.lat, lng: form.lng }) })
       .then(function(r){ return r.json().catch(function(){ return { ok: false, code: "http_" + r.status }; }); }, function(){ return { ok: false, code: "network" }; })
       .then(function(j){
         btn.disabled = false; btn.firstChild.textContent = tr("أرسل الطلب", "Place order");
@@ -1615,6 +1745,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if ((t = e.target.closest("[data-jump]"))) { var je = $(t.dataset.jump); if (je) window.scrollTo({ top: je.getBoundingClientRect().top + window.scrollY - 12, behavior: "smooth" }); return; }
     if ((t = e.target.closest("[data-nav]"))) { show(t.dataset.nav); return; }
     if ((t = e.target.closest("[data-opencat]"))) { openCat = t.dataset.opencat; show("cat"); return; }
+    if ((t = e.target.closest("[data-sub]"))) { form.sub = t.dataset.sub; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-sub]"), function(b){ b.setAttribute("aria-pressed", b.dataset.sub === form.sub); }); return; }
     if ((t = e.target.closest("[data-pay]"))) { form.pay = t.dataset.pay; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-pay]"), function(b){ b.setAttribute("aria-pressed", b.dataset.pay === form.pay); }); return; }
     if ((t = e.target.closest("[data-term]"))) { q = t.dataset.term; $("q").value = q; renderSearch(); return; }
     if ((t = e.target.closest("[data-open]"))) { openProd = t.dataset.open; pdQty = 1; evAdd("v", openProd); if (screen === "product") { render(); window.scrollTo(0,0); } else show("product"); return; }
@@ -1678,7 +1809,10 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   }
   var ST = { "new": tr("جديد", "New"), accepted: tr("استلمه المندوب", "Picked up"), onway: tr("في الطريق", "On the way"), delivered: tr("تم التوصيل", "Delivered"), canceled: tr("ملغي", "Cancelled") };
   function ago(t){ var m = Math.max(0, Math.round((drv.now - t) / 60000)); return m < 1 ? tr("الحين", "Just now") : m < 60 ? tr("قبل ", "") + m + tr(" د", " min ago") : m < 1440 ? tr("قبل ", "") + Math.floor(m / 60) + tr(" س", " h ago") : tr("قبل ", "") + Math.floor(m / 1440) + tr(" يوم", " d ago"); }
+  function appManifest(driver){ var l = document.querySelector('link[rel="manifest"]'); if (l) l.setAttribute("href", driver ? "manifest-driver.json" : "manifest.json");
+    var tc = document.querySelector('meta[name="theme-color"]'); if (tc) { if (!tc.dataset.orig) tc.dataset.orig = tc.content; tc.content = driver ? "#13213C" : tc.dataset.orig; } }
   function openDriver(){
+    appManifest(true);
     mode = "driver"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "driver"); timers.forEach(clearInterval); timers = [];
     try { if (location.hash !== "#driver") history.replaceState(null, "", "#driver"); } catch(e){}
     if (drv.pin) { drvShell(); drvPoll(); return; }
@@ -1701,45 +1835,152 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       });
     });
   }
-  function leaveDriver(){ clearInterval(drv.timer); drv.timer = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} document.title = tr("متاجر أحد", "Matajer Ohod"); go("store"); }
-  function drvShell(){
-    app.innerHTML = tr('<div class="drv-head"><div class="wrap"><div class="row"><div><h1>طلبات التوصيل</h1><span class="live" id="drvLive"><i></i>يتحدث تلقائي</span></div>', '<div class="drv-head"><div class="wrap"><div class="row"><div><h1>Delivery orders</h1><span class="live" id="drvLive"><i></i>Live updates</span></div>') +
-      tr('<div style="display:flex;gap:8px"><button class="sq" type="button" id="drvSound" aria-label="صوت التنبيه">', '<div style="display:flex;gap:8px"><button class="sq" type="button" id="drvSound" aria-label="Alert sound">') + (drv.sound ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>' : '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>') + '</button>' +
-      tr('<button class="sq" type="button" id="drvOut" aria-label="خروج">', '<button class="sq" type="button" id="drvOut" aria-label="Sign out">') + ic("back") + '</button></div></div>' +
-      '<div class="dtabs" id="drvTabs"></div></div></div><div class="wrap" style="padding-top:16px;padding-bottom:40px;display:grid;gap:12px" id="drvList"></div>';
-    if (!drv.push) $("drvList").insertAdjacentHTML("beforebegin", '<div class="wrap"><div class="drv-push" id="drvPush"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("فعّل إشعارات الطلبات", "Turn on order notifications") + '</b><span id="drvPushMsg">' + esc(pushWhy() || tr("يوصلك تنبيه على الجوال مع كل طلب جديد، حتى لو الصفحة مقفلة.", "Get a phone alert for every new order, even when this page is closed.")) + '</span></span><button class="btn btn-orange" type="button" id="drvPushBtn">' + tr("فعّل", "Turn on") + '</button></div></div>');
-    if ($("drvPushBtn")) $("drvPushBtn").addEventListener("click", function(){ var b = this; b.disabled = true;
-      pushSub().then(function(sub){ return api("/driver/push", { pin: drv.pin, sub: sub }); }).then(function(j){ if (!j.ok) throw j; drv.push = true; try { localStorage.setItem("ohod-drv-push", "1"); } catch(e){} var el = $("drvPush"); if (el) el.remove(); })
-        .catch(function(e){ b.disabled = false; $("drvPushMsg").textContent = pushErrText(e); }); });
-    $("drvOut").addEventListener("click", function(){ drv.pin = ""; try { sessionStorage.removeItem("ohod-driver"); } catch(e){} leaveDriver(); });
-    $("drvSound").addEventListener("click", function(){ drv.sound = !drv.sound; try { localStorage.setItem("ohod-drv-sound", drv.sound ? "1" : "0"); } catch(e){} if (drv.sound) beep(); drvShell(); drvRender(); });
-    drvRender();
-  }
+  function leaveDriver(){ appManifest(false); clearInterval(drv.timer); drv.timer = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} document.title = tr("متاجر أحد", "Matajer Ohod"); go("store"); }
+  /* ----- new driver app: list → pick with photos → product → missing → deliver → my cash ----- */
+  drv.view = "list"; drv.no = ""; drv.pid = ""; drv.miss = ""; drv.given = 0; drv.cash = null;
+  var PICK = {}; try { PICK = JSON.parse(localStorage.getItem("ohod-pick") || "{}") || {}; } catch(e){ PICK = {}; }
+  function savePick(){ var ks = Object.keys(PICK); if (ks.length > 40) ks.slice(0, ks.length - 40).forEach(function(k){ delete PICK[k]; }); try { localStorage.setItem("ohod-pick", JSON.stringify(PICK)); } catch(e){} }
+  function picked(no){ return PICK[no] || (PICK[no] = {}); }
+  function dOrder(no){ for (var i = 0; i < drv.orders.length; i++) if (drv.orders[i].no === no) return drv.orders[i]; return null; }
+  function dImg(id, cls, alt){ var p = byId(id); return p && isPhoto(p.img) && D.imgs[p.img] ? '<img class="' + cls + '" src="' + D.imgs[p.img] + '" alt="' + esc(alt || "") + '">' : '<span class="' + cls + ' noph">' + ic("box") + '</span>'; }
+  function dLoc(id){ var p = byId(id), c = p && catOf(p.cat); return (p && p.loc) || (c && c.loc) || (c ? nm(c) : tr("أخرى", "Other")); }
+  function dZone(id){ var p = byId(id), c = p && catOf(p.cat); return (c && c.loc) || (p && p.loc) || (c ? nm(c) : tr("أخرى", "Other")); }
+  function dChecks(p){ return String((p && p.checks) || "").split(/\n|،|,/).map(function(x){ return x.trim(); }).filter(Boolean); }
+  var SRCL = { phone: tr("اتصال", "Phone"), whatsapp: tr("واتساب", "WhatsApp"), store: tr("من المحل", "In store") };
+  var SUBL = { swap: tr("بدّله بمشابه", "Replace with similar"), remove: tr("شيله من الطلب", "Remove it"), call: tr("اتصلوا عليّ", "Call me") };
+  function dToday(){ var d = new Date(); d.setHours(0, 0, 0, 0); var done = drv.orders.filter(function(o){ return o.status === "delivered" && o.updated >= d.getTime(); });
+    var avg = done.length ? Math.round(done.reduce(function(a, o){ return a + (o.updated - o.created); }, 0) / done.length / 60000) : 0; return { done: done, avg: avg }; }
+  function setSt(no, st, cb){ api("/driver/status", { pin: drv.pin, no: no, status: st }).then(function(j){
+    if (!j.ok) { dToast(tr("ما انحفظ، تأكد من النت وجرّب مرة ثانية", "Not saved, check your connection and try again"), true); if (cb) cb(false); return; }
+    var o = dOrder(no); if (o) { o.status = st; o.updated = Date.now(); drv.seen[no] = "old"; } if (cb) cb(true); }); }
+  function dToast(t, bad){ var x = document.createElement("div"); x.className = "dv-toast" + (bad ? " bad" : ""); x.setAttribute("role", "status"); x.textContent = t; document.body.appendChild(x); setTimeout(function(){ x.remove(); }, 2600); }
+  function loadDrvCash(){ api("/driver/cash", { pin: drv.pin }).then(function(j){ if (j.ok) { drv.cash = j; if (drv.view === "list" || drv.view === "cash") drvRender(); } }); }
+  function drvShell(){ app.innerHTML = '<div class="dv" id="dv"></div>'; drvRender(); loadDrvCash(); }
   function drvGroups(){
-    var g = { "new": [], run: [], done: [] };
-    drv.orders.forEach(function(o){ if (o.status === "new") g["new"].push(o); else if (o.status === "accepted" || o.status === "onway") g.run.push(o); else g.done.push(o); });
+    var g = { "new": [], pick: [], way: [], done: [] };
+    drv.orders.forEach(function(o){ if (o.status === "new") g["new"].push(o); else if (o.status === "accepted") g.pick.push(o); else if (o.status === "onway") g.way.push(o); else g.done.push(o); });
     return g;
   }
   function drvRender(){
-    if (mode !== "driver" || !$("drvList")) return;
-    var g = drvGroups(), tabs = [["new",tr("جديدة", "New")],["run",tr("جارية", "Active")],["done",tr("منتهية", "Done")]];
-    $("drvTabs").innerHTML = tabs.map(function(t){ return '<button type="button" data-dtab="' + t[0] + '" aria-pressed="' + (drv.tab === t[0]) + '">' + t[1] + (g[t[0]].length && t[0] !== "done" ? '<b>' + g[t[0]].length + '</b>' : '') + '</button>'; }).join("");
+    if (mode !== "driver" || !$("dv")) return;
+    var box = $("dv"), y = window.scrollY;
+    box.innerHTML = drv.view === "pick" ? dvPick() : drv.view === "prod" ? dvProd() : drv.view === "deliver" ? dvDeliver() : drv.view === "cash" ? dvCash() : dvList();
+    if (drv.view === "pick" && drv.miss) box.insertAdjacentHTML("beforeend", dvMissing());
+    var g = drvGroups(); document.title = (g["new"].length ? "(" + g["new"].length + ") " : "") + tr("طلبات التوصيل", "Delivery orders");
+    if (drv.view === "list" || drv.view === "pick") window.scrollTo(0, y);
+    if ($("drvPushBtn")) $("drvPushBtn").addEventListener("click", function(){ var b = this; b.disabled = true;
+      pushSub().then(function(sub){ return api("/driver/push", { pin: drv.pin, sub: sub }); }).then(function(j){ if (!j.ok) throw j; drv.push = true; try { localStorage.setItem("ohod-drv-push", "1"); } catch(e){} drvRender(); })
+        .catch(function(e){ b.disabled = false; $("drvPushMsg").textContent = pushErrText(e); }); });
+  }
+  function dvBack(to, title, sub){ return '<header class="dv-bar"><button type="button" class="dv-sq" data-dview="' + to + '" aria-label="' + tr("رجوع", "Back") + '">' + ic("back") + '</button><div class="t"><b>' + title + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div></header>'; }
+  function dvList(){
+    var g = drvGroups(), t = dToday(), cash = drv.cash ? drv.cash.balance : null;
+    var tabs = [["new", tr("جديدة", "New")], ["pick", tr("أجهّزها", "Picking")], ["way", tr("في الطريق", "On the way")], ["done", tr("خلصت", "Done")]];
+    if (!g[drv.tab]) drv.tab = "new";
     var list = g[drv.tab];
-    document.title = (g["new"].length ? "(" + g["new"].length + ") " : "") + tr("طلبات التوصيل", "Delivery orders");
-    if (!list.length) { $("drvList").innerHTML = '<div class="empty"><span class="big">' + ic("truck") + '</span><b>' + (drv.tab === "new" ? tr("ما فيه طلبات جديدة", "No new orders") : drv.tab === "run" ? tr("ما فيه طلبات جارية", "No active orders") : tr("ما فيه طلبات منتهية", "No finished orders")) + '</b><span>' + (drv.tab === "new" ? tr("الصفحة تتحدث لحالها، وبيطلع لك تنبيه أول ما يوصل طلب.", "This page updates by itself and alerts you as soon as an order arrives.") : "") + '</span></div>'; return; }
-    $("drvList").innerHTML = list.map(function(o){
-      var next = o.status === "new" ? ["accepted",tr("استلمت الطلب", "Order picked up"),"btn-orange"] : o.status === "accepted" ? ["onway",tr("طلعت للتوصيل", "Out for delivery"),"btn-ink"] : o.status === "onway" ? ["delivered",tr("تم التوصيل", "Delivered"),"btn-teal"] : null;
-      var wa = "966" + String(o.phone || "").replace(/^0/, "");
-      return '<article class="ord' + (drv.seen[o.no] === "fresh" ? ' fresh' : '') + '"><div class="r1"><span class="no">' + esc(o.no) + '</span><span class="ago">' + ago(o.created) + '</span>' + (o.source ? '<span class="srcpill">' + ({ phone: tr("اتصال", "Phone"), whatsapp: tr("واتساب", "WhatsApp"), store: tr("من المحل", "In store") }[o.source] || "") + '</span>' : '') + '<span class="spill ' + o.status + '">' + ST[o.status] + '</span></div>' +
-        '<div class="money"><span class="price">' + num(o.total) + tr(' <small>ر.س</small></span><span>', ' <small>SAR</small></span><span>') + (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + ' · ' + o.count + tr(' منتج', ' items') + (o.fee ? tr(' · شامل التوصيل', ' · delivery included') : tr(' · توصيل مجاني', ' · free delivery')) + '</span></div>' +
-        '<div class="where"><b>' + esc(o.name || tr("زبون", "Customer")) + ' · <span dir="ltr">' + esc(o.phone) + '</span></b>' + (o.details ? '<span>' + esc(o.details) + '</span>' : '') + '</div>' +
-        (o.map || o.phone ? '<div class="btns">' + (o.map ? '<a class="map" href="' + esc(o.map) + '" target="_blank" rel="noopener">' + ic("pin") + tr('الموقع</a>', 'Location</a>') : '') +
-          (o.phone ? '<a href="tel:' + esc(o.phone) + '">' + ic("phone") + tr('اتصل</a><a href="https://wa.me/', 'Call</a><a href="https://wa.me/') + esc(wa) + tr('" target="_blank" rel="noopener">واتساب</a>', '" target="_blank" rel="noopener">WhatsApp</a>') : '') + '</div>' : '') +
-        (o.note ? '<div class="note">' + esc(o.note) + '</div>' : '') +
-        '<details' + (o.status === "new" || o.status === "accepted" ? ' open' : '') + tr('><summary>المنتجات (', '><summary>Items (') + o.lines.length + ')</summary><ul>' + o.lines.map(function(l){ return '<li><span>' + esc(l.name) + ' <small class="hint">' + esc(l.unit) + '</small>' + (l.tag ? ' <span class="ltag deal">' + esc(l.tag) + '</span>' : '') + '</span><b>× ' + l.qty + '</b></li>'; }).join("") + '</ul></details>' +
-        (next || o.status !== "delivered" && o.status !== "canceled" ? '<div class="act">' + (next ? '<button class="btn ' + next[2] + '" type="button" data-dst="' + next[0] + '" data-no="' + esc(o.no) + '">' + next[1] + '</button>' : '') +
-          '<button class="btn cancel" type="button" data-dst="canceled" data-no="' + esc(o.no) + tr('">إلغاء</button></div>', '">Cancel</button></div>') : '') + '</article>';
-    }).join("");
+    return '<header class="dv-top"><div class="dv-row"><img class="lg" src="' + D.imgs.logo + '" alt=""><div class="t"><b>' + tr("طلبات التوصيل", "Delivery orders") + '</b><span class="live" id="drvLive"><i></i>' + tr("متصل · يتحدث تلقائي", "Connected · live") + '</span></div>' +
+      '<button class="dv-sq dark" type="button" id="drvSound" aria-label="' + tr("صوت التنبيه", "Alert sound") + '" aria-pressed="' + drv.sound + '">' + (drv.sound ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>' : '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>') + '</button>' +
+      '<button class="dv-sq dark" type="button" id="drvOut" aria-label="' + tr("خروج", "Sign out") + '">' + ic("back") + '</button></div>' +
+      '<button type="button" class="dv-stats" data-dview="cash"><span><b>' + num(t.done.length) + '</b>' + tr("وصّلتها اليوم", "Delivered today") + '</span><span><b>' + (t.avg ? num(t.avg) + tr(" د", "m") : "—") + '</b>' + tr("متوسط التوصيل", "Avg. time") + '</span><span class="hot"><b>' + (cash == null ? "…" : num(Math.round(cash))) + '</b>' + tr("ريال كاش معك", "SAR cash on you") + '</span></button></header>' +
+      (drv.push ? '' : '<div class="dv-push"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("فعّل إشعارات الطلبات", "Turn on order alerts") + '</b><span id="drvPushMsg">' + esc(pushWhy() || tr("يوصلك تنبيه مع كل طلب جديد حتى لو الصفحة مقفلة.", "Get an alert for every new order, even when closed.")) + '</span></span><button class="btn btn-orange" type="button" id="drvPushBtn">' + tr("فعّل", "Turn on") + '</button></div>') +
+      '<nav class="dv-tabs" aria-label="' + tr("حالة الطلبات", "Order status") + '">' + tabs.map(function(x){ var n = g[x[0]].length; return '<button type="button" data-dtab="' + x[0] + '" aria-pressed="' + (drv.tab === x[0]) + '">' + x[1] + (n && x[0] !== "done" ? ' <em>' + num(n) + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
+      '<main class="dv-list">' + (list.length ? list.map(dvCard).join("") : '<div class="dv-empty">' + ic("truck") + '<b>' + ({ "new": tr("ما فيه طلبات جديدة", "No new orders"), pick: tr("ما فيه طلبات تتجهز", "Nothing being picked"), way: tr("ما فيه طلبات في الطريق", "Nothing on the way"), done: tr("ما فيه طلبات منتهية", "No finished orders") }[drv.tab]) + '</b><span>' + (drv.tab === "new" ? tr("الصفحة تتحدث لحالها، ويطلع لك تنبيه أول ما يوصل طلب.", "This page updates itself and alerts you when an order arrives.") : '') + '</span></div>') + '</main>';
+  }
+  function dvCard(o){
+    var lines = o.lines || [], ph = lines.slice(0, 5).map(function(l){ return dImg(l.id, "th", l.name); }).join("") + (lines.length > 5 ? '<span class="th more">+' + num(lines.length - 5) + '</span>' : '');
+    var act = o.status === "new" ? '<button type="button" class="dv-btn go" data-dstart="' + esc(o.no) + '">' + tr("ابدأ التجهيز", "Start picking") + ic("fwd") + '</button>' :
+      o.status === "accepted" ? '<button type="button" class="dv-btn go" data-dopen="' + esc(o.no) + '">' + tr("كمّل التجهيز", "Continue picking") + ' (' + num(Object.keys(picked(o.no)).length) + '/' + num(lines.length) + ')</button>' :
+      o.status === "onway" ? '<button type="button" class="dv-btn ink" data-ddeliver="' + esc(o.no) + '">' + tr("كمّل التوصيل", "Continue delivery") + '</button>' : '<span class="spill ' + o.status + '">' + ST[o.status] + '</span>';
+    return '<article class="dv-card' + (o.status === "new" ? ' hot' : '') + (drv.seen[o.no] === "fresh" ? ' fresh' : '') + '"><div class="h"><b dir="ltr">' + esc(o.no) + '</b>' + (o.source ? '<span class="src ' + o.source + '">' + SRCL[o.source] + '</span>' : '') + '<span class="ago">' + ago(o.created) + '</span></div>' +
+      '<div class="who"><b>' + esc(o.name || tr("زبون", "Customer")) + '</b><span>' + esc(o.details || "") + '</span></div><div class="ths">' + ph + '</div>' +
+      '<div class="money"><b>' + num(o.total) + ' ' + tr("ر.س", "SAR") + '</b><span>· ' + num(o.count) + tr(" قطعة · ", " items · ") + (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + '</span></div>' +
+      (o.note ? '<div class="note">' + ic("tag") + esc(o.note) + '</div>' : '') + '<div class="acts">' + act +
+      (o.status === "new" || o.status === "accepted" ? '<button type="button" class="dv-link" data-dcancel="' + esc(o.no) + '">' + tr("إلغاء", "Cancel") + '</button>' : '') + '</div></article>';
+  }
+  function dvGroupsOf(o){
+    var groups = {}, order = [];
+    (o.lines || []).forEach(function(l){ var k = dZone(l.id); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(l); });
+    var ci = function(k){ var l = groups[k][0], p = byId(l.id); for (var i = 0; i < D.cats.length; i++) if (p && D.cats[i].id === p.cat) return i; return 99; };
+    order.sort(function(a, b){ return ci(a) - ci(b); });
+    return order.map(function(k){ return { loc: k, lines: groups[k] }; });
+  }
+  function dvPick(){
+    var o = dOrder(drv.no); if (!o) { drv.view = "list"; return dvList(); }
+    var pk = picked(o.no), lines = o.lines || [], done = lines.filter(function(l){ return pk[l.id]; }).length, all = done === lines.length;
+    var cur = null; dvGroupsOf(o).forEach(function(g){ g.lines.forEach(function(l){ if (!cur && !pk[l.id]) cur = l.id; }); });
+    var row = function(l){ var p = byId(l.id), got = pk[l.id], isCur = l.id === cur;
+      var main = '<button type="button" class="ph" data-dprod="' + esc(l.id) + '" aria-label="' + tr("تفاصيل ", "Details of ") + esc(l.name) + '">' + dImg(l.id, "im", l.name) + '</button><span class="t"><b>' + esc(l.name) + '</b><span class="unit">' + esc(l.unit || "") + '</span>' + (p && p.loc && p.loc !== dZone(l.id) ? '<span class="sm">' + esc(p.loc) + '</span>' : '') + (isCur ? '<span class="sm">' + tr("اضغط الصورة تشوفها كبيرة", "Tap the photo to enlarge") + '</span>' : '') + '</span>' +
+        '<span class="q"><small>' + tr("خذ", "Take") + '</small><b>' + num(l.qty) + '</b></span>';
+      if (isCur) return '<div class="dv-item cur">' + '<div class="r">' + main + '</div><div class="r2"><button type="button" class="dv-btn ok" data-dpick="' + esc(l.id) + '">' + ic("check") + tr("أخذته", "Got it") + '</button><button type="button" class="dv-btn miss" data-dmiss="' + esc(l.id) + '">' + tr("مو موجود", "Not available") + '</button></div></div>';
+      return '<div class="dv-item' + (got ? ' got' : '') + '"><div class="r">' + main + '<button type="button" class="chk" data-dpick="' + esc(l.id) + '" aria-pressed="' + !!got + '" aria-label="' + (got ? tr("شيل العلامة", "Unmark") : tr("أخذته", "Got it")) + '">' + (got ? ic("check") : '') + '</button></div></div>'; };
+    return dvBack("list", tr("تجهيز الطلب ", "Picking order ") + '<span dir="ltr">' + esc(o.no) + '</span>', esc(o.name || tr("زبون", "Customer")) + ' · ' + num(o.count) + tr(" قطعة · مرتبة حسب مكانها في المحل", " items · sorted by where they are in the store")) +
+      '<div class="dv-prog"><div class="l"><b>' + tr("أخذت ", "Picked ") + num(done) + tr(" من ", " of ") + num(lines.length) + '</b><span>' + (all ? tr("كل شي جاهز", "All ready") : tr("باقي ", "") + num(lines.length - done) + tr("", " left")) + '</span></div><div class="bar"><i style="width:' + Math.round(done / Math.max(1, lines.length) * 100) + '%"></i></div>' +
+      '<div class="chips">' + (o.note ? '<span class="c1">' + tr("ملاحظة: ", "Note: ") + esc(o.note) + '</span>' : '') + '<span class="c2">' + tr("لو ناقص: ", "If missing: ") + (SUBL[o.sub] || SUBL.call) + '</span></div></div>' +
+      '<main class="dv-pick">' + dvGroupsOf(o).map(function(g){ return '<h2>' + ic("pin") + esc(g.loc) + '</h2>' + g.lines.map(row).join(""); }).join("") + '</main>' +
+      '<footer class="dv-foot"><button type="button" class="dv-btn ' + (all ? 'ok' : 'off') + ' wide" data-dpacked="' + esc(o.no) + '"' + (all ? '' : ' aria-disabled="true"') + '>' + (all ? tr("خلصت التجهيز، اطلع للتوصيل", "Done picking, go deliver") : tr("خلصت التجهيز (", "Done picking (") + num(done) + tr(" من ", "/") + num(lines.length) + ')') + '</button>' +
+      (o.phone ? '<a class="dv-sq" href="tel:' + esc(o.phone) + '" aria-label="' + tr("اتصل بالزبون", "Call customer") + '">' + ic("phone") + '</a>' : '') + '</footer>';
+  }
+  function dvProd(){
+    var o = dOrder(drv.no), l = o && (o.lines || []).filter(function(x){ return x.id === drv.pid; })[0], p = byId(drv.pid);
+    if (!o || !l) { drv.view = "pick"; return dvPick(); }
+    var c = p && catOf(p.cat), checks = dChecks(p), got = picked(o.no)[l.id];
+    return '<div class="dv-hero">' + dImg(l.id, "big", l.name) + '<button type="button" class="dv-sq fl" data-dview="pick" aria-label="' + tr("رجوع", "Back") + '">' + ic("back") + '</button></div>' +
+      '<main class="dv-prod"><div class="top"><div class="t"><span class="cat">' + esc(c ? nm(c) : "") + '</span><h1>' + esc(p ? nm(p) : l.name) + '</h1><span class="unit">' + esc(p ? un(p) : l.unit || "") + '</span></div><div class="qty"><small>' + tr("خذ", "Take") + '</small><b>' + num(l.qty) + '</b></div></div>' +
+      '<div class="loc">' + ic("pin") + '<b>' + esc(dLoc(l.id)) + '</b></div>' +
+      (checks.length ? '<section class="chk"><b>' + tr("تأكد قبل لا تاخذه", "Check before you take it") + '</b>' + checks.map(function(x){ return '<span>' + ic("check") + esc(x) + '</span>'; }).join("") + '</section>' : '') +
+      '<div class="price"><span>' + tr("السعر في الفاتورة", "Price on the bill") + '</span><b>' + num(l.price) + ' × ' + num(l.qty) + ' = ' + num(Math.round(l.price * l.qty * 100) / 100) + ' ' + tr("ر.س", "SAR") + '</b></div></main>' +
+      '<footer class="dv-foot"><button type="button" class="dv-btn ok wide" data-dpickback="' + esc(l.id) + '">' + ic("check") + (got ? tr("أخذته (رجوع)", "Got it (back)") : tr("أخذت ", "Got ") + num(l.qty)) + '</button><button type="button" class="dv-btn miss" data-dmiss="' + esc(l.id) + '">' + tr("مو موجود", "Not available") + '</button></footer>';
+  }
+  function dvSubs(o, id){
+    var p = byId(id); if (!p) return [];
+    var inOrder = {}; (o.lines || []).forEach(function(l){ inOrder[l.id] = 1; });
+    return D.products.filter(function(x){ return x.cat === p.cat && x.id !== id && !inOrder[x.id] && avail(x); })
+      .sort(function(a, b){ return ((isPhoto(b.img) && D.imgs[b.img]) ? 1 : 0) - ((isPhoto(a.img) && D.imgs[a.img]) ? 1 : 0) || Math.abs(a.price - p.price) - Math.abs(b.price - p.price); }).slice(0, 3);
+  }
+  function dvMissing(){
+    var o = dOrder(drv.no), l = o && (o.lines || []).filter(function(x){ return x.id === drv.miss; })[0]; if (!l) return '';
+    var subs = dvSubs(o, l.id), s0 = subs[0], wa = o.phone ? "966" + String(o.phone).replace(/^0/, "") : "";
+    var waText = tr("السلام عليكم، معك مندوب ", "Hello, this is the driver from ") + sv("name") + tr(". «", ". “") + l.name + tr("» مو متوفر الحين.", "” is not available right now.") + (s0 ? tr(" نقدر نبدّله بـ «", " We can replace it with “") + nm(s0) + tr("» بسعر ", "” for ") + num(s0.price) + tr(" ر.س؟", " SAR?") : tr(" تبغانا نشيله من الطلب؟", " Shall we remove it?"));
+    return '<div class="dv-sheet" id="dvSheet"><section class="pan" role="dialog" aria-modal="true" aria-labelledby="dvMT"><span class="grab"></span>' +
+      '<div class="hd">' + dImg(l.id, "im gray", l.name) + '<div><h2 id="dvMT">' + esc(l.name) + tr(" مو موجود", " is not available") + '</h2><span>' + tr("الطلب يبي ", "The order needs ") + num(l.qty) + tr(" · وش تسوي؟", " · what do you want to do?") + '</span></div></div>' +
+      '<div class="pref">' + ic("user") + '<span>' + tr("الزبون اختار وقت الطلب: ", "The customer chose: ") + '<b>' + (SUBL[o.sub] || SUBL.call) + '</b></span></div>' +
+      (subs.length ? '<b class="lbl">' + tr("بدائل من نفس القسم", "Alternatives from the same section") + '</b>' + subs.map(function(x){ var d = Math.round((x.price - l.price) * l.qty * 100) / 100;
+        return '<button type="button" class="sub" data-dswap="' + esc(x.id) + '">' + dImg(x.id, "im", nm(x)) + '<span class="t"><b>' + esc(nm(x)) + '</b><span>' + esc(un(x)) + ' · ' + num(x.price) + ' ' + tr("ر.س", "SAR") + '</span><em>' + (d ? (d > 0 ? '+' : '') + num(d) + tr(" ر.س على الفاتورة", " SAR on the bill") : tr("نفس السعر", "Same price")) + '</em></span><span class="go">' + tr("خذه", "Use") + '</span></button>'; }).join("") : '<p class="hint">' + tr("ما فيه بديل متوفر من نفس القسم.", "No alternative in stock in this section.") + '</p>') +
+      '<div class="acts">' + (wa ? '<a class="dv-btn wa" target="_blank" rel="noopener" href="https://wa.me/' + esc(wa) + '?text=' + encodeURIComponent(waText) + '">' + tr("اسأل الزبون بالواتساب", "Ask on WhatsApp") + '</a><a class="dv-btn line" href="tel:' + esc(o.phone) + '">' + ic("phone") + tr("اتصل", "Call") + '</a>' : '') +
+      '<button type="button" class="dv-btn miss wide" data-dremove="' + esc(l.id) + '">' + tr("شيله من الطلب (−", "Remove from order (−") + num(Math.round(l.price * l.qty * 100) / 100) + tr(" ر.س)", " SAR)") + '</button><button type="button" class="dv-link" data-dclose>' + tr("رجوع", "Back") + '</button></div>' +
+      '<p class="hint">' + tr("أي اختيار يعدّل الطلب والفاتورة والمخزون، ويوصل الزبون والإدارة إشعار.", "Any choice updates the order, bill and stock, and notifies the customer and the store.") + '</p></section></div>';
+  }
+  function dvDeliver(){
+    var o = dOrder(drv.no); if (!o) { drv.view = "list"; return dvList(); }
+    var cash = o.pay !== "card", wa = o.phone ? "966" + String(o.phone).replace(/^0/, "") : "", ch = drv.given ? Math.round((drv.given - o.total) * 100) / 100 : null;
+    var opts = [50, 100, 200, 500].filter(function(v){ return v >= o.total; }).slice(0, 3);
+    return dvBack("list", tr("توصيل الطلب ", "Delivering ") + '<span dir="ltr">' + esc(o.no) + '</span>', esc(o.name || tr("زبون", "Customer"))) +
+      '<main class="dv-del">' + (o.map ? '<a class="dv-map" target="_blank" rel="noopener" href="' + esc(o.map) + '">' + ic("pin") + '<span><b>' + tr("افتح الموقع في الخريطة", "Open location in maps") + '</b><span>' + tr("قوقل ماب، وابدأ الملاحة", "Google Maps, start navigation") + '</span></span>' + ic("fwd") + '</a>' : '<div class="dv-map off">' + ic("pin") + '<span><b>' + tr("ما فيه موقع على الخريطة", "No map location") + '</b><span>' + tr("اتصل على الزبون واسأله", "Call the customer and ask") + '</span></span></div>') +
+      '<section class="cust"><b>' + esc(o.name || tr("زبون", "Customer")) + '</b>' + (o.details ? '<span>' + esc(o.details) + '</span>' : '') + (o.phone ? '<span dir="ltr" class="ph">' + esc(o.phone) + '</span>' : '') +
+        (o.phone ? '<div class="two"><a class="dv-btn line" href="tel:' + esc(o.phone) + '">' + ic("phone") + tr("اتصل", "Call") + '</a><a class="dv-btn wa" target="_blank" rel="noopener" href="https://wa.me/' + esc(wa) + '?text=' + encodeURIComponent(tr("السلام عليكم، وصلت عند البيت. معك مندوب ", "Hello, I have arrived. This is the driver from ") + sv("name") + '.') + '">' + tr("«وصلت» بالواتساب", "“I’m here” on WhatsApp") + '</a></div>' : '') + '</section>' +
+      (o.note ? '<div class="dv-note">' + ic("tag") + esc(o.note) + '</div>' : '') +
+      (o.edits && o.edits.length ? '<div class="dv-note blue">' + tr("الطلب تعدّل، والإجمالي الحين ", "The order was changed, total is now ") + num(o.total) + ' ' + tr("ر.س", "SAR") + '</div>' : '') +
+      (cash ? '<section class="pay"><span>' + tr("حصّل من الزبون · كاش", "Collect from customer · cash") + '</span><b>' + num(o.total) + ' <small>' + tr("ر.س", "SAR") + '</small></b><span class="s2">' + tr("الزبون عطاك؟ اضغط ويطلع لك كم ترجّع", "Customer paid with? Tap to see the change") + '</span>' +
+        '<div class="giv">' + opts.map(function(v){ return '<button type="button" data-dgive="' + v + '" aria-pressed="' + (drv.given === v) + '">' + num(v) + '</button>'; }).join("") + '</div>' +
+        (ch != null ? '<div class="chg"><span>' + tr("رجّع له", "Give back") + '</span><b>' + num(ch) + ' ' + tr("ر.س", "SAR") + '</b></div>' : '') + '</section>'
+        : '<section class="pay card"><span>' + tr("الدفع شبكة عند الاستلام", "Card payment on delivery") + '</span><b>' + num(o.total) + ' <small>' + tr("ر.س", "SAR") + '</small></b><span class="s2">' + tr("جهّز جهاز الشبكة قبل لا تنزل", "Have the card machine ready") + '</span></section>') +
+      '<p class="hint">' + num(o.count) + tr(" قطعة. تأكد إنك عطيته كل الأكياس.", " items. Make sure you hand over all bags.") + '</p></main>' +
+      '<footer class="dv-foot"><button type="button" class="dv-btn ok wide" data-ddone="' + esc(o.no) + '">' + ic("check") + (cash ? tr("وصّلته واستلمت ", "Delivered, collected ") + num(o.total) : tr("وصّلته", "Delivered")) + '</button></footer>';
+  }
+  function dvCash(){
+    var c = drv.cash, t = dToday();
+    return dvBack("list", tr("حسابي اليوم", "My day")) + '<main class="dv-cash"><section class="bal"><span>' + tr("الكاش اللي معك الحين", "Cash you are holding") + '</span><b>' + (c ? num(c.balance) : '…') + ' <small>' + tr("ر.س", "SAR") + '</small></b><span class="s2">' + tr("سلّمه للمحل، والإدارة تسجل الاستلام من جهتها وينقص هنا.", "Hand it to the store; the office records it and it goes down here.") + '</span></section>' +
+      '<section class="st"><div><b>' + num(t.done.length) + '</b><span>' + tr("طلب وصّلته", "Delivered") + '</span></div><div><b>' + (t.avg ? num(t.avg) + tr(" د", "m") : '—') + '</b><span>' + tr("متوسط التوصيل", "Avg. time") + '</span></div><div><b>' + num(t.done.filter(function(o){ return o.pay === "card"; }).length) + '</b><span>' + tr("شبكة", "Card") + '</span></div></section>' +
+      (t.done.length ? '<section class="ls">' + t.done.map(function(o){ return '<div><b dir="ltr">' + esc(o.no) + '</b><span>' + esc(o.name || tr("زبون", "Customer")) + ' · ' + new Date(o.updated).toLocaleTimeString(LANG === "en" ? "en-GB" : "ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" }) + '</span><em>' + (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + '</em><b>' + num(o.total) + '</b></div>'; }).join("") + '</section>' : '<p class="hint">' + tr("ما وصّلت طلبات اليوم للحين.", "No deliveries yet today.") + '</p>') +
+      (c && c.history && c.history.length ? '<section class="ls"><b class="lbl">' + tr("آخر تسليمات للمحل", "Last hand-overs") + '</b>' + c.history.slice(0, 5).map(function(h){ return '<div><span>' + new Date(h.at).toLocaleDateString(LANG === "en" ? "en-GB" : "ar-SA-u-nu-latn") + '</span><em>' + esc(h.who) + '</em><b>' + num(h.amount) + '</b></div>'; }).join("") + '</section>' : '') + '</main>';
+  }
+  function dvEdit(no, op, id, to){
+    api("/driver/order-edit", { pin: drv.pin, no: no, op: op, id: id, to: to }).then(function(j){
+      if (!j.ok) { dToast(j.code === "last_item" ? tr("هذا آخر منتج في الطلب. لو ما فيه شي، الغِ الطلب.", "This is the last item. Cancel the order instead.") : j.code === "bad_swap" ? tr("البديل خلص، اختر غيره.", "That alternative is out, pick another.") : tr("ما انحفظ، جرّب مرة ثانية", "Not saved, try again"), true); return; }
+      var o = dOrder(no); if (o) ["lines", "subtotal", "fee", "total", "count", "edits"].forEach(function(k){ o[k] = j.order[k]; });
+      var pk = picked(no); delete pk[id]; if (op === "swap") pk[to] = 1; savePick();
+      drv.miss = ""; drv.view = "pick"; drvRender(); dToast(op === "swap" ? tr("انبدل، والزبون وصله إشعار", "Replaced, the customer was notified") : tr("انشال من الطلب، والزبون وصله إشعار", "Removed, the customer was notified"));
+    });
   }
   function drvPoll(){
     clearInterval(drv.timer);
@@ -1750,14 +1991,14 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
         var live = $("drvLive");
         if (!j.ok) { if (live) { live.className = "live off"; live.lastChild.textContent = j.code === "network" ? tr("ما فيه اتصال", "No connection") : tr("انقطع", "Disconnected"); }
           if (j.code === "bad_pin") { drv.pin = ""; try { sessionStorage.removeItem("ohod-driver"); } catch(e){} openDriver(); } return; }
-        if (live) { live.className = "live"; live.lastChild.textContent = tr("يتحدث تلقائي", "Live updates"); }
         drv.now = j.now || Date.now();
         var fresh = 0;
         j.orders.forEach(function(o){ if (!drv.seen[o.no]) { drv.seen[o.no] = drv.first ? "old" : "fresh"; if (!drv.first && o.status === "new") fresh++; } });
+        var cur = drv.no && dOrder(drv.no), nowCur = drv.no && j.orders.filter(function(o){ return o.no === drv.no; })[0];
         drv.orders = j.orders; drv.first = false;
-        if (fresh) { beep(); drv.tab = "new"; }
-        var open = {}; Array.prototype.forEach.call(document.querySelectorAll(".ord details"), function(d, i){ open[i] = d.open; });
-        var y = window.scrollY; drvRender(); if (!fresh) window.scrollTo(0, y);
+        if (fresh) { beep(); if (drv.view === "list") drv.tab = "new"; else dToast(tr("وصل طلب جديد", "A new order arrived")); }
+        if (drv.view !== "list" && cur && nowCur && nowCur.status === "canceled" && cur.status !== "canceled") { dToast(tr("الطلب انلغى من الإدارة", "The order was cancelled by the store"), true); drv.view = "list"; drv.miss = ""; }
+        if (drv.view === "list" || drv.view === "cash") drvRender();
       });
     };
     tick(); drv.timer = setInterval(tick, 8000);
@@ -1765,17 +2006,26 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "driver" && drv.pin) drvPoll(); });
   document.addEventListener("click", function(e){
     if (mode !== "driver") return;
-    var t;
+    var t, go2 = function(v){ drv.view = v; drv.given = 0; drvRender(); window.scrollTo(0, 0); };
+    if (e.target.closest("#drvOut")) { drv.pin = ""; try { sessionStorage.removeItem("ohod-driver"); } catch(x){} leaveDriver(); return; }
+    if (e.target.closest("#drvSound")) { drv.sound = !drv.sound; try { localStorage.setItem("ohod-drv-sound", drv.sound ? "1" : "0"); } catch(x){} if (drv.sound) beep(); drvRender(); return; }
     if ((t = e.target.closest("[data-dtab]"))) { drv.tab = t.dataset.dtab; drvRender(); window.scrollTo(0, 0); return; }
-    if ((t = e.target.closest("[data-dst]"))) {
-      if (t.dataset.dst === "canceled" && t.dataset.c !== "1") { t.dataset.c = "1"; t.textContent = tr("متأكد؟", "Sure?"); return; }
-      t.disabled = true;
-      api("/driver/status", { pin: drv.pin, no: t.dataset.no, status: t.dataset.dst }).then(function(j){
-        if (!j.ok) { t.disabled = false; t.textContent = tr("ما انحفظ، جرّب", "Not saved, try again"); return; }
-        drv.orders.forEach(function(o){ if (o.no === t.dataset.no) { o.status = t.dataset.dst; drv.seen[o.no] = "old"; } });
-        drvRender();
-      });
-    }
+    if ((t = e.target.closest("[data-dview]"))) { if (t.dataset.dview === "cash") loadDrvCash(); drv.miss = ""; go2(t.dataset.dview); return; }
+    if ((t = e.target.closest("[data-dstart]"))) { var no = t.dataset.dstart; t.disabled = true; setSt(no, "accepted", function(ok){ t.disabled = false; if (ok) { drv.no = no; go2("pick"); } }); return; }
+    if ((t = e.target.closest("[data-dopen]"))) { drv.no = t.dataset.dopen; go2("pick"); return; }
+    if ((t = e.target.closest("[data-ddeliver]"))) { drv.no = t.dataset.ddeliver; go2("deliver"); return; }
+    if ((t = e.target.closest("[data-dcancel]"))) { if (t.dataset.c !== "1") { t.dataset.c = "1"; t.textContent = tr("متأكد؟ اضغط ثاني", "Sure? Tap again"); return; } setSt(t.dataset.dcancel, "canceled", function(ok){ if (ok) drvRender(); }); return; }
+    if ((t = e.target.closest("[data-dprod]"))) { drv.pid = t.dataset.dprod; go2("prod"); return; }
+    if ((t = e.target.closest("[data-dpickback]"))) { picked(drv.no)[t.dataset.dpickback] = 1; savePick(); go2("pick"); return; }
+    if ((t = e.target.closest("[data-dpick]"))) { var pk = picked(drv.no), id = t.dataset.dpick; if (pk[id]) delete pk[id]; else pk[id] = 1; savePick(); drvRender(); return; }
+    if ((t = e.target.closest("[data-dmiss]"))) { drv.miss = t.dataset.dmiss; if (drv.view === "prod") drv.view = "pick"; drvRender(); return; }
+    if (e.target.closest("[data-dclose]") || e.target.id === "dvSheet") { drv.miss = ""; drvRender(); return; }
+    if ((t = e.target.closest("[data-dswap]"))) { t.disabled = true; dvEdit(drv.no, "swap", drv.miss, t.dataset.dswap); return; }
+    if ((t = e.target.closest("[data-dremove]"))) { if (t.dataset.c !== "1") { t.dataset.c = "1"; t.textContent = tr("متأكد؟ اضغط ثاني", "Sure? Tap again"); return; } t.disabled = true; dvEdit(drv.no, "remove", t.dataset.dremove); return; }
+    if ((t = e.target.closest("[data-dpacked]"))) { var o = dOrder(t.dataset.dpacked); if (t.getAttribute("aria-disabled") === "true") { dToast(tr("علّم كل المنتجات أول، أو اختر «مو موجود» للناقص", "Mark every item first, or choose Not available"), true); return; }
+      setSt(o.no, "onway", function(ok){ if (ok) go2("deliver"); }); return; }
+    if ((t = e.target.closest("[data-dgive]"))) { drv.given = Number(t.dataset.dgive); drvRender(); return; }
+    if ((t = e.target.closest("[data-ddone]"))) { var no2 = t.dataset.ddone; t.disabled = true; setSt(no2, "delivered", function(ok){ t.disabled = false; if (ok) { delete PICK[no2]; savePick(); drv.tab = "way"; dToast(tr("تم التوصيل، يعطيك العافية", "Delivered, well done")); loadDrvCash(); go2("list"); } }); return; }
   });
 
   /* ---------- admin access ---------- */
@@ -2045,7 +2295,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     $("aCats").innerHTML = draft.cats.map(function(c){
       var n = draft.products.filter(function(p){ return p.cat === c.id; }).length;
       return '<div class="catrow"><button class="imgbtn" type="button" data-pick="cat:' + c.id + '" aria-label="صورة القسم">' + imgTag(c.img, "") + '</button>' +
-        '<div class="cat-names"><label>اسم القسم (' + num(n) + ' منتج)<input data-cat-name="' + c.id + '" value="' + esc(c.name) + '"></label><label>بالإنجليزي<input data-cat-name-en="' + c.id + '" value="' + esc(c.name_en || "") + '" dir="ltr"></label></div>' +
+        '<div class="cat-names"><label>اسم القسم (' + num(n) + ' منتج)<input data-cat-name="' + c.id + '" value="' + esc(c.name) + '"></label><label>بالإنجليزي<input data-cat-name-en="' + c.id + '" value="' + esc(c.name_en || "") + '" dir="ltr"></label><label>مكانه في المحل<input data-cat-loc="' + c.id + '" value="' + esc(c.loc || "") + '" placeholder="مثال: المخبز · جنب الكاشير"></label></div>' +
         mvBtns('cat', c.id) + '<button class="del" type="button" data-del-cat="' + c.id + '"' + (n ? ' disabled title="انقل منتجاته أو احذفها أول"' : '') + '>حذف</button></div>';
     }).join("");
   }
@@ -2064,6 +2314,8 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
         '<label class="wide">القسم<select data-f="cat">' + catOptions(p.cat) + '</select></label>' +
         '<label>الكمية بالمخزون<input data-f="qty" type="number" min="0" step="1" inputmode="numeric" value="' + (qtyOf(p.id) == null ? '' : qtyOf(p.id)) + '" placeholder="' + (STK_OK ? 'بدون عدّ' : 'يحتاج قاعدة الطلبات') + '"' + (STK_OK ? '' : ' disabled') + (qtyOf(p.id) != null && qtyOf(p.id) <= (draft.store.lowAt == null ? 3 : draft.store.lowAt) ? ' class="lowq"' : '') + '></label>' +
         '<label>سعر الشراء' + marginTag(p) + '<input data-f="cost" type="number" min="0" step="0.05" inputmode="decimal" value="' + (costOf(p.id) == null ? '' : costOf(p.id)) + '" placeholder="' + (STK_OK ? 'سري، ما يشوفه الزبون' : 'يحتاج قاعدة الطلبات') + '"' + (STK_OK ? '' : ' disabled') + '></label>' +
+        '<label class="wide">مكانه في المحل <small>(يطلع للمندوب)</small><input data-f="loc" value="' + esc(p.loc || "") + '" placeholder="' + esc((catOf(p.cat) || {}).loc || "مثال: ثلاجة الألبان · الممر ٢ · الرف الثالث") + '"></label>' +
+        '<label class="wide">تأكد قبل لا تاخذه <small>(افصل بفاصلة)</small><input data-f="checks" value="' + esc(p.checks || "") + '" placeholder="مثال: العلبة صفراء، ٢٠٠ جرام مو الكبيرة، شيّك تاريخ الانتهاء"></label>' +
         '<label>الحد لكل طلب<input data-f="max" type="number" min="0" step="1" inputmode="numeric" value="' + esc(p.max || "") + '" placeholder="بدون حد"></label>' +
         '<div class="tools wide"><label class="chk"><input type="checkbox" data-f="stock"' + (p.stock ? ' checked' : '') + '>متوفر</label>' +
         '<input data-f="badge" value="' + esc(p.badge || "") + '" placeholder="شارة: يُخبز يوميًا" aria-label="شارة المنتج" style="width:150px">' +
@@ -2115,6 +2367,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if (mode !== "admin") return;
     var t = e.target;
     if (t.dataset.catName) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catName) c.name = t.value; }); markDirty(); return; }
+    if (t.dataset.catLoc) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catLoc) { if (t.value.trim()) c.loc = t.value; else delete c.loc; } }); markDirty(); return; }
     if (t.dataset.catNameEn) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catNameEn) { if (t.value.trim()) c.name_en = t.value; else delete c.name_en; } }); markDirty(); return; }
     var row = t.closest("[data-row]"); if (!row || !t.dataset.f) return;
     var p = dById(row.dataset.row), f = t.dataset.f;
@@ -2123,6 +2376,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     else if (f === "old") { var v = Number(t.value || 0); if (v) p.old = v; else delete p.old; }
     else if (f === "cost") { costEdit[p.id] = t.value === "" ? null : Math.max(0, Number(t.value) || 0); var mt = row.querySelector(".mtag"); if (mt) mt.outerHTML = marginTag(p); else { var lb = t.closest("label"); if (lb) lb.insertAdjacentHTML("afterbegin", ""); } }
     else if (f === "qty") { stockEdit[p.id] = t.value === "" ? null : Math.max(0, Math.floor(Number(t.value) || 0)); }
+    else if (f === "loc" || f === "checks") { if (t.value.trim()) p[f] = t.value; else delete p[f]; }
     else if (f === "max") { var mx = Math.floor(Number(t.value || 0)); if (mx > 0) p.max = mx; else delete p.max; }
     else if (f === "badge") { if (t.value.trim()) p.badge = t.value.trim(); else delete p.badge; }
     else if (f === "name_en" || f === "unit_en") { if (t.value.trim()) p[f] = t.value; else delete p[f]; }
@@ -2929,7 +3183,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   go("store");
   loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "store") loadStock(); });
-  if (location.hash === "#driver") openDriver();
+  if (location.hash === "#driver" || /[?&]app=driver/.test(location.search)) openDriver();
   window.addEventListener("hashchange", function(){ if (location.hash === "#driver" && mode !== "driver") openDriver(); });
   if (GH) fetch("data.json?v=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
     if (nd && nd.store && nd.products && nd.imgs) { var hadApi = !!apiUrl(); applyData(nd); if (!hadApi) loadStock(); if (mode === "store" && screen !== "checkout") refresh(); }

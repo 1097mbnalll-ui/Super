@@ -177,6 +177,37 @@ export default {
         const orders = (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status }));
         return reply(200, { ok: true, orders, now: Date.now() });
       }
+      // المندوب: منتج ناقص (بدّله بمشابه أو شيله). الأسعار من المتجر، مو من الجوال.
+      if (path === "/driver/order-edit") {
+        const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
+        const row = n > 0 ? await env.DB.prepare("SELECT status, data FROM orders WHERE no = ?").bind(n).first() : null;
+        if (!row) return reply(404, { ok: false, code: "not_found" });
+        if (!["new", "accepted", "onway"].includes(row.status)) return reply(400, { ok: false, code: "closed" });
+        let data;
+        try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+        const rec = safeJson(row.data), byId = {};
+        for (const p of data.products || []) byId[p.id] = p;
+        const id = String(body.id || ""), op = body.op === "swap" ? "swap" : "remove";
+        const line = (rec.lines || []).find((l) => l.id === id);
+        if (!line) return reply(400, { ok: false, code: "bad_line" });
+        let lines = (rec.lines || []).map((l) => ({ id: l.id, qty: l.qty, price: l.price }));
+        let toP = null;
+        if (op === "swap") {
+          toP = byId[String(body.to || "")];
+          if (!toP || !toP.stock || toP.id === id) return reply(400, { ok: false, code: "bad_swap" });
+          const ex = lines.find((l) => l.id === toP.id && l.price === Number(toP.price));
+          lines = lines.filter((l) => l.id !== id);
+          if (ex) ex.qty += line.qty; else lines.push({ id: toP.id, qty: line.qty, price: Number(toP.price) });
+        } else lines = lines.filter((l) => l.id !== id);
+        if (!lines.length) return reply(400, { ok: false, code: "last_item" });
+        let r;
+        try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, who === "admin" ? staff(body) : "المندوب"); } catch { return reply(502, { ok: false, code: "db" }); }
+        if (r.error) return reply(400, { ok: false, code: r.error });
+        const msg = op === "swap" ? `«${line.name}» ما كان متوفر، وبدّلناه بـ «${toP.name}». الإجمالي الجديد ${money(r.order.total)}` : `«${line.name}» ما كان متوفر وشلناه من طلبك. الإجمالي الجديد ${money(r.order.total)}`;
+        later(notifyRole(env, "customer", String(n), { title: "تعديل على طلبك #" + (1000 + n), body: msg, url: "./", tag: "order" + n }));
+        return reply(200, { ok: true, order: r.order });
+      }
+      if (path === "/driver/cash") return reply(200, { ok: true, ...(await readCash(env)) });
       if (path === "/driver/status") {
         const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
         const st = String(body.status || "");
@@ -428,6 +459,7 @@ function orderRecord(o, body) {
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
     pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
     st: 1, // انحسب في التحليل
+    sub: ["swap", "remove", "call"].includes(body.sub) ? body.sub : "call", // لو منتج ناقص: بدّله، شيله، أو اتصلوا
   };
 }
 // يحفظ الطلب وسطوره والمخزون والتحليل في خطوة وحدة (يا كلها تنحفظ، يا ولا شي)
@@ -1081,7 +1113,7 @@ function manualOrder(data, body) {
     lines, subtotal, fee, total: round2(subtotal + fee), count: lines.reduce((s, l) => s + l.qty, 0), phone,
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
     pay: body.pay === "card" ? "card" : "cash", lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng, map,
-    source: src, st: 1,
+    source: src, st: 1, sub: ["swap", "remove", "call"].includes(body.sub) ? body.sub : "call",
   } };
 }
 
