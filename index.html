@@ -753,6 +753,35 @@ button.stat:hover{border-color:var(--teal)}
 .pr input{min-height:34px;width:100%}
 #oeAdd{min-height:40px;flex:1;min-width:200px}
 @media (max-width:760px){.oe-row{grid-template-columns:minmax(0,1fr) auto;}.oe-row .pr{grid-column:1}.oe-row .del{justify-self:end}}
+/* new order (staff) */
+.panel.nf{display:grid;gap:12px;max-width:640px}
+.nf-sec{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.nf-sec>b{font-size:.85rem;color:var(--muted)}
+.nf-src{max-width:360px}
+.nf-res{display:grid;gap:4px}
+.nf-pr{display:grid;grid-template-columns:36px minmax(0,1fr) auto auto 28px;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 10px;font:inherit;font-size:.85rem;color:var(--ink);text-align:start;cursor:pointer}
+.nf-pr:hover,.nf-pr:focus-visible{border-color:var(--teal)}
+.nf-pr img,.nf-pr .noimg{width:36px;height:36px;object-fit:contain;mix-blend-mode:multiply}
+.nf-pr em{font-style:normal;font-size:.72rem;color:var(--muted)}.nf-pr em.out{color:#C2341F}
+.nf-pr .plus{width:28px;height:28px;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;font-weight:700}
+.nf-lines{display:grid;gap:6px}
+.nf-known{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#EEF6FF;border-radius:14px;padding:10px 12px}
+.nf-known .ic{width:36px;height:36px;border-radius:12px;background:#fff;display:grid;place-items:center;color:#1D5FA8;flex:none}
+.nf-known .t{flex:1;min-width:180px;display:grid;gap:2px;font-size:.78rem;color:var(--muted)}
+.nf-known .t b{color:var(--ink);font-size:.9rem}
+.nf-known .acts{display:flex;gap:6px;flex-wrap:wrap}
+.nf-tot{display:grid;gap:6px;font-size:.88rem}
+.nf-tot>div{display:flex;justify-content:space-between;align-items:center}
+.nf-tot .grand{font-size:1.05rem;border-top:1px dashed var(--line);padding-top:6px}
+.pr.inline input{width:90px;min-height:34px}
+.nf-save{min-width:200px}
+.nf-done{display:grid;gap:10px;justify-items:center;text-align:center;padding:10px 0}
+.nf-done .ic{width:64px;height:64px;border-radius:50%;background:#D7F1E2;color:#1F8A55;display:grid;place-items:center}
+.nf-done .ic svg.i{width:32px;height:32px}
+.nf-done h3{margin:0;font-size:1.2rem}
+.nf-done .actions{justify-content:center}
+.orow2 .src{font-style:normal;font-size:.7rem;font-weight:700;border-radius:999px;padding:1px 8px;margin-inline-end:6px;background:#EEE8FF;color:#5B3DB8}
+.orow2 .src.whatsapp{background:#E3F7EA;color:#1C7A43}.orow2 .src.store{background:#FFF1E0;color:#9A5410}
 
 @media (min-width:700px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* ---------- kiu-style experience ---------- */
@@ -837,6 +866,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-card.out .kq-img img{filter:grayscale(1);opacity:.45}
 .kq-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;background:#E8394F;color:#fff;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:700;z-index:2}
 .kq-badge svg.i{width:12px;height:12px}
+.srcpill{font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;background:#EEE8FF;color:#5B3DB8}
 .closedbar{display:flex;gap:10px;align-items:center;background:#1E1E2A;color:#fff;border-radius:16px;padding:10px 14px;margin-bottom:10px;font-size:12px;line-height:1.5}
 .closedbar b{display:block;font-size:13.5px}
 .closedbar svg.i{width:20px;height:20px;flex:none;color:#FFB547}
@@ -1661,10 +1691,11 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     $("drvList").innerHTML = list.map(function(o){
       var next = o.status === "new" ? ["accepted",tr("استلمت الطلب", "Order picked up"),"btn-orange"] : o.status === "accepted" ? ["onway",tr("طلعت للتوصيل", "Out for delivery"),"btn-ink"] : o.status === "onway" ? ["delivered",tr("تم التوصيل", "Delivered"),"btn-teal"] : null;
       var wa = "966" + String(o.phone || "").replace(/^0/, "");
-      return '<article class="ord' + (drv.seen[o.no] === "fresh" ? ' fresh' : '') + '"><div class="r1"><span class="no">' + esc(o.no) + '</span><span class="ago">' + ago(o.created) + '</span><span class="spill ' + o.status + '">' + ST[o.status] + '</span></div>' +
+      return '<article class="ord' + (drv.seen[o.no] === "fresh" ? ' fresh' : '') + '"><div class="r1"><span class="no">' + esc(o.no) + '</span><span class="ago">' + ago(o.created) + '</span>' + (o.source ? '<span class="srcpill">' + ({ phone: tr("اتصال", "Phone"), whatsapp: tr("واتساب", "WhatsApp"), store: tr("من المحل", "In store") }[o.source] || "") + '</span>' : '') + '<span class="spill ' + o.status + '">' + ST[o.status] + '</span></div>' +
         '<div class="money"><span class="price">' + num(o.total) + tr(' <small>ر.س</small></span><span>', ' <small>SAR</small></span><span>') + (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + ' · ' + o.count + tr(' منتج', ' items') + (o.fee ? tr(' · شامل التوصيل', ' · delivery included') : tr(' · توصيل مجاني', ' · free delivery')) + '</span></div>' +
         '<div class="where"><b>' + esc(o.name || tr("زبون", "Customer")) + ' · <span dir="ltr">' + esc(o.phone) + '</span></b>' + (o.details ? '<span>' + esc(o.details) + '</span>' : '') + '</div>' +
-        '<div class="btns"><a class="map" href="' + esc(o.map) + '" target="_blank" rel="noopener">' + ic("pin") + tr('الموقع</a><a href="tel:', 'Location</a><a href="tel:') + esc(o.phone) + '">' + ic("phone") + tr('اتصل</a><a href="https://wa.me/', 'Call</a><a href="https://wa.me/') + esc(wa) + tr('" target="_blank" rel="noopener">واتساب</a></div>', '" target="_blank" rel="noopener">WhatsApp</a></div>') +
+        (o.map || o.phone ? '<div class="btns">' + (o.map ? '<a class="map" href="' + esc(o.map) + '" target="_blank" rel="noopener">' + ic("pin") + tr('الموقع</a>', 'Location</a>') : '') +
+          (o.phone ? '<a href="tel:' + esc(o.phone) + '">' + ic("phone") + tr('اتصل</a><a href="https://wa.me/', 'Call</a><a href="https://wa.me/') + esc(wa) + tr('" target="_blank" rel="noopener">واتساب</a>', '" target="_blank" rel="noopener">WhatsApp</a>') : '') + '</div>' : '') +
         (o.note ? '<div class="note">' + esc(o.note) + '</div>' : '') +
         '<details' + (o.status === "new" || o.status === "accepted" ? ' open' : '') + tr('><summary>المنتجات (', '><summary>Items (') + o.lines.length + ')</summary><ul>' + o.lines.map(function(l){ return '<li><span>' + esc(l.name) + ' <small class="hint">' + esc(l.unit) + '</small>' + (l.tag ? ' <span class="ltag deal">' + esc(l.tag) + '</span>' : '') + '</span><b>× ' + l.qty + '</b></li>'; }).join("") + '</ul></details>' +
         (next || o.status !== "delivered" && o.status !== "canceled" ? '<div class="act">' + (next ? '<button class="btn ' + next[2] + '" type="button" data-dst="' + next[0] + '" data-no="' + esc(o.no) + '">' + next[1] + '</button>' : '') +
@@ -1896,7 +1927,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
       (apiUrl() ? '<div class="card"><div class="sec-head" style="margin:0"><h2>آخر الطلبات</h2><button class="btn btn-soft" type="button" id="aOpenDrv">صفحة المندوب</button></div><div id="aOrders" class="hint">جاري التحميل…</div></div>' : '') +
       '<div class="card openbox' + (draft.store.closed ? ' closed' : '') + '"><span class="ic">' + ic(draft.store.closed ? "lock" : "unlock") + '</span><span class="t"><b>' + (draft.store.closed ? 'المحل مقفل، والطلبات واقفة' : 'المحل مفتوح ويستقبل الطلبات') + '</b><span>' + (draft.store.minOrder ? 'أقل مبلغ للطلب ' + num(draft.store.minOrder) + ' ر.س' : 'بدون حد أدنى للطلب') + '</span></span><button class="btn ' + (draft.store.closed ? 'btn-brand' : 'btn-ghost') + '" type="button" id="aToggleOpen">' + (draft.store.closed ? 'افتح المحل' : 'اقفل المحل مؤقتًا') + '</button></div>' +
       '<div class="card"><h2>اختصارات</h2><div class="quick">' +
-        '<button type="button" class="btn btn-ghost" data-atab="prods">تعديل الأسعار</button><button type="button" class="btn btn-ghost" data-atab="offers">عرض اليوم والعروض</button>' +
+        '<button type="button" class="btn btn-brand" data-onew>+ طلب بالتلفون أو الواتساب</button><button type="button" class="btn btn-ghost" data-atab="prods">تعديل الأسعار</button><button type="button" class="btn btn-ghost" data-atab="offers">عرض اليوم والعروض</button>' +
         '<button type="button" class="btn btn-ghost" data-atab="layout">ترتيب الصفحة الرئيسية</button><button type="button" class="btn btn-ghost" data-atab="look">الألوان واللغة</button></div>' +
         lowHTML() + (noEn ? '<p class="hint">فيه ' + noEn + ' منتج بدون اسم إنجليزي، ويطلعون بالعربي في النسخة الإنجليزية.</p>' : '') + '</div>';
     $("aToggleOpen").addEventListener("click", function(){ if (draft.store.closed) delete draft.store.closed; else draft.store.closed = true; if ($("sClosed")) $("sClosed").checked = !!draft.store.closed; markDirty(); renderOver(); publish(); });
@@ -2477,6 +2508,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
 
   /* ---------- orders list ---------- */
   var oState = { list: null, f: "active", q: "", range: 7, loading: false };
+  var SRC = { phone: "اتصال", whatsapp: "واتساب", store: "من المحل" };
   var OST = { "new": "جديد", accepted: "انقبل", onway: "في الطريق", delivered: "تم التوصيل", canceled: "ملغي" };
   function oTime(t){ var d = new Date(t); return d.toLocaleDateString("ar-SA-u-nu-latn", { day: "numeric", month: "numeric" }) + " · " + d.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" }); }
   function renderOList(force){
@@ -2485,13 +2517,13 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     if ((!oState.list || force) && !oState.loading) { oState.loading = true; api("/admin/orders", { pin: adminPin, limit: 500 }).then(function(j){ oState.loading = false; oState.list = j.ok ? j.orders : []; oState.more = !!j.more; oState.err = j.ok ? "" : j.code; if (aTab === "olist") renderOList(); }); }
     var seg = function(arr, key){ return '<div class="pays seg mini" role="group">' + arr.map(function(x){ return '<button type="button" data-of="' + key + ':' + x[0] + '" aria-pressed="' + (String(oState[key]) === String(x[0])) + '">' + x[1] + '</button>'; }).join("") + '</div>'; };
     var head = '<div class="card"><div class="o-tools"><input class="search" id="oQ" type="search" placeholder="ابحث برقم الطلب أو الجوال أو الاسم…" value="' + esc(oState.q) + '" aria-label="بحث في الطلبات">' +
-      '<button class="btn btn-soft" type="button" id="oRefresh">تحديث</button><button class="btn btn-soft" type="button" id="oExport">نزّل Excel</button></div>' +
+      '<button class="btn btn-brand" type="button" data-onew>+ طلب جديد</button><button class="btn btn-soft" type="button" id="oRefresh">تحديث</button><button class="btn btn-soft" type="button" id="oExport">نزّل Excel</button></div>' +
       seg([["active","الجارية"],["new","جديدة"],["delivered","تم التوصيل"],["canceled","ملغية"],["all","الكل"]], "f") + seg([[1,"اليوم"],[7,"٧ أيام"],[30,"٣٠ يوم"],[0,"الكل"]], "range") + '</div>';
     if (!oState.list) { box.innerHTML = head + '<div class="card"><p class="hint">جاري التحميل…</p></div>'; bindOTools(); return; }
     if (oState.err) { box.innerHTML = head + '<div class="card"><p class="status err">' + (oState.err === "not_found" ? "حدّث كود الخادم في Cloudflare (الدليل، القسم ٨)." : "ما قدرنا نجيب الطلبات (" + esc(oState.err) + ").") + '</p></div>'; bindOTools(); return; }
     var l = oFiltered(), sum = l.reduce(function(a, o){ return o.status === "canceled" ? a : a + o.total; }, 0);
     box.innerHTML = head + '<div class="card"><div class="sec-head" style="margin:0"><b>' + num(l.length) + ' طلب</b><span class="hint">' + num(Math.round(sum)) + ' ر.س (بدون الملغي)</span></div>' +
-      (l.length ? '<div class="olist2">' + l.slice(0, oState.show || 200).map(function(o){ return '<button type="button" class="orow2" data-oopen="' + esc(o.no) + '"><b dir="ltr">' + esc(o.no) + '</b><span class="t">' + oTime(o.created) + '</span><span class="w">' + esc(o.name || "زبون") + ' · <span dir="ltr">' + esc(o.phone) + '</span></span><span class="m">' + num(o.total) + ' ر.س · ' + (o.pay === "card" ? "شبكة" : "كاش") + '</span><span class="spill ' + o.status + '">' + OST[o.status] + '</span></button>'; }).join("") + '</div>' : '<p class="empty">ما فيه طلبات بهذا الفلتر.</p>') +
+      (l.length ? '<div class="olist2">' + l.slice(0, oState.show || 200).map(function(o){ return '<button type="button" class="orow2" data-oopen="' + esc(o.no) + '"><b dir="ltr">' + esc(o.no) + '</b><span class="t">' + oTime(o.created) + '</span><span class="w">' + (o.source ? '<em class="src ' + o.source + '">' + SRC[o.source] + '</em>' : '') + esc(o.name || "زبون") + (o.phone ? ' · <span dir="ltr">' + esc(o.phone) + '</span>' : '') + '</span><span class="m">' + num(o.total) + ' ر.س · ' + (o.pay === "card" ? "شبكة" : "كاش") + '</span><span class="spill ' + o.status + '">' + OST[o.status] + '</span></button>'; }).join("") + '</div>' : '<p class="empty">ما فيه طلبات بهذا الفلتر.</p>') +
       (l.length > (oState.show || 200) || oState.more ? '<button class="btn btn-ghost" type="button" id="oMore" style="justify-self:center;margin-top:10px">اعرض طلبات أقدم</button>' : '') + '</div>';
     bindOTools();
   }
@@ -2526,7 +2558,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
     w.innerHTML = '<div class="sheet" id="oSheet"><div class="panel" role="dialog" aria-modal="true" aria-labelledby="oTitle"><div class="panel-head"><h2 id="oTitle" dir="ltr">' + esc(o.no) + '</h2><span class="spill ' + o.status + '">' + OST[o.status] + '</span><button class="btn btn-ghost" type="button" data-oclose>إغلاق</button></div>' +
       '<p class="hint">' + oTime(o.created) + ' · ' + (o.pay === "card" ? "شبكة" : "كاش") + ' عند الاستلام</p>' +
       '<div class="o-who"><b>' + esc(o.name || "زبون") + '</b><span dir="ltr">' + esc(o.phone) + '</span>' + (o.details ? '<span>' + esc(o.details) + '</span>' : '') + (o.note ? '<span class="note">ملاحظة: ' + esc(o.note) + '</span>' : '') + '</div>' +
-      '<div class="actions"><a class="btn btn-soft sm" href="tel:' + esc(o.phone) + '">' + ic("phone") + 'اتصل</a><a class="btn btn-soft sm" target="_blank" rel="noopener" href="https://wa.me/966' + esc(String(o.phone).replace(/^0/, "")) + '">واتساب</a><a class="btn btn-soft sm" target="_blank" rel="noopener" href="' + esc(o.map) + '">' + ic("pin") + 'الموقع</a><button class="btn btn-soft sm" type="button" data-oprint="' + esc(o.no) + '">طباعة الفاتورة</button>' + (o.status !== "canceled" ? '<button class="btn btn-soft sm" type="button" data-oedit="' + esc(o.no) + '">عدّل الطلب</button>' : '') + '</div>' +
+      '<div class="actions">' + (o.phone ? '<a class="btn btn-soft sm" href="tel:' + esc(o.phone) + '">' + ic("phone") + 'اتصل</a><a class="btn btn-soft sm" target="_blank" rel="noopener" href="https://wa.me/966' + esc(String(o.phone).replace(/^0/, "")) + '">واتساب</a>' : '') + (o.map ? '<a class="btn btn-soft sm" target="_blank" rel="noopener" href="' + esc(o.map) + '">' + ic("pin") + 'الموقع</a>' : '') + '<button class="btn btn-soft sm" type="button" data-oprint="' + esc(o.no) + '">طباعة الفاتورة</button>' + (o.status !== "canceled" ? '<button class="btn btn-soft sm" type="button" data-oedit="' + esc(o.no) + '">عدّل الطلب</button>' : '') + '</div>' +
       (o.edits && o.edits.length ? '<p class="hint">انعدّل ' + o.edits.length + ' مرة. آخر تعديل: من ' + num(o.edits[o.edits.length - 1].before) + ' إلى ' + num(o.edits[o.edits.length - 1].after) + ' ر.س</p>' : '') + (o.anon ? '<p class="hint">بيانات الزبون انمسحت بعد مدة الحفظ، والطلب وأرقامه باقية.</p>' : '') +
       '<div class="o-lines">' + (o.lines || []).map(function(l){ return '<div><span>' + esc(l.name) + ' <small class="hint">' + esc(l.unit || "") + '</small>' + (l.tag ? ' <span class="ltag deal">' + esc(l.tag) + '</span>' : '') + '</span><b>× ' + l.qty + '</b><span>' + num(Math.round(l.qty * l.price * 100) / 100) + '</span></div>'; }).join("") +
         '<div class="sum"><span>المنتجات</span><b></b><span>' + num(o.subtotal) + '</span></div><div class="sum"><span>التوصيل</span><b></b><span>' + (o.fee ? num(o.fee) : 'مجاني') + '</span></div><div class="sum grand"><span>الإجمالي</span><b></b><span>' + num(o.total) + ' ر.س</span></div></div>' +
@@ -2600,6 +2632,109 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
         if (!j.ok) { b.disabled = false; m.className = "status err"; m.textContent = j.code === "not_found" ? "حدّث كود الخادم أول." : "ما انحفظ (" + (j.code || "?") + ")."; return; }
         var o = oFind(oEdit.no); if (o) { Object.keys(j.order).forEach(function(k){ o[k] = j.order[k]; }); }
         var no1 = oEdit.no; oEdit = null; openOrder(no1); renderOList(); loadAdminStock(); }); }
+  });
+
+  /* ---------- new order typed by staff (phone / WhatsApp / in store) ---------- */
+  var nf = null;
+  function nfReset(){ nf = { src: "phone", phone: "", name: "", details: "", loc: "", note: "", pay: "cash", fee: "", lines: [], q: "", force: false, done: null }; }
+  function nfSub(){ return Math.round(nf.lines.reduce(function(a, l){ return a + l.qty * l.price; }, 0) * 100) / 100; }
+  function nfAutoFee(){ var st = draft.store, sub = nfSub(); return st.freeOver && sub >= st.freeOver ? 0 : Number(st.fee || 0); }
+  function nfFee(){ return nf.fee === "" ? nfAutoFee() : Number(nf.fee) || 0; }
+  function openNewOrder(){
+    if (!nf || nf.done) nfReset();
+    if (!oState.list && !oState.loading) { oState.loading = true; api("/admin/orders", { pin: adminPin, limit: 500 }).then(function(j){ oState.loading = false; oState.list = j.ok ? j.orders : []; oState.more = !!j.more; if (nf && $("nfKnown")) nfKnownRender(); }); }
+    var old = $("nfSheet"); if (old) old.remove();
+    var w = document.createElement("div");
+    w.innerHTML = '<div class="sheet" id="nfSheet"><div class="panel nf" role="dialog" aria-modal="true" aria-labelledby="nfTitle"><div class="panel-head"><h2 id="nfTitle">طلب جديد</h2><button class="btn btn-ghost" type="button" data-nfclose>إغلاق</button></div><div id="nfBody"></div></div></div>';
+    document.body.appendChild(w.firstChild); nfRender();
+  }
+  function nfRender(){
+    var b = $("nfBody"); if (!b) return;
+    if (nf.done) { var o = nf.done, msg = "هلا" + (o.name ? " " + o.name : "") + "، وصلنا طلبك من " + D.store.name + " رقم " + o.no + ":\n" + o.lines.map(function(l){ return "• " + l.name + " × " + l.qty; }).join("\n") + "\nالإجمالي: " + num(o.total) + " ر.س (" + (o.pay === "card" ? "شبكة" : "كاش") + " عند الاستلام)" + (D.store.eta ? "\nيوصلك خلال " + D.store.eta : "") + "\nتقدر تطلب بنفسك المرة الجاية من هنا: " + location.origin + location.pathname;
+      b.innerHTML = '<div class="nf-done"><span class="ic">' + ic("check") + '</span><h3>انسجّل الطلب <span dir="ltr">' + esc(o.no) + '</span></h3><p class="hint">' + num(o.count) + ' قطعة · ' + num(o.total) + ' ر.س · وصل للمندوب، والمخزون والتحليل انحسبوا.</p>' +
+        '<div class="actions">' + (o.phone ? '<a class="btn btn-teal" target="_blank" rel="noopener" href="https://wa.me/966' + esc(o.phone.replace(/^0/, "")) + '?text=' + encodeURIComponent(msg) + '">أرسل تأكيد للزبون على الواتساب</a>' : '') +
+        '<button class="btn btn-soft" type="button" data-oprint="' + esc(o.no) + '">اطبع الفاتورة</button><button class="btn btn-brand" type="button" data-nfagain>طلب جديد ثاني</button></div></div>'; return; }
+    b.innerHTML = '<div class="pays seg mini nf-src" role="group" aria-label="الطلب جاء من">' + [["phone","اتصال"],["whatsapp","واتساب"],["store","في المحل"]].map(function(x){ return '<button type="button" data-nfsrc="' + x[0] + '" aria-pressed="' + (nf.src === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div>' +
+      '<section class="nf-sec"><b>الزبون</b><div class="fields">' +
+        '<label>رقم الجوال<input id="nfPhone" type="tel" inputmode="numeric" dir="ltr" placeholder="05XXXXXXXX" value="' + esc(nf.phone) + '"></label>' +
+        '<label>الاسم<input id="nfName" value="' + esc(nf.name) + '" placeholder="اختياري"></label>' +
+        '<label class="wide">العنوان أو وصف البيت<input id="nfDetails" value="' + esc(nf.details) + '" placeholder="مثال: فيلا ٨، باب بني، جنب المسجد"></label>' +
+        '<label class="wide">موقع البيت<input id="nfLoc" dir="ltr" value="' + esc(nf.loc) + '" placeholder="الصق رابط الموقع من الواتساب (اختياري)"></label>' +
+        '<label class="wide">ملاحظة<input id="nfNote" value="' + esc(nf.note) + '" placeholder="مثال: الخبز يكون حار"></label></div><div id="nfKnown"></div></section>' +
+      '<section class="nf-sec"><b>المنتجات</b><input class="search" id="nfQ" type="search" placeholder="اكتب اسم المنتج…" value="' + esc(nf.q) + '" autocomplete="off"><div class="nf-res" id="nfRes"></div><div class="nf-lines" id="nfLines"></div></section>' +
+      '<section class="nf-sec"><div class="nf-tot" id="nfTot"></div><div class="pays" style="max-width:320px"><button type="button" data-nfpay="cash" aria-pressed="' + (nf.pay === "cash") + '">كاش</button><button type="button" data-nfpay="card" aria-pressed="' + (nf.pay === "card") + '">شبكة</button></div></section>' +
+      '<div id="nfErr"></div><div class="actions"><button class="btn btn-brand nf-save" type="button" id="nfSave">سجّل الطلب</button></div>';
+    var bind = { nfPhone: "phone", nfName: "name", nfDetails: "details", nfLoc: "loc", nfNote: "note" };
+    Object.keys(bind).forEach(function(id){ $(id).addEventListener("input", function(){ nf[bind[id]] = this.value; if (id === "nfPhone") nfKnownRender(); }); });
+    $("nfQ").addEventListener("input", function(){ nf.q = this.value; nfResRender(); });
+    $("nfQ").addEventListener("keydown", function(e){ if (e.key === "Enter") { var f = document.querySelector("#nfRes [data-nfadd]"); if (f) { e.preventDefault(); f.click(); } } });
+    nfKnownRender(); nfResRender(); nfLinesRender();
+  }
+  function nfKnownRender(){
+    var el = $("nfKnown"); if (!el) return;
+    var ph = normPhone(nf.phone);
+    if (!ph) { el.innerHTML = nf.phone.replace(/\D/g, "").length >= 10 ? '<p class="status err">رقم الجوال مو صحيح. لازم يبدأ بـ 05 ويكون ١٠ أرقام.</p>' : ''; return; }
+    var mine = (oState.list || []).filter(function(o){ return o.phone === ph && !o.anon; });
+    if (!mine.length) { el.innerHTML = '<p class="hint">زبون جديد' + (oState.list ? '' : ' (جاري البحث في الطلبات السابقة…)') + '</p>'; return; }
+    var last = mine[0], done = mine.filter(function(o){ return o.status !== "canceled"; });
+    el.innerHTML = '<div class="nf-known"><span class="ic">' + ic("user") + '</span><span class="t"><b>زبون سابق' + (last.name ? ': ' + esc(last.name) : '') + '</b><span>' + num(done.length) + ' طلب · ' + num(Math.round(done.reduce(function(a, o){ return a + o.total; }, 0))) + ' ر.س · آخر طلب ' + oTime(last.created) + '</span>' + (last.details ? '<span>' + esc(last.details) + '</span>' : '') + '</span>' +
+      '<span class="acts"><button class="btn btn-soft sm" type="button" data-nffill>عبّي بياناته</button><button class="btn btn-soft sm" type="button" data-nfrepeat>كرر آخر طلب</button></span></div>';
+  }
+  function nfResRender(){
+    var el = $("nfRes"); if (!el) return;
+    var q = nf.q.trim().toLowerCase();
+    if (!q) { el.innerHTML = ''; return; }
+    var res = draft.products.filter(function(p){ return p.name.toLowerCase().indexOf(q) > -1 || (p.name_en || "").toLowerCase().indexOf(q) > -1; }).slice(0, 8);
+    el.innerHTML = res.length ? res.map(function(p){ var left = qtyOf(p.id);
+      return '<button type="button" class="nf-pr" data-nfadd="' + p.id + '">' + imgTag(p.img, "") + '<span class="nm">' + esc(p.name) + ' <small class="hint">' + esc(p.unit || "") + '</small></span>' + (!p.stock ? '<em class="out">مو متوفر</em>' : left != null ? '<em class="' + (left <= 3 ? 'out' : '') + '">باقي ' + num(left) + '</em>' : '') + '<b>' + num(p.price) + ' ر.س</b><span class="plus">+</span></button>'; }).join("") : '<p class="hint">ما لقينا منتج بهذا الاسم.</p>';
+  }
+  function nfLinesRender(){
+    var el = $("nfLines"); if (!el) return;
+    el.innerHTML = nf.lines.length ? nf.lines.map(function(l, i){ var p = dById(l.id);
+      return '<div class="oe-row">' + '<span class="nm">' + esc(p ? p.name : l.id) + ' <small class="hint">' + esc(p ? p.unit || "" : "") + '</small></span><span class="stp"><button type="button" data-nfq="' + i + ':-1" aria-label="نقص">−</button><b>' + l.qty + '</b><button type="button" data-nfq="' + i + ':1" aria-label="زيادة">+</button></span><label class="pr">السعر<input type="number" min="0" step="0.25" inputmode="decimal" data-nfp="' + i + '" value="' + l.price + '"></label><button class="del" type="button" data-nfdel="' + i + '">شيل</button></div>'; }).join("") : '<p class="hint">ابحث فوق واضغط على المنتج عشان ينضاف.</p>';
+    Array.prototype.forEach.call(el.querySelectorAll("[data-nfp]"), function(inp){ inp.addEventListener("input", function(){ nf.lines[Number(this.dataset.nfp)].price = Number(this.value || 0); nfTotRender(); }); });
+    nfTotRender();
+  }
+  function nfTotRender(){
+    var el = $("nfTot"); if (!el) return;
+    var sub = nfSub(), fee = nfFee(), cnt = nf.lines.reduce(function(a, l){ return a + l.qty; }, 0);
+    el.innerHTML = '<div><span>المنتجات (' + num(cnt) + ')</span><b>' + num(sub) + ' ر.س</b></div><div><span>التوصيل</span><label class="pr inline"><input type="number" min="0" step="0.5" id="nfFee" value="' + esc(nf.fee) + '" placeholder="' + nfAutoFee() + '" aria-label="رسوم التوصيل"></label></div><div class="grand"><span>الإجمالي</span><b>' + num(Math.round((sub + fee) * 100) / 100) + ' ر.س</b></div>';
+    $("nfFee").addEventListener("input", function(){ nf.fee = this.value; var g = el.querySelector(".grand b"); g.textContent = num(Math.round((nfSub() + nfFee()) * 100) / 100) + " ر.س"; });
+  }
+  function nfAdd(id, qty){ var p = dById(id); if (!p) return; var ex = nf.lines.filter(function(l){ return l.id === id && l.price === p.price; })[0]; if (ex) ex.qty += qty || 1; else nf.lines.push({ id: id, qty: qty || 1, price: p.price }); }
+  function nfSave(){
+    var err = $("nfErr"), btn = $("nfSave"), ph = nf.phone.trim();
+    err.innerHTML = "";
+    if (!nf.lines.length) { err.innerHTML = '<p class="status err">أضف منتج واحد على الأقل.</p>'; $("nfQ").focus(); return; }
+    if (ph && !normPhone(ph)) { err.innerHTML = '<p class="status err">رقم الجوال مو صحيح. اكتبه مثل 05XXXXXXXX أو خله فاضي.</p>'; $("nfPhone").focus(); return; }
+    if (nf.src !== "store" && !ph && !nf.details.trim() && !nf.loc.trim()) { err.innerHTML = '<p class="status err">المندوب يحتاج جوال الزبون أو عنوانه. لو الطلب في المحل اختر «في المحل».</p>'; return; }
+    btn.disabled = true; btn.textContent = "جاري التسجيل…";
+    api("/admin/order-new", { pin: adminPin, source: nf.src, phone: ph, name: nf.name, details: nf.details, loc: nf.loc, note: nf.note, pay: nf.pay, fee: nf.fee === "" ? null : Number(nf.fee), force: nf.force, lines: nf.lines }).then(function(j){
+      btn.disabled = false; btn.textContent = "سجّل الطلب";
+      if (j.ok) { nf.done = j.order; if (oState.list) oState.list.unshift(j.order); if (aTab === "olist") renderOList(); loadAdminStock(); nfRender(); return; }
+      if (j.code === "unavailable") { var p = dById(j.id); err.innerHTML = '<div class="alert soft">المخزون في النظام يقول باقي ' + num(j.left) + ' بس من «' + esc(p ? p.name : j.id) + '». عدّل الكمية، أو لو المنتج موجود عندك فعلًا: <label class="chk"><input type="checkbox" data-nfforce>سجّله على أي حال (المخزون ينزل لصفر)</label></div>'; return; }
+      err.innerHTML = '<p class="status err">' + (j.code === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : j.code === "bad_phone" ? "رقم الجوال مو صحيح." : j.code === "network" ? "ما فيه اتصال. تأكد من النت." : "ما انسجل (" + esc(j.code || "?") + ").") + '</p>';
+    });
+  }
+  document.addEventListener("change", function(e){ if (mode === "admin" && nf && e.target.dataset && e.target.dataset.nfforce !== undefined) nf.force = e.target.checked; });
+  document.addEventListener("click", function(e){
+    if (mode !== "admin") return;
+    var t;
+    if (e.target.closest("[data-onew]")) { openNewOrder(); return; }
+    if (!nf || !$("nfSheet")) return;
+    if (e.target.closest("[data-nfclose]") || e.target.id === "nfSheet") { $("nfSheet").remove(); if (nf.done) nf = null; return; }
+    if (e.target.closest("[data-nfagain]")) { nfReset(); nfRender(); $("nfPhone").focus(); return; }
+    if ((t = e.target.closest("[data-nfsrc]"))) { nf.src = t.dataset.nfsrc; Array.prototype.forEach.call(document.querySelectorAll("[data-nfsrc]"), function(b){ b.setAttribute("aria-pressed", b.dataset.nfsrc === nf.src); }); return; }
+    if ((t = e.target.closest("[data-nfpay]"))) { nf.pay = t.dataset.nfpay; Array.prototype.forEach.call(document.querySelectorAll("[data-nfpay]"), function(b){ b.setAttribute("aria-pressed", b.dataset.nfpay === nf.pay); }); return; }
+    if ((t = e.target.closest("[data-nfadd]"))) { nfAdd(t.dataset.nfadd, 1); nf.q = ""; $("nfQ").value = ""; nfResRender(); nfLinesRender(); $("nfQ").focus(); return; }
+    if ((t = e.target.closest("[data-nfq]"))) { var k = t.dataset.nfq.split(":"), l = nf.lines[Number(k[0])]; l.qty = Math.max(1, l.qty + Number(k[1])); nfLinesRender(); return; }
+    if ((t = e.target.closest("[data-nfdel]"))) { nf.lines.splice(Number(t.dataset.nfdel), 1); nfLinesRender(); return; }
+    if (e.target.closest("[data-nffill]") || e.target.closest("[data-nfrepeat]")) {
+      var ph = normPhone(nf.phone), last = (oState.list || []).filter(function(o){ return o.phone === ph && !o.anon; })[0]; if (!last) return;
+      if (e.target.closest("[data-nffill]")) { nf.name = last.name || nf.name; nf.details = last.details || nf.details; if (last.map) nf.loc = last.map; nfRender(); return; }
+      nf.name = nf.name || last.name || ""; nf.details = nf.details || last.details || ""; if (!nf.loc && last.map) nf.loc = last.map;
+      nf.lines = []; (last.lines || []).forEach(function(l){ if (l.id && dById(l.id)) nfAdd(l.id, l.qty); }); nfRender(); return; }
+    if (e.target.closest("#nfSave")) { nfSave(); return; }
   });
 
   /* ---------- routing ---------- */

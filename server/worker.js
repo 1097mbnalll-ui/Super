@@ -212,6 +212,25 @@ export default {
       const orders = (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, anon: !!r.anon }));
       return reply(200, { ok: true, orders, more: orders.length === lim, now: Date.now() });
     }
+    // طلب جاء بالاتصال أو الواتساب أو في المحل: الموظف يدخله من الإدارة
+    if (path === "/admin/order-new") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      let data;
+      try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+      const made = manualOrder(data, body);
+      if (made.error) return reply(400, { ok: false, code: made.error });
+      const rec = made.rec, need = needOf(rec);
+      let orderNo, before = {};
+      try {
+        await ensureSchema(env);
+        before = await readStock(env);
+        const sid = Object.keys(need).find((id) => before[id] != null && before[id] < need[id]);
+        if (sid && !body.force) return reply(409, { ok: false, code: "unavailable", id: sid, left: before[sid] });
+        orderNo = await dbInsertOrder(env, rec, need, Date.now(), !!body.force);
+      } catch { return reply(502, { ok: false, code: "db" }); }
+      later(afterOrder(env, data, rec, orderNo, before));
+      return reply(200, { ok: true, order: { ...rec, no: orderNo, status: "new", created: Date.now(), updated: Date.now() } });
+    }
     if (path === "/admin/order-edit") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       let data;
@@ -358,7 +377,7 @@ function orderRecord(o, body) {
   };
 }
 // يحفظ الطلب وسطوره والمخزون والتحليل في خطوة وحدة (يا كلها تنحفظ، يا ولا شي)
-async function dbInsertOrder(env, rec, need, now) {
+async function dbInsertOrder(env, rec, need, now, force) {
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   const day = riyadhDateAt(now), hour = riyadhHour(now);
   const ch = rec.phone ? (await hashPin(env, "cust:" + rec.phone)).slice(0, 32) : "";
@@ -369,6 +388,7 @@ async function dbInsertOrder(env, rec, need, now) {
   (rec.lines || []).forEach((l, k) => st.push(P(`INSERT INTO oline (no, k, id, qty, price) VALUES (${NO}, ?, ?, ?, ?)`, k, l.id || "", Number(l.qty), Number(l.price))));
   // المخزون: لو ما يكفي، هالسطر يوقف كل الحفظ (الطلب ما ينحفظ)
   for (const id of Object.keys(need)) {
+    if (force) { st.push(P("UPDATE stock SET qty = MAX(qty - ?, 0) WHERE id = ?", need[id], id)); continue; }
     st.push(P("SELECT CASE WHEN qty < ? THEN json('stock') ELSE 1 END x FROM stock WHERE id = ?", need[id], id));
     st.push(P("UPDATE stock SET qty = qty - ? WHERE id = ?", need[id], id));
   }
@@ -713,7 +733,7 @@ async function setStock(env, map) {
 async function afterOrder(env, data, rec, orderNo, before) {
   if (!env.LOCKS) return;
   const n = Number(String(orderNo).replace(/\D/g, ""));
-  const msg = { title: "طلب جديد " + orderNo, body: rec.count + " منتج · " + money(rec.total) + " · " + (rec.pay === "card" ? "شبكة" : "كاش") + (rec.name ? " · " + rec.name : ""), url: "./#driver", tag: "new" + n };
+  const msg = { title: "طلب جديد " + ({ phone: "(اتصال) ", whatsapp: "(واتساب) ", store: "(من المحل) " }[rec.source] || "") + orderNo, body: rec.count + " منتج · " + money(rec.total) + " · " + (rec.pay === "card" ? "شبكة" : "كاش") + (rec.name ? " · " + rec.name : ""), url: "./#driver", tag: "new" + n };
   await Promise.all([notifyRole(env, "admin", null, msg), notifyRole(env, "driver", null, msg)]);
   const lowAt = Math.max(0, Number((data.store || {}).lowAt ?? 3));
   const need = needOf(rec), names = {};
@@ -972,3 +992,37 @@ function cat(...parts) {
 }
 function b64u(bytes) { let s = ""; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
 function unb64u(s) { const b = atob(String(s).replace(/-/g, "+").replace(/_/g, "/") + "===".slice((String(s).length + 3) % 4)); return Uint8Array.from(b, (c) => c.charCodeAt(0)); }
+
+// يبني الطلب اللي أدخله الموظف. الأسعار من المتجر، والموظف يقدر يعدّلها.
+function manualOrder(data, body) {
+  const S = data.store || {};
+  const byId = {}; for (const p of data.products || []) byId[p.id] = p;
+  const lines = [];
+  for (const x of Array.isArray(body.lines) ? body.lines.slice(0, 200) : []) {
+    const p = byId[String(x.id || "")], q = Math.floor(Number(x.qty)), pr = x.price == null ? Number(p && p.price) : Number(x.price);
+    if (!p || !(q > 0 && q <= 500) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
+    const same = lines.find((l) => l.id === p.id && l.price === round2(pr));
+    if (same) same.qty += q; else lines.push({ id: p.id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), tag: "" });
+  }
+  if (!lines.length) return { error: "empty" };
+  const raw = String(body.phone || "").trim(), phone = raw ? normPhone(raw) : "";
+  if (raw && !phone) return { error: "bad_phone" };
+  const subtotal = round2(lines.reduce((s, l) => s + l.qty * l.price, 0));
+  const autoFee = S.freeOver && subtotal >= S.freeOver ? 0 : Number(S.fee || 0);
+  const fee = body.fee == null || body.fee === "" ? autoFee : Math.max(0, Math.min(1000, Number(body.fee) || 0));
+  // الموقع: إحداثيات مكتوبة، أو رابط قوقل ماب من الواتساب
+  const loc = String(body.loc || "").trim().slice(0, 400);
+  let lat = NaN, lng = NaN, map = "";
+  const m = /(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/.exec(loc);
+  if (m) { lat = Number(m[1]); lng = Number(m[2]); }
+  if (lat >= 16 && lat <= 33 && lng >= 34 && lng <= 56) map = mapsUrl(lat, lng);
+  else if (/^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.|maps\.)?google\.[a-z.]+\/maps)[^\s<>"']*$/i.test(loc)) { map = loc; lat = NaN; lng = NaN; }
+  else { lat = NaN; lng = NaN; }
+  const src = ["phone", "whatsapp", "store"].includes(body.source) ? body.source : "phone";
+  return { rec: {
+    lines, subtotal, fee, total: round2(subtotal + fee), count: lines.reduce((s, l) => s + l.qty, 0), phone,
+    name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
+    pay: body.pay === "card" ? "card" : "cash", lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng, map,
+    source: src, st: 1,
+  } };
+}
