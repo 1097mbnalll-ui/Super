@@ -38,8 +38,9 @@ export default {
       "Access-Control-Max-Age": "86400",
       "Vary": "Origin",
     };
+    let principal = null;
     const reply = (status, body) =>
-      new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8" } });
+      new Response(JSON.stringify(principal?.role === "orders" ? withoutCosts(body) : body), { status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     try {
@@ -159,9 +160,44 @@ export default {
     const locked = await isLocked(env, ip);
     if (locked) return reply(429, { ok: false, code: "locked", retryAfter: locked });
 
+    // Employee sessions are checked on every request; disabling an account revokes access immediately.
+    if (path === "/staff/login") {
+      if (!env.DB) return reply(503, { ok: false, code: "staff_unavailable" });
+      await ensureStaffSchema(env);
+      const username = String(body.username || "").trim().toLowerCase();
+      const password = String(body.password || "");
+      const user = await env.DB.prepare("SELECT * FROM staff_users WHERE username = ?").bind(username).first();
+      const validInput = password.length >= 10 && password.length <= 128;
+      const hash = await staffPassword(validInput ? password : "invalid-password", user?.salt || "unknown-account-salt");
+      if (!validInput || !user || !user.active || !sameText(hash, user.password_hash)) {
+        await recordFail(env, ip);
+        return reply(401, { ok: false, code: "bad_credentials" });
+      }
+      await clearFails(env, ip);
+      const token = randomHex(32), expires = Date.now() + 8 * 3600e3;
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM staff_sessions WHERE expires <= ?").bind(Date.now()),
+        env.DB.prepare("INSERT INTO staff_sessions (token_hash, user_id, expires) VALUES (?, ?, ?)").bind(await tokenHash(token), user.id, expires),
+      ]);
+      return reply(200, { ok: true, token, expires, user: publicStaff(user) });
+    }
+    if (body.session) {
+      if (!env.DB || !/^[a-f0-9]{64}$/.test(String(body.session))) return reply(401, { ok: false, code: "session_expired" });
+      await ensureStaffSchema(env);
+      principal = await env.DB.prepare("SELECT u.* FROM staff_sessions s JOIN staff_users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires > ? AND u.active = 1")
+        .bind(await tokenHash(body.session), Date.now()).first();
+      if (!principal) return reply(401, { ok: false, code: "session_expired" });
+      if (path === "/staff/logout") {
+        await env.DB.prepare("DELETE FROM staff_sessions WHERE token_hash = ?").bind(await tokenHash(body.session)).run();
+        return reply(200, { ok: true });
+      }
+      body.by = "موظف #" + principal.id + " · " + principal.name;
+      if (!staffMay(principal.role, path, body)) return reply(403, { ok: false, code: "forbidden" });
+    }
+
     // صفحة المندوب: رقم المندوب أو رقم الإدارة
     if (path.startsWith("/driver/")) {
-      const who = await checkDriver(env, String(body.pin || ""));
+      const who = principal ? "admin" : await checkDriver(env, String(body.pin || ""));
       if (!who) { await recordFail(env, ip); return reply(401, { ok: false, code: "bad_pin" }); }
       await clearFails(env, ip);
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
@@ -262,14 +298,64 @@ export default {
       return reply(404, { ok: false, code: "not_found" });
     }
 
-    const pinOk = await checkPin(env, String(body.pin || ""));
+    const pinOk = !!principal || await checkPin(env, String(body.pin || ""));
     if (!pinOk) {
       await recordFail(env, ip);
       return reply(401, { ok: false, code: "bad_pin" });
     }
     await clearFails(env, ip);
 
-    if (path === "/login") return reply(200, { ok: true });
+    // Legacy owner PIN remains available; staff cannot grant themselves privileges.
+    if (path === "/login") return reply(200, { ok: true, role: principal?.role || "owner" });
+    if (path === "/admin/staff" || path === "/admin/staff-save") {
+      if (principal) return reply(403, { ok: false, code: "forbidden" });
+      if (!env.DB) return reply(503, { ok: false, code: "staff_unavailable" });
+      await ensureStaffSchema(env);
+      if (path === "/admin/staff") {
+        const rows = await env.DB.prepare("SELECT id, username, name, role, active FROM staff_users ORDER BY username").all();
+        return reply(200, { ok: true, users: rows.results || [] });
+      }
+      const id = Number(body.id) || 0, username = String(body.username || "").trim().toLowerCase();
+      const name = String(body.name || "").trim(), password = String(body.password || "");
+      if (!/^[a-z0-9._-]{3,32}$/.test(username) || !name || name.length > 30 || !["manager", "orders"].includes(body.role) ||
+          (id ? password && (password.length < 10 || password.length > 128) : password.length < 10 || password.length > 128)) {
+        return reply(400, { ok: false, code: "bad_staff" });
+      }
+      const existing = id ? await env.DB.prepare("SELECT id FROM staff_users WHERE id = ?").bind(id).first() : null;
+      if (id && !existing) return reply(404, { ok: false, code: "not_found" });
+      const duplicate = await env.DB.prepare("SELECT id FROM staff_users WHERE username = ? AND id != ?").bind(username, id).first();
+      if (duplicate) return reply(409, { ok: false, code: "username_taken" });
+      const active = body.active === false ? 0 : 1;
+      if (id) {
+        const statements = [env.DB.prepare("UPDATE staff_users SET username = ?, name = ?, role = ?, active = ? WHERE id = ?").bind(username, name, body.role, active, id),
+          env.DB.prepare("DELETE FROM staff_sessions WHERE user_id = ?").bind(id)];
+        if (password) {
+          const salt = randomHex(16);
+          statements.push(env.DB.prepare("UPDATE staff_users SET password_hash = ?, salt = ? WHERE id = ?").bind(await staffPassword(password, salt), salt, id));
+        }
+        await env.DB.batch(statements);
+      } else {
+        const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM staff_users").first();
+        if (count.n >= 100) return reply(400, { ok: false, code: "staff_limit" });
+        const salt = randomHex(16);
+        await env.DB.prepare("INSERT INTO staff_users (username, name, role, active, password_hash, salt) VALUES (?, ?, ?, ?, ?, ?)")
+          .bind(username, name, body.role, active, await staffPassword(password, salt), salt).run();
+      }
+      await ensureSchema(env);
+      await logStmt(env, "صاحب المتجر", "staff_account", username, { role: body.role, active: !!active, reset: !!password }).run();
+      return reply(200, { ok: true });
+    }
+    if (path === "/admin/alerts") {
+      if (!env.DB) return reply(503, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const now = Date.now();
+      const rs = await env.DB.prepare(`SELECT o.no, o.created, o.updated, o.status, o.data,
+        (SELECT MAX(a.at) FROM alog a WHERE a.act = 'status' AND a.ref = '#' || (1000 + o.no) AND json_extract(a.info, '$.to') = o.status) AS stage_started
+        FROM orders o WHERE o.status IN ('new', 'accepted', 'onway') ORDER BY o.created`).all();
+      const orders = (rs.results || []).map(r => ({ ...safeJson(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, stageStarted: r.stage_started ?? (r.status === "new" ? r.created : r.updated), status: r.status }))
+        .map(o => ({ ...o, ...orderDelay(o, now) })).filter(o => o.late);
+      return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
+    }
 
     if (path === "/admin/stock") {
       if (!env.DB) return reply(200, { ok: true, stock: {}, costs: {}, hasDB: false });
@@ -495,6 +581,7 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS pcost (id TEXT PRIMARY KEY, cost REAL NOT NULL)",
     "CREATE TABLE IF NOT EXISTS winback (ch TEXT PRIMARY KEY, at INTEGER NOT NULL, who TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 1)",
     "CREATE TABLE IF NOT EXISTS alog (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, who TEXT NOT NULL, act TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', info TEXT NOT NULL DEFAULT '{}')",
+    "CREATE INDEX IF NOT EXISTS alog_order_status ON alog(ref, act, at)",
     "CREATE TABLE IF NOT EXISTS cash (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, day TEXT NOT NULL, who TEXT NOT NULL, amount REAL NOT NULL, note TEXT NOT NULL DEFAULT '')",
     "CREATE TABLE IF NOT EXISTS st_item (day TEXT NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, revenue REAL NOT NULL, orders INTEGER NOT NULL, PRIMARY KEY (day, id))",
     "CREATE TABLE IF NOT EXISTS st_pair (a TEXT NOT NULL, b TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (a, b))",
@@ -1368,4 +1455,40 @@ async function driverFor(env, n, d) {
     Object.assign(out, { m: Math.round(mine), before, eta: etaMin(mine, before), near: mine <= NEAR_M });
   }
   return out;
+}
+
+
+// ---------- Staff accounts and overdue orders ----------
+const staffSchemas = new WeakSet();
+async function ensureStaffSchema(env) {
+  if (staffSchemas.has(env.DB)) return;
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS staff_session_user ON staff_sessions(user_id)"),
+  ]);
+  staffSchemas.add(env.DB);
+}
+function randomHex(n) { return Array.from(crypto.getRandomValues(new Uint8Array(n)), b => b.toString(16).padStart(2, '0')).join(''); }
+async function tokenHash(token) { return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))), b => b.toString(16).padStart(2, '0')).join(''); }
+async function staffPassword(password, salt) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: 100000, hash: 'SHA-256' }, key, 256);
+  return Array.from(new Uint8Array(bits), b => b.toString(16).padStart(2, '0')).join('');
+}
+function publicStaff(u) { return { id: u.id, username: u.username, name: u.name, role: u.role }; }
+function staffMay(role, path, body) {
+  if (path === '/admin/staff' || path === '/admin/staff-save') return false;
+  if (role === 'manager') return !(path === '/save' && (body.newPin || body.newDriverPin));
+  return role === 'orders' && ['/login', '/admin/orders', '/admin/alerts', '/driver/status', '/driver/pending'].includes(path);
+}
+function withoutCosts(value) {
+  if (Array.isArray(value)) return value.map(withoutCosts);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value).filter(([k]) => !['cost', 'costs', 'profit'].includes(k)).map(([k,v]) => [k, withoutCosts(v)]));
+}
+function orderDelay(o, now) {
+  const limit = { new: 10, accepted: 30, onway: 45 }[o.status];
+  const elapsed = Math.max(0, now - (o.stageStarted ?? (o.status === 'new' ? o.created : o.updated)));
+  return { late: !!limit && elapsed >= limit * 60000, waitingMinutes: Math.floor(elapsed / 60000), limitMinutes: limit || 0 };
 }

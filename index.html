@@ -2413,13 +2413,18 @@ html.sp-on,html.sp-on body{overflow:hidden}
   });
 
   /* ---------- admin access ---------- */
-  var adminPin = "";
+  var adminPin = "", staffAuth = null;
+  function ordersOnly(){ return !!(staffAuth && staffAuth.user.role === "orders"); }
   function apiUrl(){ return String(S.api || "").replace(/\/+$/, ""); }
   var STAFF = ""; try { STAFF = localStorage.getItem("ohod-staff") || ""; } catch(e){}
   function api(path, body){
-    if (body && body.pin && STAFF && !body.by) body.by = STAFF;
+    body = Object.assign({}, body || {});
+    if (staffAuth && body.pin === adminPin) { body.session = staffAuth.token; delete body.pin; }
+    if (body.pin && STAFF && !body.by) body.by = STAFF;
     return fetch(apiUrl() + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-      .then(function(r){ return r.json().catch(function(){ return { ok: false, code: "http_" + r.status }; }).then(function(j){ j.status = r.status; return j; }); },
+      .then(function(r){ return r.json().catch(function(){ return { ok: false, code: "http_" + r.status }; }).then(function(j){ j.status = r.status;
+        if (j.code === "session_expired" && staffAuth) { endAdminSession(); sToast("انتهت الجلسة. سجّل دخولك من جديد."); }
+        return j; }); },
             function(){ return { ok: false, code: "network" }; });
   }
   function sha(s){
@@ -2434,9 +2439,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function openPin(){
     var w = document.createElement("div");
     w.innerHTML = tr('<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>الدخول للإدارة</h2><button class="btn btn-ghost" type="button" id="pinClose">إغلاق</button></div>', '<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>Admin login</h2><button class="btn btn-ghost" type="button" id="pinClose">Close</button></div>') +
-      tr('<label for="pinIn">الرقم السري<input id="pinIn" class="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="off"></label>', '<label for="pinIn">PIN<input id="pinIn" class="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="off"></label>') +
+      '<label for="staffUsername">' + tr('اسم مستخدم الموظف (اتركه فارغًا لدخول صاحب المتجر)', 'Employee username (leave blank for owner login)') + '<input id="staffUsername" autocomplete="username" dir="ltr" maxlength="32"></label>' +
+      '<label for="pinIn">' + tr('الرقم السري أو كلمة المرور', 'PIN or password') + '<input id="pinIn" class="pin" type="password" maxlength="128" autocomplete="current-password"></label>'  +
       '<div class="actions"><button class="btn btn-ink" type="submit">' + ic("lock") + tr('دخول</button><span class="status" id="pinStatus" aria-live="polite"></span></div>', 'Sign in</button><span class="status" id="pinStatus" aria-live="polite"></span></div>') +
-      tr('<p class="hint">هذي الصفحة لصاحب المحل فقط.</p></form></div>', '<p class="hint">This page is for the store owner only.</p></form></div>');
+      tr('<p class="hint">الدخول لصاحب المتجر أو الموظفين المصرّح لهم.</p></form></div>', '<p class="hint">For the store owner and authorized employees.</p></form></div>');
     document.body.appendChild(w.firstChild);
     var close = function(){ var s = $("pinSheet"); if (s) s.remove(); };
     $("pinClose").addEventListener("click", close);
@@ -2447,15 +2453,20 @@ html.sp-on,html.sp-on body{overflow:hidden}
       var st = $("pinStatus"), v = $("pinIn").value.trim();
       if (Date.now() < pinLockUntil) { st.className = "status err"; st.textContent = tr("محاولات كثيرة. انتظر دقيقة وجرّب.", "Too many tries. Wait a minute and try again."); return; }
       st.className = "status"; st.textContent = tr("جاري التحقق…", "Checking…");
-      checkPin(v).catch(function(j){
+      var username = $("staffUsername").value.trim();
+      var attempt = username ? api("/staff/login", { username: username, password: $("pinIn").value }).then(function(j){
+        if (!j.ok) { if (j.code === "bad_credentials") return false; throw j; }
+        staffAuth = j; return true;
+      }) : checkPin(v).then(function(ok){ if (ok) staffAuth = null; return ok; });
+      attempt.catch(function(j){
         st.className = "status err";
         st.textContent = j && j.code === "locked" ? tr("انقفل الدخول بسبب محاولات غلط كثيرة. جرّب بعد ", "Locked after too many wrong tries. Try again in ") + Math.ceil((j.retryAfter || 900) / 60) + tr(" دقيقة.", " min.") :
           j && j.code === "network" ? tr("ما قدرنا نوصل لخادم الإدارة. تأكد من النت.", "We could not reach the admin server. Check your connection.") : tr("خادم الإدارة فيه مشكلة (", "The admin server has a problem (") + ((j && j.code) || "?") + ").";
         return null;
       }).then(function(ok){
         if (ok === null) return;
-        if (!ok) { pinFails++; if (pinFails >= 5) { pinLockUntil = Date.now() + 60000; pinFails = 0; } st.className = "status err"; st.textContent = tr("الرقم السري غلط.", "Wrong PIN."); $("pinIn").select(); return; }
-        adminPin = v; close(); canEdit = true; go("admin");
+        if (!ok) { pinFails++; if (pinFails >= 5) { pinLockUntil = Date.now() + 60000; pinFails = 0; } st.className = "status err"; st.textContent = tr("بيانات الدخول غير صحيحة.", "Incorrect login details."); $("pinIn").select(); return; }
+        adminPin = username ? "staff-session" : v; aTab = ordersOnly() ? "olist" : "over"; close(); canEdit = true; go("admin");
       });
     });
   }
@@ -2467,12 +2478,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function costOf(id){ return Object.prototype.hasOwnProperty.call(costEdit, id) ? costEdit[id] : (COST[id] == null ? null : COST[id]); }
   function qtyOf(id){ return Object.prototype.hasOwnProperty.call(stockEdit, id) ? stockEdit[id] : (STK[id] == null ? null : STK[id]); }
   function loadAdminStock(){
-    if (!apiUrl()) return;
+    if (!apiUrl() || ordersOnly()) return;
     api("/admin/stock", { pin: adminPin }).then(function(j){ if (!j.ok) return; STK = j.stock || {}; COST = j.costs || {}; STK_OK = !!j.hasDB; if (mode === "admin") { renderAProds(); renderOver(); } });
   }
   function uid(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
   function markDirty(){ dirty = true; var s = $("aState"); if (s) { s.textContent = "فيه تعديلات ما انحفظت"; s.className = "adm-state dirty"; } }
   function adminShell(){
+    if (ordersOnly()) { ordersShell(); return; }
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
     var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
@@ -2567,13 +2579,18 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (apiUrl()) renderTg();
     if (apiUrl()) renderPush();
     renderPromos(); renderLayout(); renderBans(); renderLook(); renderACats(); renderAFilter(); renderAProds(); renderOver();
+    adminExtras();
   }
-  var TAB_TITLE = { stats: "التحليل", bans: "البنرات ومنتجات «لك»", over: "نظرة عامة", prods: "المنتجات", cats: "الأقسام", offers: "العروض", layout: "ترتيب الواجهة", look: "المظهر واللغة", store: "بيانات المحل", orders: "المندوب والإشعارات", olist: "الطلبات", log: "سجل العمليات", cust: "استرجاع الزبائن", sign: "ورقة عرض للطباعة" };
+  var TAB_TITLE = { staff: "حسابات الموظفين", alerts: "الطلبات المتأخرة", stats: "التحليل", bans: "البنرات ومنتجات «لك»", over: "نظرة عامة", prods: "المنتجات", cats: "الأقسام", offers: "العروض", layout: "ترتيب الواجهة", look: "المظهر واللغة", store: "بيانات المحل", orders: "المندوب والإشعارات", olist: "الطلبات", log: "سجل العمليات", cust: "استرجاع الزبائن", sign: "ورقة عرض للطباعة" };
   function showTab(id){
+    if (ordersOnly() && ["olist", "alerts"].indexOf(id) < 0) return;
+    if (id === "staff" && staffAuth) return;
     aTab = id;
     Array.prototype.forEach.call(document.querySelectorAll(".adm-panel"), function(p){ p.hidden = p.dataset.panel !== id; });
     Array.prototype.forEach.call(document.querySelectorAll("[data-atab]"), function(b){ if (b.dataset.atab === id) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
     if ($("aTitle")) $("aTitle").textContent = TAB_TITLE[id] || "";
+    if (id === "staff") renderStaffAccounts();
+    if (id === "alerts") loadOrderAlerts();
     if (id === "over") renderOver();
     if (id === "stats") renderStats();
     if (id === "olist") renderOList();
@@ -2602,7 +2619,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   var overCache = null;
   function renderOver(){
-    var box = $("aOver"); if (!box || !draft) return;
+    var box = $("aOver"); if (!box || !draft || ordersOnly()) return;
     var ps = draft.products, out = ps.filter(function(p){ return !p.stock; }).length, sale = ps.filter(function(p){ return p.old && p.old > p.price; }).length;
     var noEn = ps.filter(function(p){ return !p.name_en; }).length;
     var stat = function(n, l, tab){ return '<button type="button" class="stat" data-atab="' + tab + '"><b>' + n + '</b><span>' + l + '</span></button>'; };
@@ -3255,13 +3272,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ((!oState.list || force) && !oState.loading) { oState.loading = true; api("/admin/orders", { pin: adminPin, limit: 500 }).then(function(j){ oState.loading = false; oState.list = j.ok ? j.orders : []; oState.more = !!j.more; oState.err = j.ok ? "" : j.code; if (aTab === "olist") renderOList(); }); }
     var seg = function(arr, key){ return '<div class="pays seg mini" role="group">' + arr.map(function(x){ return '<button type="button" data-of="' + key + ':' + x[0] + '" aria-pressed="' + (String(oState[key]) === String(x[0])) + '">' + x[1] + '</button>'; }).join("") + '</div>'; };
     var head = '<div class="card"><div class="o-tools"><input class="search" id="oQ" type="search" placeholder="ابحث برقم الطلب أو الجوال أو الاسم…" value="' + esc(oState.q) + '" aria-label="بحث في الطلبات">' +
-      '<button class="btn btn-brand" type="button" data-onew>+ طلب جديد</button><button class="btn btn-soft" type="button" id="oRefresh">تحديث</button><button class="btn btn-soft" type="button" id="oExport">نزّل Excel</button></div>' +
+      (ordersOnly() ? '' : '<button class="btn btn-brand" type="button" data-onew>+ طلب جديد</button>') + '<button class="btn btn-soft" type="button" id="oRefresh">تحديث</button><button class="btn btn-soft" type="button" id="oExport">نزّل Excel</button></div>' +
       seg([["active","الجارية"],["new","جديدة"],["delivered","تم التوصيل"],["canceled","ملغية"],["all","الكل"]], "f") + seg([[1,"اليوم"],[7,"٧ أيام"],[30,"٣٠ يوم"],[0,"الكل"]], "range") + '</div>';
     if (!oState.list) { box.innerHTML = head + '<div class="card"><p class="hint">جاري التحميل…</p></div>'; bindOTools(); return; }
     if (oState.err) { box.innerHTML = head + '<div class="card"><p class="status err">' + (oState.err === "not_found" ? "حدّث كود الخادم في Cloudflare (الدليل، القسم ٨)." : "ما قدرنا نجيب الطلبات (" + esc(oState.err) + ").") + '</p></div>'; bindOTools(); return; }
     var l = oFiltered(), sum = l.reduce(function(a, o){ return o.status === "canceled" ? a : a + o.total; }, 0);
     box.innerHTML = head + '<div class="card"><div class="sec-head" style="margin:0"><b>' + num(l.length) + ' طلب</b><span class="hint">' + num(Math.round(sum)) + ' ر.س (بدون الملغي)</span></div>' +
-      (l.length ? '<div class="olist2">' + l.slice(0, oState.show || 200).map(function(o){ return '<button type="button" class="orow2" data-oopen="' + esc(o.no) + '"><b dir="ltr">' + esc(o.no) + '</b><span class="t">' + oTime(o.created) + '</span><span class="w">' + (o.source ? '<em class="src ' + o.source + '">' + SRC[o.source] + '</em>' : '') + esc(o.name || "زبون") + (o.phone ? ' · <span dir="ltr">' + esc(o.phone) + '</span>' : '') + '</span><span class="m">' + num(o.total) + ' ر.س · ' + (o.pay === "card" ? "شبكة" : "كاش") + '</span><span class="spill ' + o.status + '">' + OST[o.status] + '</span></button>'; }).join("") + '</div>' : '<p class="empty">ما فيه طلبات بهذا الفلتر.</p>') +
+      (l.length ? '<div class="olist2">' + l.slice(0, oState.show || 200).map(function(o){ return '<button type="button" class="orow2" data-oopen="' + esc(o.no) + '"><b dir="ltr">' + esc(o.no) + '</b><span class="t">' + oTime(o.created) + '</span><span class="w">' + (o.source ? '<em class="src ' + o.source + '">' + SRC[o.source] + '</em>' : '') + esc(o.name || "زبون") + (o.phone ? ' · <span dir="ltr">' + esc(o.phone) + '</span>' : '') + '</span><span class="m">' + num(o.total) + ' ر.س · ' + (o.pay === "card" ? "شبكة" : "كاش") + '</span><span class="spill ' + o.status + '">' + OST[o.status] + '</span>' + (lateOrderIds[o.no] ? '<span class="status err">متأخر · ' + num(lateOrderIds[o.no].waitingMinutes) + ' دقيقة</span>' : '') + '</button>'; }).join("") + '</div>' : '<p class="empty">ما فيه طلبات بهذا الفلتر.</p>') +
       (l.length > (oState.show || 200) || oState.more ? '<button class="btn btn-ghost" type="button" id="oMore" style="justify-self:center;margin-top:10px">اعرض طلبات أقدم</button>' : '') + '</div>';
     bindOTools();
   }
@@ -3296,7 +3313,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     w.innerHTML = '<div class="sheet" id="oSheet"><div class="panel" role="dialog" aria-modal="true" aria-labelledby="oTitle"><div class="panel-head"><h2 id="oTitle" dir="ltr">' + esc(o.no) + '</h2><span class="spill ' + o.status + '">' + OST[o.status] + '</span><button class="btn btn-ghost" type="button" data-oclose>إغلاق</button></div>' +
       '<p class="hint">' + oTime(o.created) + ' · ' + (o.pay === "card" ? "شبكة" : "كاش") + ' عند الاستلام</p>' +
       '<div class="o-who"><b>' + esc(o.name || "زبون") + '</b><span dir="ltr">' + esc(o.phone) + '</span>' + (o.details ? '<span>' + esc(o.details) + '</span>' : '') + (o.note ? '<span class="note">ملاحظة: ' + esc(o.note) + '</span>' : '') + '</div>' +
-      '<div class="actions">' + (o.phone ? '<a class="btn btn-soft sm" href="tel:' + esc(o.phone) + '">' + ic("phone") + 'اتصل</a><a class="btn btn-soft sm" target="_blank" rel="noopener" href="https://wa.me/966' + esc(String(o.phone).replace(/^0/, "")) + '">واتساب</a>' : '') + (o.map ? '<a class="btn btn-soft sm" target="_blank" rel="noopener" href="' + esc(o.map) + '">' + ic("pin") + 'الموقع</a>' : '') + '<button class="btn btn-soft sm" type="button" data-oprint="' + esc(o.no) + '">طباعة الفاتورة</button>' + (o.status !== "canceled" ? '<button class="btn btn-soft sm" type="button" data-oedit="' + esc(o.no) + '">عدّل الطلب</button>' : '') + '</div>' +
+      '<div class="actions">' + (o.phone ? '<a class="btn btn-soft sm" href="tel:' + esc(o.phone) + '">' + ic("phone") + 'اتصل</a><a class="btn btn-soft sm" target="_blank" rel="noopener" href="https://wa.me/966' + esc(String(o.phone).replace(/^0/, "")) + '">واتساب</a>' : '') + (o.map ? '<a class="btn btn-soft sm" target="_blank" rel="noopener" href="' + esc(o.map) + '">' + ic("pin") + 'الموقع</a>' : '') + '<button class="btn btn-soft sm" type="button" data-oprint="' + esc(o.no) + '">طباعة الفاتورة</button>' + (o.status !== "canceled" && !ordersOnly() ? '<button class="btn btn-soft sm" type="button" data-oedit="' + esc(o.no) + '">عدّل الطلب</button>' : '') + '</div>' +
       (o.edits && o.edits.length ? '<p class="hint">انعدّل ' + o.edits.length + ' مرة. آخر تعديل: من ' + num(o.edits[o.edits.length - 1].before) + ' إلى ' + num(o.edits[o.edits.length - 1].after) + ' ر.س</p>' : '') + (o.anon ? '<p class="hint">بيانات الزبون انمسحت بعد مدة الحفظ، والطلب وأرقامه باقية.</p>' : '') +
       '<div class="o-lines">' + (o.lines || []).map(function(l){ return '<div><span>' + esc(l.name) + ' <small class="hint">' + esc(l.unit || "") + '</small>' + (l.tag ? ' <span class="ltag deal">' + esc(l.tag) + '</span>' : '') + '</span><b>× ' + l.qty + '</b><span>' + num(Math.round(l.qty * l.price * 100) / 100) + '</span></div>'; }).join("") +
         '<div class="sum"><span>المنتجات</span><b></b><span>' + num(o.subtotal) + '</span></div><div class="sum"><span>التوصيل</span><b></b><span>' + (o.fee ? num(o.fee) : 'مجاني') + '</span></div><div class="sum grand"><span>الإجمالي</span><b></b><span>' + num(o.total) + ' ر.س</span></div></div>' +
@@ -3328,7 +3345,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       t.disabled = true; var no = t.dataset.no, stt = t.dataset.ost;
       api("/driver/status", { pin: adminPin, no: no, status: stt }).then(function(j){
         if (!j.ok) { t.disabled = false; var m = $("oMsg"); if (m) { m.className = "status err"; m.textContent = "ما انحفظ، جرّب مرة ثانية."; } return; }
-        var o = oFind(no); if (o) { o.status = stt; o.updated = Date.now(); } openOrder(no); renderOList(); if (stt === "canceled" || stt === "new") loadAdminStock();
+        var o = oFind(no); if (o) { o.status = stt; o.updated = Date.now(); } openOrder(no); renderOList(); loadOrderAlerts(); if (stt === "canceled" || stt === "new") loadAdminStock();
       });
     }
   });
@@ -3336,6 +3353,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   /* ---------- edit an order (after a call with the customer) ---------- */
   var oEdit = null;
   function openEdit(no){
+    if (ordersOnly()) return;
     var o = oFind(no); if (!o) return;
     oEdit = { no: no, fee: o.fee, lines: (o.lines || []).map(function(l){ return { id: l.id, name: l.name, unit: l.unit, qty: l.qty, price: l.price }; }) };
     renderEdit();
@@ -3379,6 +3397,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function nfAutoFee(){ var st = draft.store, sub = nfSub(); return st.freeOver && sub >= st.freeOver ? 0 : Number(st.fee || 0); }
   function nfFee(){ return nf.fee === "" ? nfAutoFee() : Number(nf.fee) || 0; }
   function openNewOrder(){
+    if (ordersOnly()) return;
     if (!nf || nf.done) nfReset();
     if (!oState.list && !oState.loading) { oState.loading = true; api("/admin/orders", { pin: adminPin, limit: 500 }).then(function(j){ oState.loading = false; oState.list = j.ok ? j.orders : []; oState.more = !!j.more; if (nf && $("nfKnown")) nfKnownRender(); }); }
     var old = $("nfSheet"); if (old) old.remove();
@@ -3477,11 +3496,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
 
   /* ---------- staff name (for the activity log) ---------- */
   function staffBox(){
+    if (staffAuth) return '<div class="staffline">' + ic("user") + '<span>أنت داخل باسم <b>' + esc(staffAuth.user.name) + '</b> · مدير</span></div>';
     if (STAFF) return '<div class="staffline">' + ic("user") + '<span>أنت داخل باسم <b>' + esc(STAFF) + '</b></span><button type="button" class="linkbtn" data-staffchg>غيّر</button></div>';
     return '<div class="card staffask"><b>وش اسمك؟</b><p class="hint">عشان يطلع اسمك في «سجل العمليات» لما تغيّر سعر أو تلغي طلب. ينحفظ على هذا الجهاز بس.</p><div class="o-tools"><input id="staffIn" maxlength="30" placeholder="مثال: فهد"><button class="btn btn-brand" type="button" id="staffSave">احفظ</button></div></div>';
   }
   document.addEventListener("click", function(e){
     if (mode !== "admin") return;
+    if (staffAuth) return;
     if (e.target.closest("[data-staffchg]")) { STAFF = ""; try { localStorage.removeItem("ohod-staff"); } catch(x){} renderOver(); var i = $("staffIn"); if (i) i.focus(); return; }
     if (e.target.closest("#staffSave")) { var v = ($("staffIn").value || "").trim().slice(0, 30); if (!v) return; STAFF = v; try { localStorage.setItem("ohod-staff", v); } catch(x){} renderOver(); }
   });
@@ -3571,6 +3592,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
 
   /* ---------- activity log ---------- */
   var LOGACT = {
+    staff_account: function(i, r){ return 'حدّث حساب الموظف <b dir="ltr">' + esc(r) + '</b> · ' + (i.active ? 'مفعّل' : 'موقوف') + ' · ' + (i.role === 'manager' ? 'مدير' : 'موظف طلبات'); },
     price: function(i){ return 'غيّر سعر <b>' + esc(i.name) + '</b> من ' + num(i.from) + ' إلى ' + num(i.to) + ' ر.س'; },
     sale: function(i){ return i.to ? 'حط خصم على <b>' + esc(i.name) + '</b> (قبل الخصم ' + num(i.to) + ')' : 'شال الخصم عن <b>' + esc(i.name) + '</b>'; },
     avail_on: function(i){ return 'رجّع <b>' + esc(i.name) + '</b> متوفر'; }, avail_off: function(i){ return 'خلّى <b>' + esc(i.name) + '</b> غير متوفر'; },
@@ -3742,8 +3764,98 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ((t = e.target.closest("[data-sgs]"))) { sg.paper = t.dataset.sgs; renderSign(); return; }
   });
 
+  /* ---------- Staff management and overdue orders ---------- */
+  var staffUsers = [], editingStaffId = 0, alertOrders = [], lateOrderIds = {}, alertTimer = null, alertsLoading = false, alertsGeneration = 0;
+  function ordersShell(){
+    draft = JSON.parse(JSON.stringify(D)); dirty = false; aTab = "olist";
+    app.innerHTML = '<div class="adm"><aside class="adm-side"><div class="adm-brand"><b>إدارة الطلبات</b></div><nav class="adm-nav"><button type="button" data-atab="olist">الطلبات</button></nav><button class="btn btn-soft" type="button" id="ordersToStore">عرض المتجر</button></aside><div class="adm-main"><div class="adm-top"><h1 id="aTitle">الطلبات</h1><span>' + esc(staffAuth.user.name) + ' · موظف طلبات</span></div><div class="adm-body"><section class="adm-panel" data-panel="olist" id="aOList"></section></div></div></div>';
+    $("ordersToStore").onclick = function(){ go("store"); };
+    adminExtras(); showTab("olist");
+  }
+  function adminExtras(){
+    var nav = document.querySelector('.adm-nav'), panels = document.querySelector('.adm-body');
+    if (!nav || !panels) return;
+    nav.insertAdjacentHTML('beforeend', '<button type="button" data-atab="alerts">الطلبات المتأخرة <b id="lateCount" aria-live="polite">…</b></button>' + (!staffAuth && adminPin ? '<button type="button" data-atab="staff">حسابات الموظفين</button>' : ''));
+    panels.insertAdjacentHTML('beforeend', '<section class="adm-panel" data-panel="alerts" id="aAlerts" hidden></section><section class="adm-panel" data-panel="staff" id="aStaff" hidden></section>');
+    document.querySelector('.adm-top').insertAdjacentHTML('beforeend', '<button class="btn btn-soft" type="button" id="adminLogout">تسجيل الخروج</button>');
+    $("adminLogout").onclick = function(){
+      if (dirty && !window.confirm("عندك تغييرات غير محفوظة. تبي تخرج وتتركها؟")) return;
+      if (!staffAuth) { endAdminSession(); return; }
+      var b = this; b.disabled = true;
+      api('/staff/logout', { pin: adminPin }).then(function(j){
+        if (j.ok || j.code === 'session_expired') endAdminSession();
+        else { b.disabled = false; sToast('تعذر تسجيل الخروج. تأكد من الاتصال وجرّب ثانية.'); }
+      });
+    };
+    if (staffAuth && staffAuth.user.role === 'manager') ['sPin','sDPin'].forEach(function(id){ var x = $(id); if (x) { x.disabled = true; x.placeholder = 'لصاحب المتجر فقط'; } });
+    clearInterval(alertTimer); loadOrderAlerts();
+    alertTimer = setInterval(function(){ if (mode === 'admin' && !document.hidden) loadOrderAlerts(); }, 60000);
+    showTab(aTab);
+  }
+  function endAdminSession(){
+    alertsGeneration++; alertsLoading = false; clearInterval(alertTimer); clearTimeout(admTimer);
+    if (adminPin && drv.pin === adminPin) {
+      geoStop(false); drv.pin = ''; drv.orders = []; clearInterval(drv.timer); appCall('logout');
+      try { sessionStorage.removeItem('ohod-driver'); } catch(e){}
+    }
+    staffAuth = null; adminPin = ''; canEdit = false; dirty = false; draft = null; STAFF = '';
+    staffUsers = []; editingStaffId = 0; alertOrders = []; lateOrderIds = {}; oState.list = null; oState.loading = false;
+    STK = {}; COST = {}; stockEdit = {}; costEdit = {}; statCache = null; stat30 = null; todayCache = null; logState.list = null; wb.data = null; wb.loading = false;
+    ['oSheet','nfSheet','pinSheet'].forEach(function(id){ var x=$(id); if(x) x.remove(); });
+    try { localStorage.removeItem('ohod-staff'); } catch(e){}
+    go('store');
+  }
+  function loadOrderAlerts(){
+    if (!apiUrl() || !adminPin || mode !== 'admin' || alertsLoading) return;
+    alertsLoading = true; var generation = alertsGeneration;
+    api('/admin/alerts', { pin: adminPin }).then(function(j){
+      if (generation !== alertsGeneration) return;
+      alertsLoading = false;
+      var box = $('aAlerts'), badge = $('lateCount'); if (!box) return;
+      if (!j.ok) { if (badge) badge.textContent = '؟'; box.innerHTML = '<div class="card"><p class="status err">تعذر تحميل التنبيهات. تأكد من تحديث الخادم واتصالك.</p><button class="btn btn-soft" type="button" id="retryAlerts">إعادة المحاولة</button></div>'; $('retryAlerts').onclick = loadOrderAlerts; return; }
+      alertOrders = j.orders; lateOrderIds = {}; alertOrders.forEach(function(o){ lateOrderIds[o.no] = o; });
+      if (badge) badge.textContent = num(alertOrders.length);
+      box.innerHTML = '<div class="card"><div class="sec-head"><h2>الطلبات المتأخرة</h2><button class="btn btn-soft" type="button" id="refreshAlerts">تحديث</button></div><p class="hint">تنبيه داخل اللوحة: قبول الطلب بعد ١٠ دقائق، التجهيز بعد ٣٠ دقيقة، والتوصيل بعد ٤٥ دقيقة من بداية المرحلة. تحديث كل دقيقة أثناء فتح الإدارة.</p><p class="hint">آخر تحديث: ' + esc(new Date(j.now).toLocaleTimeString('ar-SA')) + '</p>' + (alertOrders.length ? '<div class="olist2">' + alertOrders.map(function(o){ return '<button class="orow2" type="button" data-alertorder="' + esc(o.no) + '"><b dir="ltr">' + esc(o.no) + '</b><span>' + esc(o.name || 'زبون') + '</span><span>' + OST[o.status] + '</span><span class="status err">' + num(o.waitingMinutes) + ' دقيقة</span></button>'; }).join('') + '</div>' : '<p class="empty">ما فيه طلبات متأخرة.</p>') + '</div>';
+      $('refreshAlerts').onclick = loadOrderAlerts;
+      if (aTab === 'olist' && !$('oSheet') && !document.activeElement?.closest('#aOList')) renderOList();
+    });
+  }
+  function renderStaffAccounts(){
+    var box = $('aStaff'); if (!box || staffAuth) return;
+    box.innerHTML = '<div class="card"><p class="hint">جاري تحميل الحسابات…</p></div>';
+    api('/admin/staff', { pin: adminPin }).then(function(j){
+      if (!box.isConnected) return;
+      if (!j.ok) { box.innerHTML = '<div class="card"><p class="status err">تعذر تحميل الحسابات. يلزم تحديث الخادم وربط D1.</p><button class="btn btn-soft" id="retryStaff" type="button">إعادة المحاولة</button></div>'; $('retryStaff').onclick = renderStaffAccounts; return; }
+      staffUsers = j.users; editingStaffId = 0; drawStaffAccounts();
+    });
+  }
+  function drawStaffAccounts(){
+    var box = $('aStaff'); if (!box) return;
+    var u = staffUsers.filter(function(u){ return u.id === editingStaffId; })[0] || {};
+    box.innerHTML = '<div class="card"><h2>حسابات الموظفين</h2><p class="hint">المدير يدير المتجر والتقارير، دون إدارة الحسابات أو تغيير أرقام الدخول. موظف الطلبات يتابع الطلبات ويغيّر حالاتها ويطبعها؛ لا يغيّر الأسعار ولا يرى التكاليف والأرباح. تعديل الحساب ينهي جلساته الحالية.</p><div class="olist2">' + staffUsers.map(function(x){ return '<button type="button" class="orow2" data-editstaff="' + x.id + '"><b>' + esc(x.name) + '</b><span dir="ltr">' + esc(x.username) + '</span><span>' + (x.role === 'manager' ? 'مدير' : 'موظف طلبات') + '</span><span>' + (x.active ? 'مفعّل' : 'موقوف') + '</span></button>'; }).join('') + '</div></div>' +
+      '<form class="card" id="staffAccountForm"><h2>' + (u.id ? 'تعديل حساب' : 'حساب جديد') + '</h2><div class="fields"><label>اسم الموظف<input id="suName" maxlength="30" required value="' + esc(u.name || '') + '"></label><label>اسم المستخدم (حروف إنجليزية وأرقام)<input id="suUsername" dir="ltr" pattern="[a-zA-Z0-9._-]{3,32}" minlength="3" maxlength="32" autocomplete="off" required value="' + esc(u.username || '') + '"></label><label>الصلاحية<select id="suRole"><option value="orders">موظف طلبات</option><option value="manager"' + (u.role === 'manager' ? ' selected' : '') + '>مدير</option></select></label><label>كلمة المرور (١٠ أحرف على الأقل)' + (u.id ? ' — اتركها فارغة للإبقاء عليها' : '') + '<input id="suPassword" type="password" minlength="10" maxlength="128" autocomplete="new-password"' + (u.id ? '' : ' required') + '></label><label class="chk"><input id="suActive" type="checkbox"' + (u.active !== 0 ? ' checked' : '') + '>الحساب مفعّل</label></div><div class="actions"><button class="btn btn-brand" type="submit">حفظ الحساب</button><button class="btn btn-soft" id="staffNew" type="button">حساب جديد</button><span id="suMessage" class="status" aria-live="polite"></span></div></form>';
+    $('staffNew').onclick = function(){ editingStaffId = 0; drawStaffAccounts(); };
+    $('staffAccountForm').onsubmit = function(e){
+      e.preventDefault(); var button = this.querySelector('[type=submit]'); button.disabled = true;
+      var password = $('suPassword').value;
+      api('/admin/staff-save', { pin: adminPin, id: editingStaffId, name: $('suName').value.trim(), username: $('suUsername').value.trim(), role: $('suRole').value, active: $('suActive').checked, password: password }).then(function(j){
+        password = ''; if (!$('suMessage')) return; button.disabled = false;
+        if (j.ok) { $('suPassword').value = ''; sToast('تم حفظ الحساب'); renderStaffAccounts(); }
+        else { $('suMessage').className = 'status err'; $('suMessage').textContent = j.code === 'username_taken' ? 'اسم المستخدم مستخدم. اختر اسمًا ثانيًا.' : 'تعذر الحفظ. راجع الحقول واتصالك وجرّب ثانية.'; }
+      });
+    };
+  }
+  document.addEventListener('click', function(e){
+    if (mode !== 'admin') return;
+    var t = e.target.closest('[data-editstaff]');
+    if (t && !staffAuth) { editingStaffId = Number(t.dataset.editstaff); drawStaffAccounts(); return; }
+    t = e.target.closest('[data-alertorder]');
+    if (t) { var o = alertOrders.filter(function(o){ return o.no === t.dataset.alertorder; })[0]; if (!o) return;
+      oState.list = oState.list || []; var ix = oState.list.findIndex(function(x){ return x.no === o.no; }); if (ix < 0) oState.list.push(o); else oState.list[ix] = o; openOrder(o.no); }
+  });
+
   /* ---------- routing ---------- */
-  function go(m){ window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
+  function go(m){ window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m !== "admin") { clearInterval(alertTimer); clearTimeout(admTimer); alertsGeneration++; alertsLoading = false; } if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
   var startAdmin = false; try { startAdmin = sessionStorage.getItem("ohod-mode") === "admin"; sessionStorage.removeItem("ohod-mode"); } catch(e){}
   go("store");
   loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);
