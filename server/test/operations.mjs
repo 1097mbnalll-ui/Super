@@ -24,6 +24,8 @@ const LOCKS = { async get(k, type) { const value = kv.get(k); return value == nu
 const origin = 'https://1097mbnalll-ui.github.io';
 const env = { DB, LOCKS, GITHUB_TOKEN: 'test-fixture', ADMIN_PIN: '2468', SECRET: 'test-fixture-only', REPO: 'test/fixture', BRANCH: 'main', ALLOWED_ORIGIN: origin };
 const catalog = JSON.parse(fs.readFileSync(new URL('../../data.json', import.meta.url)));
+// المالك يقفل المتجر من الإدارة (closed) وهذا يتحفظ في data.json؛ الاختبار لازم ما يتأثر بحالة المحل اليوم
+catalog.store = { ...catalog.store, closed: false }; delete catalog.store.minOrder; delete catalog.store.maxKm;
 globalThis.fetch = async (url, options = {}) => new Response(JSON.stringify(String(url).includes('api.github.com') && !options.method ? catalog : { ok: true }));
 let ip = 0;
 async function call(path, body = {}, address) {
