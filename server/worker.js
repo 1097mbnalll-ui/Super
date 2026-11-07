@@ -83,6 +83,12 @@ export default {
       try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
       const priced = priceOrder(data, body);
       if (priced.error) return reply(400, { ok: false, code: priced.error });
+      // منطقة التوصيل: لو المحل حدد أقصى مسافة
+      const S0 = data.store || {}, shop = Array.isArray(S0.shop) && S0.shop.length === 2 ? S0.shop.map(Number) : null, maxKm = Number(S0.maxKm) || 0;
+      if (shop && maxKm > 0 && isFinite(Number(body.lat)) && isFinite(Number(body.lng))) {
+        const km = distM(shop[0], shop[1], Number(body.lat), Number(body.lng)) / 1000;
+        if (km > maxKm) return reply(400, { ok: false, code: "too_far", km: Math.round(km * 10) / 10, max: maxKm });
+      }
       const record = orderRecord(priced, body);
       const walletPart = moneyCents(body.walletAmount || 0);
       if (walletPart === null || walletPart > moneyCents(record.total)) return reply(400,{ok:false,code:'bad_payment'});
@@ -136,10 +142,10 @@ export default {
       const phone = normPhone(body.phone);
       if (!(n > 0) || !phone) return reply(400, { ok: false, code: "bad_request" });
       await ensureSchema(env);
-      const row = await env.DB.prepare("SELECT status, updated, data FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
+      const row = await env.DB.prepare("SELECT status, updated, data, drv FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
       if (!row) return reply(404, { ok: false, code: "not_found" });
       const out = { ok: true, status: row.status, updated: row.updated };
-      if (row.status === "onway") { try { out.driver = await driverFor(env, n, safeJson(row.data)); } catch { /* التتبع إضافة، ما يوقف الحالة */ } }
+      if (row.status === "onway") { try { out.driver = await driverFor(env, n, safeJson(row.data), row.drv); } catch { /* التتبع إضافة، ما يوقف الحالة */ } }
       return reply(200, out);
     }
 
@@ -226,32 +232,39 @@ export default {
       if (!staffMay(principal.role, path, body)) return reply(403, { ok: false, code: "forbidden" });
     }
 
-    // صفحة المندوب: رقم المندوب أو رقم الإدارة
+    // صفحة المندوب: رقم المندوب (كل مندوب له رقمه) أو رقم الإدارة
     if (path.startsWith("/driver/")) {
-      const who = principal ? "admin" : await checkDriver(env, String(body.pin || ""));
-      if (!who) { await recordFail(env, ip); return reply(401, { ok: false, code: "bad_pin" }); }
+      const me = principal ? { role: "admin", id: "admin", name: body.by || principal.name } : await whoIs(env, body.pin, body);
+      if (!me || (me.role !== "driver" && me.role !== "admin")) { await recordFail(env, ip); return reply(401, { ok: false, code: "bad_pin" }); }
       await clearFails(env, ip);
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
-      if (path === "/driver/login") return reply(200, { ok: true, role: who });
+      const who = me.role === "admin" ? "admin" : "driver";
+      // الإدارة لما تفتح صفحة المندوب وتوصّل بنفسها: تتصرف كمندوب اسمه «الإدارة»
+      const actor = me.role === "driver" ? me : body.as === "driver" ? { role: "driver", id: "admin", name: me.name, admin: true } : null;
+      const myId = actor ? actor.id : "admin";
+      if (path === "/driver/login") return reply(200, { ok: true, role: who, id: me.id, name: me.name });
       if (path === "/driver/push") {
         if (!env.LOCKS) return reply(404, { ok: false, code: "no_push" });
-        if (!(await saveSub(env, body.sub, "driver", ""))) return reply(400, { ok: false, code: "bad_sub" });
+        if (!(await saveSub(env, body.sub, "driver", me.role === "driver" ? me.id : ""))) return reply(400, { ok: false, code: "bad_sub" });
         later(pushTo(env, [body.sub], { title: "تم تفعيل إشعارات المندوب", body: "بيوصلك تنبيه مع كل طلب جديد، حتى لو الصفحة مقفلة.", url: "./#driver", tag: "test" }));
         return reply(200, { ok: true });
       }
       if (path === "/driver/orders") {
         const since = Date.now() - 3 * 864e5;
-        const rs = await env.DB.prepare("SELECT no, created, updated, status, data FROM orders WHERE created > ? OR status IN ('new','accepted','onway') ORDER BY no DESC LIMIT 150").bind(since).all();
-        const orders = await enrichOperations(env, (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status })));
-        return reply(200, { ok: true, orders, now: Date.now() });
+        const rs = await env.DB.prepare("SELECT no, created, updated, status, data, drv FROM orders WHERE src != 'pos' AND (created > ? OR status IN ('new','accepted','onway')) ORDER BY no DESC LIMIT 150").bind(since).all();
+        const team = await staffList(env, "driver");
+        const nm = staffNames(team);
+        const orders = await enrichOperations(env, (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, drv: r.drv || "", drvName: r.drv ? nm[r.drv] || "" : "" })));
+        return reply(200, { ok: true, orders, now: Date.now(), me: { id: myId, name: actor ? actor.name : me.name, role: who }, team: team.filter((t) => t.active).map((t) => ({ id: t.id, name: t.name })) });
       }
       // المندوب: منتج ناقص (بدّله بمشابه أو شيله). الأسعار من المتجر، مو من الجوال.
       if (path === "/driver/order-edit") {
         const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
-        const row = n > 0 ? await env.DB.prepare("SELECT status, data FROM orders WHERE no = ?").bind(n).first() : null;
+        const row = n > 0 ? await env.DB.prepare("SELECT status, data, drv FROM orders WHERE no = ?").bind(n).first() : null;
         if (!row) return reply(404, { ok: false, code: "not_found" });
         if (!["new", "accepted", "onway"].includes(row.status)) return reply(400, { ok: false, code: "closed" });
+        if (actor && row.drv && row.drv !== actor.id) return reply(409, { ok: false, code: "not_yours", by: await staffName(env, row.drv) });
         let data;
         try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
         const rec = safeJson(row.data), byId = {};
@@ -270,40 +283,46 @@ export default {
         } else lines = lines.filter((l) => l.id !== id);
         if (!lines.length) return reply(400, { ok: false, code: "last_item" });
         let r;
-        try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, who === "admin" ? staff(body) : "المندوب"); } catch { return reply(502, { ok: false, code: "db" }); }
+        try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, me.name); } catch { return reply(502, { ok: false, code: "db" }); }
         if (r.error) return reply(400, { ok: false, code: r.error });
         const msg = op === "swap" ? `«${line.name}» ما كان متوفر، وبدّلناه بـ «${toP.name}». الإجمالي الجديد ${money(r.order.total)}` : `«${line.name}» ما كان متوفر وشلناه من طلبك. الإجمالي الجديد ${money(r.order.total)}`;
         later(notifyRole(env, "customer", String(n), { title: "تعديل على طلبك #" + (1000 + n), body: msg, url: "./", tag: "order" + n }));
         return reply(200, { ok: true, order: r.order });
       }
+      const solo = await soleDriver(env);
       if (path === '/driver/settlement-request') {
-        const cash=await readCash(env),day=riyadhDate(),expected=Math.round(cash.balance*100);
-        if(expected<0)return reply(409,{ok:false,code:'negative_balance'});
-        const prior=await env.DB.prepare('SELECT * FROM driver_settlements WHERE day=?').bind(day).first();
-        if(prior?.state==='confirmed')return reply(409,{ok:false,code:'already_settled'});
-        await env.DB.prepare("INSERT INTO driver_settlements(day,requested_at,who,expected,state,revision) VALUES(?,?,?,?,'pending',1) ON CONFLICT(day) DO UPDATE SET requested_at=excluded.requested_at,who=excluded.who,expected=excluded.expected,revision=driver_settlements.revision+1 WHERE driver_settlements.state='pending'").bind(day,Date.now(),who==='admin'?staff(body):'المندوب',expected).run();
-        return reply(200,{ok:true,settlement:await env.DB.prepare('SELECT * FROM driver_settlements WHERE day=?').bind(day).first()});
+        const did = me.role === "driver" ? me.id : (solo || "admin");
+        const cash = await readCash(env, did), day = riyadhDate(), expected = Math.round(cash.balance * 100);
+        if (expected < 0) return reply(409, { ok: false, code: 'negative_balance' });
+        const prior = await env.DB.prepare('SELECT * FROM driver_settlements2 WHERE day=? AND drv=?').bind(day, did).first();
+        if (prior?.state === 'confirmed') return reply(409, { ok: false, code: 'already_settled' });
+        await env.DB.prepare("INSERT INTO driver_settlements2(day,drv,requested_at,who,expected,state,revision) VALUES(?,?,?,?,?,'pending',1) ON CONFLICT(day,drv) DO UPDATE SET requested_at=excluded.requested_at,who=excluded.who,expected=excluded.expected,revision=driver_settlements2.revision+1 WHERE driver_settlements2.state='pending'").bind(day, did, Date.now(), me.name, expected).run();
+        return reply(200, { ok: true, settlement: await env.DB.prepare('SELECT * FROM driver_settlements2 WHERE day=? AND drv=?').bind(day, did).first() });
       }
-      if (path === "/driver/cash") return reply(200, { ok: true, ...(await readCash(env)) });
-      // تطبيق الأندرويد يسأل كل ثواني: آخر رقم طلب، كم طلب جديد، كم طلب في الطريق (خفيف: بدون قراءة الطلبات نفسها)
+      if (path === "/driver/cash") return reply(200, { ok: true, ...(await readCash(env, me.role === "driver" ? me.id : (solo || "admin"))) });
+      // تطبيق الأندرويد يسأل كل ثواني: آخر رقم طلب، كم طلب جديد، كم طلب في الطريق معي أنا (خفيف: بدون قراءة الطلبات نفسها)
       if (path === "/driver/pending") {
-        const a = await env.DB.prepare("SELECT COALESCE(MAX(no), 0) AS last FROM orders").first();
-        const b = await env.DB.prepare("SELECT status, COUNT(*) AS c FROM orders WHERE status IN ('new', 'onway') GROUP BY status").all();
-        const cnt = {}; for (const r of b.results || []) cnt[r.status] = r.c;
+        const a = await env.DB.prepare("SELECT COALESCE(MAX(no), 0) AS last FROM orders WHERE src != 'pos'").first();
+        const b = await env.DB.prepare("SELECT COUNT(*) AS c FROM orders WHERE status = 'new'").first();
+        const c = me.role === "driver"
+          ? await env.DB.prepare("SELECT COUNT(*) AS c FROM orders WHERE status = 'onway' AND drv = ?").bind(me.id).first()
+          : await env.DB.prepare("SELECT COUNT(*) AS c FROM orders WHERE status = 'onway' AND (drv IS NULL OR drv = 'admin')").first();
         const last = (a && a.last) || 0;
-        return reply(200, { ok: true, last: last ? 1000 + last : 0, new: cnt["new"] || 0, onway: cnt["onway"] || 0, now: Date.now() });
+        return reply(200, { ok: true, last: last ? 1000 + last : 0, new: (b && b.c) || 0, onway: (c && c.c) || 0, now: Date.now() });
       }
-      // تتبع المندوب: آخر نقطة بس (بدون سجل تحركات)، وتنمسح لما يخلص التوصيل
+      // تتبع المندوب: آخر نقطة بس لكل مندوب (بدون سجل تحركات)، وتنمسح لما يخلص التوصيل
       if (path === "/driver/loc") {
-        if (who === "admin" && body.share !== true) return reply(200, { ok: true, skipped: "admin" });
+        if (me.role === "admin" && body.share !== true) return reply(200, { ok: true, skipped: "admin" });
         const lat = Number(body.lat), lng = Number(body.lng), acc = Math.min(5000, Math.max(0, Number(body.acc) || 0));
         if (!(lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) || (!lat && !lng)) return reply(400, { ok: false, code: "bad_loc" });
-        const now = Date.now();
-        const up = await env.DB.prepare("INSERT INTO dloc (id, lat, lng, acc, at) VALUES (1, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET lat = excluded.lat, lng = excluded.lng, acc = excluded.acc, at = excluded.at WHERE excluded.at - dloc.at >= 2500")
-          .bind(lat, lng, acc, now).run();
+        const now = Date.now(), did = me.role === "driver" ? me.id : "admin";
+        const up = await env.DB.prepare("INSERT INTO dlocs (drv, lat, lng, acc, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(drv) DO UPDATE SET lat = excluded.lat, lng = excluded.lng, acc = excluded.acc, at = excluded.at WHERE excluded.at - dlocs.at >= 2500")
+          .bind(did, lat, lng, acc, now).run();
         const near = [];
         if (up.meta && up.meta.changes) {
-          const rs = await env.DB.prepare("SELECT no, data FROM orders WHERE status = 'onway' LIMIT 20").all();
+          const rs = did === "admin"
+            ? await env.DB.prepare("SELECT no, data FROM orders WHERE status = 'onway' AND (drv IS NULL OR drv = 'admin') LIMIT 20").all()
+            : await env.DB.prepare("SELECT no, data FROM orders WHERE status = 'onway' AND drv = ? LIMIT 20").bind(did).all();
           for (const r of rs.results || []) {
             const d = safeJson(r.data);
             if (d.lat == null || d.lng == null || !isFinite(d.lat) || !isFinite(d.lng)) continue;
@@ -318,7 +337,7 @@ export default {
         return reply(200, { ok: true, near });
       }
       if (path === "/driver/loc-off") {
-        await env.DB.batch([env.DB.prepare("DELETE FROM dloc"), env.DB.prepare("DELETE FROM onear WHERE at < ?").bind(Date.now() - 2 * 864e5)]);
+        await env.DB.batch([env.DB.prepare("DELETE FROM dlocs WHERE drv = ?").bind(me.role === "driver" ? me.id : "admin"), env.DB.prepare("DELETE FROM onear WHERE at < ?").bind(Date.now() - 2 * 864e5)]);
         return reply(200, { ok: true });
       }
       if (path === "/driver/status") {
@@ -327,13 +346,70 @@ export default {
         if (!(n > 0) || !["new", "accepted", "onway", "delivered", "canceled"].includes(st)) return reply(400, { ok: false, code: "bad_request" });
         if(st === 'onway') { const prep=await env.DB.prepare('SELECT stage FROM prep_orders WHERE no=?').bind(n).first(); if(prep && prep.stage!=='ready')return reply(409,{ok:false,code:'not_ready'}); }
         let res;
-        try { res = await changeStatus(env, n, st, Date.now(), who === "admin" ? staff(body) : "المندوب"); } catch (e) { return reply(e.message === "pos_required" ? 409 : 502, { ok: false, code: e.message === "pos_required" ? "pos_required" : "db" }); }
+        try { res = await changeStatus(env, n, st, Date.now(), me.name, actor); } catch (e) { return reply(e.message === "pos_required" ? 409 : 502, { ok: false, code: e.message === "pos_required" ? "pos_required" : "db" }); }
         if (!res) return reply(404, { ok: false, code: "not_found" });
+        if (res.conflict) return reply(409, { ok: false, code: res.conflict, by: res.by || "", state: res.status || "" });
         if (res.changed) {
           const msg = STATUS_MSG[st];
           if (msg) later(notifyRole(env, "customer", String(n), { title: "طلبك #" + (1000 + n), body: msg, url: "./", tag: "order" + n }));
         }
-        return reply(200, { ok: true });
+        return reply(200, { ok: true, drv: res.drv || "" });
+      }
+      return reply(404, { ok: false, code: "not_found" });
+    }
+
+    // نقاط البيع في المحل: رقم الكاشير أو رقم الإدارة
+    if (path.startsWith("/pos/")) {
+      // موظفينك بجلسة: المدير بصلاحية الإدارة، وموظف الطلبات بصلاحية كاشير
+      const me = principal ? { role: principal.role === "manager" ? "admin" : "cashier", id: "u" + principal.id, name: principal.name } : await whoIs(env, body.pin, body);
+      if (!me || (me.role !== "cashier" && me.role !== "admin")) { await recordFail(env, ip); return reply(401, { ok: false, code: "bad_pin" }); }
+      await clearFails(env, ip);
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const cid = me.role === "admin" ? "admin" : me.id;
+      if(['/pos/delivery-orders','/pos/delivery-receipt','/pos/delivery-issue'].includes(path)){
+        const result=await posRoute(env,path.replace('/pos/delivery-','/admin/pos-'),body,me.name,me.role==='admin'?'owner':'cashier');
+        return reply(result.status||200,result);
+      }
+      if (path === "/pos/login") return reply(200, { ok: true, role: me.role, id: cid, name: me.name });
+      if (path === "/pos/sale") {
+        const key = /^[\w-]{8,40}$/.test(String(body.cid || "")) ? String(body.cid) : null;
+        const dup = async () => {
+          if (!key) return null;
+          const ex = await env.DB.prepare("SELECT no, data FROM orders WHERE cid = ?").bind(key).first();
+          return ex ? reply(200, { ok: true, dup: true, no: "#" + (1000 + ex.no), total: safeJson(ex.data).total }) : null;
+        };
+        const d0 = await dup(); if (d0) return d0;   // نفس البيعة انرسلت مرتين (النت قطع وراجع)
+        let data;
+        try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+        const s = posSale(data, body, me);
+        if (s.error) return reply(400, { ok: false, code: s.error });
+        await withCost(env, s.rec);
+        // بيعة انحفظت في الجهاز والنت مقطوع: نسجلها بوقتها الحقيقي (لين ٣ أيام)
+        const now = Date.now(), at = Number(body.at), when = at > now - 3 * 864e5 && at <= now + 60000 ? Math.min(at, now) : now;
+        const before = await readStock(env);
+        let no;
+        try {
+          no = await dbInsertOrder(env, s.rec, needOf(s.rec), when, true,
+            { who: me.name, act: "pos_sale", info: JSON.stringify({ total: s.rec.total, count: s.rec.count, pay: s.rec.pay, open: s.open.length }) },
+            { status: "sold", src: "pos", drv: cid, cid: key });
+        } catch (e) {
+          const d1 = await dup(); if (d1) return d1;
+          return reply(502, { ok: false, code: "db" });
+        }
+        if (s.open.length) later(env.DB.batch(s.open.map((o) => env.DB.prepare("INSERT INTO openitems (bc, name, price, n, last) VALUES (?, ?, ?, ?, ?) ON CONFLICT(bc, name) DO UPDATE SET price = excluded.price, n = n + excluded.n, last = excluded.last").bind(o.bc, o.name, o.price, o.qty, when))));
+        later(afterOrder(env, data, s.rec, no, before, true));
+        return reply(200, { ok: true, no, total: s.rec.total, at: when });
+      }
+      // الوردية: مبيعات الكاشير من آخر إقفال للصندوق
+      if (path === "/pos/shift") return reply(200, { ok: true, ...(await readShift(env, cid, me.role === "admin" && body.all === true)) });
+      if (path === "/pos/close") {
+        const counted = round2(Number(body.counted));
+        if (!(counted >= 0 && counted < 1e7)) return reply(400, { ok: false, code: "bad_amount" });
+        const sh = await readShift(env, cid, false);
+        const info = { from: sh.since, to: Date.now(), sales: sh.count, total: sh.total, cash: sh.cash, card: sh.card, counted, diff: round2(counted - sh.cash), note: String(body.note || "").slice(0, 100) };
+        await logStmt(env, me.name, "pos_close", cid, info).run();
+        return reply(200, { ok: true, closed: info });
       }
       return reply(404, { ok: false, code: "not_found" });
     }
@@ -420,9 +496,9 @@ export default {
       if (body.add != null) {
         const amt = round2(Number(body.add));
         if (!(Math.abs(amt) > 0 && Math.abs(amt) < 1e6)) return reply(400, { ok: false, code: "bad_amount" });
-        const who = staff(body), note = String(body.note || "").slice(0, 100);
-        await env.DB.batch([env.DB.prepare("INSERT INTO cash (at, day, who, amount, note) VALUES (?, ?, ?, ?, ?)").bind(Date.now(), riyadhDate(), who, amt, note),
-          logStmt(env, who, "cash_in", "", { amount: amt, note })]);
+        const who = staff(body), note = String(body.note || "").slice(0, 100), dv = String(body.drv || "d0").slice(0, 40);
+        await env.DB.batch([env.DB.prepare("INSERT INTO cash (at, day, who, amount, note, drv) VALUES (?, ?, ?, ?, ?, ?)").bind(Date.now(), riyadhDate(), who, amt, note, dv),
+          logStmt(env, who, "cash_in", dv, { amount: amt, note, drv: await staffName(env, dv) })]);
       }
       return reply(200, { ok: true, ...(await readCash(env)) });
     }
@@ -459,13 +535,78 @@ export default {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       return reply(200, { ok: true, report: await dailyReport(env) });
     }
+    // المناديب والكاشيرية (كل واحد له اسم ورقم سري سريع)
+    if (path === "/admin/team" || path === "/admin/team-save") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      if (path === "/admin/team-save") {
+        const id0 = String(body.id || ""), role = body.role === "cashier" ? "cashier" : "driver";
+        const name = String(body.name || "").trim().slice(0, 30), pin = String(body.newPin || "");
+        const cur = id0 ? await env.DB.prepare("SELECT * FROM staff WHERE id = ?").bind(id0).first() : null;
+        if (id0 && !cur) return reply(404, { ok: false, code: "not_found" });
+        if (!name) return reply(400, { ok: false, code: "bad_name" });
+        if (pin && !/^\d{4,12}$/.test(pin)) return reply(400, { ok: false, code: "bad_pin_format" });
+        if (!cur && !pin) return reply(400, { ok: false, code: "pin_required" });
+        let h = cur ? cur.pin : "";
+        if (pin) {
+          if (await checkPin(env, pin)) return reply(400, { ok: false, code: "pin_taken" });
+          h = await staffHash(env, pin);
+          const other = await env.DB.prepare("SELECT id FROM staff WHERE pin = ? AND id != ? AND active = 1").bind(h, id0).first();
+          if (other) return reply(400, { ok: false, code: "pin_taken" });
+        }
+        const active = body.active === false ? 0 : 1, who = staff(body);
+        const id = cur ? cur.id : (role === "cashier" ? "c" : "d") + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+        await env.DB.batch([
+          env.DB.prepare("INSERT INTO staff (id, name, role, pin, active, created) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, role = excluded.role, pin = excluded.pin, active = excluded.active")
+            .bind(id, name, cur ? cur.role : role, h, active, cur ? cur.created : Date.now()),
+          logStmt(env, who, cur ? "staff_edit" : "staff_add", id, { name, role: cur ? cur.role : role, pin: !!pin, active: !!active }),
+        ]);
+        if (id === "d0" && pin && env.LOCKS) await env.LOCKS.put("driver_pin", h);
+      }
+      const list = await staffList(env, "");
+      const day = riyadhDate();
+      const rs = await env.DB.prepare("SELECT drv, status, COUNT(*) n, ROUND(SUM(total), 2) t FROM orders WHERE drv IS NOT NULL AND ((day = ? AND status IN ('delivered', 'sold')) OR status IN ('accepted', 'onway')) GROUP BY drv, status").bind(day).all();
+      const st = {};
+      for (const r of rs.results || []) { const x = st[r.drv] || (st[r.drv] = { done: 0, total: 0, open: 0 }); if (r.status === "accepted" || r.status === "onway") x.open += r.n; else { x.done += r.n; x.total = round2(x.total + r.t); } }
+      return reply(200, { ok: true, staff: list.map((s) => ({ ...s, today: st[s.id] || { done: 0, total: 0, open: 0 } })) });
+    }
+    // الإدارة تعطي الطلب لمندوب (أو ترجّعه للكل)
+    if (path === "/admin/assign") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000, to = String(body.drv || "");
+      if (!(n > 0)) return reply(400, { ok: false, code: "bad_request" });
+      const d = to ? await env.DB.prepare("SELECT id, name FROM staff WHERE id = ? AND role = 'driver' AND active = 1").bind(to).first() : null;
+      if (to && !d) return reply(400, { ok: false, code: "bad_driver" });
+      const row = await env.DB.prepare("SELECT status, drv FROM orders WHERE no = ?").bind(n).first();
+      if (!row) return reply(404, { ok: false, code: "not_found" });
+      if (!["new", "accepted", "onway"].includes(row.status)) return reply(400, { ok: false, code: "closed" });
+      const who = staff(body), now = Date.now();
+      const status = to ? (row.status === "new" ? "accepted" : row.status) : (row.status === "accepted" ? "new" : row.status);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE orders SET drv = ?, status = ?, updated = ? WHERE no = ?").bind(to || null, status, now, n),
+        logStmt(env, who, "assign", "#" + (1000 + n), { from: await staffName(env, row.drv), to: d ? d.name : "", status }),
+      ]);
+      if (d) later(notifyRole(env, "driver", d.id, { title: "طلب لك #" + (1000 + n), body: "الإدارة حوّلت لك هالطلب. افتح التطبيق وابدأ التجهيز.", url: "./#driver", tag: "assign" + n }));
+      return reply(200, { ok: true, state: status, drv: to });
+    }
+    // أصناف انباعت في المحل وهي مو مسجلة في المتجر (باركود جديد)
+    if (path === "/admin/openitems") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      if (body.del) await env.DB.prepare("DELETE FROM openitems WHERE bc = ? AND name = ?").bind(String(body.del.bc || ""), String(body.del.name || "")).run();
+      const rs = await env.DB.prepare("SELECT bc, name, price, n, last FROM openitems ORDER BY last DESC LIMIT 200").all();
+      return reply(200, { ok: true, items: rs.results || [] });
+    }
     if (path === "/admin/driver-loc") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
-      const loc = await env.DB.prepare("SELECT lat, lng, acc, at FROM dloc WHERE id = 1").first();
-      const rs = await env.DB.prepare("SELECT no, data FROM orders WHERE status = 'onway' ORDER BY no LIMIT 20").all();
-      const onway = (rs.results || []).map((r) => { const d = safeJson(r.data); return { no: "#" + (1000 + r.no), name: d.name || "", lat: d.lat, lng: d.lng, total: d.total }; });
-      return reply(200, { ok: true, loc: loc || null, onway, now: Date.now() });
+      const now = Date.now(), nm = staffNames(await staffList(env, "driver"));
+      const lr = await env.DB.prepare("SELECT drv, lat, lng, acc, at FROM dlocs WHERE at > ? ORDER BY at DESC").bind(now - LOC_FRESH_MS).all();
+      const locs = (lr.results || []).map((l) => ({ ...l, name: nm[l.drv] || l.drv }));
+      const rs = await env.DB.prepare("SELECT no, data, drv FROM orders WHERE status = 'onway' ORDER BY no LIMIT 30").all();
+      const onway = (rs.results || []).map((r) => { const d = safeJson(r.data); return { no: "#" + (1000 + r.no), name: d.name || "", lat: d.lat, lng: d.lng, total: d.total, drv: r.drv || "", drvName: r.drv ? nm[r.drv] || "" : "" }; });
+      return reply(200, { ok: true, locs, loc: locs[0] || null, onway, now });
     }
     if (path === "/admin/today") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
@@ -479,8 +620,10 @@ export default {
       const bn = Number(String(body.before || "").replace(/\D/g, ""));
       const before = bn > 1000 ? bn - 1000 : 1e12;
       const since = Number(body.since) || 0;
-      const rs = await env.DB.prepare("SELECT no, created, updated, status, data, anon FROM orders WHERE no < ? AND created >= ? ORDER BY no DESC LIMIT ?").bind(before, since, lim).all();
-      const orders = await enrichOperations(env, (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, anon: !!r.anon })));
+      const srcQ = body.src === "pos" ? " AND src = 'pos'" : body.src === "online" ? " AND src != 'pos'" : "";
+      const rs = await env.DB.prepare("SELECT no, created, updated, status, data, anon, drv, src FROM orders WHERE no < ? AND created >= ?" + srcQ + " ORDER BY no DESC LIMIT ?").bind(before, since, lim).all();
+      const nm = staffNames(await staffList(env, ""));
+      const orders = await enrichOperations(env, (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, anon: !!r.anon, drv: r.drv || "", drvName: r.drv ? nm[r.drv] || "" : "", src: r.src || "web" })));
       return reply(200, { ok: true, orders, more: orders.length === lim, now: Date.now() });
     }
     // طلب جاء بالاتصال أو الواتساب أو في المحل: الموظف يدخله من الإدارة
@@ -542,7 +685,8 @@ export default {
 
     if (path === "/tg-status") {
       const title = env.LOCKS ? await env.LOCKS.get("tg_title") : null;
-      const driverSet = !!((env.LOCKS && (await env.LOCKS.get("driver_pin"))) || env.DRIVER_PIN);
+      let driverSet = !!((env.LOCKS && (await env.LOCKS.get("driver_pin"))) || env.DRIVER_PIN);
+      if (!driverSet && env.DB) { await ensureSchema(env); driverSet = !!(await env.DB.prepare("SELECT 1 x FROM staff WHERE role = 'driver' AND active = 1 LIMIT 1").first()); }
       return reply(200, { ok: true, hasToken: !!env.TELEGRAM_BOT_TOKEN, linked: !!title, title: title || "", hasDB: !!env.DB, driverSet });
     }
 
@@ -585,6 +729,11 @@ export default {
         if (!/^\d{4,12}$/.test(dp)) return reply(400, { ok: false, code: "bad_driver_pin" });
         if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
         if (await checkPin(env, dp)) return reply(400, { ok: false, code: "driver_pin_same" });
+        if (env.DB) { await ensureSchema(env); const o = await env.DB.prepare("SELECT id FROM staff WHERE pin = ? AND id != 'd0' AND active = 1").bind(await staffHash(env, dp)).first(); if (o) return reply(400, { ok: false, code: "driver_pin_same" }); }
+      }
+      if (body.newPin && env.DB) {
+        await ensureSchema(env);
+        if (await env.DB.prepare("SELECT id FROM staff WHERE pin = ? AND active = 1").bind(await staffHash(env, String(body.newPin))).first()) return reply(400, { ok: false, code: "pin_taken" });
       }
       if (data.store) delete data.store.pinHash; // الرقم السري ما ينحفظ في الموقع العام
       const stockSet = body.stock && typeof body.stock === "object" ? body.stock : null;
@@ -598,7 +747,11 @@ export default {
         return reply(502, { ok: false, code: e.code || "github", status: e.status || 0 });
       }
       if (body.newPin) await env.LOCKS.put("pin", await hashPin(env, String(body.newPin)));
-      if (body.newDriverPin) await env.LOCKS.put("driver_pin", await hashPin(env, "driver:" + String(body.newDriverPin)));
+      if (body.newDriverPin) {
+        const h = await staffHash(env, String(body.newDriverPin));
+        await env.LOCKS.put("driver_pin", h);
+        if (env.DB) await env.DB.prepare("INSERT INTO staff (id, name, role, pin, active, created) VALUES ('d0', 'المندوب', 'driver', ?, 1, ?) ON CONFLICT(id) DO UPDATE SET pin = excluded.pin, active = 1").bind(h, Date.now()).run();
+      }
       if (stockSet) { try { await setStock(env, stockSet); } catch { return reply(502, { ok: false, code: "stock" }); } }
       if (costSet) { try { await setCosts(env, costSet); } catch { return reply(502, { ok: false, code: "stock" }); } }
       if (env.DB) await logSave(env, staff(body), oldData, data, stockSet, oldStock, costSet, body).catch(() => {});
@@ -634,11 +787,11 @@ async function ensureSchema(env) {
   ].map((q) => env.DB.prepare(q)));
   // أعمدة إضافية للتحليل (تنضاف مرة وحدة للقاعدة القديمة بدون ما تمس بياناتها)
   const have = ((await env.DB.prepare("PRAGMA table_info(st_day)").all()).results || []).map((r) => r.name);
-  const add = ["items", "card", "fees", "canceled", "newc", "deliv_ms", "deliv_n", "deliv_rev", "visits", "carts", "checkouts", "cost"].filter((c) => !have.includes(c));
+  const add = ["items", "card", "fees", "canceled", "newc", "deliv_ms", "deliv_n", "deliv_rev", "visits", "carts", "checkouts", "cost", "pos_n", "pos_rev"].filter((c) => !have.includes(c));
   if (add.length) await env.DB.batch(add.map((c) => env.DB.prepare(`ALTER TABLE st_day ADD COLUMN ${c} REAL NOT NULL DEFAULT 0`)));
   // سجل الطلبات هو المرجع: أعمدة للأرقام + جدول لسطور كل طلب
   const oh = ((await env.DB.prepare("PRAGMA table_info(orders)").all()).results || []).map((r) => r.name);
-  const ocols = { cost: "REAL NOT NULL DEFAULT 0", day: "TEXT", hour: "INTEGER", total: "REAL", fee: "REAL", items: "INTEGER", pay: "TEXT", ch: "TEXT", tail: "TEXT", dms: "INTEGER NOT NULL DEFAULT 0", anon: "INTEGER NOT NULL DEFAULT 0" };
+  const ocols = { cost: "REAL NOT NULL DEFAULT 0", day: "TEXT", hour: "INTEGER", total: "REAL", fee: "REAL", items: "INTEGER", pay: "TEXT", ch: "TEXT", tail: "TEXT", dms: "INTEGER NOT NULL DEFAULT 0", anon: "INTEGER NOT NULL DEFAULT 0", drv: "TEXT", src: "TEXT NOT NULL DEFAULT 'web'", cid: "TEXT" };
   const oadd = Object.keys(ocols).filter((c) => !oh.includes(c));
   const more = oadd.map((c) => `ALTER TABLE orders ADD COLUMN ${c} ${ocols[c]}`).concat([
     "CREATE TABLE IF NOT EXISTS oline (no INTEGER NOT NULL, k INTEGER NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, price REAL NOT NULL, PRIMARY KEY (no, k))",
@@ -648,7 +801,12 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS onear (no INTEGER PRIMARY KEY, at INTEGER NOT NULL)",
     "CREATE INDEX IF NOT EXISTS orders_ch ON orders (ch)",
     "CREATE INDEX IF NOT EXISTS oline_id ON oline (id)",
-  ]);
+    "CREATE TABLE IF NOT EXISTS staff (id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL, pin TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created INTEGER NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS staff_pin ON staff (pin)",
+    "CREATE TABLE IF NOT EXISTS dlocs (drv TEXT PRIMARY KEY, lat REAL NOT NULL, lng REAL NOT NULL, acc REAL NOT NULL DEFAULT 0, at INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS openitems (bc TEXT NOT NULL, name TEXT NOT NULL, price REAL NOT NULL, n INTEGER NOT NULL, last INTEGER NOT NULL, PRIMARY KEY (bc, name))",
+  ].concat(oadd.includes("src") ? ["UPDATE orders SET src = json_extract(data, '$.source') WHERE json_extract(data, '$.source') IN ('phone', 'whatsapp', 'store')"] : [])
+   .concat(oadd.includes("drv") ? ["UPDATE orders SET drv = 'd0' WHERE status IN ('accepted', 'onway', 'delivered')"] : []));
   await env.DB.batch(more.map((q) => env.DB.prepare(q)));
   // سعر الشراء في سطور الطلب وتحليل المنتجات
   const extra = [];
@@ -657,11 +815,26 @@ async function ensureSchema(env) {
     if (!cols.includes(c)) extra.push(env.DB.prepare(`ALTER TABLE ${t} ADD COLUMN ${c} REAL NOT NULL DEFAULT 0`));
   }
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS orders_upd ON orders (status, updated)"));
+  extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS orders_src ON orders (src, created)"));
+  extra.push(env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS orders_cid ON orders (cid) WHERE cid IS NOT NULL"));
+  const ccols = ((await env.DB.prepare("PRAGMA table_info(cash)").all()).results || []).map((r) => r.name);
+  if (!ccols.includes("drv")) extra.push(env.DB.prepare("ALTER TABLE cash ADD COLUMN drv TEXT NOT NULL DEFAULT 'd0'"));
   // حساب كاش المندوب يبدأ من يوم تركيب هالميزة (الطلبات القديمة ما تنحسب عليه)
   const now0 = Date.now();
   extra.push(env.DB.prepare("INSERT INTO cash (at, day, who, amount, note) SELECT ?, ?, 'النظام', 0, 'بداية الحساب' WHERE NOT EXISTS (SELECT 1 FROM cash)").bind(now0, riyadhDateAt(now0)));
   await env.DB.batch(extra);
+  // رقم المندوب القديم يصير أول حساب مندوب (نفس الرقم يشتغل بدون تغيير)
+  const anyStaff = await env.DB.prepare("SELECT COUNT(*) n FROM staff").first();
+  if (!anyStaff || !anyStaff.n) {
+    const old = (env.LOCKS ? await env.LOCKS.get("driver_pin") : null) || (env.DRIVER_PIN ? await staffHash(env, String(env.DRIVER_PIN)) : "");
+    if (old) await env.DB.prepare("INSERT OR IGNORE INTO staff (id, name, role, pin, active, created) VALUES ('d0', 'المندوب', 'driver', ?, 1, ?)").bind(old, Date.now()).run();
+  }
   await ensureOperations(env);
+  // التسوية صارت لكل مندوب: جدول جديد (يوم + مندوب)، والتسويات القديمة تنتقل للمندوب الحالي كما هي
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS driver_settlements2(day TEXT NOT NULL,drv TEXT NOT NULL,requested_at INTEGER NOT NULL,who TEXT NOT NULL,expected INTEGER NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','confirmed')),revision INTEGER NOT NULL,actual INTEGER,confirmed_at INTEGER,confirmed_by TEXT,note TEXT,PRIMARY KEY(day,drv))"),
+    env.DB.prepare("INSERT OR IGNORE INTO driver_settlements2(day,drv,requested_at,who,expected,state,revision,actual,confirmed_at,confirmed_by,note) SELECT day,'d0',requested_at,who,expected,state,revision,actual,confirmed_at,confirmed_by,note FROM driver_settlements WHERE NOT EXISTS (SELECT 1 FROM driver_settlements2)"),
+  ]);
   schemaReady = true;
 }
 function orderRecord(o, body) {
@@ -675,14 +848,15 @@ function orderRecord(o, body) {
   };
 }
 // يحفظ الطلب وسطوره والمخزون والتحليل في خطوة وحدة (يا كلها تنحفظ، يا ولا شي)
-async function dbInsertOrder(env, rec, need, now, force, log) {
+async function dbInsertOrder(env, rec, need, now, force, log, opt = {}) {
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   const day = riyadhDateAt(now), hour = riyadhHour(now);
   const ch = rec.phone ? (await hashPin(env, "cust:" + rec.phone)).slice(0, 32) : "";
   const items = (rec.lines || []).reduce((n, l) => n + Number(l.qty || 0), 0);
   const NO = "(SELECT MAX(no) FROM orders)";
-  const st = [P("INSERT INTO orders (created, updated, status, phone, data, day, hour, total, fee, items, pay, ch, tail, cost) VALUES (?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    now, now, rec.phone, JSON.stringify(rec), day, hour, Number(rec.total), Number(rec.fee || 0), items, rec.pay, ch, String(rec.phone || "").slice(-4), costOf(rec))];
+  const src = opt.src || (["phone", "whatsapp", "store"].includes(rec.source) ? rec.source : "web");
+  const st = [P("INSERT INTO orders (created, updated, status, phone, data, day, hour, total, fee, items, pay, ch, tail, cost, src, drv, cid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    now, now, opt.status || "new", rec.phone || "", JSON.stringify(rec), day, hour, Number(rec.total), Number(rec.fee || 0), items, rec.pay, ch, String(rec.phone || "").slice(-4), costOf(rec), src, opt.drv || null, opt.cid || null)];
   (rec.lines || []).forEach((l, k) => st.push(P(`INSERT INTO oline (no, k, id, qty, price, cost) VALUES (${NO}, ?, ?, ?, ?, ?)`, k, l.id || "", Number(l.qty), Number(l.price), Number(l.cost || 0))));
   if (log) st.push(env.DB.prepare(`INSERT INTO alog (at, who, act, ref, info) VALUES (?, ?, ?, '#' || (1000 + ${NO}), ?)`).bind(now, log.who, log.act, log.info));
   // المخزون: لو ما يكفي، هالسطر يوقف كل الحفظ (الطلب ما ينحفظ)
@@ -700,7 +874,8 @@ async function dbInsertOrder(env, rec, need, now, force, log) {
   }
   st.push(...statsStmts(env, rec, day, hour, 1, 0));
   await env.DB.batch(st);
-  const row = await env.DB.prepare("SELECT MAX(no) no FROM orders WHERE created = ? AND ch = ?").bind(now, ch).first();
+  const row = opt.cid ? await env.DB.prepare("SELECT no FROM orders WHERE cid = ?").bind(opt.cid).first()
+    : await env.DB.prepare("SELECT MAX(no) no FROM orders WHERE created = ? AND ch = ?").bind(now, ch).first();
   return "#" + (1000 + row.no);
 }
 // تفاصيل الزبون (الجوال والعنوان) تنمسح بعد المدة، والطلب نفسه وأرقامه تبقى دايم
@@ -709,22 +884,38 @@ async function cleanupOld(env, keepDays) {
   await env.DB.prepare("UPDATE orders SET phone = '', anon = 1, data = json_set(json_remove(data, '$.name', '$.details', '$.note', '$.lat', '$.lng', '$.map'), '$.phone', '') WHERE anon = 0 AND created < ? AND status IN ('delivered','canceled')")
     .bind(Date.now() - keep * 864e5).run();
 }
-async function changeStatus(env, n, st, now = Date.now(), who = "") {
+async function changeStatus(env, n, st, now = Date.now(), who = "", actor = null) {
   await ensureSchema(env);
-  const old = await env.DB.prepare("SELECT status, data, created, day, hour, total, dms FROM orders WHERE no = ?").bind(n).first();
+  const old = await env.DB.prepare("SELECT status, data, created, day, hour, total, dms, drv FROM orders WHERE no = ?").bind(n).first();
   if (!old) return null;
-  if (old.status === st) return { changed: false };
+  let drv = old.drv || null;
+  if (actor) {
+    if (drv && drv !== actor.id) return { conflict: "not_yours", by: await staffName(env, drv), status: old.status };
+    drv = st === "new" ? null : actor.id;
+  }
+  const P = (q, ...a) => env.DB.prepare(q).bind(...a);
+  // لو أحد غيّر الطلب بعد ما قريناه (مندوب ثاني مسكه بنفس اللحظة): كل الخطوة تنلغي
+  const guard = P("SELECT CASE WHEN (SELECT status FROM orders WHERE no = ?) = ? AND IFNULL((SELECT drv FROM orders WHERE no = ?), '') = ? THEN 1 ELSE json('conflict') END", n, old.status, n, old.drv || "");
+  const lost = async () => {
+    const cur = await env.DB.prepare("SELECT status, drv FROM orders WHERE no = ?").bind(n).first();
+    return { conflict: "taken", by: await staffName(env, cur && cur.drv), status: cur ? cur.status : "" };
+  };
+  if (old.status === st) {
+    if ((old.drv || null) === drv) return { changed: false, drv };
+    try { await env.DB.batch([guard, P("UPDATE orders SET drv = ?, updated = ? WHERE no = ?", drv, now, n), logStmt(env, who, "claim", "#" + (1000 + n), { status: st })]); }
+    catch (e) { return lost(); }
+    return { changed: false, drv };
+  }
+  let rec = {}; try { rec = JSON.parse(old.data); } catch {}
+  const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created), counted = !!rec.st;
+  const dms = st === "delivered" ? Math.max(0, now - old.created) : 0;
   if(st==='onway'){
     const policy=await env.DB.prepare('SELECT require_receipt FROM pos_settings WHERE id=1').first();
     if(policy?.require_receipt){const receipt=await latestPosReceipt(env,n);if(!receipt||receipt.fingerprint!==await tokenHash(JSON.stringify(posDocument(old.data,n))))throw new Error('pos_required');}
   }
-  const P = (q, ...a) => env.DB.prepare(q).bind(...a);
-  let rec = {}; try { rec = JSON.parse(old.data); } catch {}
-  const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created), counted = !!rec.st;
-  const dms = st === "delivered" ? Math.max(0, now - old.created) : 0;
   const finance = await statusFinance(env,n,old.status,st,rec,who,now);
   const handoff = st === 'onway' ? [P("SELECT CASE WHEN EXISTS(SELECT 1 FROM prep_orders WHERE no=? AND stage!='ready') THEN json('not_ready') ELSE 1 END",n)] : [];
-  const stmts = [...handoff, P("SELECT CASE WHEN status != ? OR data != ? THEN json('concurrent_status') ELSE 1 END FROM orders WHERE no = ?",old.status,old.data,n), ...finance, P("UPDATE orders SET status = ?, updated = ?, dms = ? WHERE no = ?", st, now, dms, n)];
+  const stmts = [guard, ...handoff, P("SELECT CASE WHEN status != ? OR data != ? THEN json('concurrent_status') ELSE 1 END FROM orders WHERE no = ?",old.status,old.data,n), ...finance, P("UPDATE orders SET status = ?, updated = ?, dms = ?, drv = ? WHERE no = ?", st, now, dms, drv, n)];
   if (who) stmts.push(logStmt(env, who, "status", "#" + (1000 + n), { from: old.status, to: st, total: Number(rec.total || 0) }));
   if ((st === "canceled") !== (old.status === "canceled")) {
     const back = st === "canceled";
@@ -735,8 +926,13 @@ async function changeStatus(env, n, st, now = Date.now(), who = "") {
   const dl = (sign, ms) => P("INSERT INTO st_day (day, orders, revenue, deliv_n, deliv_ms, deliv_rev) VALUES (?, 0, 0, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET deliv_n = deliv_n + excluded.deliv_n, deliv_ms = deliv_ms + excluded.deliv_ms, deliv_rev = deliv_rev + excluded.deliv_rev", day, sign, sign * ms, round2(sign * Number(rec.total || 0)));
   if (counted && old.status === "delivered") stmts.push(dl(-1, Number(old.dms || 0)));
   if (counted && st === "delivered") stmts.push(dl(1, dms));
-  await env.DB.batch(stmts);
-  return { changed: true };
+  try { await env.DB.batch(stmts); }
+  catch (e) {
+    const cur = await env.DB.prepare("SELECT status, drv FROM orders WHERE no = ?").bind(n).first();
+    if (cur && (cur.status !== old.status || (cur.drv || "") !== (old.drv || ""))) return lost();
+    throw e;
+  }
+  return { changed: true, drv };
 }
 // تعديل الطلب بعد اتصال الزبون: المبالغ والمخزون والتحليل تتعدل مع بعض
 async function editOrder(env, data, body, who) {
@@ -1078,11 +1274,13 @@ async function setStock(env, map) {
 }
 
 // بعد الطلب: التحليل + إشعار الإدارة والمندوب + تنبيه المخزون
-async function afterOrder(env, data, rec, orderNo, before) {
+async function afterOrder(env, data, rec, orderNo, before, quiet) {
   if (!env.LOCKS) return;
   const n = Number(String(orderNo).replace(/\D/g, ""));
+  if (!quiet) {
   const msg = { title: "طلب جديد " + ({ phone: "(اتصال) ", whatsapp: "(واتساب) ", store: "(من المحل) " }[rec.source] || "") + orderNo, body: rec.count + " منتج · " + money(rec.total) + " · " + (rec.pay === "card" ? "شبكة" : "كاش") + (rec.name ? " · " + rec.name : ""), url: "./#driver", tag: "new" + n };
   await Promise.all([notifyRole(env, "admin", null, msg), notifyRole(env, "driver", null, msg)]);
+  }
   const lowAt = Math.max(0, Number((data.store || {}).lowAt ?? 3));
   const need = needOf(rec), names = {};
   for (const p of data.products || []) names[p.id] = p.name;
@@ -1112,16 +1310,16 @@ function statsStmts(env, rec, day, hour, sign, cancelDelta) {
     const x = per[l.id] || (per[l.id] = { qty: 0, rev: 0 });
     x.qty += q; x.rev += q * Number(l.price || 0); x.cost = (x.cost || 0) + q * Number(l.cost || 0);
   }
-  const total = Number(rec.total || 0), fee = Number(rec.fee || 0), card = rec.pay === "card" ? 1 : 0, cost = costOf(rec);
+  const total = Number(rec.total || 0), fee = Number(rec.fee || 0), card = rec.pay === "card" ? 1 : 0, cost = costOf(rec), pos = rec.src === "pos" ? 1 : 0;
   const ids = Object.keys(per).sort();
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   const st = [
-    P("INSERT INTO st_day (day, orders, revenue, items, card, fees, canceled, cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET orders = orders + excluded.orders, revenue = revenue + excluded.revenue, items = items + excluded.items, card = card + excluded.card, fees = fees + excluded.fees, canceled = canceled + excluded.canceled, cost = cost + excluded.cost",
-      day, sign, round2(sign * total), sign * items, sign * card, round2(sign * fee), cancelDelta, round2(sign * cost)),
+    P("INSERT INTO st_day (day, orders, revenue, items, card, fees, canceled, cost, pos_n, pos_rev) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET orders = orders + excluded.orders, revenue = revenue + excluded.revenue, items = items + excluded.items, card = card + excluded.card, fees = fees + excluded.fees, canceled = canceled + excluded.canceled, cost = cost + excluded.cost, pos_n = pos_n + excluded.pos_n, pos_rev = pos_rev + excluded.pos_rev",
+      day, sign, round2(sign * total), sign * items, sign * card, round2(sign * fee), cancelDelta, round2(sign * cost), sign * pos, round2(sign * pos * total)),
     P("INSERT INTO st_hour (day, hour, orders, revenue) VALUES (?, ?, ?, ?) ON CONFLICT(day, hour) DO UPDATE SET orders = orders + excluded.orders, revenue = revenue + excluded.revenue", day, hour, sign, round2(sign * total)),
   ];
   for (const id of ids) st.push(P("INSERT INTO st_item (day, id, qty, revenue, orders, cost) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(day, id) DO UPDATE SET qty = qty + excluded.qty, revenue = revenue + excluded.revenue, orders = orders + excluded.orders, cost = cost + excluded.cost", day, id, sign * per[id].qty, round2(sign * per[id].rev), sign, round2(sign * (per[id].cost || 0))));
-  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++)
+  if (!pos) for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++)
     st.push(P("INSERT INTO st_pair (a, b, n) VALUES (?, ?, ?) ON CONFLICT(a, b) DO UPDATE SET n = n + excluded.n", ids[i], ids[j], sign));
   return st;
 }
@@ -1134,7 +1332,7 @@ async function verifyStats(env, from, to, fix) {
   if (!okDay(to)) to = "2999-12-31";
   await backfillOrders(env);
   const Q = (q, ...a) => env.DB.prepare(q).bind(...a).all().then((r) => r.results || []);
-  const TRUTH_DAY = "SELECT day, SUM(status != 'canceled') orders, ROUND(SUM(CASE WHEN status != 'canceled' THEN total ELSE 0 END), 2) revenue, SUM(CASE WHEN status != 'canceled' THEN items ELSE 0 END) items, SUM(status != 'canceled' AND pay = 'card') card, ROUND(SUM(CASE WHEN status != 'canceled' THEN fee ELSE 0 END), 2) fees, SUM(status = 'canceled') canceled, SUM(status = 'delivered') deliv_n, SUM(CASE WHEN status = 'delivered' THEN dms ELSE 0 END) deliv_ms, ROUND(SUM(CASE WHEN status = 'delivered' THEN total ELSE 0 END), 2) deliv_rev, ROUND(SUM(CASE WHEN status != 'canceled' THEN cost ELSE 0 END), 2) cost FROM orders WHERE total IS NOT NULL AND day BETWEEN ? AND ? GROUP BY day";
+  const TRUTH_DAY = "SELECT day, SUM(status != 'canceled') orders, ROUND(SUM(CASE WHEN status != 'canceled' THEN total ELSE 0 END), 2) revenue, SUM(CASE WHEN status != 'canceled' THEN items ELSE 0 END) items, SUM(status != 'canceled' AND pay = 'card') card, ROUND(SUM(CASE WHEN status != 'canceled' THEN fee ELSE 0 END), 2) fees, SUM(status = 'canceled') canceled, SUM(status = 'delivered') deliv_n, SUM(CASE WHEN status = 'delivered' THEN dms ELSE 0 END) deliv_ms, ROUND(SUM(CASE WHEN status = 'delivered' THEN total ELSE 0 END), 2) deliv_rev, ROUND(SUM(CASE WHEN status != 'canceled' THEN cost ELSE 0 END), 2) cost, SUM(status != 'canceled' AND src = 'pos') pos_n, ROUND(SUM(CASE WHEN status != 'canceled' AND src = 'pos' THEN total ELSE 0 END), 2) pos_rev FROM orders WHERE total IS NOT NULL AND day BETWEEN ? AND ? GROUP BY day";
   const TRUTH_ITEM = "SELECT o.day day, l.id id, SUM(l.qty) qty, ROUND(SUM(l.qty * l.price), 2) revenue, COUNT(DISTINCT l.no) orders, ROUND(SUM(l.qty * l.cost), 2) cost FROM oline l JOIN orders o ON o.no = l.no WHERE o.status != 'canceled' AND l.id != '' AND o.day BETWEEN ? AND ? GROUP BY o.day, l.id";
   const TRUTH_HOUR = "SELECT day, hour, SUM(status != 'canceled') orders, ROUND(SUM(CASE WHEN status != 'canceled' THEN total ELSE 0 END), 2) revenue FROM orders WHERE total IS NOT NULL AND day BETWEEN ? AND ? GROUP BY day, hour";
   const [td, sd, ti, si, th, sh] = await Promise.all([
@@ -1142,7 +1340,7 @@ async function verifyStats(env, from, to, fix) {
     Q(TRUTH_ITEM, from, to), Q("SELECT * FROM st_item WHERE day BETWEEN ? AND ? AND (qty != 0 OR orders != 0)", from, to),
     Q(TRUTH_HOUR, from, to), Q("SELECT * FROM st_hour WHERE day BETWEEN ? AND ? AND orders != 0", from, to),
   ]);
-  const F = ["orders", "revenue", "items", "card", "fees", "canceled", "deliv_n", "deliv_ms", "deliv_rev", "cost"];
+  const F = ["orders", "revenue", "items", "card", "fees", "canceled", "deliv_n", "deliv_ms", "deliv_rev", "cost", "pos_n", "pos_rev"];
   const diffs = [], sdm = {}, tdm = {};
   for (const r of sd) sdm[r.day] = r;
   for (const r of td) tdm[r.day] = r;
@@ -1157,7 +1355,7 @@ async function verifyStats(env, from, to, fix) {
   const th2 = keyed(th, (r) => r.day + "|" + r.hour), sh2 = keyed(sh, (r) => r.day + "|" + r.hour);
   let hourDiffs = 0;
   for (const k of new Set(Object.keys(th2).concat(Object.keys(sh2)))) if (Math.abs(Number((th2[k] || {}).orders || 0) - Number((sh2[k] || {}).orders || 0)) > 0 || Math.abs(Number((th2[k] || {}).revenue || 0) - Number((sh2[k] || {}).revenue || 0)) > 0.009) hourDiffs++;
-  const tp = await Q("SELECT a.id a, b.id b, COUNT(*) n FROM (SELECT DISTINCT no, id FROM oline WHERE id != '') a JOIN (SELECT DISTINCT no, id FROM oline WHERE id != '') b ON a.no = b.no AND a.id < b.id JOIN orders o ON o.no = a.no WHERE o.status != 'canceled' GROUP BY a.id, b.id");
+  const tp = await Q("SELECT a.id a, b.id b, COUNT(*) n FROM (SELECT DISTINCT no, id FROM oline WHERE id != '') a JOIN (SELECT DISTINCT no, id FROM oline WHERE id != '') b ON a.no = b.no AND a.id < b.id JOIN orders o ON o.no = a.no WHERE o.status != 'canceled' AND o.src != 'pos' GROUP BY a.id, b.id");
   const sp = await Q("SELECT a, b, n FROM st_pair WHERE n != 0");
   const tp2 = keyed(tp, (r) => r.a + "|" + r.b), sp2 = keyed(sp, (r) => r.a + "|" + r.b);
   let pairDiffs = 0;
@@ -1177,7 +1375,7 @@ async function verifyStats(env, from, to, fix) {
       P("DELETE FROM st_hour WHERE day BETWEEN ? AND ?", from, to),
       P("INSERT INTO st_hour (day, hour, orders, revenue) " + TRUTH_HOUR, from, to),
       P("DELETE FROM st_pair"),
-      P("INSERT INTO st_pair (a, b, n) SELECT a.id, b.id, COUNT(*) FROM (SELECT DISTINCT no, id FROM oline WHERE id != '') a JOIN (SELECT DISTINCT no, id FROM oline WHERE id != '') b ON a.no = b.no AND a.id < b.id JOIN orders o ON o.no = a.no WHERE o.status != 'canceled' GROUP BY a.id, b.id"),
+      P("INSERT INTO st_pair (a, b, n) SELECT a.id, b.id, COUNT(*) FROM (SELECT DISTINCT no, id FROM oline WHERE id != '') a JOIN (SELECT DISTINCT no, id FROM oline WHERE id != '') b ON a.no = b.no AND a.id < b.id JOIN orders o ON o.no = a.no WHERE o.status != 'canceled' AND o.src != 'pos' GROUP BY a.id, b.id"),
     ]);
     fixed = true;
   }
@@ -1437,15 +1635,27 @@ async function logSave(env, who, oldD, newD, stockSet, oldStock, costSet, body) 
 
 // ---------- كاش المندوب ----------
 // كل طلب كاش تم توصيله = فلوس عند المندوب. كل استلام تسجله الإدارة ينقص منها.
-async function readCash(env) {
+// كاش المناديب: الكاش اللي حصّله المندوب (بعد المحفظة والشبكة) يزيد اللي عنده، وكل استلام تسجله الإدارة له ينقص
+async function readCash(env, drvId) {
   await ensureSchema(env);
-  const rows=(await env.DB.prepare("SELECT o.no,o.total,o.pay,o.updated,COALESCE(d.at,o.updated) delivered_at,p.cash FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered'").all()).results||[];
+  const one = drvId != null && drvId !== "";
+  const rows=(await env.DB.prepare("SELECT o.no,o.total,o.pay,o.updated,IFNULL(o.drv,'') drv,COALESCE(d.at,o.updated) delivered_at,p.cash FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered'").all()).results||[];
   const transfers=(await env.DB.prepare('SELECT * FROM cash ORDER BY id DESC').all()).results||[];
-  const since=transfers.length ? Math.min(...transfers.map(x=>x.at)) : 0, daily={}; let owed=0;
-  for(const o of rows){const cash=o.cash==null?(o.pay==='cash'?moneyCents(o.total):0):o.cash; if(o.delivered_at>=since) owed+=cash;
-    if(o.delivered_at<Date.now()-14*864e5)continue; const day=riyadhDateAt(o.delivered_at); const r=daily[day]||(daily[day]={day,n:0,cash:0,got:0});if(cash){r.n++;r.cash+=cash/100;}}
-  for(const t of transfers){if(daily[t.day])daily[t.day].got+=t.amount;}
-  return {settlement:await env.DB.prepare('SELECT * FROM driver_settlements WHERE day=?').bind(riyadhDate()).first()||null,today:await dayReport(env,riyadhDate()),days:Object.values(daily).sort((a,b)=>b.day.localeCompare(a.day)),balance:round2(owed/100-transfers.reduce((v,t)=>v+t.amount,0)),since:since||null,history:transfers.filter(t=>t.amount).slice(0,30)};
+  const team = await staffList(env, "driver"), nm = staffNames(team), solo = await soleDriver(env);
+  const keyOf = (d) => solo && (d === '' || d === 'admin') ? solo : d;
+  const since=transfers.length ? Math.min(...transfers.map(x=>x.at)) : 0, daily={}, owed={}, got={};
+  for(const o of rows){const cash=o.cash==null?(o.pay==='cash'?moneyCents(o.total):0):o.cash; const k0=keyOf(o.drv); if(o.delivered_at>=since) owed[k0]=(owed[k0]||0)+cash;
+    if(one && k0!==drvId) continue;
+    if(o.delivered_at<Date.now()-14*864e5)continue; const day=riyadhDateAt(o.delivered_at); const r=daily[day]||(daily[day]={day,n:0,cash:0,got:0});if(cash){r.n++;r.cash=round2(r.cash+cash/100);}}
+  for(const t of transfers){ const k=keyOf(t.drv||'d0'); got[k]=round2((got[k]||0)+t.amount); if((!one||k===drvId)&&daily[t.day])daily[t.day].got=round2(daily[t.day].got+t.amount);}
+  const bal=(id)=>round2((owed[id]||0)/100-(got[id]||0));
+  const ids=new Set(team.filter((t)=>t.active).map((t)=>t.id).concat(Object.keys(owed),Object.keys(got)));
+  const drivers=[...ids].map((id)=>({id,name:id===''?'بدون مندوب':nm[id]||id,balance:bal(id),active:id===''||id==='admin'||!!team.find((t)=>t.id===id&&t.active)})).filter((x)=>x.active||Math.abs(x.balance)>0.009).filter((x)=>x.id!==''||Math.abs(x.balance)>0.009);
+  const balance=one?bal(drvId):round2(drivers.reduce((v,x)=>v+x.balance,0));
+  const day=riyadhDate();
+  const settlement=one?await env.DB.prepare('SELECT * FROM driver_settlements2 WHERE day=? AND drv=?').bind(day,drvId).first()||null:null;
+  const hist=transfers.filter((t)=>t.amount&&(!one||keyOf(t.drv||'d0')===drvId)).slice(0,30).map((t)=>({...t,drvName:nm[t.drv||'d0']||t.drv}));
+  return {settlement,today:await dayReport(env,day,one&&!solo?drvId:null),days:Object.values(daily).sort((a,b)=>b.day.localeCompare(a.day)),balance,since:since||null,history:hist,drivers};
 }
 
 // ---------- اليوم حتى الحين ----------
@@ -1454,13 +1664,14 @@ async function readToday(env) {
   const now = Date.now(), today = riyadhDate(), last = riyadhDate(-7), hr = riyadhHour(now);
   const Q = (q, ...a) => env.DB.prepare(q).bind(...a).all().then((r) => r.results || []);
   const [rows, open, cash] = await Promise.all([
-    Q("SELECT day, SUM(status != 'canceled') orders, ROUND(SUM(CASE WHEN status != 'canceled' THEN total ELSE 0 END), 2) revenue, ROUND(SUM(CASE WHEN status != 'canceled' THEN cost ELSE 0 END), 2) cost, SUM(status = 'canceled') canceled, SUM(status != 'canceled' AND pay = 'card') card FROM orders WHERE (day = ? OR (day = ? AND hour <= ?)) GROUP BY day", today, last, hr),
+    Q("SELECT day, SUM(status != 'canceled') orders, ROUND(SUM(CASE WHEN status != 'canceled' THEN total ELSE 0 END), 2) revenue, ROUND(SUM(CASE WHEN status != 'canceled' THEN cost ELSE 0 END), 2) cost, SUM(status = 'canceled') canceled, SUM(status != 'canceled' AND pay = 'card') card, SUM(status != 'canceled' AND src = 'pos') pos_n, ROUND(SUM(CASE WHEN status != 'canceled' AND src = 'pos' THEN total ELSE 0 END), 2) pos_rev FROM orders WHERE (day = ? OR (day = ? AND hour <= ?)) GROUP BY day", today, last, hr),
     Q("SELECT status, COUNT(*) n FROM orders WHERE status IN ('new','accepted','onway') GROUP BY status"),
     readCash(env),
   ]);
   const m = {}; for (const r of rows) m[r.day] = r;
   const hours = await Q("SELECT day, hour, SUM(status != 'canceled') orders FROM orders WHERE day IN (?, ?) GROUP BY day, hour", today, last);
-  return { today: m[today] || { orders: 0, revenue: 0, cost: 0, canceled: 0, card: 0 }, lastWeek: m[last] || { orders: 0, revenue: 0, cost: 0, canceled: 0, card: 0 }, hour: hr, open, hours, cashBalance: cash.balance, cashSince: cash.since };
+  const z = { orders: 0, revenue: 0, cost: 0, canceled: 0, card: 0, pos_n: 0, pos_rev: 0 };
+  return { today: m[today] || z, lastWeek: m[last] || z, hour: hr, open, hours, cashBalance: cash.balance, cashSince: cash.since, drivers: cash.drivers };
 }
 
 // ---------- تقرير آخر اليوم ----------
@@ -1513,14 +1724,15 @@ function distM(a1, o1, a2, o2) {
 }
 // الطريق أطول من الخط المستقيم (×1.4) وسرعة الحي تقريباً ٢٥ كم/س، وكل توصيلة قبلك تزيد ٤ دقايق
 function etaMin(m, before) { return Math.max(1, Math.round((m * 1.4) / (25000 / 60) + before * 4)); }
-async function driverFor(env, n, d) {
-  const loc = await env.DB.prepare("SELECT lat, lng, acc, at FROM dloc WHERE id = 1").first();
+async function driverFor(env, n, d, drv) {
+  const key = drv || "admin";
+  const loc = await env.DB.prepare("SELECT lat, lng, acc, at FROM dlocs WHERE drv = ?").bind(key).first();
   if (!loc || Date.now() - loc.at > LOC_FRESH_MS) return null;
   const out = { lat: loc.lat, lng: loc.lng, acc: loc.acc, at: loc.at };
   if (d.lat != null && d.lng != null && isFinite(d.lat) && isFinite(d.lng)) {
     const mine = distM(loc.lat, loc.lng, d.lat, d.lng);
-    // كم توصيلة قبلك: الطلبات اللي في الطريق وأقرب للمندوب منك
-    const rs = await env.DB.prepare("SELECT data FROM orders WHERE status = 'onway' AND no != ? LIMIT 20").bind(n).all();
+    // كم توصيلة قبلك: طلبات نفس المندوب اللي في الطريق وأقرب له منك
+    const rs = await env.DB.prepare("SELECT data FROM orders WHERE status = 'onway' AND no != ? AND IFNULL(drv, 'admin') = ? LIMIT 20").bind(n, key).all();
     let before = 0;
     for (const r of rs.results || []) { const o = safeJson(r.data); if (o.lat != null && isFinite(o.lat) && distM(loc.lat, loc.lng, o.lat, o.lng) < mine) before++; }
     Object.assign(out, { m: Math.round(mine), before, eta: etaMin(mine, before), near: mine <= NEAR_M });
@@ -1528,6 +1740,105 @@ async function driverFor(env, n, d) {
   return out;
 }
 
+// ---------- الموظفين: كل مندوب وكل كاشير له اسم ورقم سري ----------
+// الرقم ينحفظ مشفّر (نفس طريقة رقم المندوب القديم، فالرقم القديم يشتغل بدون تغيير)
+async function staffHash(env, pin) { return hashPin(env, "driver:" + pin); }
+async function whoIs(env, pin, body) {
+  pin = String(pin == null ? "" : pin);
+  if (!pin || pin.length > 12) return null;
+  if (await checkPin(env, pin)) return { role: "admin", id: "admin", name: staff(body) };
+  if (env.DB) {
+    await ensureSchema(env);
+    const r = await env.DB.prepare("SELECT id, name, role FROM staff WHERE pin = ? AND active = 1").bind(await staffHash(env, pin)).first();
+    return r ? { role: r.role, id: r.id, name: r.name } : null;
+  }
+  const stored = env.LOCKS ? await env.LOCKS.get("driver_pin") : null;
+  const expected = stored || (env.DRIVER_PIN ? await staffHash(env, String(env.DRIVER_PIN)) : "");
+  return expected && sameText(await staffHash(env, pin), expected) ? { role: "driver", id: "d0", name: "المندوب" } : null;
+}
+// لو المحل عنده مندوب واحد بس: كل الطلبات بدون مندوب محدد (أو اللي وصّلتها الإدارة) تنحسب عليه، مثل قبل
+async function soleDriver(env) {
+  const r = await env.DB.prepare("SELECT id FROM staff WHERE role = 'driver' AND active = 1 LIMIT 2").all();
+  const l = r.results || [];
+  return l.length <= 1 ? (l[0] ? l[0].id : "d0") : null;
+}
+async function staffList(env, role) {
+  const rs = await env.DB.prepare("SELECT id, name, role, active, created FROM staff WHERE (? = '' OR role = ?) ORDER BY created, id").bind(role || "", role || "").all();
+  return rs.results || [];
+}
+function staffNames(list) {
+  const m = { admin: "الإدارة", d0: "المندوب" };
+  for (const s of list || []) m[s.id] = s.name;
+  return m;
+}
+async function staffName(env, id) {
+  if (!id) return "";
+  if (id === "admin") return "الإدارة";
+  const r = await env.DB.prepare("SELECT name FROM staff WHERE id = ?").bind(id).first();
+  return r ? r.name : id === "d0" ? "المندوب" : "";
+}
+
+// ---------- نقاط البيع ----------
+// الأسعار من المتجر نفسه (نفس أسعار الموقع). الكاشير ما يغيّر سعر ولا يعطي خصم؛ الإدارة بس.
+function posSale(data, body, me) {
+  const byId = {};
+  for (const p of data.products || []) byId[p.id] = p;
+  const lines = [], open = [];
+  for (const x of Array.isArray(body.lines) ? body.lines.slice(0, 300) : []) {
+    const q = Math.floor(Number(x && x.qty));
+    if (!(q > 0 && q <= 999)) return { error: "bad_line" };
+    if (x.id) {
+      const p = byId[String(x.id)];
+      if (!p) return { error: "bad_line" };
+      let pr = Number(p.price);
+      if (x.price != null && x.price !== "" && round2(Number(x.price)) !== round2(pr)) {
+        if (me.role !== "admin") return { error: "price_locked" };
+        pr = Number(x.price);
+      }
+      if (!(pr >= 0 && pr < 100000)) return { error: "bad_line" };
+      const same = lines.find((l) => l.id === p.id && l.price === round2(pr));
+      if (same) same.qty += q; else lines.push({ id: p.id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), tag: "" });
+    } else {
+      // صنف مو مسجّل في المتجر (باركود جديد): الكاشير يكتب اسمه وسعره، ويطلع للإدارة عشان تضيفه
+      const name = String(x.name || "").trim().slice(0, 60) || "صنف", bc = String(x.bc || "").replace(/[^\w-]/g, "").slice(0, 40), pr = Number(x.price);
+      if (!(pr > 0 && pr < 100000)) return { error: "bad_line" };
+      lines.push({ id: "", name, unit: "", qty: q, price: round2(pr), tag: "صنف يدوي", bc });
+      open.push({ bc, name, price: round2(pr), qty: q });
+    }
+  }
+  if (!lines.length) return { error: "empty" };
+  const subtotal = round2(lines.reduce((s, l) => s + l.qty * l.price, 0));
+  const disc = round2(Number(body.discount) || 0);
+  if (disc < 0 || disc > subtotal) return { error: "bad_discount" };
+  if (disc && me.role !== "admin") return { error: "price_locked" };
+  const total = round2(subtotal - disc), pay = body.pay === "card" ? "card" : "cash";
+  const paid = pay === "cash" ? round2(body.paid == null || body.paid === "" ? total : Number(body.paid)) : total;
+  if (!(paid >= total - 0.001 && paid < 1e6)) return { error: "paid_short" };
+  return { rec: {
+    lines, subtotal, fee: 0, discount: disc, total, count: lines.reduce((s, l) => s + l.qty, 0), phone: "",
+    name: "", details: "", note: "", pay, paid, change: round2(paid - total), src: "pos", source: "pos", cashier: me.name, st: 1,
+  }, open };
+}
+function riyadhDayStart(ms) { const d = riyadhDateAt(ms); return Date.parse(d + "T00:00:00+03:00"); }
+// الوردية: من آخر إقفال صندوق (أو من بداية اليوم)
+async function readShift(env, cid, all) {
+  const now = Date.now(), dayStart = riyadhDayStart(now);
+  const last = all ? null : await env.DB.prepare("SELECT at FROM alog WHERE act = 'pos_close' AND ref = ? ORDER BY id DESC LIMIT 1").bind(cid).first();
+  const since = last && last.at > now - 24 * 3600e3 ? last.at : dayStart;
+  const rs = all
+    ? await env.DB.prepare("SELECT no, created, total, pay, status, items, drv, data FROM orders WHERE src = 'pos' AND created >= ? ORDER BY no DESC LIMIT 1000").bind(since).all()
+    : await env.DB.prepare("SELECT no, created, total, pay, status, items, drv, data FROM orders WHERE src = 'pos' AND created >= ? AND drv = ? ORDER BY no DESC LIMIT 1000").bind(since, cid).all();
+  const rows = rs.results || [];
+  const ok = rows.filter((r) => r.status !== "canceled");
+  const sum = (a) => round2(a.reduce((s, r) => s + Number(r.total || 0), 0));
+  const closes = await env.DB.prepare("SELECT at, who, info FROM alog WHERE act = 'pos_close' AND (? = '' OR ref = ?) ORDER BY id DESC LIMIT 10").bind(all ? "" : cid, all ? "" : cid).all();
+  return {
+    since, count: ok.length, total: sum(ok), cash: sum(ok.filter((r) => r.pay === "cash")), card: sum(ok.filter((r) => r.pay !== "cash")),
+    canceled: rows.length - ok.length,
+    sales: rows.slice(0, 60).map((r) => { const d = safeJson(r.data); return { no: "#" + (1000 + r.no), at: r.created, total: r.total, pay: r.pay, status: r.status, items: r.items, by: d.cashier || "", lines: (d.lines || []).map((l) => ({ name: l.name, qty: l.qty, price: l.price })), paid: d.paid, change: d.change, discount: d.discount || 0 }; }),
+    closes: (closes.results || []).map((c) => ({ at: c.at, who: c.who, ...safeJson(c.info) })),
+  };
+}
 
 // ---------- Staff accounts and overdue orders ----------
 const staffSchemas = new WeakSet();
@@ -1554,11 +1865,11 @@ async function staffPassword(password, salt) {
 }
 function publicStaff(u) { return { id: u.id, username: u.username, name: u.name, role: u.role }; }
 function staffMay(role, path, body) {
-  if (path === '/admin/staff' || path === '/admin/staff-save') return false;
-  if(role==='cashier')return ['/login','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/settlement-requests','/admin/settlement-confirm','/admin/payment','/admin/day-report'].includes(path);
+  if (path === '/admin/staff' || path === '/admin/staff-save' || path === '/admin/team-save') return false;
+  if(role==='cashier')return ['/pos/login','/pos/delivery-orders','/pos/delivery-receipt','/pos/delivery-issue','/login','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/settlement-requests','/admin/settlement-confirm','/admin/payment','/admin/day-report'].includes(path);
   if (role === 'preparer') return ['/login','/admin/prep','/admin/prep-save'].includes(path);
   if (role === 'manager') return !(path === '/save' && (body.newPin || body.newDriverPin));
-  return role === 'orders' && ['/login', '/admin/orders', '/admin/alerts', '/driver/status', '/driver/pending'].includes(path);
+  return role === 'orders' && ['/login', '/admin/orders', '/admin/alerts', '/driver/status', '/driver/pending', '/admin/assign', '/admin/team', '/pos/login', '/pos/sale', '/pos/shift', '/pos/close', '/pos/delivery-orders', '/pos/delivery-receipt', '/pos/delivery-issue'].includes(path);
 }
 function withoutCosts(value) {
   if (Array.isArray(value)) return value.map(withoutCosts);
@@ -1639,12 +1950,13 @@ async function statusFinance(env,no,oldStatus,newStatus,rec,who,now){
   if(oldStatus==='delivered'||newStatus==='delivered')st.push(...await cashbackStatements(env,no,rec,p,newStatus==='delivered',who,newStatus==='delivered'));
   return st;
 }
-async function dayReport(env,day){
+async function dayReport(env,day,drvId){
+  const dq=drvId!=null?" AND IFNULL(o.drv,'')=?":"", dargs=drvId!=null?[drvId]:[];
   const valid=/^\d{4}-\d{2}-\d{2}$/.test(day)&&!isNaN(Date.parse(day+'T00:00:00Z'))&&new Date(day+'T00:00:00Z').toISOString().slice(0,10)===day;if(!valid)return null;
-  const rows=(await env.DB.prepare("SELECT o.no,o.total,o.pay,o.data,COALESCE(d.at,o.updated) delivered_at,p.cash,p.card,p.wallet FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND date((COALESCE(d.at,o.updated)+10800000)/1000,'unixepoch')=? ORDER BY delivered_at DESC").bind(day).all()).results||[];
+  const rows=(await env.DB.prepare("SELECT o.no,o.total,o.pay,o.data,COALESCE(d.at,o.updated) delivered_at,p.cash,p.card,p.wallet FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND date((COALESCE(d.at,o.updated)+10800000)/1000,'unixepoch')=?"+dq+" ORDER BY delivered_at DESC").bind(day,...dargs).all()).results||[];
   const report={day,count:rows.length,sales:0,cash:0,card:0,wallet:0,orders:[]};
   for(const r of rows){const p=paymentOf(r,r.cash==null?null:r);report.sales+=moneyCents(r.total);report.cash+=p.cash;report.card+=p.card;report.wallet+=p.wallet;report.orders.push({no:'#'+(1000+r.no),total:r.total,at:r.delivered_at,cash:p.cash,card:p.card,wallet:p.wallet});}
-  const transfers=await env.DB.prepare('SELECT COALESCE(SUM(amount),0) n FROM cash WHERE day=?').bind(day).first();
+  const transfers=drvId!=null?await env.DB.prepare("SELECT COALESCE(SUM(amount),0) n FROM cash WHERE day=? AND drv=?").bind(day,drvId).first():await env.DB.prepare('SELECT COALESCE(SUM(amount),0) n FROM cash WHERE day=?').bind(day).first();
   const rewards=await env.DB.prepare("SELECT COALESCE(SUM(a.amount),0) n FROM cashback_awards a JOIN orders o ON o.no=a.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND date((COALESCE(d.at,o.updated)+10800000)/1000,'unixepoch')=?").bind(day).first();report.cashback=rewards.n;
   report.received=Math.round(transfers.n*100);report.outstanding=report.cash-report.received;
   report.closure=await env.DB.prepare('SELECT * FROM day_closures WHERE day=?').bind(day).first()||null;
@@ -1654,20 +1966,23 @@ async function operationsRoute(env,path,body,who,role){
   const fail=(code,status=400)=>({ok:false,code,status});const P=(q,...a)=>env.DB.prepare(q).bind(...a);
   if(path.startsWith('/admin/pos-'))return posRoute(env,path,body,who,role);
   if(path==='/admin/settlement-requests'){
-    const requests=(await P('SELECT * FROM driver_settlements ORDER BY day DESC LIMIT 14').all()).results||[];
+    const nm=staffNames(await staffList(env,'driver'));
+    const requests=((await P('SELECT * FROM driver_settlements2 ORDER BY day DESC, requested_at DESC LIMIT 30').all()).results||[]).map((r)=>({...r,drvName:nm[r.drv]||r.drv}));
     return {ok:true,cash:await readCash(env),requests};
   }
   if(path==='/admin/settlement-confirm'){
-    const request=await P('SELECT * FROM driver_settlements WHERE day=?',String(body.day||'')).first();
+    const did=body.drv?String(body.drv):(await soleDriver(env))||((await P('SELECT drv FROM driver_settlements2 WHERE day=? ORDER BY requested_at DESC LIMIT 1',String(body.day||'')).first())||{}).drv||'d0';
+    const request=await P('SELECT * FROM driver_settlements2 WHERE day=? AND drv=?',String(body.day||''),did).first();
     if(!request)return fail('not_found',404);
     if(request.state==='confirmed')return {ok:true,repeated:true};
     if(Number(body.revision)!==request.revision)return fail('conflict',409);
     const actual=moneyCents(body.actual),note=String(body.note||'').trim().slice(0,200);
     if(actual===null)return fail('bad_amount');
     if(actual!==request.expected&&!note)return fail('reason_required');
-    const cash=await readCash(env),snapshot=Math.round(cash.balance*100);
-    const guard=P("SELECT CASE WHEN (SELECT state FROM driver_settlements WHERE day=?)!='pending' OR (SELECT revision FROM driver_settlements WHERE day=?)!=? OR ((SELECT COALESCE(SUM(COALESCE(p.cash,CASE WHEN o.pay='cash' THEN CAST(ROUND(o.total*100) AS INTEGER) ELSE 0 END)),0) FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND COALESCE(d.at,o.updated)>=COALESCE((SELECT MIN(at) FROM cash),0))-(SELECT CAST(ROUND(COALESCE(SUM(amount),0)*100) AS INTEGER) FROM cash))!=? THEN json('settlement_conflict') ELSE 1 END",request.day,request.day,request.revision,snapshot);
-    try{await env.DB.batch([guard,P('INSERT INTO cash(at,day,who,amount,note) VALUES(?,?,?,?,?)',Date.now(),riyadhDate(),who,actual/100,'تسوية المندوب ليوم '+request.day+(note?' — '+note:'')),P("UPDATE driver_settlements SET state='confirmed',actual=?,confirmed_at=?,confirmed_by=?,note=? WHERE day=?",actual,Date.now(),who,note,request.day),logStmt(env,who,'driver_settlement',request.day,{expected:request.expected,actual,difference:actual-request.expected})]);}catch{return fail('conflict',409);}
+    const cash=await readCash(env,did),snapshot=Math.round(cash.balance*100),soloC=await soleDriver(env);
+    // رصيد هالمندوب لازم ما يتغير بين القراءة والتأكيد (طلب انوصّل أو استلام انسجّل بنفس اللحظة)
+    const guard=P("SELECT CASE WHEN (SELECT state FROM driver_settlements2 WHERE day=? AND drv=?)!='pending' OR (SELECT revision FROM driver_settlements2 WHERE day=? AND drv=?)!=? OR ((SELECT COALESCE(SUM(COALESCE(p.cash,CASE WHEN o.pay='cash' THEN CAST(ROUND(o.total*100) AS INTEGER) ELSE 0 END)),0) FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND (?=1 OR IFNULL(o.drv,'')=?) AND COALESCE(d.at,o.updated)>=COALESCE((SELECT MIN(at) FROM cash),0))-(SELECT CAST(ROUND(COALESCE(SUM(amount),0)*100) AS INTEGER) FROM cash WHERE (?=1 OR drv=?)))!=? THEN json('settlement_conflict') ELSE 1 END",request.day,did,request.day,did,request.revision,soloC?1:0,did,soloC?1:0,did,snapshot);
+    try{await env.DB.batch([guard,P('INSERT INTO cash(at,day,who,amount,note,drv) VALUES(?,?,?,?,?,?)',Date.now(),riyadhDate(),who,actual/100,'تسوية المندوب ليوم '+request.day+(note?' — '+note:''),did),P("UPDATE driver_settlements2 SET state='confirmed',actual=?,confirmed_at=?,confirmed_by=?,note=? WHERE day=? AND drv=?",actual,Date.now(),who,note,request.day,did),logStmt(env,who,'driver_settlement',request.day,{expected:request.expected,actual,difference:actual-request.expected})]);}catch{return fail('conflict',409);}
     return {ok:true,difference:actual-request.expected};
   }
   if(path==='/admin/payment'){
@@ -1699,8 +2014,12 @@ async function operationsRoute(env,path,body,who,role){
     if(report.closure)return fail('already_closed',409);
     const actual=moneyCents(body.actual),note=String(body.note||'').trim().slice(0,200);if(actual===null||!note)return fail('bad_amount');
     if(Number(body.expected)!==report.outstanding)return fail('conflict',409);
+    // أكثر من مندوب: الاستلام ينسجل لكل مندوب لحاله، والمجموع لازم يساوي المبلغ
+    const parts=Array.isArray(body.parts)?body.parts.slice(0,20).map((p)=>({drv:String(p&&p.drv||''),c:moneyCents(p&&p.amount)})):null;
+    if(parts&&(parts.some((p)=>p.c===null||!p.drv)||parts.reduce((v,p)=>v+p.c,0)!==actual))return fail('bad_amount');
+    const receipts=parts&&parts.some((p)=>p.c)?parts.filter((p)=>p.c).map((p)=>P('INSERT INTO cash(at,day,who,amount,note,drv) VALUES(?,?,?,?,?,?)',Date.now(),day,who,p.c/100,'إقفال اليوم: '+note,p.drv)):[P('INSERT INTO cash(at,day,who,amount,note) VALUES(?,?,?,?,?)',Date.now(),day,who,actual/100,'إقفال اليوم: '+note)];
     const snapshotGuard=P("SELECT CASE WHEN (SELECT COALESCE(SUM(COALESCE(p.cash,CASE WHEN o.pay='cash' THEN CAST(ROUND(o.total*100) AS INTEGER) ELSE 0 END)),0) FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND date((COALESCE(d.at,o.updated)+10800000)/1000,'unixepoch')=?) != ? OR (SELECT CAST(ROUND(COALESCE(SUM(amount),0)*100) AS INTEGER) FROM cash WHERE day=?) != ? THEN json('closure_conflict') ELSE 1 END",day,report.cash,day,report.received);
-    try{await env.DB.batch([snapshotGuard,P('INSERT INTO day_closures(day,at,who,expected,actual,cash_total,card_total,wallet_total,sales,orders,note) VALUES(?,?,?,?,?,?,?,?,?,?,?)',day,Date.now(),who,report.outstanding,actual,report.cash,report.card,report.wallet,report.sales,report.count,note),P('INSERT INTO cash(at,day,who,amount,note) VALUES(?,?,?,?,?)',Date.now(),day,who,actual/100,'إقفال اليوم: '+note)]);}catch{return fail('conflict',409);}
+    try{await env.DB.batch([snapshotGuard,P('INSERT INTO day_closures(day,at,who,expected,actual,cash_total,card_total,wallet_total,sales,orders,note) VALUES(?,?,?,?,?,?,?,?,?,?,?)',day,Date.now(),who,report.outstanding,actual,report.cash,report.card,report.wallet,report.sales,report.count,note),...receipts]);}catch{return fail('conflict',409);}
     return {ok:true,difference:actual-report.outstanding};
   }
   if(path==='/admin/prep'){
@@ -1776,13 +2095,13 @@ async function posRoute(env,path,body,who,role){
     return {ok:true,settings:await P('SELECT * FROM pos_settings WHERE id=1').first()};
   }
   if(path==='/admin/pos-orders'){
-    const rows=(await P("SELECT o.no,o.status,o.created,o.updated,o.data,p.id receipt_id,p.revision receipt_revision,p.fingerprint receipt_fingerprint FROM orders o LEFT JOIN pos_receipts p ON p.id=(SELECT id FROM pos_receipts q WHERE q.no=o.no ORDER BY q.revision DESC LIMIT 1) WHERE o.status IN ('new','accepted','onway') OR o.updated>? ORDER BY o.no DESC LIMIT 200",Date.now()-2*864e5).all()).results||[];
+    const rows=(await P("SELECT o.no,o.status,o.created,o.updated,o.data,p.id receipt_id,p.revision receipt_revision,p.fingerprint receipt_fingerprint FROM orders o LEFT JOIN pos_receipts p ON p.id=(SELECT id FROM pos_receipts q WHERE q.no=o.no ORDER BY q.revision DESC LIMIT 1) WHERE o.src!='pos' AND (o.status IN ('new','accepted','onway') OR o.updated>?) ORDER BY o.no DESC LIMIT 200",Date.now()-2*864e5).all()).results||[];
     const orders=[];
     for(const r of rows){const d=safeJson(r.data),receipt=r.receipt_id?{id:r.receipt_id,revision:r.receipt_revision,fingerprint:r.receipt_fingerprint}:null,document=posDocument(r.data,r.no);orders.push({no:document.orderNo,status:r.status,created:r.created,name:d.name||'',phone:d.phone||'',count:d.count,total:document.total,receipt:receipt?{number:'OH-'+receipt.id,revision:receipt.revision,current:r.status!=='canceled'&&receipt.fingerprint===await tokenHash(JSON.stringify(document))}:null});}
     return {ok:true,orders};
   }
-  const no=Number(String(body.no||'').replace(/\D/g,''))-1000,row=await P('SELECT no,status,created,data FROM orders WHERE no=?',no).first();
-  if(!row)return fail('not_found',404);if(row.status==='canceled')return fail('canceled');
+  const no=Number(String(body.no||'').replace(/\D/g,''))-1000,row=await P('SELECT no,status,created,data,src FROM orders WHERE no=?',no).first();
+  if(!row)return fail('not_found',404);if(row.src==='pos')return fail('not_delivery');if(row.status==='canceled')return fail('canceled');
   const document=posDocument(row.data,no),fingerprint=await tokenHash(JSON.stringify(document)),prior=await latestPosReceipt(env,no);
   if(path==='/admin/pos-issue'){
     if(body.fingerprint!==fingerprint)return fail('conflict',409);

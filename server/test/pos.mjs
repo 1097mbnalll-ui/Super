@@ -87,6 +87,19 @@ test('optional cashier approval blocks unapproved departure and locks edits afte
  assert.equal((await call('/admin/pos-receipt',{session:cashierToken,no:pending})).current,true);
 });
 
+test('the existing PIN-based POS opens delivery receipts without another login or sale',async()=>{
+ assert.equal((await call('/admin/team-save',{...owner,name:'كاشير برقم',role:'cashier',newPin:'3333'})).ok,true);
+ assert.equal((await call('/pos/login',{pin:'3333'})).ok,true);
+ const delivery=await order();
+ const listed=await call('/pos/delivery-orders',{pin:'3333'});assert.equal(listed.ok,true);assert.ok(listed.orders.find(o=>o.no===delivery.orderNo));
+ const view=await call('/pos/delivery-receipt',{pin:'3333',no:delivery.orderNo});assert.equal(view.document.total,7300);
+ assert.equal((await call('/pos/delivery-issue',{pin:'3333',no:delivery.orderNo,fingerprint:view.fingerprint,reviewed:true})).ok,true);
+ const retail=await call('/pos/sale',{pin:'3333',cid:'pos-retail-test-id',lines:[{id:product.id,qty:1}],pay:'cash'});
+ assert.equal(retail.ok,true);
+ assert.ok(!(await call('/pos/delivery-orders',{pin:'3333'})).orders.find(o=>o.no===retail.no));
+ assert.equal((await call('/pos/delivery-receipt',{pin:'3333',no:retail.no})).code,'not_delivery');
+});
+
 test('canceled orders cannot be printed or approved at the POS',async()=>{
  assert.equal((await call('/driver/status',{...owner,no,status:'canceled'})).ok,true);
  assert.equal((await call('/admin/pos-receipt',{session:cashierToken,no})).code,'canceled');
