@@ -29,7 +29,7 @@ async function scenario(port, label, env) {
   l = java(base, 'loc', '1357', '999', '1', '5', 'false'); ok(l.ok === false && l.code === 'bad_loc', 'إحداثيات خاطئة تنرفض');
   const bad = java(base, 'pending', '0000'); ok(bad.ok === false && bad.status === 401 && bad.code === 'bad_pin', 'رقم خاطئ: ' + JSON.stringify(bad));
   const off = java(base, 'locoff', '1357'); ok(off.ok === true, 'مسح الموقع');
-  const ad = await call(base, '/admin/driver-loc', { pin: '2468' }); ok(ad.ok && ad.loc === null, 'الموقع انمسح من الخادم');
+  const ad = await call(base, '/admin/driver-loc', { pin: '2468' }); ok(ad.ok && !(ad.locs || []).some((l) => l.drv === 'd0') && !(ad.locs ? false : ad.loc), 'موقع المندوب انمسح من الخادم (موقع الإدارة اللي شاركته يبقى لحاله)');
   return base;
 }
 const base1 = await scenario(8799, 'الخادم الجديد');
