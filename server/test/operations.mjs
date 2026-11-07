@@ -173,6 +173,15 @@ test('a concurrent collection correction prevents a stale cancellation refund',a
  assert.equal((await call('/admin/wallet',{...owner,phone})).balance,balance-130);
 });
 
+test('wallet supports a simple six-digit PIN with hashing and session revocation',async()=>{
+ assert.equal((await call('/admin/wallet-account',{...owner,phone,password:'12345'})).code,'bad_password');
+ assert.equal((await call('/admin/wallet-account',{...owner,phone,password:'482619'})).ok,true);
+ assert.equal((await call('/wallet/me',{token:walletToken})).code,'session_expired');
+ assert.equal((await call('/wallet/login',{phone,password:'482618'})).code,'bad_credentials');
+ const login=await call('/wallet/login',{phone,password:'482619'});assert.equal(login.ok,true);walletToken=login.token;
+ assert.notEqual(sql.prepare('SELECT password_hash FROM wallets WHERE phone=?').get(phone).password_hash,'482619');
+});
+
 test('orders staff cannot alter money or wallets; logout revokes wallet access',async()=>{
  for(const path of ['/admin/payment','/admin/day-close','/admin/day-report','/admin/wallet-credit','/admin/wallet-account','/admin/cashback'])assert.equal((await call(path,{session:ordersToken,...owner})).status,403,path);
  assert.equal((await call('/wallet/logout',{token:walletToken})).ok,true);

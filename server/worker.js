@@ -1690,7 +1690,7 @@ async function operationsRoute(env,path,body,who,role){
   if(path.startsWith('/admin/wallet')){
     const phone=normPhone(body.phone);if(!phone)return fail('bad_phone');
     if(path==='/admin/wallet-account'){
-      const password=String(body.password||'');if(password.length<10||password.length>128)return fail('bad_password');
+      const password=String(body.password||'');if(!/^\d{6,12}$/.test(password) && (password.length<10||password.length>128))return fail('bad_password');
       const salt=randomHex(16);await env.DB.batch([P('INSERT INTO wallets(phone,balance,password_hash,salt) VALUES(?,0,?,?) ON CONFLICT(phone) DO UPDATE SET password_hash=excluded.password_hash,salt=excluded.salt',phone,await staffPassword(password,salt),salt),P('DELETE FROM wallet_sessions WHERE phone=?',phone),logStmt(env,who,'wallet_account',phone.slice(-4),{})]);
       return {ok:true};
     }
