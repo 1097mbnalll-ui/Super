@@ -25,14 +25,14 @@ ok(r.ok && r.role === 'driver' && r.id === 'd0' && r.name === 'المندوب', 
 await call('/save', { ...A, data });
 
 // ٢) الإدارة تضيف مندوب ثاني وكاشير
-r = await call('/admin/staff-save', { ...A, name: 'سعيد', role: 'driver', newPin: '2222' }); ok(r.ok && r.staff.length === 2, 'إضافة مندوب ثاني');
+r = await call('/admin/team-save', { ...A, name: 'سعيد', role: 'driver', newPin: '2222' }); ok(r.ok && r.staff.length === 2, 'إضافة مندوب ثاني');
 const said = r.staff.find((s) => s.name === 'سعيد').id;
-r = await call('/admin/staff-save', { ...A, name: 'فهد الكاشير', role: 'cashier', newPin: '3333' }); ok(r.ok, 'إضافة كاشير');
+r = await call('/admin/team-save', { ...A, name: 'فهد الكاشير', role: 'cashier', newPin: '3333' }); ok(r.ok, 'إضافة كاشير');
 const fahd = r.staff.find((s) => s.role === 'cashier').id;
-ok((await call('/admin/staff-save', { ...A, name: 'مكرر', role: 'driver', newPin: '2222' })).code === 'pin_taken', 'رقم مكرر ينرفض');
-ok((await call('/admin/staff-save', { ...A, name: 'مكرر', role: 'driver', newPin: '2468' })).code === 'pin_taken', 'رقم الإدارة ما ينعطى لموظف');
-ok((await call('/admin/staff-save', { ...A, name: 'x', role: 'driver' })).code === 'pin_required', 'موظف جديد بدون رقم ينرفض');
-r = await call('/admin/staff-save', { ...A, id: 'd0', name: 'محمد' }); ok(r.ok && r.staff.find((s) => s.id === 'd0').name === 'محمد', 'تغيير اسم المندوب القديم');
+ok((await call('/admin/team-save', { ...A, name: 'مكرر', role: 'driver', newPin: '2222' })).code === 'pin_taken', 'رقم مكرر ينرفض');
+ok((await call('/admin/team-save', { ...A, name: 'مكرر', role: 'driver', newPin: '2468' })).code === 'pin_taken', 'رقم الإدارة ما ينعطى لموظف');
+ok((await call('/admin/team-save', { ...A, name: 'x', role: 'driver' })).code === 'pin_required', 'موظف جديد بدون رقم ينرفض');
+r = await call('/admin/team-save', { ...A, id: 'd0', name: 'محمد' }); ok(r.ok && r.staff.find((s) => s.id === 'd0').name === 'محمد', 'تغيير اسم المندوب القديم');
 ok((await call('/driver/login', { pin: '1357' })).name === 'محمد', 'الرقم القديم صار باسم محمد');
 ok((await call('/pos/login', { pin: '1357' })).code === 'bad_pin', 'رقم المندوب ما يفتح نقاط البيع');
 ok((await call('/driver/login', { pin: '3333' })).code === 'bad_pin', 'رقم الكاشير ما يفتح صفحة المندوب');
@@ -112,6 +112,24 @@ r = await call('/driver/status', { ...A, no: s1.no, status: 'canceled' }); ok(r.
 const stock2 = (await (await w.fetch(new Request('https://x.dev/stock', { headers: { Origin: O } }), env, { waitUntil() {} })).json()).stock || {};
 ok(stock2.dairy3 === stock0.dairy3, 'المرتجع رجّع المخزون');
 const td = await call('/admin/today', A); ok(td.today.pos_n === 2 && td.today.pos_rev === round(s2.total + s3.total), 'اليوم حتى الحين: المحل لحاله ' + td.today.pos_n + ' بيعة / ' + td.today.pos_rev);
+// تسوية لكل مندوب، وإقفال اليوم بمبلغ لكل مندوب
+await call('/admin/team-save', { ...A, id: said, name: 'سعيد', active: true });
+const o5 = (await mkOrder('0555555555', 'خامس', '24.8300,46.8100')).order.no;
+await call('/driver/status', { pin: '2222', no: o5, status: 'accepted' }); await call('/driver/status', { pin: '2222', no: o5, status: 'onway' }); await call('/driver/status', { pin: '2222', no: o5, status: 'delivered' });
+const cs = await call('/driver/cash', { pin: '2222' }), cm = await call('/driver/cash', { pin: '1357' });
+const allDay = await call('/admin/day-report', A);
+ok(cs.balance > 0 && cs.today && cs.today.cash >= Math.round(cs.balance * 100) && cs.today.cash < allDay.cash, 'سعيد: باقي يسلّم ' + cs.balance + '، وجمع اليوم ' + cs.today.cash / 100 + ' من أصل ' + allDay.cash / 100 + ' للمحل (تقريره له هو بس)');
+const rq = await call('/driver/settlement-request', { pin: '2222' }); ok(rq.ok && rq.settlement.drv === said, 'سعيد طلب تسوية باسمه');
+const rq2 = await call('/driver/settlement-request', { pin: '1357' }); ok(rq2.ok && rq2.settlement.drv === 'd0', 'ومحمد طلب تسوية باسمه بنفس اليوم');
+const sr = await call('/admin/settlement-requests', A); ok(sr.requests.length === 2 && sr.requests.every((r) => r.drvName), 'الإدارة تشوف طلبين: ' + sr.requests.map((r) => r.drvName).join('، '));
+const cf = await call('/admin/settlement-confirm', { ...A, day: rq.settlement.day, drv: said, revision: rq.settlement.revision, actual: cs.balance });
+ok(cf.ok, 'تأكيد استلام كاش سعيد');
+ok((await call('/driver/cash', { pin: '2222' })).balance === 0 && (await call('/driver/cash', { pin: '1357' })).balance === cm.balance, 'سعيد صار صفر، ومحمد ما تأثر: ' + cm.balance);
+const dr = await call('/admin/day-report', A);
+const dc = await call('/admin/day-close', { ...A, day: dr.day, expected: dr.outstanding, actual: cm.balance, parts: [{ drv: 'd0', amount: cm.balance }, { drv: said, amount: 0 }], note: 'إقفال تجريبي' });
+ok(dc.ok, 'إقفال اليوم بمبلغ لكل مندوب');
+ok((await call('/driver/cash', { pin: '1357' })).balance === 0, 'بعد الإقفال: محمد صفر');
+ok((await call('/admin/day-close', { ...A, day: dr.day, expected: dr.outstanding, actual: 5, parts: [{ drv: 'd0', amount: 1 }], note: 'x' })).code !== undefined, 'مجموع الأجزاء لازم يساوي المبلغ');
 // منطقة التوصيل
 data.store.shop = [24.8414, 46.8299]; data.store.maxKm = 5; await call('/save', { ...A, data });
 const far = await call('/order', { items: { dairy3: 1 }, phone: '0557777777', name: 'بعيد', lat: 25.0, lng: 46.83 });
@@ -120,7 +138,7 @@ const near = await call('/order', { items: { dairy3: 1 }, phone: '0557777778', n
 ok(near.ok, 'طلب من داخل المنطقة ينقبل');
 const v = await call('/admin/verify', A); ok(v.clean, 'فحص الأرقام سليم بعد كل هذا: ' + JSON.stringify({ d: v.dayDiffCount, i: v.itemDiffs, h: v.hourDiffs, p: v.pairDiffs }));
 // موظف موقوف ما يدخل
-await call('/admin/staff-save', { ...A, id: said, name: 'سعيد', active: false });
+await call('/admin/team-save', { ...A, id: said, name: 'سعيد', active: false });
 ok((await call('/driver/login', { pin: '2222' })).code === 'bad_pin', 'المندوب الموقوف ما يقدر يدخل');
 const lg = (await call('/admin/log', A)).log.map((x) => x.act);
 ok(['staff_add', 'claim', 'assign', 'pos_sale', 'pos_close', 'status'].every((a) => lg.includes(a) || a === 'claim'), 'كل شي ينسجل في سجل العمليات');
