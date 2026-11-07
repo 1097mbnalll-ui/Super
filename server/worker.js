@@ -38,8 +38,9 @@ export default {
       "Access-Control-Max-Age": "86400",
       "Vary": "Origin",
     };
+    let principal = null;
     const reply = (status, body) =>
-      new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8" } });
+      new Response(JSON.stringify(principal?.role === "orders" ? withoutCosts(body) : body), { status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     try {
@@ -83,6 +84,18 @@ export default {
       const priced = priceOrder(data, body);
       if (priced.error) return reply(400, { ok: false, code: priced.error });
       const record = orderRecord(priced, body);
+      const walletPart = moneyCents(body.walletAmount || 0);
+      if (walletPart === null || walletPart > moneyCents(record.total)) return reply(400,{ok:false,code:'bad_payment'});
+      if (walletPart) {
+        if(!env.DB) return reply(503,{ok:false,code:'wallet_unavailable'});
+        const account=await walletSession(env,body.walletToken);
+        if(!account || account.phone !== record.phone) return reply(401,{ok:false,code:'wallet_login'});
+        if(!operationId({requestId:body.walletRequestId}))return reply(400,{ok:false,code:'bad_payment'});
+        const previous=await env.DB.prepare('SELECT o.no,o.total,o.phone FROM wallet_order_keys k JOIN orders o ON o.no=k.no WHERE k.request_id=?').bind(body.walletRequestId).first();
+        if(previous){if(previous.phone!==account.phone)return reply(409,{ok:false,code:'conflict'});return reply(200,{ok:true,orderNo:'#'+(1000+previous.no),total:previous.total,track:true,repeated:true});}
+        if(account.balance < walletPart) return reply(409,{ok:false,code:'wallet_balance'});
+        record.walletCents=walletPart;record.walletRequestId=body.walletRequestId;
+      }
       let orderNo, stockBefore = {};
       if (env.DB) {
         try {
@@ -156,12 +169,66 @@ export default {
       return reply(200, { ok: true });
     }
 
+    if (path === '/wallet/login' || path === '/wallet/me' || path === '/wallet/logout') {
+      if (!env.DB) return reply(503, { ok: false, code: 'unavailable' });
+      await ensureSchema(env);
+      if (path === '/wallet/login') {
+        const locked = await isLocked(env, ip); if (locked) return reply(429, { ok:false, code:'locked', retryAfter:locked });
+        const phone = normPhone(body.phone), password = String(body.password || '');
+        const account = phone ? await env.DB.prepare('SELECT * FROM wallets WHERE phone = ?').bind(phone).first() : null;
+        const hash = await staffPassword(password.length <= 128 ? password : '', account?.salt || 'unknown-wallet-salt');
+        if (!account?.password_hash || !sameText(hash, account.password_hash)) { await recordFail(env, ip); return reply(401,{ok:false,code:'bad_credentials'}); }
+        await clearFails(env, ip); const token=randomHex(32), expires=Date.now()+8*3600e3;
+        await env.DB.batch([env.DB.prepare('DELETE FROM wallet_sessions WHERE expires <= ?').bind(Date.now()),env.DB.prepare('INSERT INTO wallet_sessions(token_hash,phone,expires) VALUES(?,?,?)').bind(await tokenHash(token),phone,expires)]);
+        return reply(200,{ok:true,token,phone,balance:Math.max(0,account.balance)/100});
+      }
+      const account=await walletSession(env,body.token);
+      if(!account) return reply(401,{ok:false,code:'session_expired'});
+      if(path==='/wallet/logout'){await env.DB.prepare('DELETE FROM wallet_sessions WHERE token_hash=?').bind(await tokenHash(body.token)).run();return reply(200,{ok:true});}
+      const history=(await env.DB.prepare('SELECT at, delta, kind, note FROM wallet_ledger WHERE phone = ? ORDER BY id DESC LIMIT 30').bind(account.phone).all()).results || [];
+      return reply(200,{ok:true,phone:account.phone,balance:Math.max(0,account.balance)/100,history});
+    }
     const locked = await isLocked(env, ip);
     if (locked) return reply(429, { ok: false, code: "locked", retryAfter: locked });
 
+    // Employee sessions are checked on every request; disabling an account revokes access immediately.
+    if (path === "/staff/login") {
+      if (!env.DB) return reply(503, { ok: false, code: "staff_unavailable" });
+      await ensureStaffSchema(env);
+      const username = String(body.username || "").trim().toLowerCase();
+      const password = String(body.password || "");
+      const user = await env.DB.prepare("SELECT * FROM staff_users WHERE username = ?").bind(username).first();
+      const validInput = password.length >= 10 && password.length <= 128;
+      const hash = await staffPassword(validInput ? password : "invalid-password", user?.salt || "unknown-account-salt");
+      if (!validInput || !user || !user.active || !sameText(hash, user.password_hash)) {
+        await recordFail(env, ip);
+        return reply(401, { ok: false, code: "bad_credentials" });
+      }
+      await clearFails(env, ip);
+      const token = randomHex(32), expires = Date.now() + 8 * 3600e3;
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM staff_sessions WHERE expires <= ?").bind(Date.now()),
+        env.DB.prepare("INSERT INTO staff_sessions (token_hash, user_id, expires) VALUES (?, ?, ?)").bind(await tokenHash(token), user.id, expires),
+      ]);
+      return reply(200, { ok: true, token, expires, user: publicStaff(user) });
+    }
+    if (body.session) {
+      if (!env.DB || !/^[a-f0-9]{64}$/.test(String(body.session))) return reply(401, { ok: false, code: "session_expired" });
+      await ensureStaffSchema(env);
+      principal = await env.DB.prepare("SELECT u.* FROM staff_sessions s JOIN staff_users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires > ? AND u.active = 1")
+        .bind(await tokenHash(body.session), Date.now()).first();
+      if (!principal) return reply(401, { ok: false, code: "session_expired" });
+      if (path === "/staff/logout") {
+        await env.DB.prepare("DELETE FROM staff_sessions WHERE token_hash = ?").bind(await tokenHash(body.session)).run();
+        return reply(200, { ok: true });
+      }
+      body.by = "موظف #" + principal.id + " · " + principal.name;
+      if (!staffMay(principal.role, path, body)) return reply(403, { ok: false, code: "forbidden" });
+    }
+
     // صفحة المندوب: رقم المندوب أو رقم الإدارة
     if (path.startsWith("/driver/")) {
-      const who = await checkDriver(env, String(body.pin || ""));
+      const who = principal ? "admin" : await checkDriver(env, String(body.pin || ""));
       if (!who) { await recordFail(env, ip); return reply(401, { ok: false, code: "bad_pin" }); }
       await clearFails(env, ip);
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
@@ -176,7 +243,7 @@ export default {
       if (path === "/driver/orders") {
         const since = Date.now() - 3 * 864e5;
         const rs = await env.DB.prepare("SELECT no, created, updated, status, data FROM orders WHERE created > ? OR status IN ('new','accepted','onway') ORDER BY no DESC LIMIT 150").bind(since).all();
-        const orders = (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status }));
+        const orders = await enrichOperations(env, (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status })));
         return reply(200, { ok: true, orders, now: Date.now() });
       }
       // المندوب: منتج ناقص (بدّله بمشابه أو شيله). الأسعار من المتجر، مو من الجوال.
@@ -250,6 +317,7 @@ export default {
         const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
         const st = String(body.status || "");
         if (!(n > 0) || !["new", "accepted", "onway", "delivered", "canceled"].includes(st)) return reply(400, { ok: false, code: "bad_request" });
+        if(st === 'onway') { const prep=await env.DB.prepare('SELECT stage FROM prep_orders WHERE no=?').bind(n).first(); if(prep && prep.stage!=='ready')return reply(409,{ok:false,code:'not_ready'}); }
         let res;
         try { res = await changeStatus(env, n, st, Date.now(), who === "admin" ? staff(body) : "المندوب"); } catch { return reply(502, { ok: false, code: "db" }); }
         if (!res) return reply(404, { ok: false, code: "not_found" });
@@ -262,15 +330,71 @@ export default {
       return reply(404, { ok: false, code: "not_found" });
     }
 
-    const pinOk = await checkPin(env, String(body.pin || ""));
+    const pinOk = !!principal || await checkPin(env, String(body.pin || ""));
     if (!pinOk) {
       await recordFail(env, ip);
       return reply(401, { ok: false, code: "bad_pin" });
     }
     await clearFails(env, ip);
 
-    if (path === "/login") return reply(200, { ok: true });
+    // Legacy owner PIN remains available; staff cannot grant themselves privileges.
+    if (path === "/login") return reply(200, { ok: true, role: principal?.role || "owner" });
+    if (path === "/admin/staff" || path === "/admin/staff-save") {
+      if (principal) return reply(403, { ok: false, code: "forbidden" });
+      if (!env.DB) return reply(503, { ok: false, code: "staff_unavailable" });
+      await ensureStaffSchema(env);
+      if (path === "/admin/staff") {
+        const rows = await env.DB.prepare("SELECT id, username, name, role, active FROM staff_users ORDER BY username").all();
+        return reply(200, { ok: true, users: rows.results || [] });
+      }
+      const id = Number(body.id) || 0, username = String(body.username || "").trim().toLowerCase();
+      const name = String(body.name || "").trim(), password = String(body.password || "");
+      if (!/^[a-z0-9._-]{3,32}$/.test(username) || !name || name.length > 30 || !["manager", "orders", "preparer"].includes(body.role) ||
+          (id ? password && (password.length < 10 || password.length > 128) : password.length < 10 || password.length > 128)) {
+        return reply(400, { ok: false, code: "bad_staff" });
+      }
+      const existing = id ? await env.DB.prepare("SELECT id FROM staff_users WHERE id = ?").bind(id).first() : null;
+      if (id && !existing) return reply(404, { ok: false, code: "not_found" });
+      const duplicate = await env.DB.prepare("SELECT id FROM staff_users WHERE username = ? AND id != ?").bind(username, id).first();
+      if (duplicate) return reply(409, { ok: false, code: "username_taken" });
+      const active = body.active === false ? 0 : 1;
+      if (id) {
+        const statements = [env.DB.prepare("UPDATE staff_users SET username = ?, name = ?, role = ?, active = ? WHERE id = ?").bind(username, name, body.role, active, id),
+          env.DB.prepare("DELETE FROM staff_sessions WHERE user_id = ?").bind(id)];
+        if (password) {
+          const salt = randomHex(16);
+          statements.push(env.DB.prepare("UPDATE staff_users SET password_hash = ?, salt = ? WHERE id = ?").bind(await staffPassword(password, salt), salt, id));
+        }
+        await env.DB.batch(statements);
+      } else {
+        const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM staff_users").first();
+        if (count.n >= 100) return reply(400, { ok: false, code: "staff_limit" });
+        const salt = randomHex(16);
+        await env.DB.prepare("INSERT INTO staff_users (username, name, role, active, password_hash, salt) VALUES (?, ?, ?, ?, ?, ?)")
+          .bind(username, name, body.role, active, await staffPassword(password, salt), salt).run();
+      }
+      await ensureSchema(env);
+      await logStmt(env, "صاحب المتجر", "staff_account", username, { role: body.role, active: !!active, reset: !!password }).run();
+      return reply(200, { ok: true });
+    }
+    if (path === "/admin/alerts") {
+      if (!env.DB) return reply(503, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const now = Date.now();
+      const rs = await env.DB.prepare(`SELECT o.no, o.created, o.updated, o.status, o.data,
+        (SELECT MAX(a.at) FROM alog a WHERE a.act = 'status' AND a.ref = '#' || (1000 + o.no) AND json_extract(a.info, '$.to') = o.status) AS stage_started
+        FROM orders o WHERE o.status IN ('new', 'accepted', 'onway') ORDER BY o.created`).all();
+      const orders = (rs.results || []).map(r => ({ ...safeJson(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, stageStarted: r.stage_started ?? (r.status === "new" ? r.created : r.updated), status: r.status }))
+        .map(o => ({ ...o, ...orderDelay(o, now) })).filter(o => o.late);
+      return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
+    }
 
+    if (['/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
+      if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
+      await ensureSchema(env);
+      const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner');
+      return reply(result.status || 200, result);
+    }
     if (path === "/admin/stock") {
       if (!env.DB) return reply(200, { ok: true, stock: {}, costs: {}, hasDB: false });
       return reply(200, { ok: true, stock: await readStock(env), costs: await readCosts(env), hasDB: true });
@@ -348,7 +472,7 @@ export default {
       const before = bn > 1000 ? bn - 1000 : 1e12;
       const since = Number(body.since) || 0;
       const rs = await env.DB.prepare("SELECT no, created, updated, status, data, anon FROM orders WHERE no < ? AND created >= ? ORDER BY no DESC LIMIT ?").bind(before, since, lim).all();
-      const orders = (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, anon: !!r.anon }));
+      const orders = await enrichOperations(env, (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, anon: !!r.anon })));
       return reply(200, { ok: true, orders, more: orders.length === lim, now: Date.now() });
     }
     // طلب جاء بالاتصال أو الواتساب أو في المحل: الموظف يدخله من الإدارة
@@ -495,6 +619,7 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS pcost (id TEXT PRIMARY KEY, cost REAL NOT NULL)",
     "CREATE TABLE IF NOT EXISTS winback (ch TEXT PRIMARY KEY, at INTEGER NOT NULL, who TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 1)",
     "CREATE TABLE IF NOT EXISTS alog (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, who TEXT NOT NULL, act TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', info TEXT NOT NULL DEFAULT '{}')",
+    "CREATE INDEX IF NOT EXISTS alog_order_status ON alog(ref, act, at)",
     "CREATE TABLE IF NOT EXISTS cash (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, day TEXT NOT NULL, who TEXT NOT NULL, amount REAL NOT NULL, note TEXT NOT NULL DEFAULT '')",
     "CREATE TABLE IF NOT EXISTS st_item (day TEXT NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, revenue REAL NOT NULL, orders INTEGER NOT NULL, PRIMARY KEY (day, id))",
     "CREATE TABLE IF NOT EXISTS st_pair (a TEXT NOT NULL, b TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (a, b))",
@@ -528,6 +653,7 @@ async function ensureSchema(env) {
   const now0 = Date.now();
   extra.push(env.DB.prepare("INSERT INTO cash (at, day, who, amount, note) SELECT ?, ?, 'النظام', 0, 'بداية الحساب' WHERE NOT EXISTS (SELECT 1 FROM cash)").bind(now0, riyadhDateAt(now0)));
   await env.DB.batch(extra);
+  await ensureOperations(env);
   schemaReady = true;
 }
 function orderRecord(o, body) {
@@ -557,6 +683,13 @@ async function dbInsertOrder(env, rec, need, now, force, log) {
     st.push(P("SELECT CASE WHEN qty < ? THEN json('stock') ELSE 1 END x FROM stock WHERE id = ?", need[id], id));
     st.push(P("UPDATE stock SET qty = qty - ? WHERE id = ?", need[id], id));
   }
+  if (rec.walletCents) {
+    st.push(P(`INSERT INTO wallet_order_keys(request_id,no) VALUES(?,${NO})`,rec.walletRequestId));
+    st.push(...walletMove(env, rec.phone, -rec.walletCents, 'payment', null, 'العميل', 'دفع طلب', 'checkout_'+rec.walletRequestId));
+    st.push(P(`UPDATE wallet_ledger SET no=${NO} WHERE request_id=?`,'checkout_'+rec.walletRequestId));
+    const cash=rec.pay==='cash' ? moneyCents(rec.total)-rec.walletCents : 0, card=rec.pay==='card' ? moneyCents(rec.total)-rec.walletCents : 0;
+    st.push(P(`INSERT INTO payment_splits(no,cash,card,wallet,revision,at,who) VALUES(${NO},?,?,?,?,?,?)`,cash,card,rec.walletCents,1,now,'العميل'));
+  }
   st.push(...statsStmts(env, rec, day, hour, 1, 0));
   await env.DB.batch(st);
   const row = await env.DB.prepare("SELECT MAX(no) no FROM orders WHERE created = ? AND ch = ?").bind(now, ch).first();
@@ -577,7 +710,9 @@ async function changeStatus(env, n, st, now = Date.now(), who = "") {
   let rec = {}; try { rec = JSON.parse(old.data); } catch {}
   const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created), counted = !!rec.st;
   const dms = st === "delivered" ? Math.max(0, now - old.created) : 0;
-  const stmts = [P("UPDATE orders SET status = ?, updated = ?, dms = ? WHERE no = ?", st, now, dms, n)];
+  const finance = await statusFinance(env,n,old.status,st,rec,who,now);
+  const handoff = st === 'onway' ? [P("SELECT CASE WHEN EXISTS(SELECT 1 FROM prep_orders WHERE no=? AND stage!='ready') THEN json('not_ready') ELSE 1 END",n)] : [];
+  const stmts = [...handoff, P("SELECT CASE WHEN status != ? THEN json('concurrent_status') ELSE 1 END FROM orders WHERE no = ?",old.status,n), ...finance, P("UPDATE orders SET status = ?, updated = ?, dms = ? WHERE no = ?", st, now, dms, n)];
   if (who) stmts.push(logStmt(env, who, "status", "#" + (1000 + n), { from: old.status, to: st, total: Number(rec.total || 0) }));
   if ((st === "canceled") !== (old.status === "canceled")) {
     const back = st === "canceled";
@@ -599,6 +734,8 @@ async function editOrder(env, data, body, who) {
   if (!old) return { error: "not_found" };
   if (old.status === "canceled") return { error: "canceled" };
   let rec; try { rec = JSON.parse(old.data); } catch { return { error: "bad_order" }; }
+  const split = await env.DB.prepare('SELECT * FROM payment_splits WHERE no = ?').bind(n).first();
+  if (old.status === 'delivered') return {error:'payment_locked'};
   const byId = {}; for (const p of data.products || []) byId[p.id] = p;
   const oldBy = {}; for (const l of rec.lines || []) oldBy[l.id] = l;
   const lines = [];
@@ -616,8 +753,16 @@ async function editOrder(env, data, body, who) {
   await withCost(env, nr, true);
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created);
-  const stmts = [P("UPDATE orders SET data = ?, total = ?, fee = ?, items = ?, updated = ?, day = ?, hour = ?, cost = ? WHERE no = ?", JSON.stringify(nr), nr.total, fee, nr.count, Date.now(), day, hour, costOf(nr), n),
-    P("DELETE FROM oline WHERE no = ?", n)];
+  const stmts = [P("SELECT CASE WHEN status != ? OR data != ? THEN json('order_conflict') ELSE 1 END FROM orders WHERE no=?",old.status,old.data,n), P("UPDATE orders SET data = ?, total = ?, fee = ?, items = ?, updated = ?, day = ?, hour = ?, cost = ? WHERE no = ?", JSON.stringify(nr), nr.total, fee, nr.count, Date.now(), day, hour, costOf(nr), n),
+    P("DELETE FROM oline WHERE no = ?", n), P("DELETE FROM prep_orders WHERE no = ?", n)];
+  if (split) {
+    const nextWallet=Math.min(split.wallet,moneyCents(nr.total));
+    stmts.unshift(P("SELECT CASE WHEN (SELECT revision FROM payment_splits WHERE no=?) != ? THEN json('payment_conflict') ELSE 1 END",n,split.revision));
+    if(nextWallet<split.wallet)stmts.push(...walletMove(env,normPhone(rec.phone),split.wallet-nextWallet,'refund',n,who,'تخفيض إجمالي الطلب',randomHex(16)));
+    stmts.push(paymentStatement(env,n,{wallet:nextWallet,cash:rec.pay==='cash'?moneyCents(nr.total)-nextWallet:0,card:rec.pay==='card'?moneyCents(nr.total)-nextWallet:0},split.revision+1,who));
+    nr.walletCents=nextWallet;
+    stmts.push(P("UPDATE orders SET data=? WHERE no=?",JSON.stringify(nr),n));
+  }
   lines.forEach((l, k) => stmts.push(P("INSERT INTO oline (no, k, id, qty, price, cost) VALUES (?, ?, ?, ?, ?, ?)", n, k, l.id, l.qty, l.price, Number(l.cost || 0))));
   if (who) stmts.push(logStmt(env, who, "order_edit", "#" + (1000 + n), { before: Number(rec.total || 0), after: nr.total }));
   if (rec.st) stmts.push(...statsStmts(env, rec, day, hour, -1, 0));
@@ -1087,7 +1232,10 @@ async function readStats(env, days) {
     Q("SELECT id, SUM(views) views, SUM(carts) carts FROM st_view WHERE day >= ? GROUP BY id", from),
     Q("SELECT q, SUM(n) n, SUM(miss) miss FROM st_search WHERE day >= ? GROUP BY q ORDER BY n DESC LIMIT 80", from),
     Q("SELECT COUNT(*) total, SUM(f >= ?) fresh, SUM(f >= ? AND f < ?) freshPrev, SUM(l >= ?) active, SUM(n >= 2) loyal, SUM(n >= 2 AND l < ?) gone FROM (SELECT MIN(day) f, MAX(day) l, COUNT(*) n FROM orders WHERE status != 'canceled' AND ch != '' AND day <= ? GROUP BY ch)", from, prev, from, from, riyadhDate(-30), riyadhDate()),
-    Q("SELECT MAX(tail) tail, MIN(day) first, MAX(day) last, COUNT(*) orders, ROUND(SUM(total), 2) revenue FROM orders WHERE status != 'canceled' AND ch != '' GROUP BY ch ORDER BY revenue DESC LIMIT 15"),
+    Q(`SELECT a.tail, a.first, a.last, a.orders, a.revenue, o.phone, json_extract(o.data, '$.name') AS name
+      FROM (SELECT ch, MAX(tail) tail, MIN(day) first, MAX(day) last, COUNT(*) orders, ROUND(SUM(total), 2) revenue FROM orders WHERE status != 'canceled' AND ch != '' GROUP BY ch ORDER BY revenue DESC LIMIT 15) a
+      LEFT JOIN orders o ON o.no = (SELECT MAX(r.no) FROM orders r WHERE r.ch = a.ch AND r.phone != '' AND r.anon = 0)
+      ORDER BY a.revenue DESC`),
   ]);
   const withId = {};
   for (const r of all) withId[r.id] = r.orders;
@@ -1277,17 +1425,14 @@ async function logSave(env, who, oldD, newD, stockSet, oldStock, costSet, body) 
 // ---------- كاش المندوب ----------
 // كل طلب كاش تم توصيله = فلوس عند المندوب. كل استلام تسجله الإدارة ينقص منها.
 async function readCash(env) {
-  const D = "date((updated + 10800000) / 1000, 'unixepoch')";
-  const Q = (q, ...a) => env.DB.prepare(q).bind(...a).all().then((r) => r.results || []);
-  const [days, got, tot, hist] = await Promise.all([
-    Q(`SELECT ${D} day, COUNT(*) n, ROUND(SUM(total), 2) cash FROM orders WHERE status = 'delivered' AND pay = 'cash' AND updated > ? GROUP BY day ORDER BY day DESC`, Date.now() - 14 * 864e5),
-    Q("SELECT day, ROUND(SUM(amount), 2) got FROM cash WHERE at > ? GROUP BY day", Date.now() - 14 * 864e5),
-    Q("SELECT (SELECT IFNULL(SUM(total), 0) FROM orders WHERE status = 'delivered' AND pay = 'cash' AND updated >= IFNULL((SELECT MIN(at) FROM cash), 0)) owed, (SELECT IFNULL(SUM(amount), 0) FROM cash) got, (SELECT MIN(at) FROM cash) since"),
-    Q("SELECT at, who, amount, note FROM cash WHERE amount != 0 ORDER BY id DESC LIMIT 30"),
-  ]);
-  const gm = {}; for (const g of got) gm[g.day] = g.got;
-  const t = tot[0] || {};
-  return { days: days.map((d) => ({ ...d, got: gm[d.day] || 0 })), balance: round2(Number(t.owed || 0) - Number(t.got || 0)), since: t.since || null, history: hist };
+  await ensureSchema(env);
+  const rows=(await env.DB.prepare("SELECT o.no,o.total,o.pay,o.updated,COALESCE(d.at,o.updated) delivered_at,p.cash FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered'").all()).results||[];
+  const transfers=(await env.DB.prepare('SELECT * FROM cash ORDER BY id DESC').all()).results||[];
+  const since=transfers.length ? Math.min(...transfers.map(x=>x.at)) : 0, daily={}; let owed=0;
+  for(const o of rows){const cash=o.cash==null?(o.pay==='cash'?moneyCents(o.total):0):o.cash; if(o.delivered_at>=since) owed+=cash;
+    if(o.delivered_at<Date.now()-14*864e5)continue; const day=riyadhDateAt(o.delivered_at); const r=daily[day]||(daily[day]={day,n:0,cash:0,got:0});if(cash){r.n++;r.cash+=cash/100;}}
+  for(const t of transfers){if(daily[t.day])daily[t.day].got+=t.amount;}
+  return {today:await dayReport(env,riyadhDate()),days:Object.values(daily).sort((a,b)=>b.day.localeCompare(a.day)),balance:round2(owed/100-transfers.reduce((v,t)=>v+t.amount,0)),since:since||null,history:transfers.filter(t=>t.amount).slice(0,30)};
 }
 
 // ---------- اليوم حتى الحين ----------
@@ -1368,4 +1513,209 @@ async function driverFor(env, n, d) {
     Object.assign(out, { m: Math.round(mine), before, eta: etaMin(mine, before), near: mine <= NEAR_M });
   }
   return out;
+}
+
+
+// ---------- Staff accounts and overdue orders ----------
+const staffSchemas = new WeakSet();
+async function ensureStaffSchema(env) {
+  if (staffSchemas.has(env.DB)) return;
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS staff_session_user ON staff_sessions(user_id)"),
+  ]);
+  const definition = await env.DB.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'staff_users'").first();
+  if (!definition.sql.includes("'preparer'")) await env.DB.batch([
+    env.DB.prepare("CREATE TABLE staff_users_next (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
+    env.DB.prepare("INSERT INTO staff_users_next SELECT * FROM staff_users"), env.DB.prepare("DROP TABLE staff_users"), env.DB.prepare("ALTER TABLE staff_users_next RENAME TO staff_users")
+  ]);
+  staffSchemas.add(env.DB);
+}
+function randomHex(n) { return Array.from(crypto.getRandomValues(new Uint8Array(n)), b => b.toString(16).padStart(2, '0')).join(''); }
+async function tokenHash(token) { return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))), b => b.toString(16).padStart(2, '0')).join(''); }
+async function staffPassword(password, salt) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: 100000, hash: 'SHA-256' }, key, 256);
+  return Array.from(new Uint8Array(bits), b => b.toString(16).padStart(2, '0')).join('');
+}
+function publicStaff(u) { return { id: u.id, username: u.username, name: u.name, role: u.role }; }
+function staffMay(role, path, body) {
+  if (path === '/admin/staff' || path === '/admin/staff-save') return false;
+  if (role === 'preparer') return ['/login','/admin/prep','/admin/prep-save'].includes(path);
+  if (role === 'manager') return !(path === '/save' && (body.newPin || body.newDriverPin));
+  return role === 'orders' && ['/login', '/admin/orders', '/admin/alerts', '/driver/status', '/driver/pending'].includes(path);
+}
+function withoutCosts(value) {
+  if (Array.isArray(value)) return value.map(withoutCosts);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value).filter(([k]) => !['cost', 'costs', 'profit'].includes(k)).map(([k,v]) => [k, withoutCosts(v)]));
+}
+function orderDelay(o, now) {
+  const limit = { new: 10, accepted: 30, onway: 45 }[o.status];
+  const elapsed = Math.max(0, now - (o.stageStarted ?? (o.status === 'new' ? o.created : o.updated)));
+  return { late: !!limit && elapsed >= limit * 60000, waitingMinutes: Math.floor(elapsed / 60000), limitMinutes: limit || 0 };
+}
+
+// All monetary balances below use integer halalas. Sales and collection remain separate.
+const operationSchemas = new WeakSet();
+async function ensureOperations(env) {
+  if(operationSchemas.has(env.DB)) return;
+  await env.DB.batch([
+    "CREATE TABLE IF NOT EXISTS payment_splits(no INTEGER PRIMARY KEY,cash INTEGER NOT NULL CHECK(cash>=0),card INTEGER NOT NULL CHECK(card>=0),wallet INTEGER NOT NULL CHECK(wallet>=0),revision INTEGER NOT NULL,at INTEGER NOT NULL,who TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS wallet_order_keys(request_id TEXT PRIMARY KEY,no INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS delivery_times(no INTEGER PRIMARY KEY,at INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS collection_changes(id INTEGER PRIMARY KEY AUTOINCREMENT,request_id TEXT UNIQUE NOT NULL,no INTEGER NOT NULL,at INTEGER NOT NULL,who TEXT NOT NULL,note TEXT NOT NULL,before_json TEXT NOT NULL,after_json TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS day_closures(day TEXT PRIMARY KEY,at INTEGER NOT NULL,who TEXT NOT NULL,expected INTEGER NOT NULL,actual INTEGER NOT NULL,cash_total INTEGER NOT NULL,card_total INTEGER NOT NULL,wallet_total INTEGER NOT NULL,sales INTEGER NOT NULL,orders INTEGER NOT NULL,note TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS prep_orders(no INTEGER PRIMARY KEY,stage TEXT NOT NULL CHECK(stage IN ('preparing','ready')),checks TEXT NOT NULL,updated INTEGER NOT NULL,who TEXT NOT NULL,version INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS wallets(phone TEXT PRIMARY KEY,balance INTEGER NOT NULL DEFAULT 0,password_hash TEXT,salt TEXT)",
+    "CREATE TABLE IF NOT EXISTS wallet_sessions(token_hash TEXT PRIMARY KEY,phone TEXT NOT NULL,expires INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS wallet_ledger(id INTEGER PRIMARY KEY AUTOINCREMENT,request_id TEXT UNIQUE NOT NULL,phone TEXT NOT NULL,delta INTEGER NOT NULL,kind TEXT NOT NULL,no INTEGER,at INTEGER NOT NULL,who TEXT NOT NULL,note TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS cashback_policy(id INTEGER PRIMARY KEY CHECK(id=1),enabled INTEGER NOT NULL,basis_points INTEGER NOT NULL,cap INTEGER NOT NULL)",
+    "INSERT OR IGNORE INTO cashback_policy VALUES(1,0,0,0)",
+    "CREATE TABLE IF NOT EXISTS cashback_awards(no INTEGER PRIMARY KEY,amount INTEGER NOT NULL,phone TEXT NOT NULL,basis_points INTEGER NOT NULL,cap INTEGER NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS wallet_history ON wallet_ledger(phone,id)",
+  ].map(q=>env.DB.prepare(q)));
+  operationSchemas.add(env.DB);
+}
+function moneyCents(value) {
+  if(typeof value==='boolean'||value===null||typeof value==='object')return null;
+  const n=Number(value); if(!Number.isFinite(n)||n<0||n>1e7)return null;
+  const cents=Math.round(n*100);return Math.abs(n*100-cents)>1e-6?null:cents;
+}
+function operationId(body){return typeof body.requestId==='string'&&/^[a-zA-Z0-9_-]{12,100}$/.test(body.requestId)?body.requestId:null;}
+function paymentOf(row,split){return split||{cash:row.pay==='cash'?moneyCents(row.total):0,card:row.pay==='card'?moneyCents(row.total):0,wallet:0,revision:0};}
+function paymentStatement(env,no,payment,revision,who){return env.DB.prepare('INSERT INTO payment_splits(no,cash,card,wallet,revision,at,who) VALUES(?,?,?,?,?,?,?) ON CONFLICT(no) DO UPDATE SET cash=excluded.cash,card=excluded.card,wallet=excluded.wallet,revision=excluded.revision,at=excluded.at,who=excluded.who').bind(no,payment.cash,payment.card,payment.wallet,revision,Date.now(),who);}
+function walletMove(env,phone,delta,kind,no,who,note,requestId,allowDebt=false){
+  const P=(q,...a)=>env.DB.prepare(q).bind(...a);
+  const statements=[P('INSERT OR IGNORE INTO wallets(phone,balance) VALUES(?,0)',phone)];
+  if(delta<0&&!allowDebt)statements.push(P("SELECT CASE WHEN balance < ? THEN json('wallet_balance') ELSE 1 END FROM wallets WHERE phone=?",-delta,phone));
+  statements.push(P('UPDATE wallets SET balance=balance+? WHERE phone=?',delta,phone),P('INSERT INTO wallet_ledger(request_id,phone,delta,kind,no,at,who,note) VALUES(?,?,?,?,?,?,?,?)',requestId,phone,delta,kind,no,Date.now(),who,note));return statements;
+}
+async function walletSession(env,token){
+  if(!token||!/^[a-f0-9]{64}$/.test(String(token)))return null;
+  await ensureOperations(env);
+  return env.DB.prepare('SELECT w.phone,w.balance FROM wallet_sessions s JOIN wallets w ON w.phone=s.phone WHERE s.token_hash=? AND s.expires>?').bind(await tokenHash(token),Date.now()).first();
+}
+async function cashbackStatements(env,no,rec,payment,delivered,who,firstDelivery=false){
+  const prior=await env.DB.prepare('SELECT * FROM cashback_awards WHERE no=?').bind(no).first();
+  const policy=prior||(firstDelivery?await env.DB.prepare('SELECT * FROM cashback_policy WHERE id=1').first():{enabled:0,basis_points:0,cap:0});
+  const rate=prior?prior.basis_points:policy.enabled?policy.basis_points:0, cap=policy.cap;
+  const phone=prior?.phone||normPhone(rec.phone); if(!phone)return [];
+  const base=Math.max(0,payment.cash+payment.card-(moneyCents(rec.fee)||0));
+  const target=delivered?Math.min(cap,Math.floor(base*rate/10000)):0;
+  const delta=target-(prior?.amount||0), statements=[];
+  if(delta)statements.push(...walletMove(env,phone,delta,delta>0?'cashback':'cashback_reversal',no,who,'تسوية كاش باك',randomHex(16),true));
+  statements.push(env.DB.prepare('INSERT INTO cashback_awards(no,amount,phone,basis_points,cap) VALUES(?,?,?,?,?) ON CONFLICT(no) DO UPDATE SET amount=excluded.amount').bind(no,target,phone,rate,cap));return statements;
+}
+async function statusFinance(env,no,oldStatus,newStatus,rec,who,now){
+  const split=await env.DB.prepare('SELECT * FROM payment_splits WHERE no=?').bind(no).first();const p=paymentOf(rec,split), st=[env.DB.prepare("SELECT CASE WHEN COALESCE((SELECT revision FROM payment_splits WHERE no=?),0) != ? THEN json('payment_conflict') ELSE 1 END").bind(no,split?.revision||0)];
+  if(p.wallet && (oldStatus==='canceled')!==(newStatus==='canceled')){
+    const phone=await walletOrderPhone(env,no,rec.phone);if(!phone)throw Error('wallet_phone');
+    st.push(...walletMove(env,phone,newStatus==='canceled'?p.wallet:-p.wallet,newStatus==='canceled'?'refund':'payment',no,who,'تغيير حالة الطلب',randomHex(16)));
+  }
+  if(newStatus==='delivered'){
+    st.push(env.DB.prepare('INSERT INTO delivery_times(no,at) VALUES(?,?) ON CONFLICT(no) DO UPDATE SET at=excluded.at').bind(no,now));
+    if(!split)st.push(paymentStatement(env,no,p,1,who));
+  }
+  if(oldStatus==='delivered'||newStatus==='delivered')st.push(...await cashbackStatements(env,no,rec,p,newStatus==='delivered',who,newStatus==='delivered'));
+  return st;
+}
+async function dayReport(env,day){
+  const valid=/^\d{4}-\d{2}-\d{2}$/.test(day)&&!isNaN(Date.parse(day+'T00:00:00Z'))&&new Date(day+'T00:00:00Z').toISOString().slice(0,10)===day;if(!valid)return null;
+  const rows=(await env.DB.prepare("SELECT o.no,o.total,o.pay,o.data,COALESCE(d.at,o.updated) delivered_at,p.cash,p.card,p.wallet FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND date((COALESCE(d.at,o.updated)+10800000)/1000,'unixepoch')=? ORDER BY delivered_at DESC").bind(day).all()).results||[];
+  const report={day,count:rows.length,sales:0,cash:0,card:0,wallet:0,orders:[]};
+  for(const r of rows){const p=paymentOf(r,r.cash==null?null:r);report.sales+=moneyCents(r.total);report.cash+=p.cash;report.card+=p.card;report.wallet+=p.wallet;report.orders.push({no:'#'+(1000+r.no),total:r.total,at:r.delivered_at,cash:p.cash,card:p.card,wallet:p.wallet});}
+  const transfers=await env.DB.prepare('SELECT COALESCE(SUM(amount),0) n FROM cash WHERE day=?').bind(day).first();
+  const rewards=await env.DB.prepare("SELECT COALESCE(SUM(a.amount),0) n FROM cashback_awards a JOIN orders o ON o.no=a.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND date((COALESCE(d.at,o.updated)+10800000)/1000,'unixepoch')=?").bind(day).first();report.cashback=rewards.n;
+  report.received=Math.round(transfers.n*100);report.outstanding=report.cash-report.received;
+  report.closure=await env.DB.prepare('SELECT * FROM day_closures WHERE day=?').bind(day).first()||null;
+  report.adjustment=report.closure?report.cash-report.closure.cash_total:0;report.adjustments=report.closure?{cash:report.adjustment,card:report.card-report.closure.card_total,wallet:report.wallet-report.closure.wallet_total,sales:report.sales-report.closure.sales,count:report.count-report.closure.orders}:{cash:0,card:0,wallet:0,sales:0,count:0};return report;
+}
+async function operationsRoute(env,path,body,who,role){
+  const fail=(code,status=400)=>({ok:false,code,status});const P=(q,...a)=>env.DB.prepare(q).bind(...a);
+  if(path==='/admin/payment'){
+    const no=Number(String(body.no||'').replace(/\D/g,''))-1000;
+    const row=await P('SELECT * FROM orders WHERE no=?',no).first();if(!row)return fail('not_found',404);
+    const old=await P('SELECT * FROM payment_splits WHERE no=?',no).first();const current=paymentOf(row,old);
+    const history=(await P('SELECT at,who,note,before_json,after_json FROM collection_changes WHERE no=? ORDER BY id DESC LIMIT 30',no).all()).results||[];
+    if(!body.save)return {ok:true,payment:current,total:moneyCents(row.total),history};
+    const id=operationId(body),note=String(body.note||'').trim().slice(0,200);if(!id||!note)return fail('reason_required');
+    const repeated=await P('SELECT no,after_json FROM collection_changes WHERE request_id=?',id).first();
+    if(repeated){const actual=safeJson(repeated.after_json);return repeated.no===no&&actual.cash===moneyCents(body.cash)&&actual.card===moneyCents(body.card)&&actual.wallet===moneyCents(body.wallet)?{ok:true,repeated:true}:fail('conflict',409);}
+    if(row.status!=='delivered')return fail('not_delivered');
+    const next={cash:moneyCents(body.cash),card:moneyCents(body.card),wallet:moneyCents(body.wallet)};
+    if(Object.values(next).some(v=>v===null)||next.cash+next.card+next.wallet!==moneyCents(row.total))return fail('payment_total');
+    if(Number(body.revision)!==current.revision)return fail('conflict',409);
+    const rec=safeJson(row.data),phone=await walletOrderPhone(env,no,row.phone);if(next.wallet!==current.wallet&&!phone)return fail('wallet_phone');
+    const statements=[P("SELECT CASE WHEN COALESCE((SELECT revision FROM payment_splits WHERE no=?),0) != ? OR (SELECT status FROM orders WHERE no=?) != 'delivered' THEN json('payment_conflict') ELSE 1 END",no,current.revision,no)];
+    const delta=current.wallet-next.wallet;
+    if(delta<0){const balance=await P('SELECT balance FROM wallets WHERE phone=?',phone).first();if(!balance||balance.balance < -delta)return fail('wallet_balance',409);}
+    if(delta)statements.push(...walletMove(env,phone,delta,delta<0?'payment':'refund',no,who,note,'pay_'+id));
+    statements.push(paymentStatement(env,no,next,current.revision+1,who),P('INSERT INTO collection_changes(request_id,no,at,who,note,before_json,after_json) VALUES(?,?,?,?,?,?,?)',id,no,Date.now(),who,note,JSON.stringify(current),JSON.stringify(next)),...await cashbackStatements(env,no,rec,next,true,who));
+    try{await env.DB.batch(statements);}catch(e){return fail(String(e.message).includes('wallet_balance')?'wallet_balance':'conflict',409);}
+    return {ok:true,payment:{...next,revision:current.revision+1}};
+  }
+  if(path==='/admin/day-report'||path==='/admin/day-close'){
+    const day=String(body.day||riyadhDate()),report=await dayReport(env,day);if(!report)return fail('bad_day');
+    if(path==='/admin/day-report')return {ok:true,...report};
+    if(day>riyadhDate())return fail('future_day');
+    if(report.closure)return fail('already_closed',409);
+    const actual=moneyCents(body.actual),note=String(body.note||'').trim().slice(0,200);if(actual===null||!note)return fail('bad_amount');
+    if(Number(body.expected)!==report.outstanding)return fail('conflict',409);
+    const snapshotGuard=P("SELECT CASE WHEN (SELECT COALESCE(SUM(COALESCE(p.cash,CASE WHEN o.pay='cash' THEN CAST(ROUND(o.total*100) AS INTEGER) ELSE 0 END)),0) FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND date((COALESCE(d.at,o.updated)+10800000)/1000,'unixepoch')=?) != ? OR (SELECT CAST(ROUND(COALESCE(SUM(amount),0)*100) AS INTEGER) FROM cash WHERE day=?) != ? THEN json('closure_conflict') ELSE 1 END",day,report.cash,day,report.received);
+    try{await env.DB.batch([snapshotGuard,P('INSERT INTO day_closures(day,at,who,expected,actual,cash_total,card_total,wallet_total,sales,orders,note) VALUES(?,?,?,?,?,?,?,?,?,?,?)',day,Date.now(),who,report.outstanding,actual,report.cash,report.card,report.wallet,report.sales,report.count,note),P('INSERT INTO cash(at,day,who,amount,note) VALUES(?,?,?,?,?)',Date.now(),day,who,actual/100,'إقفال اليوم: '+note)]);}catch{return fail('conflict',409);}
+    return {ok:true,difference:actual-report.outstanding};
+  }
+  if(path==='/admin/prep'){
+    const rows=(await P("SELECT o.no,o.status,o.created,o.updated AS order_updated,o.data,p.stage,p.checks,p.updated,p.who,p.version FROM orders o LEFT JOIN prep_orders p ON p.no=o.no WHERE o.status IN ('new','accepted') ORDER BY o.created").all()).results||[];
+    return {ok:true,orders:rows.map(r=>{const d=safeJson(r.data);return {no:'#'+(1000+r.no),status:r.status,created:r.created,orderUpdated:r.order_updated,stage:r.stage||'waiting',checks:safeJson(r.checks||'{}'),version:r.version||0,who:r.who||'',updated:r.updated,lines:(d.lines||[]).map((l,i)=>({key:String(i),id:l.id,name:l.name,unit:l.unit,qty:l.qty})),note:d.note||'',sub:d.sub||'call'};})};
+  }
+  if(path==='/admin/prep-save'){
+    const no=Number(String(body.no||'').replace(/\D/g,''))-1000,row=await P('SELECT status,data,updated FROM orders WHERE no=?',no).first();
+    if(!row)return fail('not_found',404);if(!['new','accepted'].includes(row.status))return fail('closed');if(Number(body.orderUpdated)!==row.updated)return fail('conflict',409);
+    if(!['preparing','ready'].includes(body.stage))return fail('bad_stage');
+    const prior=await P('SELECT * FROM prep_orders WHERE no=?',no).first();if((prior?.version||0)!==Number(body.version))return fail('conflict',409);
+    const lines=safeJson(row.data).lines||[],checks={};let complete=true;
+    lines.forEach((l,i)=>{const v=body.checks?.[String(i)];if(['picked','missing'].includes(v))checks[String(i)]=v;if(v!=='picked')complete=false;});
+    if(body.stage==='ready'&&!complete)return fail('missing_items');
+    try{await env.DB.batch([P("SELECT CASE WHEN COALESCE((SELECT version FROM prep_orders WHERE no=?),0) != ? OR (SELECT status FROM orders WHERE no=?) NOT IN ('new','accepted') OR (SELECT updated FROM orders WHERE no=?) != ? THEN json('prep_conflict') ELSE 1 END",no,prior?.version||0,no,no,row.updated),P('INSERT INTO prep_orders(no,stage,checks,updated,who,version) VALUES(?,?,?,?,?,?) ON CONFLICT(no) DO UPDATE SET stage=excluded.stage,checks=excluded.checks,updated=excluded.updated,who=excluded.who,version=excluded.version',no,body.stage,JSON.stringify(checks),Date.now(),who,(prior?.version||0)+1),logStmt(env,who,'prep','#'+(1000+no),{stage:body.stage,missing:Object.values(checks).filter(v=>v==='missing').length})]);}catch{return fail('conflict',409);}
+    return {ok:true};
+  }
+  if(path==='/admin/cashback'){
+    if(body.save){const rate=Number(body.rate),cap=moneyCents(body.cap);if(!Number.isFinite(rate)||rate<0||rate>25||Math.abs(Math.round(rate*100)-rate*100)>1e-6||cap===null)return fail('bad_policy');
+      await env.DB.batch([P('UPDATE cashback_policy SET enabled=?,basis_points=?,cap=? WHERE id=1',body.enabled?1:0,Math.round(rate*100),cap),logStmt(env,who,'cashback_policy','',{rate,cap,enabled:!!body.enabled})]);}
+    return {ok:true,policy:await P('SELECT * FROM cashback_policy WHERE id=1').first()};
+  }
+  if(path.startsWith('/admin/wallet')){
+    const phone=normPhone(body.phone);if(!phone)return fail('bad_phone');
+    if(path==='/admin/wallet-account'){
+      const password=String(body.password||'');if(password.length<10||password.length>128)return fail('bad_password');
+      const salt=randomHex(16);await env.DB.batch([P('INSERT INTO wallets(phone,balance,password_hash,salt) VALUES(?,0,?,?) ON CONFLICT(phone) DO UPDATE SET password_hash=excluded.password_hash,salt=excluded.salt',phone,await staffPassword(password,salt),salt),P('DELETE FROM wallet_sessions WHERE phone=?',phone),logStmt(env,who,'wallet_account',phone.slice(-4),{})]);
+      return {ok:true};
+    }
+    if(path==='/admin/wallet-credit'){
+      const amount=moneyCents(body.amount),id=operationId(body),note=String(body.note||'').trim().slice(0,200);if(!amount||!id||!note)return fail('bad_amount');
+      const repeated=await P('SELECT phone,delta FROM wallet_ledger WHERE request_id=?','credit_'+id).first();if(repeated)return repeated.phone===phone&&repeated.delta===amount?{ok:true,repeated:true}:fail('conflict',409);
+      await env.DB.batch(walletMove(env,phone,amount,'credit',null,who,note,'credit_'+id));
+    }
+    const account=await P('SELECT balance FROM wallets WHERE phone=?',phone).first();
+    const ledger=(await P('SELECT at,delta,kind,no,who,note FROM wallet_ledger WHERE phone=? ORDER BY id DESC LIMIT 100',phone).all()).results||[];
+    return {ok:true,phone,balance:account?.balance||0,ledger};
+  }
+  return fail('not_found',404);
+}
+
+async function enrichOperations(env,orders){
+  if(!orders.length)return orders;
+  const ids=orders.map(o=>Number(o.no.replace('#',''))-1000), marks=ids.map(()=>'?').join(',');
+  const prep=(await env.DB.prepare('SELECT no,stage FROM prep_orders WHERE no IN ('+marks+')').bind(...ids).all()).results||[],splits=(await env.DB.prepare('SELECT * FROM payment_splits WHERE no IN ('+marks+')').bind(...ids).all()).results||[];
+  const pm=new Map(prep.map(x=>[x.no,x.stage])),sm=new Map(splits.map(x=>[x.no,x]));
+  return orders.map(o=>{const n=Number(o.no.replace('#',''))-1000;return {...o,prepStage:pm.get(n)||'waiting',payment:sm.get(n)||null};});
+}
+
+async function walletOrderPhone(env,no,phone){
+  const live=normPhone(phone);if(live)return live;
+  const saved=await env.DB.prepare('SELECT phone FROM wallet_ledger WHERE no=? ORDER BY id DESC LIMIT 1').bind(no).first();
+  return saved?.phone||null;
 }
