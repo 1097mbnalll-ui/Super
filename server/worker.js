@@ -327,7 +327,7 @@ export default {
         if (!(n > 0) || !["new", "accepted", "onway", "delivered", "canceled"].includes(st)) return reply(400, { ok: false, code: "bad_request" });
         if(st === 'onway') { const prep=await env.DB.prepare('SELECT stage FROM prep_orders WHERE no=?').bind(n).first(); if(prep && prep.stage!=='ready')return reply(409,{ok:false,code:'not_ready'}); }
         let res;
-        try { res = await changeStatus(env, n, st, Date.now(), who === "admin" ? staff(body) : "المندوب"); } catch { return reply(502, { ok: false, code: "db" }); }
+        try { res = await changeStatus(env, n, st, Date.now(), who === "admin" ? staff(body) : "المندوب"); } catch (e) { return reply(e.message === "pos_required" ? 409 : 502, { ok: false, code: e.message === "pos_required" ? "pos_required" : "db" }); }
         if (!res) return reply(404, { ok: false, code: "not_found" });
         if (res.changed) {
           const msg = STATUS_MSG[st];
@@ -357,7 +357,7 @@ export default {
       }
       const id = Number(body.id) || 0, username = String(body.username || "").trim().toLowerCase();
       const name = String(body.name || "").trim(), password = String(body.password || "");
-      if (!/^[a-z0-9._-]{3,32}$/.test(username) || !name || name.length > 30 || !["manager", "orders", "preparer"].includes(body.role) ||
+      if (!/^[a-z0-9._-]{3,32}$/.test(username) || !name || name.length > 30 || !["manager", "orders", "preparer", "cashier"].includes(body.role) ||
           (id ? password && (password.length < 10 || password.length > 128) : password.length < 10 || password.length > 128)) {
         return reply(400, { ok: false, code: "bad_staff" });
       }
@@ -397,7 +397,7 @@ export default {
       return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
     }
 
-    if (['/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
+    if (['/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
       if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
       await ensureSchema(env);
       const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner');
@@ -666,7 +666,7 @@ async function ensureSchema(env) {
 }
 function orderRecord(o, body) {
   return {
-    lines: o.lines.map((l) => ({ id: l.p.id, name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, tag: l.tag || "" })),
+    lines: o.lines.map((l) => ({ id: l.p.id, name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, regularPrice: Math.max(Number(l.price), Number(l.p.price)||0, Number(l.p.old)||0), tag: l.tag || "" })),
     subtotal: o.subtotal, fee: o.fee, total: o.total, count: o.count, phone: o.phone,
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
     pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
@@ -714,13 +714,17 @@ async function changeStatus(env, n, st, now = Date.now(), who = "") {
   const old = await env.DB.prepare("SELECT status, data, created, day, hour, total, dms FROM orders WHERE no = ?").bind(n).first();
   if (!old) return null;
   if (old.status === st) return { changed: false };
+  if(st==='onway'){
+    const policy=await env.DB.prepare('SELECT require_receipt FROM pos_settings WHERE id=1').first();
+    if(policy?.require_receipt){const receipt=await latestPosReceipt(env,n);if(!receipt||receipt.fingerprint!==await tokenHash(JSON.stringify(posDocument(old.data,n))))throw new Error('pos_required');}
+  }
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   let rec = {}; try { rec = JSON.parse(old.data); } catch {}
   const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created), counted = !!rec.st;
   const dms = st === "delivered" ? Math.max(0, now - old.created) : 0;
   const finance = await statusFinance(env,n,old.status,st,rec,who,now);
   const handoff = st === 'onway' ? [P("SELECT CASE WHEN EXISTS(SELECT 1 FROM prep_orders WHERE no=? AND stage!='ready') THEN json('not_ready') ELSE 1 END",n)] : [];
-  const stmts = [...handoff, P("SELECT CASE WHEN status != ? THEN json('concurrent_status') ELSE 1 END FROM orders WHERE no = ?",old.status,n), ...finance, P("UPDATE orders SET status = ?, updated = ?, dms = ? WHERE no = ?", st, now, dms, n)];
+  const stmts = [...handoff, P("SELECT CASE WHEN status != ? OR data != ? THEN json('concurrent_status') ELSE 1 END FROM orders WHERE no = ?",old.status,old.data,n), ...finance, P("UPDATE orders SET status = ?, updated = ?, dms = ? WHERE no = ?", st, now, dms, n)];
   if (who) stmts.push(logStmt(env, who, "status", "#" + (1000 + n), { from: old.status, to: st, total: Number(rec.total || 0) }));
   if ((st === "canceled") !== (old.status === "canceled")) {
     const back = st === "canceled";
@@ -744,6 +748,7 @@ async function editOrder(env, data, body, who) {
   let rec; try { rec = JSON.parse(old.data); } catch { return { error: "bad_order" }; }
   const split = await env.DB.prepare('SELECT * FROM payment_splits WHERE no = ?').bind(n).first();
   if (old.status === 'delivered') return {error:'payment_locked'};
+  if(old.status==='onway' && (await env.DB.prepare('SELECT require_receipt FROM pos_settings WHERE id=1').first())?.require_receipt)return {error:'pos_locked'};
   const byId = {}; for (const p of data.products || []) byId[p.id] = p;
   const oldBy = {}; for (const l of rec.lines || []) oldBy[l.id] = l;
   const lines = [];
@@ -751,7 +756,7 @@ async function editOrder(env, data, body, who) {
     const id = String(x.id || ""), q = Math.floor(Number(x.qty)), pr = Number(x.price);
     const p = byId[id] || oldBy[id];
     if (!p || !(q > 0 && q <= 500) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
-    lines.push({ id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined });
+    lines.push({ id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined });
   }
   if (!lines.length) return { error: "empty" };
   const fee = Math.max(0, Number(body.fee ?? rec.fee) || 0);
@@ -1348,7 +1353,7 @@ function manualOrder(data, body) {
     const p = byId[String(x.id || "")], q = Math.floor(Number(x.qty)), pr = x.price == null ? Number(p && p.price) : Number(x.price);
     if (!p || !(q > 0 && q <= 500) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
     const same = lines.find((l) => l.id === p.id && l.price === round2(pr));
-    if (same) same.qty += q; else lines.push({ id: p.id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), tag: "" });
+    if (same) same.qty += q; else lines.push({ id: p.id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr),Number(p.price)||0,Number(p.old)||0), tag: "" });
   }
   if (!lines.length) return { error: "empty" };
   const raw = String(body.phone || "").trim(), phone = raw ? normPhone(raw) : "";
@@ -1529,13 +1534,13 @@ const staffSchemas = new WeakSet();
 async function ensureStaffSchema(env) {
   if (staffSchemas.has(env.DB)) return;
   await env.DB.batch([
-    env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer','cashier')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS staff_session_user ON staff_sessions(user_id)"),
   ]);
   const definition = await env.DB.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'staff_users'").first();
-  if (!definition.sql.includes("'preparer'")) await env.DB.batch([
-    env.DB.prepare("CREATE TABLE staff_users_next (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
+  if (!definition.sql.includes("'cashier'")) await env.DB.batch([
+    env.DB.prepare("CREATE TABLE staff_users_next (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer','cashier')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
     env.DB.prepare("INSERT INTO staff_users_next SELECT * FROM staff_users"), env.DB.prepare("DROP TABLE staff_users"), env.DB.prepare("ALTER TABLE staff_users_next RENAME TO staff_users")
   ]);
   staffSchemas.add(env.DB);
@@ -1550,6 +1555,7 @@ async function staffPassword(password, salt) {
 function publicStaff(u) { return { id: u.id, username: u.username, name: u.name, role: u.role }; }
 function staffMay(role, path, body) {
   if (path === '/admin/staff' || path === '/admin/staff-save') return false;
+  if(role==='cashier')return ['/login','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/settlement-requests','/admin/settlement-confirm','/admin/payment','/admin/day-report'].includes(path);
   if (role === 'preparer') return ['/login','/admin/prep','/admin/prep-save'].includes(path);
   if (role === 'manager') return !(path === '/save' && (body.newPin || body.newDriverPin));
   return role === 'orders' && ['/login', '/admin/orders', '/admin/alerts', '/driver/status', '/driver/pending'].includes(path);
@@ -1570,6 +1576,9 @@ const operationSchemas = new WeakSet();
 async function ensureOperations(env) {
   if(operationSchemas.has(env.DB)) return;
   await env.DB.batch([
+    "CREATE TABLE IF NOT EXISTS pos_receipts(id INTEGER PRIMARY KEY AUTOINCREMENT,no INTEGER NOT NULL,revision INTEGER NOT NULL,fingerprint TEXT NOT NULL,document TEXT NOT NULL,issued INTEGER NOT NULL,who TEXT NOT NULL,UNIQUE(no,revision))",
+    "CREATE TABLE IF NOT EXISTS pos_settings(id INTEGER PRIMARY KEY CHECK(id=1),require_receipt INTEGER NOT NULL DEFAULT 0)",
+    "INSERT OR IGNORE INTO pos_settings(id,require_receipt) VALUES(1,0)",
     "CREATE TABLE IF NOT EXISTS driver_settlements(day TEXT PRIMARY KEY,requested_at INTEGER NOT NULL,who TEXT NOT NULL,expected INTEGER NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','confirmed')),revision INTEGER NOT NULL,actual INTEGER,confirmed_at INTEGER,confirmed_by TEXT,note TEXT)",
     "CREATE TABLE IF NOT EXISTS payment_splits(no INTEGER PRIMARY KEY,cash INTEGER NOT NULL CHECK(cash>=0),card INTEGER NOT NULL CHECK(card>=0),wallet INTEGER NOT NULL CHECK(wallet>=0),revision INTEGER NOT NULL,at INTEGER NOT NULL,who TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS wallet_order_keys(request_id TEXT PRIMARY KEY,no INTEGER NOT NULL)",
@@ -1643,6 +1652,7 @@ async function dayReport(env,day){
 }
 async function operationsRoute(env,path,body,who,role){
   const fail=(code,status=400)=>({ok:false,code,status});const P=(q,...a)=>env.DB.prepare(q).bind(...a);
+  if(path.startsWith('/admin/pos-'))return posRoute(env,path,body,who,role);
   if(path==='/admin/settlement-requests'){
     const requests=(await P('SELECT * FROM driver_settlements ORDER BY day DESC LIMIT 14').all()).results||[];
     return {ok:true,cash:await readCash(env),requests};
@@ -1744,4 +1754,44 @@ async function walletOrderPhone(env,no,phone){
   const live=normPhone(phone);if(live)return live;
   const saved=await env.DB.prepare('SELECT phone FROM wallet_ledger WHERE no=? ORDER BY id DESC LIMIT 1').bind(no).first();
   return saved?.phone||null;
+}
+
+
+// Delivery POS prints the order's accepted prices, never the current catalogue price.
+function posDocument(raw,no){
+  const order=safeJson(raw),lines=(order.lines||[]).map(l=>{
+    const price=moneyCents(l.price),qty=Number(l.qty),regular=moneyCents(l.regularPrice??l.price);
+    if(price===null||regular===null||!Number.isInteger(qty)||qty<=0)throw Error('bad_order');
+    return {id:String(l.id||''),name:String(l.name||''),unit:String(l.unit||''),qty,price,regular:Math.max(price,regular),total:price*qty,tag:String(l.tag||'')};
+  });
+  const subtotal=moneyCents(order.subtotal),fee=moneyCents(order.fee||0),total=moneyCents(order.total),gross=lines.reduce((s,l)=>s+l.regular*l.qty,0);
+  if(!lines.length||subtotal===null||fee===null||total===null||lines.reduce((s,l)=>s+l.total,0)!==subtotal||subtotal+fee!==total)throw Error('bad_order');
+  return {orderNo:'#'+(1000+no),lines,gross,discount:gross-subtotal,subtotal,fee,total};
+}
+async function latestPosReceipt(env,no){return env.DB.prepare('SELECT * FROM pos_receipts WHERE no=? ORDER BY revision DESC LIMIT 1').bind(no).first();}
+async function posRoute(env,path,body,who,role){
+  const fail=(code,status=400)=>({ok:false,code,status}),P=(q,...a)=>env.DB.prepare(q).bind(...a);
+  if(path==='/admin/pos-settings'){
+    if(body.save){if(role!=='owner')return fail('forbidden',403);await env.DB.batch([P('UPDATE pos_settings SET require_receipt=? WHERE id=1',body.requireReceipt?1:0),logStmt(env,who,'pos_policy','',{requireReceipt:!!body.requireReceipt})]);}
+    return {ok:true,settings:await P('SELECT * FROM pos_settings WHERE id=1').first()};
+  }
+  if(path==='/admin/pos-orders'){
+    const rows=(await P("SELECT o.no,o.status,o.created,o.updated,o.data,p.id receipt_id,p.revision receipt_revision,p.fingerprint receipt_fingerprint FROM orders o LEFT JOIN pos_receipts p ON p.id=(SELECT id FROM pos_receipts q WHERE q.no=o.no ORDER BY q.revision DESC LIMIT 1) WHERE o.status IN ('new','accepted','onway') OR o.updated>? ORDER BY o.no DESC LIMIT 200",Date.now()-2*864e5).all()).results||[];
+    const orders=[];
+    for(const r of rows){const d=safeJson(r.data),receipt=r.receipt_id?{id:r.receipt_id,revision:r.receipt_revision,fingerprint:r.receipt_fingerprint}:null,document=posDocument(r.data,r.no);orders.push({no:document.orderNo,status:r.status,created:r.created,name:d.name||'',phone:d.phone||'',count:d.count,total:document.total,receipt:receipt?{number:'OH-'+receipt.id,revision:receipt.revision,current:r.status!=='canceled'&&receipt.fingerprint===await tokenHash(JSON.stringify(document))}:null});}
+    return {ok:true,orders};
+  }
+  const no=Number(String(body.no||'').replace(/\D/g,''))-1000,row=await P('SELECT no,status,created,data FROM orders WHERE no=?',no).first();
+  if(!row)return fail('not_found',404);if(row.status==='canceled')return fail('canceled');
+  const document=posDocument(row.data,no),fingerprint=await tokenHash(JSON.stringify(document)),prior=await latestPosReceipt(env,no);
+  if(path==='/admin/pos-issue'){
+    if(body.fingerprint!==fingerprint)return fail('conflict',409);
+    if(!body.reviewed)return fail('review_required');
+    const prep=await P('SELECT stage FROM prep_orders WHERE no=?',no).first();if(prep&&prep.stage!=='ready')return fail('not_ready',409);
+    if(prior&&prior.fingerprint===fingerprint)return {ok:true,repeated:true,receipt:{...prior,document:safeJson(prior.document),number:'OH-'+prior.id},fingerprint,current:true};
+    if(row.status==='onway'||row.status==='delivered')return fail('closed');
+    try{await env.DB.batch([P("SELECT CASE WHEN data != ? OR status IN ('canceled','onway','delivered') THEN json('pos_conflict') ELSE 1 END FROM orders WHERE no=?",row.data,no),P('INSERT INTO pos_receipts(no,revision,fingerprint,document,issued,who) VALUES(?,?,?,?,?,?)',no,(prior?.revision||0)+1,fingerprint,JSON.stringify(document),Date.now(),who),logStmt(env,who,'pos_issue',document.orderNo,{revision:(prior?.revision||0)+1,total:document.total})]);}catch{return fail('conflict',409);}
+  }
+  const receipt=await latestPosReceipt(env,no);
+  return {ok:true,document,fingerprint,orderStatus:row.status,receipt:receipt?{number:'OH-'+receipt.id,revision:receipt.revision,issued:receipt.issued,who:receipt.who,document:safeJson(receipt.document)}:null,current:!!receipt&&receipt.fingerprint===fingerprint,payment:paymentOf(safeJson(row.data),await P('SELECT * FROM payment_splits WHERE no=?',no).first())};
 }
