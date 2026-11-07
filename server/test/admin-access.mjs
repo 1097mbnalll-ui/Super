@@ -73,6 +73,9 @@ test('permissions are enforced by the server, including forged identity and priv
   const product = catalog.products.find(p => p.stock);
   const created = await call('/admin/order-new', { ...owner, phone: '0551111111', lines: [{ id: product.id, qty: 1 }] });
   assert.equal(created.ok, true); orderNo = created.order.no;
+  const contacts = await call('/admin/stats', { ...owner, days: 30 });
+  assert.equal(contacts.topCustomers[0].phone, '0551111111');
+  assert.ok(!('phone' in (await call('/admin/stats', { session: ordersSession }))));
   const listed = await call('/admin/orders', { session: ordersSession });
   assert.equal(listed.orders.length, 1);
   assert.ok(listed.orders[0].lines.every(l => !('cost' in l)));
@@ -99,6 +102,9 @@ test('overdue alerts use stage timestamps, survive edits, and exclude terminal o
   assert.equal((await call('/admin/alerts', owner)).orders[0].limitMinutes, 10);
   sql.prepare("UPDATE orders SET status = 'canceled' WHERE no = ?").run(n);
   assert.equal((await call('/admin/alerts', owner)).orders.length, 0);
+  sql.prepare("UPDATE orders SET status = 'delivered', phone = '', anon = 1 WHERE no = ?").run(n);
+  const anonymized = await call('/admin/stats', { ...owner, days: 30 });
+  assert.equal(anonymized.topCustomers[0].phone, null);
 });
 
 test('logout, expiry, disabling and password reset revoke sessions', async () => {
