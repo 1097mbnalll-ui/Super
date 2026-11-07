@@ -182,6 +182,24 @@ test('wallet supports a simple six-digit PIN with hashing and session revocation
  assert.notEqual(sql.prepare('SELECT password_hash FROM wallets WHERE phone=?').get(phone).password_hash,'482619');
 });
 
+test('driver settlement needs admin confirmation and cannot record the receipt twice',async()=>{
+ const before=await call('/driver/cash',owner),initialReceipts=sql.prepare('SELECT COUNT(*) n FROM cash').get().n;
+ const requested=await call('/driver/settlement-request',owner);assert.equal(requested.ok,true);assert.equal(requested.settlement.state,'pending');
+ assert.equal((await call('/driver/cash',owner)).balance,before.balance);
+ assert.equal(sql.prepare('SELECT COUNT(*) n FROM cash').get().n,initialReceipts);
+ const updated=await call('/driver/settlement-request',owner);assert.equal(updated.settlement.revision,requested.settlement.revision+1);
+ for(const token of [ordersToken,prepToken]){assert.equal((await call('/admin/settlement-confirm',{session:token,day:day(),actual:1})).status,403);assert.equal((await call('/driver/settlement-request',{session:token})).status,403);}
+ assert.equal((await call('/admin/settlement-confirm',{...owner,day:day(),revision:requested.settlement.revision,actual:before.balance})).code,'conflict');
+ assert.equal((await call('/admin/settlement-confirm',{...owner,day:day(),revision:updated.settlement.revision,actual:before.balance+1})).code,'reason_required');
+ const payload={...owner,day:day(),revision:updated.settlement.revision,actual:before.balance};
+ assert.equal((await call('/admin/settlement-confirm',payload)).ok,true);
+ assert.equal((await call('/driver/cash',owner)).balance,0);
+ assert.equal((await call('/driver/cash',owner)).settlement.state,'confirmed');
+ assert.equal((await call('/admin/settlement-confirm',payload)).repeated,true);
+ assert.equal(sql.prepare('SELECT COUNT(*) n FROM cash').get().n,initialReceipts+1);
+ assert.equal((await call('/driver/settlement-request',owner)).code,'already_settled');
+});
+
 test('orders staff cannot alter money or wallets; logout revokes wallet access',async()=>{
  for(const path of ['/admin/payment','/admin/day-close','/admin/day-report','/admin/wallet-credit','/admin/wallet-account','/admin/cashback'])assert.equal((await call(path,{session:ordersToken,...owner})).status,403,path);
  assert.equal((await call('/wallet/logout',{token:walletToken})).ok,true);

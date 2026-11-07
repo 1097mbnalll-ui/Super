@@ -276,6 +276,14 @@ export default {
         later(notifyRole(env, "customer", String(n), { title: "تعديل على طلبك #" + (1000 + n), body: msg, url: "./", tag: "order" + n }));
         return reply(200, { ok: true, order: r.order });
       }
+      if (path === '/driver/settlement-request') {
+        const cash=await readCash(env),day=riyadhDate(),expected=Math.round(cash.balance*100);
+        if(expected<0)return reply(409,{ok:false,code:'negative_balance'});
+        const prior=await env.DB.prepare('SELECT * FROM driver_settlements WHERE day=?').bind(day).first();
+        if(prior?.state==='confirmed')return reply(409,{ok:false,code:'already_settled'});
+        await env.DB.prepare("INSERT INTO driver_settlements(day,requested_at,who,expected,state,revision) VALUES(?,?,?,?,'pending',1) ON CONFLICT(day) DO UPDATE SET requested_at=excluded.requested_at,who=excluded.who,expected=excluded.expected,revision=driver_settlements.revision+1 WHERE driver_settlements.state='pending'").bind(day,Date.now(),who==='admin'?staff(body):'المندوب',expected).run();
+        return reply(200,{ok:true,settlement:await env.DB.prepare('SELECT * FROM driver_settlements WHERE day=?').bind(day).first()});
+      }
       if (path === "/driver/cash") return reply(200, { ok: true, ...(await readCash(env)) });
       // تطبيق الأندرويد يسأل كل ثواني: آخر رقم طلب، كم طلب جديد، كم طلب في الطريق (خفيف: بدون قراءة الطلبات نفسها)
       if (path === "/driver/pending") {
@@ -389,7 +397,7 @@ export default {
       return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
     }
 
-    if (['/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
+    if (['/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
       if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
       await ensureSchema(env);
       const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner');
@@ -1432,7 +1440,7 @@ async function readCash(env) {
   for(const o of rows){const cash=o.cash==null?(o.pay==='cash'?moneyCents(o.total):0):o.cash; if(o.delivered_at>=since) owed+=cash;
     if(o.delivered_at<Date.now()-14*864e5)continue; const day=riyadhDateAt(o.delivered_at); const r=daily[day]||(daily[day]={day,n:0,cash:0,got:0});if(cash){r.n++;r.cash+=cash/100;}}
   for(const t of transfers){if(daily[t.day])daily[t.day].got+=t.amount;}
-  return {today:await dayReport(env,riyadhDate()),days:Object.values(daily).sort((a,b)=>b.day.localeCompare(a.day)),balance:round2(owed/100-transfers.reduce((v,t)=>v+t.amount,0)),since:since||null,history:transfers.filter(t=>t.amount).slice(0,30)};
+  return {settlement:await env.DB.prepare('SELECT * FROM driver_settlements WHERE day=?').bind(riyadhDate()).first()||null,today:await dayReport(env,riyadhDate()),days:Object.values(daily).sort((a,b)=>b.day.localeCompare(a.day)),balance:round2(owed/100-transfers.reduce((v,t)=>v+t.amount,0)),since:since||null,history:transfers.filter(t=>t.amount).slice(0,30)};
 }
 
 // ---------- اليوم حتى الحين ----------
@@ -1562,6 +1570,7 @@ const operationSchemas = new WeakSet();
 async function ensureOperations(env) {
   if(operationSchemas.has(env.DB)) return;
   await env.DB.batch([
+    "CREATE TABLE IF NOT EXISTS driver_settlements(day TEXT PRIMARY KEY,requested_at INTEGER NOT NULL,who TEXT NOT NULL,expected INTEGER NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','confirmed')),revision INTEGER NOT NULL,actual INTEGER,confirmed_at INTEGER,confirmed_by TEXT,note TEXT)",
     "CREATE TABLE IF NOT EXISTS payment_splits(no INTEGER PRIMARY KEY,cash INTEGER NOT NULL CHECK(cash>=0),card INTEGER NOT NULL CHECK(card>=0),wallet INTEGER NOT NULL CHECK(wallet>=0),revision INTEGER NOT NULL,at INTEGER NOT NULL,who TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS wallet_order_keys(request_id TEXT PRIMARY KEY,no INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS delivery_times(no INTEGER PRIMARY KEY,at INTEGER NOT NULL)",
@@ -1634,6 +1643,23 @@ async function dayReport(env,day){
 }
 async function operationsRoute(env,path,body,who,role){
   const fail=(code,status=400)=>({ok:false,code,status});const P=(q,...a)=>env.DB.prepare(q).bind(...a);
+  if(path==='/admin/settlement-requests'){
+    const requests=(await P('SELECT * FROM driver_settlements ORDER BY day DESC LIMIT 14').all()).results||[];
+    return {ok:true,cash:await readCash(env),requests};
+  }
+  if(path==='/admin/settlement-confirm'){
+    const request=await P('SELECT * FROM driver_settlements WHERE day=?',String(body.day||'')).first();
+    if(!request)return fail('not_found',404);
+    if(request.state==='confirmed')return {ok:true,repeated:true};
+    if(Number(body.revision)!==request.revision)return fail('conflict',409);
+    const actual=moneyCents(body.actual),note=String(body.note||'').trim().slice(0,200);
+    if(actual===null)return fail('bad_amount');
+    if(actual!==request.expected&&!note)return fail('reason_required');
+    const cash=await readCash(env),snapshot=Math.round(cash.balance*100);
+    const guard=P("SELECT CASE WHEN (SELECT state FROM driver_settlements WHERE day=?)!='pending' OR (SELECT revision FROM driver_settlements WHERE day=?)!=? OR ((SELECT COALESCE(SUM(COALESCE(p.cash,CASE WHEN o.pay='cash' THEN CAST(ROUND(o.total*100) AS INTEGER) ELSE 0 END)),0) FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND COALESCE(d.at,o.updated)>=COALESCE((SELECT MIN(at) FROM cash),0))-(SELECT CAST(ROUND(COALESCE(SUM(amount),0)*100) AS INTEGER) FROM cash))!=? THEN json('settlement_conflict') ELSE 1 END",request.day,request.day,request.revision,snapshot);
+    try{await env.DB.batch([guard,P('INSERT INTO cash(at,day,who,amount,note) VALUES(?,?,?,?,?)',Date.now(),riyadhDate(),who,actual/100,'تسوية المندوب ليوم '+request.day+(note?' — '+note:'')),P("UPDATE driver_settlements SET state='confirmed',actual=?,confirmed_at=?,confirmed_by=?,note=? WHERE day=?",actual,Date.now(),who,note,request.day),logStmt(env,who,'driver_settlement',request.day,{expected:request.expected,actual,difference:actual-request.expected})]);}catch{return fail('conflict',409);}
+    return {ok:true,difference:actual-request.expected};
+  }
   if(path==='/admin/payment'){
     const no=Number(String(body.no||'').replace(/\D/g,''))-1000;
     const row=await P('SELECT * FROM orders WHERE no=?',no).first();if(!row)return fail('not_found',404);

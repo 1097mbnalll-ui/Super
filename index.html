@@ -837,6 +837,7 @@ button.stat:hover{border-color:var(--teal)}
 .wbr .btn{flex:none}
 @media (max-width:760px){.wb-res{grid-template-columns:1fr 1fr 1fr}.wb-res b{font-size:1.05rem}}
 /* offer sign */
+.simple-cash{display:grid;gap:12px;margin:16px 0}.cash-step{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px;border-radius:16px;background:#F4F5F7;font-size:15px}.cash-step b{font-size:24px;white-space:nowrap}.cash-step.remaining{background:#E4F3E9;color:#164D35}.dv-cash>.dv-btn{margin:12px 0}#settlementAdvanced>summary{cursor:pointer;font-weight:700}@media(min-width:760px){.simple-cash{grid-template-columns:repeat(3,1fr)}.cash-step{flex-direction:column;align-items:start}}
 .customer-contact{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}.customer-contact .btn{font-size:11px;padding:0 9px;min-height:30px}.trow.cust{grid-template-columns:24px minmax(120px,1fr) auto auto}.tip-priority{display:block;font-size:10px;font-weight:700;color:var(--teal);margin-bottom:4px}.tip.warn .tip-priority{color:#A34519}
 .sign-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}.sign-choice{font:inherit;border:2px solid #ddd;border-radius:16px;background:#F4F5F7;padding:12px;display:grid;justify-items:center;gap:8px;cursor:pointer;min-width:0}.sign-choice[aria-pressed="true"]{border-color:var(--teal);background:var(--mint)}.sign-choice small{font-size:11px}.sign-thumb{display:block;position:relative;width:159px;height:225px;overflow:hidden;pointer-events:none}.sign-thumb>.sg{transform:scale(.2);transform-origin:top right}.sign-prev{gap:12px}.sign-prev>b{font-size:12px;color:#555}
 @media(max-width:480px){.sign-prev{padding:8px}.sign-gallery{grid-template-columns:1fr}.trow.cust{grid-template-columns:24px 1fr}.trow.cust>.v{grid-column:2}}
@@ -2241,6 +2242,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (drv.view === "pick" && drv.miss) box.insertAdjacentHTML("beforeend", dvMissing());
     var g = drvGroups(); document.title = (g["new"].length ? "(" + g["new"].length + ") " : "") + tr("طلبات التوصيل", "Delivery orders");
     if (drv.view === "list" || drv.view === "pick") window.scrollTo(0, y);
+    if($('refreshDriverCash'))$('refreshDriverCash').onclick=loadDrvCash;
+    if($('requestDriverSettlement'))$('requestDriverSettlement').onclick=function(){var b=this;b.disabled=true;api('/driver/settlement-request',{pin:drv.pin}).then(function(j){if(!j.ok){b.disabled=false;if($('driverSettlementMsg'))$('driverSettlementMsg').textContent=opError(j);return;}loadDrvCash();});};
     if ($("drvPushBtn")) $("drvPushBtn").addEventListener("click", function(){ var b = this; b.disabled = true;
       pushSub().then(function(sub){ return api("/driver/push", { pin: drv.pin, sub: sub }); }).then(function(j){ if (!j.ok) throw j; drv.push = true; try { localStorage.setItem("ohod-drv-push", "1"); } catch(e){} drvRender(); })
         .catch(function(e){ b.disabled = false; $("drvPushMsg").textContent = pushErrText(e); }); });
@@ -2354,11 +2357,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<footer class="dv-foot"><button type="button" class="dv-btn ok wide" data-ddone="' + esc(o.no) + '">' + ic("check") + (cash ? tr("وصّلته واستلمت ", "Delivered, collected ") + num(o.total) : tr("وصّلته", "Delivered")) + '</button></footer>';
   }
   function dvCash(){
-    var c = drv.cash, t = dToday();
-    return dvBack("list", tr("حسابي اليوم", "My day")) + '<main class="dv-cash"><section class="bal"><span>' + tr("الكاش اللي معك الحين", "Cash you are holding") + '</span><b>' + (c ? num(c.balance) : '…') + ' <small>' + tr("ر.س", "SAR") + '</small></b><span class="s2">' + tr("سلّمه للمحل، والإدارة تسجل الاستلام من جهتها وينقص هنا.", "Hand it to the store; the office records it and it goes down here.") + '</span></section>' +
-      (c && c.today ? settlementSummary(c.today,false) : '') + '<section class="st"><div><b>' + num(t.done.length) + '</b><span>' + tr("طلب وصّلته", "Delivered") + '</span></div><div><b>' + (t.avg ? num(t.avg) + tr(" د", "m") : '—') + '</b><span>' + tr("متوسط التوصيل", "Avg. time") + '</span></div><div><b>' + num(t.done.filter(function(o){ return o.payment ? o.payment.card > 0 : o.pay === "card"; }).length) + '</b><span>' + tr("شبكة", "Card") + '</span></div></section>' +
-      (t.done.length ? '<section class="ls">' + t.done.map(function(o){ return '<div><b dir="ltr">' + esc(o.no) + '</b><span>' + esc(o.name || tr("زبون", "Customer")) + ' · ' + new Date(o.updated).toLocaleTimeString(LANG === "en" ? "en-GB" : "ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" }) + '</span><em>' + collectionLabel(o) + '</em><b>' + num(o.total) + '</b></div>'; }).join("") + '</section>' : '<p class="hint">' + tr("ما وصّلت طلبات اليوم للحين.", "No deliveries yet today.") + '</p>') +
-      (c && c.history && c.history.length ? '<section class="ls"><b class="lbl">' + tr("آخر تسليمات للمحل", "Last hand-overs") + '</b>' + c.history.slice(0, 5).map(function(h){ return '<div><span>' + new Date(h.at).toLocaleDateString(LANG === "en" ? "en-GB" : "ar-SA-u-nu-latn") + '</span><em>' + esc(h.who) + '</em><b>' + num(h.amount) + '</b></div>'; }).join("") + '</section>' : '') + '</main>';
+    var c=drv.cash,t=dToday(),request=c&&c.settlement;
+    if(!c)return dvBack('list',tr('حسابي','My cash'))+'<main class="dv-cash"><p>جاري تحميل الحساب…</p></main>';
+    var today=c.today||{cash:0,received:0},balance=Math.round(c.balance*100),pending=request&&request.state==='pending',confirmed=request&&request.state==='confirmed';
+    return dvBack('list',tr('حسابي','My cash'))+'<main class="dv-cash">'+simpleCashCards(c)+'<p class="hint">الباقي يشمل أي مبلغ من الأيام السابقة. الشبكة والمحفظة ما تدخل في الكاش اللي تسلّمه.</p>'+
+      (pending?'<section class="ls"><b>بانتظار تأكيد الإدارة</b><p>طلبت تسوية '+moneyFromCents(request.expected)+'. حسابك ينقص بعد ما تؤكد الإدارة استلام الكاش.</p></section>':'')+
+      (confirmed?'<section class="ls"><b>الإدارة أكدت استلام '+moneyFromCents(request.actual)+'</b><p>'+ (balance>0?'باقي معك مبلغ؛ سلّمه للإدارة لتسجّله.':balance<0?'فيه مبلغ زائد مسجّل؛ راجع الإدارة.':'تمت التسوية، يعطيك العافية.')+'</p></section>':'<button class="dv-btn ok wide" type="button" id="requestDriverSettlement">'+(pending?'حدّث مبلغ طلب التسوية':'إنهاء وتسوية اليوم')+'</button>')+
+      '<button class="dv-btn line wide" type="button" id="refreshDriverCash">تحديث الحساب</button><p id="driverSettlementMsg" class="hint" role="status"></p><details class="ls"><summary>تفاصيل الطلبات والتسليمات</summary><p>وصّلت اليوم '+num(t.done.length)+' طلب.</p>'+ (c.history||[]).slice(0,5).map(function(h){return '<p>'+oTime(h.at)+' · سلّمت '+rial(h.amount)+' · '+esc(h.who)+'</p>';}).join('')+'</details></main>';
   }
   function dvEdit(no, op, id, to){
     api("/driver/order-edit", { pin: drv.pin, no: no, op: op, id: id, to: to }).then(function(j){
@@ -2384,7 +2389,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         drv.orders = j.orders; drv.first = false; geoSync();
         if (fresh) { beep(); if (drv.view === "list") drv.tab = "new"; else dToast(tr("وصل طلب جديد", "A new order arrived")); }
         if (drv.view !== "list" && cur && nowCur && nowCur.status === "canceled" && cur.status !== "canceled") { dToast(tr("الطلب انلغى من الإدارة", "The order was cancelled by the store"), true); drv.view = "list"; drv.miss = ""; }
-        if (drv.view === "list" || drv.view === "cash") drvRender();
+        if (drv.view === "cash") loadDrvCash(); else if (drv.view === "list") drvRender();
       });
     };
     tick(); drv.timer = setInterval(tick, 8000);
@@ -2606,7 +2611,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     renderPromos(); renderLayout(); renderBans(); renderLook(); renderACats(); renderAFilter(); renderAProds(); renderOver();
     adminExtras();
   }
-  var TAB_TITLE = { prep:"تجهيز الطلبات", settlement:"حساب وإقفال اليوم", wallets:"المحافظ والكاش باك", staff: "حسابات الموظفين", alerts: "الطلبات المتأخرة", stats: "التحليل", bans: "البنرات ومنتجات «لك»", over: "نظرة عامة", prods: "المنتجات", cats: "الأقسام", offers: "العروض", layout: "ترتيب الواجهة", look: "المظهر واللغة", store: "بيانات المحل", orders: "المندوب والإشعارات", olist: "الطلبات", log: "سجل العمليات", cust: "استرجاع الزبائن", sign: "ورقة عرض للطباعة" };
+  var TAB_TITLE = { prep:"تجهيز الطلبات", settlement:"حساب المندوب", wallets:"المحافظ والكاش باك", staff: "حسابات الموظفين", alerts: "الطلبات المتأخرة", stats: "التحليل", bans: "البنرات ومنتجات «لك»", over: "نظرة عامة", prods: "المنتجات", cats: "الأقسام", offers: "العروض", layout: "ترتيب الواجهة", look: "المظهر واللغة", store: "بيانات المحل", orders: "المندوب والإشعارات", olist: "الطلبات", log: "سجل العمليات", cust: "استرجاع الزبائن", sign: "ورقة عرض للطباعة" };
   function showTab(id){
     if (staffAuth && staffAuth.user.role === "preparer" && id !== "prep") return;
     if (ordersOnly() && ["olist", "alerts"].indexOf(id) < 0) return;
@@ -3555,7 +3560,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="stat"><b>' + num(Math.round(d.revenue)) + '</b><span>ريال مبيعات</span>' + cmp(d.revenue, w.revenue) + '<small>الأسبوع اللي طاف: ' + num(Math.round(w.revenue)) + '</small></div>' +
       (profit != null ? '<div class="stat"><b>' + num(profit) + '</b><span>ريال ربح</span>' + (profitW != null ? cmp(profit, profitW) : '') + '</div>' : '<button type="button" class="stat ghost" data-atab="prods"><b>؟</b><span>الربح</span><small>حط «سعر الشراء» للمنتجات عشان يطلع ربحك</small></button>') +
       '<button type="button" class="stat" data-atab="olist"><b>' + num(open) + '</b><span>طلب جاري الحين</span><small>' + (open ? 'اضغط تشوفها' : 'كل الطلبات خلصت') + '</small></button>' +
-      '<button type="button" class="stat" data-atab="orders"><b>' + num(Math.round(j.cashBalance || 0)) + '</b><span>ريال كاش عند المندوب</span><small>اضغط تسجّل الاستلام</small></button></div>';
+      '<button type="button" class="stat" data-atab="settlement"><b>' + num(Math.round(j.cashBalance || 0)) + '</b><span>ريال كاش عند المندوب</span><small>اضغط تسجّل الاستلام</small></button></div>';
   }
   document.addEventListener('click', function(e){ if (mode === 'admin' && e.target.closest('[data-tip-canceled]')) { oState.f='canceled'; oState.range=30; showTab('olist'); } });
   function tipsHTML(list, inStats){
@@ -3835,7 +3840,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     };
     if (staffAuth && staffAuth.user.role === 'manager') ['sPin','sDPin'].forEach(function(id){ var x = $(id); if (x) { x.disabled = true; x.placeholder = 'لصاحب المتجر فقط'; } });
     if (!ordersOnly() && !(staffAuth && staffAuth.user.role==='preparer')) {
-      nav.insertAdjacentHTML('beforeend','<button type="button" data-atab="prep">تجهيز الطلبات</button><button type="button" data-atab="settlement">حساب وإقفال اليوم</button><button type="button" data-atab="wallets">المحافظ والكاش باك</button>');
+      nav.insertAdjacentHTML('beforeend','<button type="button" data-atab="prep">تجهيز الطلبات</button><button type="button" data-atab="settlement">حساب المندوب</button><button type="button" data-atab="wallets">المحافظ والكاش باك</button>');
       panels.insertAdjacentHTML('beforeend','<section class="adm-panel" data-panel="prep" id="aPreparation" hidden></section><section class="adm-panel" data-panel="settlement" id="aSettlement" hidden></section><section class="adm-panel" data-panel="wallets" id="aWallets" hidden></section>');
     }
     clearInterval(alertTimer); loadOrderAlerts();
@@ -3913,7 +3918,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     return [[p.cash,tr('كاش','Cash')],[p.card,tr('شبكة','Card')],[p.wallet,tr('محفظة','Wallet')]].filter(function(x){return x[0]>0;}).map(function(x){return num(x[0]/100)+' '+x[1];}).join(' + ');
   }
   function moneyFromCents(v){ return num(Number(v||0)/100)+' ر.س'; }
-  function opError(j){return ({payment_total:'مجموع الكاش والشبكة والمحفظة لازم يساوي إجمالي الطلب.',wallet_balance:'رصيد المحفظة غير كافٍ.',conflict:'تغيّرت البيانات. حدّث الصفحة ثم راجع المبالغ.',reason_required:'اكتب سبب التصحيح.',already_closed:'هذا اليوم مقفل بالفعل.',missing_items:'راجع الناقص؛ لا يصبح الطلب جاهزًا إلا بعد تجهيز جميع المنتجات.',bad_password:'اختر رقمًا سريًا من ٦ إلى ١٢ رقمًا للمحفظة.',bad_phone:'رقم الجوال غير صحيح.',forbidden:'ما عندك صلاحية لهذه العملية.'})[j.code]||'تعذرت العملية ('+esc(j.code||'network')+').';}
+  function opError(j){return ({already_settled:'تمت تسوية اليوم. حدّث الحساب أو راجع الإدارة للمبالغ الجديدة.',negative_balance:'الحساب فيه مبلغ زائد مسجّل؛ راجع الإدارة.',payment_total:'مجموع الكاش والشبكة والمحفظة لازم يساوي إجمالي الطلب.',wallet_balance:'رصيد المحفظة غير كافٍ.',conflict:'تغيّرت البيانات. حدّث الصفحة ثم راجع المبالغ.',reason_required:'اكتب سبب اختلاف المبلغ.',already_closed:'هذا اليوم مقفل بالفعل.',missing_items:'راجع الناقص؛ لا يصبح الطلب جاهزًا إلا بعد تجهيز جميع المنتجات.',bad_password:'اختر رقمًا سريًا من ٦ إلى ١٢ رقمًا للمحفظة.',bad_phone:'رقم الجوال غير صحيح.',forbidden:'ما عندك صلاحية لهذه العملية.'})[j.code]||'تعذرت العملية ('+esc(j.code||'network')+').';}
   function showOperationSheet(title,html){var old=$('opsSheet');if(old)old.remove();var w=document.createElement('div');w.innerHTML='<div class="sheet" id="opsSheet"><div class="panel" role="dialog" aria-modal="true" aria-labelledby="opsTitle"><div class="panel-head"><h2 id="opsTitle">'+title+'</h2><button class="btn btn-soft" type="button" data-opsclose>إغلاق</button></div>'+html+'</div></div>';document.body.appendChild(w.firstChild);}
   function showPaymentEditor(no){
     api('/admin/payment',{pin:adminPin,no:no}).then(function(j){if(!j.ok){sToast(opError(j));return;}
@@ -3923,12 +3928,29 @@ html.sp-on,html.sp-on body{overflow:hidden}
     });
   }
   function settlementSummary(r,admin){return '<div class="stats mini"><div class="stat"><b>'+num(r.count)+'</b><span>طلب تم توصيله</span></div><div class="stat"><b>'+moneyFromCents(r.sales)+'</b><span>إجمالي البيع</span></div><div class="stat"><b>'+moneyFromCents(r.cash)+'</b><span>تحصيل كاش</span></div><div class="stat"><b>'+moneyFromCents(r.card)+'</b><span>تحصيل شبكة</span></div><div class="stat"><b>'+moneyFromCents(r.wallet)+'</b><span>دُفع من المحفظة</span></div><div class="stat"><b>'+moneyFromCents(r.cashback)+'</b><span>كاش باك ممنوح لهذه الطلبات</span></div><div class="stat"><b>'+moneyFromCents(r.received)+'</b><span>الكاش المسلّم للإدارة</span></div><div class="stat"><b>'+moneyFromCents(r.outstanding)+'</b><span>فرق الكاش لليوم</span></div></div>'+(r.closure?'<p class="hint">أُقفل اليوم بواسطة '+esc(r.closure.who)+' · الفعلي '+moneyFromCents(r.closure.actual)+' · فرق الإقفال '+moneyFromCents(r.closure.actual-r.closure.expected)+' · تسويات الكاش بعد الإقفال '+moneyFromCents(r.adjustment)+' · تسوية الشبكة '+moneyFromCents(r.adjustments.card)+' · تسوية المحفظة '+moneyFromCents(r.adjustments.wallet)+'</p>':'');}
-  function renderSettlement(){var box=$('aSettlement');if(!box)return;opsDay=opsDay||new Date(Date.now()+3*3600e3).toISOString().slice(0,10);
+  function simpleCashCards(c){
+    var today=c.today||{cash:0,received:0},balance=Math.round(c.balance*100);
+    return '<div class="simple-cash"><div class="cash-step"><span>جمعت كاش اليوم</span><b>'+moneyFromCents(today.cash)+'</b></div><div class="cash-step"><span>سلّمت للإدارة اليوم</span><b>'+moneyFromCents(today.received)+'</b></div><div class="cash-step remaining"><span>'+(balance<0?'زائد مسجّل للإدارة':'باقي تسلّمه')+'</span><b>'+moneyFromCents(Math.abs(balance))+'</b></div></div>';
+  }
+  function renderSettlement(){
+    var box=$('aSettlement');if(!box)return;
+    box.innerHTML='<div class="card"><h2>حساب المندوب</h2><div id="simpleSettlementResult">جاري تحميل الحساب…</div></div><details class="card" id="settlementAdvanced"><summary>التفاصيل والإقفال المحاسبي</summary><p class="hint">تأكيد تسليم المندوب يسجّل الاستلام تلقائيًا؛ لا تسجّل المبلغ نفسه مرة ثانية هنا.</p><div id="aSettlementDetails"></div></details>';
+    $('settlementAdvanced').ontoggle=function(){if(this.open)renderSettlementDetails();};
+    api('/admin/settlement-requests',{pin:adminPin}).then(function(j){var x=$('simpleSettlementResult');if(!x)return;if(!j.ok){x.innerHTML='<p class="status err">'+opError(j)+'</p>';return;}
+      x.innerHTML=simpleCashCards(j.cash)+'<p class="hint">الباقي يشمل أي رصيد سابق. تأكيد الاستلام ينقص حساب المندوب مرة واحدة فقط.</p><h3>تسليم الكاش للإدارة</h3>'+ (j.requests.length?j.requests.map(function(r){return '<div class="card"><b>'+esc(r.day)+'</b><p>'+ (r.state==='pending'?'المندوب طلب إنهاء وتسوية اليوم بمبلغ '+moneyFromCents(r.expected):'تم تأكيد استلام '+moneyFromCents(r.actual)+' بواسطة '+esc(r.confirmed_by))+'</p>'+(r.state==='pending'?'<button class="btn btn-brand" type="button" data-confirmsettlement="'+esc(r.day)+'">استلم الكاش وأكّد</button>':'')+'</div>';}).join(''):'<p class="hint">المندوب ما طلب تسوية حتى الآن.</p>')+'<button class="btn btn-soft" type="button" id="refreshSettlements">تحديث الحساب</button>';
+      $('refreshSettlements').onclick=renderSettlement;
+      x.querySelectorAll('[data-confirmsettlement]').forEach(function(button){button.onclick=function(){var r=j.requests.find(function(r){return r.day===button.dataset.confirmsettlement;});
+        showOperationSheet('تأكيد استلام الكاش','<p>المندوب طلب تسليم <b>'+moneyFromCents(r.expected)+'</b>.</p><form id="confirmSettlementForm"><label>كم استلمت منه فعلًا؟<input id="settlementActual" type="number" min="0" step="0.01" value="'+r.expected/100+'" required></label><label>ملاحظة (ضرورية إذا المبلغ مختلف)<input id="settlementReason" maxlength="200"></label><button class="btn btn-brand" type="submit">تأكيد استلام الكاش</button><p class="status" id="settlementMessage" role="status"></p></form>');
+        $('confirmSettlementForm').onsubmit=function(e){e.preventDefault();var b=this.querySelector('button');b.disabled=true;api('/admin/settlement-confirm',{pin:adminPin,day:r.day,revision:r.revision,actual:$('settlementActual').value,note:$('settlementReason').value}).then(function(result){if(!result.ok){b.disabled=false;$('settlementMessage').textContent=opError(result);return;}$('opsSheet').remove();sToast('تم تأكيد الاستلام وتحديث حساب المندوب');renderSettlement();});};
+      };});
+    });
+  }
+  function renderSettlementDetails(){var box=$('aSettlementDetails');if(!box)return;opsDay=opsDay||new Date(Date.now()+3*3600e3).toISOString().slice(0,10);
     box.innerHTML='<div class="card"><h2>حساب المندوب وإقفال اليوم</h2><p class="hint">تقرير موحد لحساب المندوب الحالي؛ حسب يوم التوصيل بتوقيت الرياض. الشبكة والمحفظة لا تدخلان في الكاش المطلوب تسليمه.</p><label>اليوم<input id="opsDay" type="date" value="'+esc(opsDay)+'"></label><div id="dayResult">جاري التحميل…</div></div>';
-    $('opsDay').onchange=function(){opsDay=this.value;renderSettlement();};var selected=opsDay;
+    $('opsDay').onchange=function(){opsDay=this.value;renderSettlementDetails();};var selected=opsDay;
     api('/admin/day-report',{pin:adminPin,day:selected}).then(function(j){var x=$('dayResult');if(!x||selected!==opsDay)return;if(!j.ok){x.innerHTML=opError(j);return;}settlementData=j;
       x.innerHTML=settlementSummary(j,true)+'<div class="olist2">'+j.orders.map(function(o){return '<div class="orow2"><b dir="ltr">'+esc(o.no)+'</b><span>كاش '+moneyFromCents(o.cash)+'</span><span>شبكة '+moneyFromCents(o.card)+'</span><span>محفظة '+moneyFromCents(o.wallet)+'</span><button class="btn btn-soft sm" type="button" data-payment="'+esc(o.no)+'">صحّح التحصيل</button></div>';}).join('')+'</div>'+(j.closure?'<p>الإقفال محفوظ ولا يُستبدل. أي تغيير لاحق يظهر كتسوية.</p>':'<form id="closeDayForm"><h3>إقفال اليوم وتسجيل استلام الكاش</h3><p class="hint">هذا المبلغ يُسجّل استلامًا جديدًا؛ لا تدخل مبلغًا سبق تسجيل استلامه. يمكنك تسجيل صفر مع توضيح السبب.</p><label>المبلغ الذي استلمته الآن<input id="closeActual" type="number" min="0" step="0.01" required value="'+Math.max(0,j.outstanding)/100+'"></label><label>ملاحظة الإقفال<input id="closeNote" required maxlength="200"></label><button class="btn btn-brand" type="submit">إقفال وتسجيل الاستلام</button><p id="closeMessage" class="status"></p></form>');
-      if($('closeDayForm'))$('closeDayForm').onsubmit=function(e){e.preventDefault();if(!confirm('اعتماد الإقفال وتسجيل استلام الكاش؟'))return;var b=this.querySelector('button');b.disabled=true;api('/admin/day-close',{pin:adminPin,day:selected,expected:j.outstanding,actual:$('closeActual').value,note:$('closeNote').value}).then(function(r){if(!r.ok){b.disabled=false;$('closeMessage').textContent=opError(r);return;}sToast('تم إقفال اليوم');renderSettlement();});};
+      if($('closeDayForm'))$('closeDayForm').onsubmit=function(e){e.preventDefault();if(!confirm('اعتماد الإقفال وتسجيل استلام الكاش؟'))return;var b=this.querySelector('button');b.disabled=true;api('/admin/day-close',{pin:adminPin,day:selected,expected:j.outstanding,actual:$('closeActual').value,note:$('closeNote').value}).then(function(r){if(!r.ok){b.disabled=false;$('closeMessage').textContent=opError(r);return;}sToast('تم إقفال اليوم');renderSettlementDetails();});};
     });
   }
   function preparerShell(){draft=JSON.parse(JSON.stringify(D));dirty=false;aTab='prep';app.innerHTML='<div class="adm"><aside class="adm-side"><div class="adm-brand"><b>تجهيز الطلبات</b></div><nav class="adm-nav"><button type="button" data-atab="prep">الطلبات للتجهيز</button></nav></aside><div class="adm-main"><div class="adm-top"><h1>التجهيز</h1><span>'+esc(staffAuth.user.name)+'</span><button id="prepLogout" class="btn btn-soft" type="button">تسجيل الخروج</button></div><div class="adm-body"><section class="adm-panel" id="aPreparation" data-panel="prep"></section></div></div></div>';
