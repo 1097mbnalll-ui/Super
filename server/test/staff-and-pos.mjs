@@ -92,7 +92,7 @@ ok((await call('/pos/sale', { ...sale, cid: 'sale-0003-abcd', discount: 2 })).co
 ok((await call('/pos/sale', { ...sale, cid: 'sale-0004-abcd', paid: 1 })).code === 'paid_short', 'المبلغ المدفوع أقل من الإجمالي ينرفض');
 const s2 = await call('/pos/sale', { pin: '2468', by: 'أبو خالد', cid: 'sale-0005-abcd', pay: 'card', discount: 1, lines: [{ id: 'veg0', qty: 1, price: 3 }] });
 ok(s2.ok && s2.total === 2, 'الإدارة تقدر تغيّر السعر وتعطي خصم: ' + s2.total);
-const off = Date.now() - 3600e3;
+const off = Date.now() - 120e3;   // قبل دقيقتين (مو ساعة: لو الساعة بعد منتصف الليل تطلع في أمس)
 const s3 = await call('/pos/sale', { pin: '3333', cid: 'sale-0006-abcd', at: off, pay: 'card', lines: [{ id: 'drinks1', qty: 1 }] });
 ok(s3.ok && s3.at === off, 'بيعة انحفظت والنت مقطوع تنسجل بوقتها الحقيقي');
 const stock1 = (await (await w.fetch(new Request('https://x.dev/stock', { headers: { Origin: O } }), env, { waitUntil() {} })).json()).stock || {};
