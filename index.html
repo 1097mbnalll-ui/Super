@@ -3055,6 +3055,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (staffAuth && staffAuth.user.role === "preparer" && id !== "prep") return;
     if (ordersOnly() && ["olist", "alerts"].indexOf(id) < 0) return;
     if (id === "staff" && staffAuth) return;
+    if ((id === "pos" || id === "prep") && !(staffAuth && staffAuth.user.role === (id === "pos" ? "cashier" : "preparer"))) return;
     aTab = id;
     if(fullAdminRoot()){if($("adminSectionSearch")?.value){$("adminSectionSearch").value="";$("adminSectionSearch").oninput();}if(adminNavMedia?.matches&&fullAdminRoot().classList.contains("admin-menu-open"))toggleAdminMenu(false);}
     Array.prototype.forEach.call(document.querySelectorAll(".adm-panel"), function(p){ p.hidden = p.dataset.panel !== id; });
@@ -3062,6 +3063,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ($("aTitle")) $("aTitle").textContent = TAB_TITLE[id] || "";
     syncAdminChrome();
     if(fullAdminRoot()&&!dirty&&$('aStatus')&&!$('aStatus').classList.contains('err'))$('aStatus').textContent='';
+    if(id === "store")renderAdminPOSSettings();
     if(id === "pos")renderPOS();
     if (id === "prep") renderPreparation();
     if (id === "settlement") renderSettlement();
@@ -3103,16 +3105,15 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var stat = function(n, l, tab){ return '<button type="button" class="stat" data-atab="' + tab + '"><b>' + n + '</b><span>' + l + '</span></button>'; };
     box.innerHTML = staffBox() + (apiUrl() ? '<div class="card today" id="aToday"><p class="hint">جاري تحميل أرقام اليوم…</p></div><div class="card tips" id="aTips"></div>' : '') + '<div class="stats">' + stat(ps.length, "منتج", "prods") + stat(draft.cats.length, "قسم", "cats") + stat(sale, "منتج عليه خصم", "prods") + stat(out, "منتج نافد", "prods") + '</div>' +
       (apiUrl() ? '<div class="card" id="aDrvLoc"><div class="sec-head" style="margin:0"><h2>وين المناديب الحين</h2><button class="btn btn-soft" type="button" id="aDrvRe">تحديث</button></div><p class="hint" id="aDrvTxt">جاري التحميل…</p><div class="adm-dmap" id="aDrvMap" hidden></div></div>' : '') +
-      (apiUrl() ? '<div class="card"><div class="sec-head" style="margin:0"><h2>آخر الطلبات</h2><button class="btn btn-soft" type="button" id="aOpenDrv">صفحة المندوب</button></div><div id="aOrders" class="hint">جاري التحميل…</div></div>' : '') +
+      (apiUrl() ? '<div class="card"><div class="sec-head" style="margin:0"><h2>آخر الطلبات</h2></div><div id="aOrders" class="hint">جاري التحميل…</div></div>' : '') +
       '<div class="card openbox' + (draft.store.closed ? ' closed' : '') + '"><span class="ic">' + ic(draft.store.closed ? "lock" : "unlock") + '</span><span class="t"><b>' + (draft.store.closed ? 'استقبال طلبات التوصيل متوقف' : 'طلبات التوصيل مفتوحة') + '</b><span>' + (draft.store.minOrder ? 'أقل مبلغ للطلب ' + num(draft.store.minOrder) + ' ر.س' : 'بدون حد أدنى للطلب') + '</span></span><button class="btn ' + (draft.store.closed ? 'btn-brand' : 'btn-ghost') + '" type="button" id="aToggleOpen">' + (draft.store.closed ? 'افتح استقبال الطلبات' : 'أوقف الطلبات مؤقتًا') + '</button></div>' +
       '<div class="card"><h2>اختصارات</h2><div class="quick">' +
-        '<button type="button" class="btn btn-brand" data-onew>+ طلب بالتلفون أو الواتساب</button>' + (apiUrl() ? '<a class="btn btn-ink" href="#pos">نقاط البيع (الكاشير)</a>' : '') + '<button type="button" class="btn btn-ghost" data-atab="prods">تعديل الأسعار</button><button type="button" class="btn btn-ghost" data-atab="offers">عرض اليوم والعروض</button>' +
+        '<button type="button" class="btn btn-brand" data-onew>+ طلب بالتلفون أو الواتساب</button>' + '<button type="button" class="btn btn-ghost" data-atab="prods">تعديل الأسعار</button><button type="button" class="btn btn-ghost" data-atab="offers">عرض اليوم والعروض</button>' +
         '<button type="button" class="btn btn-ghost" data-atab="layout">ترتيب الصفحة الرئيسية</button><button type="button" class="btn btn-ghost" data-atab="look">الألوان واللغة</button></div>' +
         lowHTML() + (noEn ? '<p class="hint">فيه ' + noEn + ' منتج بدون اسم إنجليزي، ويطلعون بالعربي في النسخة الإنجليزية.</p>' : '') + '</div>';
     simplifyOverview();
     if (apiUrl()) { loadToday(); loadDrvLoc(); $("aDrvRe").addEventListener("click", loadDrvLoc); }
     $("aToggleOpen").addEventListener("click", function(){ if(dirty){sToast("احفظ تعديلات المتجر أولًا قبل تغيير استقبال الطلبات");return;}if(!draft.store.closed&&!confirm("إيقاف استقبال طلبات جديدة مؤقتًا؟ الطلبات الحالية تستمر."))return; if (draft.store.closed) delete draft.store.closed; else draft.store.closed = true; if ($("sClosed")) $("sClosed").checked = !!draft.store.closed; markDirty(); renderOver(); publish(); });
-    if ($("aOpenDrv")) $("aOpenDrv").addEventListener("click", function(){ if (dirty) { $("aStatus").className = "status err"; $("aStatus").textContent = "احفظ تعديلاتك أول."; return; } drv.pin = adminPin; openDriver(); });
     if (apiUrl()) api("/driver/orders", { pin: adminPin }).then(function(j){
       var el = $("aOrders"); if (!el) return;
       if (!j.ok) { el.textContent = j.code === "config" ? "قاعدة الطلبات مو مربوطة بعد (الدليل، القسم ٧)." : "ما قدرنا نجيب الطلبات."; return; }
@@ -4107,7 +4108,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (rows ? '<div class="slist">' + rows + '</div>' : '<p class="hint">ما فيه موظفين للحين.</p>') +
       '<div class="sadd"><b>أضف موظف</b><label>الاسم<input id="sNew" maxlength="30" placeholder="مثال: سعيد"></label><label>الشغل<select id="sNewRole"><option value="driver">مندوب (يجهّز ويوصّل)</option><option value="cashier">كاشير (نقاط البيع)</option></select></label><label>الرقم السري<input id="sNewPin" type="password" inputmode="numeric" maxlength="12" autocomplete="new-password" placeholder="٤ إلى ١٢ رقم"></label><button class="btn btn-brand" type="button" id="sAdd">أضف</button></div>' +
       '<p class="status" id="sMsg" aria-live="polite"></p>' +
-      '<div class="actions"><a class="btn btn-ink" href="#pos">افتح نقاط البيع</a><button class="btn btn-soft" type="button" data-scopy="' + esc(base + "#pos") + '">انسخ رابط نقاط البيع</button><button class="btn btn-soft" type="button" data-scopy="' + esc(base + "#driver") + '">انسخ رابط المندوب</button></div>';
+      '<div class="actions"><button class="btn btn-soft" type="button" data-scopy="' + esc(base + "#pos") + '">انسخ رابط نقاط البيع</button><button class="btn btn-soft" type="button" data-scopy="' + esc(base + "#driver") + '">انسخ رابط المندوب</button></div>';
     $("sAdd").addEventListener("click", function(){ staffSave({ name: $("sNew").value, role: $("sNewRole").value, newPin: $("sNewPin").value.trim() }); });
   }
   function staffErr(c){ return c === "pin_taken" ? "هالرقم مستخدم لموظف ثاني أو للإدارة. اختر رقم ثاني." : c === "bad_pin_format" ? "الرقم السري لازم يكون أرقام بس، من ٤ إلى ١٢ رقم." : c === "pin_required" ? "اكتب رقم سري للموظف الجديد." : c === "bad_name" ? "اكتب الاسم." : c === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : "ما انحفظ (" + (c || "?") + ")."; }
@@ -4371,8 +4372,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     };
     if (staffAuth && staffAuth.user.role === 'manager') ['sPin','sDPin'].forEach(function(id){ var x = $(id); if (x) { x.disabled = true; x.placeholder = 'لصاحب المتجر فقط'; } });
     if (!ordersOnly() && !(staffAuth && staffAuth.user.role==='preparer')) {
-      nav.insertAdjacentHTML('beforeend','<button type="button" data-atab="pos">كاشير التوصيل</button><button type="button" data-atab="prep">تجهيز الطلبات</button><button type="button" data-atab="settlement">حساب المندوب</button><button type="button" data-atab="wallets">المحافظ والكاش باك</button>');
-      panels.insertAdjacentHTML('beforeend','<section class="adm-panel" data-panel="pos" id="aPOS" hidden></section><section class="adm-panel" data-panel="prep" id="aPreparation" hidden></section><section class="adm-panel" data-panel="settlement" id="aSettlement" hidden></section><section class="adm-panel" data-panel="wallets" id="aWallets" hidden></section>');
+      nav.insertAdjacentHTML('beforeend','<button type="button" data-atab="settlement">حساب المندوب</button><button type="button" data-atab="wallets">المحافظ والكاش باك</button>');
+      panels.insertAdjacentHTML('beforeend','<section class="adm-panel" data-panel="settlement" id="aSettlement" hidden></section><section class="adm-panel" data-panel="wallets" id="aWallets" hidden></section>');
     }
     clearInterval(alertTimer); loadOrderAlerts();
     alertTimer = setInterval(function(){ if (mode === 'admin' && !document.hidden) { loadOrderAlerts(); if(aTab==='prep')renderPreparation(); } }, 60000);
@@ -4535,11 +4536,16 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function drawPOS(){
     var box=$('aPOS');if(!box)return;var q=posSearch.trim().toLowerCase();
     var list=posOrders.filter(function(o){return (!q||[o.no,o.name,o.phone,o.receipt?.number||''].join(' ').toLowerCase().includes(q))&&(posFilter==='all'||!['delivered','canceled'].includes(o.status));});
-    box.innerHTML='<div class="card"><h2>كاشير طلبات التوصيل</h2><p class="hint">افتح الطلب، راجع الأغراض، ثم اعتمد واطبع. نفس أسعار وعروض الطلب في الموقع؛ المندوب لا يدفع للكاشير، والتحصيل من العميل عند التوصيل.</p><div class="o-tools"><input id="posSearch" type="search" placeholder="رقم الطلب أو اسم العميل أو الجوال…" value="'+esc(posSearch)+'" aria-label="بحث عن طلب للكاشير"><button type="button" class="btn btn-soft" id="refreshPOS">تحديث</button></div><div class="pays"><button type="button" data-posfilter="active" aria-pressed="'+(posFilter==='active')+'">طلبات العمل</button><button type="button" data-posfilter="all" aria-pressed="'+(posFilter==='all')+'">مع المكتملة والملغية</button></div></div><div class="pos-worklist">'+(list.length?list.map(function(o){return '<button type="button" class="card pos-order" data-posopen="'+esc(o.no)+'"><div class="sec-head"><b dir="ltr">'+esc(o.no)+'</b><span>'+esc(OST[o.status]||o.status)+'</span></div><span>'+esc(o.name||'زبون')+' · '+num(o.count)+' قطعة</span><strong>'+moneyFromCents(o.total)+'</strong><span class="hint">'+(o.receipt?(o.receipt.current?'إيصال معتمد '+esc(o.receipt.number):'تغيّر الطلب — يحتاج مراجعة جديدة'):'بانتظار مراجعة الكاشير')+'</span></button>';}).join(''):'<div class="card">ما فيه طلبات بهذا البحث.</div>')+'</div>'+(mode==='admin'&&!staffAuth?'<div class="card" id="posSettings"></div>':'');
+    box.innerHTML='<div class="card"><h2>كاشير طلبات التوصيل</h2><p class="hint">افتح الطلب، راجع الأغراض، ثم اعتمد واطبع. نفس أسعار وعروض الطلب في الموقع؛ المندوب لا يدفع للكاشير، والتحصيل من العميل عند التوصيل.</p><div class="o-tools"><input id="posSearch" type="search" placeholder="رقم الطلب أو اسم العميل أو الجوال…" value="'+esc(posSearch)+'" aria-label="بحث عن طلب للكاشير"><button type="button" class="btn btn-soft" id="refreshPOS">تحديث</button></div><div class="pays"><button type="button" data-posfilter="active" aria-pressed="'+(posFilter==='active')+'">طلبات العمل</button><button type="button" data-posfilter="all" aria-pressed="'+(posFilter==='all')+'">مع المكتملة والملغية</button></div></div><div class="pos-worklist">'+(list.length?list.map(function(o){return '<button type="button" class="card pos-order" data-posopen="'+esc(o.no)+'"><div class="sec-head"><b dir="ltr">'+esc(o.no)+'</b><span>'+esc(OST[o.status]||o.status)+'</span></div><span>'+esc(o.name||'زبون')+' · '+num(o.count)+' قطعة</span><strong>'+moneyFromCents(o.total)+'</strong><span class="hint">'+(o.receipt?(o.receipt.current?'إيصال معتمد '+esc(o.receipt.number):'تغيّر الطلب — يحتاج مراجعة جديدة'):'بانتظار مراجعة الكاشير')+'</span></button>';}).join(''):'<div class="card">ما فيه طلبات بهذا البحث.</div>')+'</div>';
     $('posSearch').oninput=function(){posSearch=this.value;var at=this.selectionStart;drawPOS();$('posSearch').focus();$('posSearch').setSelectionRange(at,at);};$('refreshPOS').onclick=renderPOS;
     box.querySelectorAll('[data-posfilter]').forEach(function(b){b.onclick=function(){posFilter=b.dataset.posfilter;drawPOS();};});
     box.querySelectorAll('[data-posopen]').forEach(function(b){b.onclick=function(){openDeliveryPOS(b.dataset.posopen);};});
-    if($('posSettings'))api('/admin/pos-settings',{pin:adminPin}).then(function(j){var x=$('posSettings');if(!x||!j.ok)return;x.innerHTML='<label class="chk"><input id="requirePosReceipt" type="checkbox"'+(j.settings.require_receipt?' checked':'')+'>اشتراط اعتماد الكاشير قبل خروج المندوب</label><p class="hint">فعّله بعد تجهيز حساب الكاشير والطابعة. يؤثر على الطلبات الجارية أيضًا.</p>';$('requirePosReceipt').onchange=function(){var input=this,value=input.checked;input.disabled=true;api('/admin/pos-settings',{pin:adminPin,save:true,requireReceipt:value}).then(function(r){input.disabled=false;if(!r.ok){input.checked=!value;sToast(opError(r));}else sToast('تم حفظ إعداد الكاشير');});};});
+
+  }
+  function renderAdminPOSSettings(){
+    var panel=document.querySelector('[data-panel="store"]');if(!panel||staffAuth||!fullAdminRoot())return;
+    if(!$('posSettings'))panel.insertAdjacentHTML('beforeend','<div class="card" id="posSettings"><h2>سياسة مراجعة الكاشير</h2></div>');
+    api('/admin/pos-settings',{pin:adminPin}).then(function(j){var x=$('posSettings');if(!x||!j.ok)return;x.innerHTML='<h2>سياسة مراجعة الكاشير</h2><label class="chk"><input id="requirePosReceipt" type="checkbox"'+(j.settings.require_receipt?' checked':'')+'>اشتراط اعتماد الكاشير قبل خروج المندوب</label><p class="hint">فعّله بعد تجهيز حساب الكاشير والطابعة. يؤثر على الطلبات الجارية أيضًا.</p>';$('requirePosReceipt').onchange=function(){var input=this,value=input.checked;input.disabled=true;api('/admin/pos-settings',{pin:adminPin,save:true,requireReceipt:value}).then(function(r){input.disabled=false;if(!r.ok){input.checked=!value;sToast(opError(r));}else sToast('تم حفظ إعداد الكاشير');});};});
   }
   function posTotalsHTML(d){return '<div class="totals"><div><span>قبل خصومات الموقع</span><b>'+moneyFromCents(d.gross)+'</b></div><div><span>خصومات الموقع</span><b>− '+moneyFromCents(d.discount)+'</b></div><div><span>المنتجات بعد الخصم</span><b>'+moneyFromCents(d.subtotal)+'</b></div><div><span>التوصيل</span><b>'+moneyFromCents(d.fee)+'</b></div><div class="grand"><b>إجمالي طلب العميل</b><b>'+moneyFromCents(d.total)+'</b></div></div>';}
   function openDeliveryPOS(no){
@@ -4561,7 +4567,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
 
   // The same panels and actions remain available; navigation follows daily work.
   var ADMIN_SECTIONS=[
-    {name:'الشغل اليومي',primary:true,items:[['over','اليوم'],['olist','الطلبات'],['prep','التجهيز'],['pos','كاشير التوصيل'],['alerts','الطلبات المتأخرة'],['settlement','حساب المناديب']]},
+    {name:'المتابعة اليومية',primary:true,items:[['over','اليوم'],['olist','الطلبات'],['alerts','الطلبات المتأخرة'],['settlement','حساب المناديب']]},
     {name:'المنتجات والعروض',items:[['prods','المنتجات والأسعار'],['cats','الأقسام'],['offers','العروض']]},
     {name:'العملاء والمحافظ',items:[['cust','التواصل مع العملاء'],['wallets','المحافظ والكاش باك']]},
     {name:'التقارير والمتابعة',items:[['stats','تحليل المبيعات'],['log','سجل التعديلات']]},
@@ -4614,7 +4620,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function simplifyOverview(){
     var box=$('aOver');if(!box||!fullAdminRoot())return;
-    box.insertAdjacentHTML('afterbegin','<section class="admin-start"><div><h2>وش تحتاج تسوي الآن؟</h2><p>الوصول السريع لشغل التوصيل اليومي.</p></div><div class="admin-task-grid"><button type="button" data-atab="olist">'+ic('cart')+'<b>تابع الطلبات</b><span>جديد، جاري، ومكتمل</span></button><button type="button" data-atab="prep">'+ic('box')+'<b>جهّز الطلبات</b><span>الأصناف والنواقص</span></button><button type="button" data-atab="pos">'+ic('store')+'<b>افتح كاشير التوصيل</b><span>مراجعة وطباعة الإيصال</span></button><button type="button" data-atab="settlement">'+ic('truck')+'<b>حساب المناديب</b><span>الكاش والتسوية</span></button></div></section>');
+    box.insertAdjacentHTML('afterbegin','<section class="admin-start"><div><h2>متابعة وإدارة المتجر</h2><p>تابع الشغل والنتائج، وأدر المنتجات والموظفين.</p></div><div class="admin-task-grid"><button type="button" data-atab="olist">'+ic('cart')+'<b>تابع الطلبات</b><span>جديد، جاري، ومكتمل</span></button><button type="button" data-atab="stats">'+ic('chart')+'<b>المبيعات والتحليل</b><span>النتائج والأرباح</span></button><button type="button" data-atab="prods">'+ic('box')+'<b>المنتجات والأسعار</b><span>المخزون والعروض</span></button><button type="button" data-atab="settlement">'+ic('truck')+'<b>حساب المناديب</b><span>الكاش والتسوية</span></button></div></section>');
     var intro=box.querySelector('.admin-start'),latest=$('aOrders')?.closest('.card'),openBox=box.querySelector('.openbox');
     if(latest)intro.after(latest);if(openBox&&latest)latest.after(openBox);
     foldAdminCard($('aToday'),'أرقام اليوم والتحليل',false);
