@@ -1,3 +1,4 @@
+import { githubMock } from './support/github.mjs';
 // اختبار: مندوبين + نقاط البيع، على worker.js الحقيقي وقاعدة SQLite في الذاكرة.
 // التشغيل:  node server/test/staff-and-pos.mjs   (node 22)
 import { DatabaseSync } from 'node:sqlite'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
@@ -12,9 +13,9 @@ const DB = { prepare: mk1, async batch(l) { await new Promise((r) => setTimeout(
 const kv = new Map(); const LOCKS = { get: async (k, t) => { const v = kv.get(k); return v == null ? null : (t === 'json' ? JSON.parse(v) : v); }, put: async (k, v) => kv.set(k, v), delete: async (k) => kv.delete(k) };
 const O = 'https://1097mbnalll-ui.github.io';
 const env = { GITHUB_TOKEN: 'x', ADMIN_PIN: '2468', SECRET: 's', REPO: 'o/r', BRANCH: 'gh-pages', ALLOWED_ORIGIN: O, LOCKS, DB };
-globalThis.fetch = async (u, o = {}) => { u = String(u); if (u.includes('api.github.com') && !o.method) return new Response(JSON.stringify(data)); return new Response('{"ok":true}'); };
+globalThis.fetch = githubMock(() => data, async (u, o = {}) => { u = String(u); if (u.includes('api.github.com') && !o.method) return new Response(JSON.stringify(data)); return new Response('{"ok":true}'); }, false);
 let ipn = 0;
-const call = (p, body) => w.fetch(new Request('https://x.dev' + p, { method: 'POST', headers: { Origin: O, 'CF-Connecting-IP': '9.9.' + (ipn++ % 250) + '.1' }, body: JSON.stringify(body) }), env, { waitUntil() {} }).then((r) => r.json());
+const call = async (p, body) => { if(p==='/save'&&body.baseVersion===undefined)body={...body,baseVersion:(await call('/admin/catalog',{pin:body.pin})).version};return w.fetch(new Request('https://x.dev' + p, { method: 'POST', headers: { Origin: O, 'CF-Connecting-IP': '9.9.' + (ipn++ % 250) + '.1' }, body: JSON.stringify(body) }), env, { waitUntil() {} }).then((r) => r.json()); };
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const A = { pin: '2468', by: 'أبو خالد' };
 

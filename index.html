@@ -1616,6 +1616,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var fee = cnt ? ((S.freeOver && s >= S.freeOver) ? 0 : Number(S.fee || 0)) : 0;
     return { n: cnt, s: s, fee: fee, all: s + fee, base: base, unlocked: unlocked, dn: dn, left: Math.max(0, min - base) };
   }
+  function cartProductQty(id){return Object.keys(cart).reduce(function(sum,key){var line=lineOf(key);return sum+(line&&line.p.id===id?Number(cart[key])||0:0);},0);}
+  function canAddProduct(id,qty){var p=byId(id),total=cartProductQty(id)+qty,remaining=left(p),max=Number(p&&p.max)||0;return !!p&&(!max||total<=max)&&(remaining==null||total<=remaining);}
   function control(p, kind){
     if (!avail(p)) return '';
     var key = kind ? kind + ":" + p.id : p.id, L = lineOf(key), n = cart[key] || 0;
@@ -2078,7 +2080,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     Object.keys(bind).forEach(function(id){ $(id).addEventListener("input", function(){ form[bind[id]] = this.value; saveForm(); if (id === "cPhone") { $("phoneBox").classList.remove("bad"); $("phoneErr").hidden = true; } }); });
     $("sendOrder").addEventListener("click", sendOrder);
   }
-  function normPhone(v){ var s = String(v || "").replace(/[^\d+]/g, "").replace(/^\+?966/, "").replace(/^0/, ""); return /^5\d{8}$/.test(s) ? "0" + s : ""; }
+  function normPhone(v){ var s = asciiDigits(v).replace(/[^\d+]/g, "").replace(/^\+?966/, "").replace(/^0/, ""); return /^5\d{8}$/.test(s) ? "0" + s : ""; }
   function mapsUrl(){ return "https://www.google.com/maps?q=" + form.lat + "," + form.lng; }
   function waOrderText(t){
     var m = tr("طلب جديد من موقع ", "New order from ") + sv("name") + ":\n";
@@ -2092,6 +2094,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
     $("sendErr").innerHTML = '<div class="alert"><span>' + esc(msg) + '</span>' + (withWa && waNumber() ? '<a class="btn btn-teal" href="https://wa.me/' + waNumber() + '?text=' + encodeURIComponent(waOrderText(t)) + tr('" target="_blank" rel="noopener">أرسل الطلب على واتساب بدلها</a>', '" target="_blank" rel="noopener">Send the order on WhatsApp instead</a>') : '') + '</div>';
     $("sendErr").scrollIntoView({ behavior: "smooth", block: "center" });
   }
+  var checkoutAttempt=null;
+  try{checkoutAttempt=JSON.parse(localStorage.getItem('ohod-checkout-attempt')||'null');}catch(e){}
+  function saveCheckoutAttempt(value){checkoutAttempt=value;try{if(value){var saved=JSON.parse(JSON.stringify(value));delete saved.payload.walletToken;localStorage.setItem('ohod-checkout-attempt',JSON.stringify(saved));}else localStorage.removeItem('ohod-checkout-attempt');}catch(e){}}
   function sendOrder(){
     var btn = $("sendOrder"), phone = normPhone(form.phone), t = totals();
     $("sendErr").innerHTML = "";
@@ -2101,23 +2106,33 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (walletUseAmount && (!walletCustomer || walletCustomer.phone !== phone || walletUseAmount > t.all || walletUseAmount > walletCustomer.balance)) { sendErr('راجع رقم الجوال ورصيد المحفظة والمبلغ المستخدم.'); return; }
     var far0 = tooFar(form.lat, form.lng); if (far0) { sendErr(farMsg(far0)); return; }
     if (!S.api) { sendErr(tr("استقبال الطلبات الأوتوماتيكي لسا ما تفعّل.", "Automatic order receiving is not set up yet."), true); return; }
-    btn.disabled = true; btn.firstChild.textContent = tr("جاري الإرسال…", "Sending…");
     var items = {}; Object.keys(cart).forEach(function(k){ items[k] = cart[k]; });
-    var walletSignature=JSON.stringify([items,phone,form.pay,form.name,form.details,form.note,form.lat,form.lng,walletUseAmount]);
-    if(walletCheckoutSignature!==walletSignature){walletCheckoutKey=opId();walletCheckoutSignature=walletSignature;}
-    fetch(String(S.api).replace(/\/+$/, "") + "/order", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: items, phone: phone, name: form.name, details: form.details, note: form.note, pay: form.pay, sub: form.sub || "call", lat: form.lat, lng: form.lng, walletToken: walletCustomer ? walletCustomer.token : "", walletAmount: walletCustomer ? walletUseAmount : 0, walletRequestId:walletCheckoutKey }) })
-      .then(function(r){ return r.json().catch(function(){ return { ok: false, code: "http_" + r.status }; }); }, function(){ return { ok: false, code: "network" }; })
+    var payload={items:items,phone:phone,name:form.name,details:form.details,note:form.note,pay:form.pay,sub:form.sub||'call',lat:form.lat,lng:form.lng,walletAmount:walletCustomer?walletUseAmount:0};
+    var signature=JSON.stringify(payload);
+    if(checkoutAttempt&&checkoutAttempt.signature!==signature){
+      if(!confirm('عندك طلب سابق ما تأكدت نتيجته. بنعيد تأكيد نفس الطلب السابق أولًا قبل إرسال أي طلب جديد. تبي تكمل؟'))return;
+      payload=JSON.parse(JSON.stringify(checkoutAttempt.payload));items=payload.items;phone=payload.phone;
+    }else if(!checkoutAttempt){var id=opId();payload.requestId=id;payload.walletRequestId=id;saveCheckoutAttempt({signature:signature,payload:payload});}
+    else payload=JSON.parse(JSON.stringify(checkoutAttempt.payload));
+    payload.walletToken=walletCustomer&&walletCustomer.phone===payload.phone?walletCustomer.token:'';
+    var usedWallet=Number(payload.walletAmount)||0;
+    btn.disabled = true; btn.firstChild.textContent = tr("جاري الإرسال…", "Sending…");
+    fetchJSON(apiUrl()+'/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       .then(function(j){
         btn.disabled = false; btn.firstChild.textContent = tr("أرسل الطلب", "Place order");
         if (j.ok) {
-          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: form.pay, at: Date.now(), status: "new", track: !!j.track, lat: form.lat, lng: form.lng, walletCents:Math.round(walletUseAmount*100) }; saveLast();
+          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast();
           if (j.track && PUSH_PREF && pushOn()) orderPush(null);
-          Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
-          if(walletCustomer) walletCustomer.balance=Math.max(0,walletCustomer.balance-walletUseAmount); walletUseAmount=0;walletCheckoutKey='';walletCheckoutSignature='';
-          cart = {}; saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; render(); window.scrollTo(0, 0); return;
+          if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
+          if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
+          if(JSON.stringify(cart)===JSON.stringify(items))cart={};saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; render(); loadStock(); window.scrollTo(0, 0); return;
         }
         var c = j.code;
+        if((c==='network'||c==='timeout'||j.status>=500)&&checkoutAttempt){checkoutAttempt.uncertain=true;saveCheckoutAttempt(checkoutAttempt);}
+        if(!checkoutAttempt?.uncertain&&['bad_phone','bad_location','unavailable','item_limit','bad_items','min_order','closed','wallet_balance','wallet_login','bad_payment','bad_request_id'].includes(c))saveCheckoutAttempt(null);
+        if(c==='network'||c==='timeout'||j.status>=500)return sendErr(tr('ما قدرنا نؤكد نتيجة الطلب. اضغط أرسل مرة ثانية للتأكد من نفس الطلب بدون تكراره.','We could not confirm the order. Submit again to confirm the same order without duplicating it.'),false);
+        if(c==='item_limit')return sendErr(tr('تجاوزت الحد المسموح لأحد المنتجات. ارجع للسلة وقلّل الكمية.','A product reached its purchase limit. Reduce its quantity in your cart.'));
+        if(c==='bad_items'||c==='bad_request_id'||c==='request_conflict')return sendErr(tr('تعذر تأكيد بيانات الطلب. راجع السلة أو تواصل معنا قبل إرسال طلب آخر.','Review your cart or contact us before submitting another order.'));
         if (['wallet_login','wallet_balance','bad_payment'].indexOf(c)>=0) return sendErr('تعذر استخدام المحفظة. سجّل الدخول مجددًا وراجع الرصيد والمبلغ.');
         if (c === "bad_phone") { $("phoneBox").classList.add("bad"); var pe2 = $("phoneErr"); pe2.hidden = false; pe2.textContent = tr("رقم الجوال غير صحيح.", "The mobile number is not valid."); return; }
         if (c === "bad_location") return sendErr(tr("الموقع المحدد خارج السعودية. حرّك الخريطة على بيتك.", "The selected location is outside Saudi Arabia. Move the map to your home."));
@@ -2139,11 +2154,12 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var t;
     if ((t = e.target.closest("[data-addbund]")) || (t = e.target.closest("[data-bund]"))) {
       var bid = t.dataset.addbund || t.dataset.bund, d = t.dataset.addbund ? 1 : Number(t.dataset.bd), al = bundleAlloc(banOf(bid)); if (!al) return;
-      if (d > 0 && al.ids.some(function(id){ return !avail(byId(id)); })) { sToast(tr("فيه منتج من الباقة خلص", "An item in this bundle is out of stock")); return; }
+      if (d > 0 && al.ids.some(function(id){ return !avail(byId(id)) || !canAddProduct(id,d); })) { sToast(tr("وصلت للكمية المتاحة أو الحد المسموح لأحد منتجات الباقة", "A bundle item reached its available quantity or purchase limit")); return; }
       al.ids.forEach(function(id){ var k = "x:" + bid + ":" + id, n = (cart[k] || 0) + d; if (n <= 0) delete cart[k]; else cart[k] = n; if (d > 0) evAdd("c", id); });
       saveCart(); refresh(); if (t.dataset.addbund) sToast(tr("انضافت الباقة للسلة", "Bundle added to cart")); return; }
     if ((t = e.target.closest("[data-act]"))) {
       var id = t.dataset.id, inc = t.dataset.act !== "dec", L0 = lineOf(id), n = (cart[id] || 0) + (inc ? 1 : -1);
+      if (L0 && inc && !canAddProduct(L0.p.id,1)){sToast(tr("وصلت للحد المسموح من هذا المنتج","This product reached its purchase limit"));return;}
       if (!L0 || (inc && L0.limit && n > L0.limit) || (inc && L0.kind === "d" && !totals().unlocked)) return;
       if (inc) evAdd("c", L0.p.id);
       if (n <= 0) delete cart[id]; else cart[id] = n; saveCart(); refresh(); return;
@@ -2152,6 +2168,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       pdQty = Math.max(1, pdQty + Number(t.dataset.pq)); if (lim) pdQty = Math.min(pdQty, lim);
       $("pq").textContent = pdQty; $("pqTotal").textContent = rial((dd && dd.p.id === openProd ? dd.price : p.price) * pdQty); return; }
     if ((t = e.target.closest("[data-addprod]"))) { var key = (t.dataset.kind ? t.dataset.kind + ":" : "") + t.dataset.addprod, L1 = lineOf(key);
+      if(!canAddProduct(L1.p.id,pdQty)){sToast(tr("الكمية تتجاوز المتاح أو الحد المسموح، قلّلها","Reduce the quantity to the available purchase limit"));return;}
       var nn = (cart[key] || 0) + pdQty; if (L1.limit) nn = Math.min(nn, L1.limit); cart[key] = nn; saveCart(); evAdd("c", L1.p.id); show("back"); return; }
     if ((t = e.target.closest("[data-chip]"))) { var hadB = chip.indexOf("b:") === 0; chip = t.dataset.chip; if (screen !== "home") { show("home"); } else if (hadB || chip.indexOf("b:") === 0) { refresh(); } else { Array.prototype.forEach.call(document.querySelectorAll(".kq-chip"), function(c){ c.setAttribute("aria-pressed", c.dataset.chip === chip); }); $("kqGrid").innerHTML = chipItems().join(""); }
       var ch = $("kqChips"); if (ch) window.scrollTo({ top: ch.getBoundingClientRect().top + window.scrollY - 4, behavior: "smooth" }); var on = document.querySelector('.kq-chip[aria-pressed="true"]'); if (on) on.scrollIntoView({ inline: "center", block: "nearest" }); return; }
@@ -2560,20 +2577,25 @@ html.sp-on,html.sp-on body{overflow:hidden}
   });
 
   /* ---------- admin access ---------- */
-  var walletCustomer = null, walletUseAmount = 0, walletCheckoutKey = "", walletCheckoutSignature = "";
+  var walletCustomer = null, walletUseAmount = 0;
   var adminPin = "", staffAuth = null;
   function ordersOnly(){ return !!(staffAuth && staffAuth.user.role === "orders"); }
   function apiUrl(){ return String(S.api || "").replace(/\/+$/, ""); }
   var STAFF = ""; try { STAFF = localStorage.getItem("ohod-staff") || ""; } catch(e){}
+  function asciiDigits(value){return String(value==null?'':value).replace(/[٠-٩۰-۹]/g,function(c){return String(c.charCodeAt(0)-(c<='٩'?0x660:0x6f0));});}
+  function fetchJSON(url,options){
+    var controller=new AbortController(),timer;
+    var request=fetch(url,Object.assign({},options,{signal:controller.signal})).then(function(r){return r.json().catch(function(e){if(controller.signal.aborted)throw e;return {ok:false,code:'http_'+r.status};}).then(function(j){j.status=r.status;return j;});});
+    var timeout=new Promise(function(resolve){timer=setTimeout(function(){controller.abort();resolve({ok:false,code:'timeout'});},15000);});
+    return Promise.race([request,timeout]).catch(function(){return {ok:false,code:controller.signal.aborted?'timeout':'network'};}).then(function(j){clearTimeout(timer);return j;});
+  }
   function api(path, body){
     body = Object.assign({}, body || {});
     if (staffAuth && body.pin === adminPin) { body.session = staffAuth.token; delete body.pin; }
     if (body.pin && STAFF && !body.by) body.by = STAFF;
-    return fetch(apiUrl() + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-      .then(function(r){ return r.json().catch(function(){ return { ok: false, code: "http_" + r.status }; }).then(function(j){ j.status = r.status;
-        if (j.code === "session_expired" && staffAuth) { endAdminSession(); sToast("انتهت الجلسة. سجّل دخولك من جديد."); }
-        return j; }); },
-            function(){ return { ok: false, code: "network" }; });
+    return fetchJSON(apiUrl()+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(j){
+      if (j.code==='session_expired'&&staffAuth){endAdminSession();sToast('انتهت الجلسة. سجّل دخولك من جديد.');}return j;
+    });
   }
   function sha(s){
     if (!(window.crypto && crypto.subtle && window.TextEncoder)) return Promise.resolve("plain:" + s);
@@ -2650,7 +2672,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     posShell();
     api("/pos/login", { pin: pos.pin }).then(function(j){
       if (j.ok) { pos.me = j; try { sessionStorage.setItem("ohod-pos-me", JSON.stringify(j)); } catch(e){} posRender(); return; }
-      if (j.code === "network" && pos.me) return;   // بدون نت: نكمل بالبيانات المحفوظة، والبيعات تنحفظ بالجهاز
+      if ((j.code === "network" || j.code === "timeout") && pos.me) return;   // بدون نت: نكمل بالبيانات المحفوظة، والبيعات تنحفظ بالجهاز
       posSignOut();
     });
   }
@@ -2832,7 +2854,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     api("/pos/sale", Object.assign({ pin: pos.pin }, sale)).then(function(j){
       pos.busy = false;
       if (j.ok) { rec.no = j.no; rec.total = j.total; }
-      else if (j.code === "network" || j.status >= 500) { var q = posQ(); sale.total = t.total; q.push(sale); posQSave(q); rec.queued = true; }
+      else if (j.code === "network" || j.code === "timeout" || j.status >= 500) { var q = posQ(); sale.total = t.total; q.push(sale); posQSave(q); rec.queued = true; }
       else { if (j.code === "bad_pin") { posSignOut(); return; } pos.msg = posErr(j); posRender(); return; }
       pos.last = rec; pos.cart = []; pos.disc = 0; pos.paid = ""; pos.q = ""; pos.modal = "done"; posRender();
       if (pos.autoPrint) posPrint(rec);
@@ -2844,7 +2866,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     pos.flushing = true; var s = q[0];
     api("/pos/sale", Object.assign({ pin: pos.pin }, s)).then(function(j){
       pos.flushing = false;
-      if (j.code === "network" || j.status >= 500 || j.code === "bad_pin" || j.code === "locked") { posNet(); return; }
+      if (j.code === "network" || j.code === "timeout" || j.status >= 500 || j.code === "bad_pin" || j.code === "locked") { posNet(); return; }
       posQSave(posQ().filter(function(x){ return x.cid !== s.cid; }));
       if (!j.ok) { var f = posFail(); f.push({ at: s.at, total: s.total, code: j.code, sale: s }); try { localStorage.setItem("ohod-posfail", JSON.stringify(f.slice(-50))); } catch(e){} if (mode === "pos") posRender(); }
       posNet(); if (posQ().length) posFlush();
@@ -3434,11 +3456,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (apiUrl()) {
       var payload = gcData(JSON.parse(JSON.stringify(draft))); delete payload.store.pinHash;
       var stockSend = Object.keys(stockEdit).length ? stockEdit : undefined, costSend = Object.keys(costEdit).length ? costEdit : undefined;
-      api("/save", { pin: adminPin, data: payload, newPin: newPin || undefined, newDriverPin: newDPin || undefined, stock: stockSend, costs: costSend }).then(function(j){
+      api("/save", { pin: adminPin, data: payload, newPin: newPin || undefined, newDriverPin: newDPin || undefined, stock: stockSend, costs: costSend, baseVersion: adminCatalogVersion }).then(function(j){
         btn.disabled = false;
         if (j.ok) {
           if (j.stock) { STK = j.stock; LIVE = j.stock; } stockEdit = {}; Object.keys(costEdit).forEach(function(k){ if (costEdit[k] == null) delete COST[k]; else COST[k] = costEdit[k]; }); costEdit = {};
-          applyData(payload); dirty = false; if (newPin) adminPin = newPin; newPin = ""; $("sPin").value = ""; newDPin = ""; if ($("sDPin")) $("sDPin").value = ""; if ($("tgCard")) renderTg();
+          if(j.version)adminCatalogVersion=j.version;applyData(payload); dirty = false; if (newPin) adminPin = newPin; newPin = ""; $("sPin").value = ""; newDPin = ""; if ($("sDPin")) $("sDPin").value = ""; if ($("tgCard")) renderTg();
           st.className = "status"; st.textContent = "انحفظ. يوصل للزبائن خلال دقيقة تقريبًا."; $("aState").textContent = "كل شي محفوظ"; return;
         }
         st.className = "status err";
@@ -3447,6 +3469,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
           j.code === "locked" ? "انقفل الدخول مؤقتًا بسبب محاولات غلط. جرّب بعد شوي." :
           j.code === "too_large" ? "الصور كثيرة أو كبيرة. احذف بعض الصور المرفوعة وجرّب." :
           j.code === "github_auth" ? "مفتاح GitHub اللي في الخادم انتهى أو ما له صلاحية. صاحب الحساب لازم يجدده." :
+          j.code === "data_conflict" ? "فيه تعديل أحدث من جهاز ثاني. مسودتك ما انمسحت؛ افتح الإدارة في تبويب جديد وقارن التعديلات قبل الحفظ." :
+          j.code === "timeout" ? "انتهت مهلة التأكيد. راجع النسخة المحفوظة قبل إعادة الحفظ؛ مسودتك باقية." :
           j.code === "network" ? "ما قدرنا نوصل لخادم الإدارة. تأكد من النت." :
           "ما انحفظ (" + (j.code || "?") + "). جرّب مرة ثانية.";
       });
@@ -4640,8 +4664,19 @@ html.sp-on,html.sp-on body{overflow:hidden}
   document.addEventListener('keydown',function(e){var root=fullAdminRoot();if(!root||!root.classList.contains('admin-menu-open'))return;if(e.key==='Escape'){e.preventDefault();toggleAdminMenu(false);}if(e.key==='Tab'){var side=root.querySelector('.adm-side'),items=Array.from(side.querySelectorAll('button,input,summary')).filter(function(x){return !x.disabled&&x.getClientRects().length;}),first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
   window.addEventListener('beforeunload',function(e){if(mode==='admin'&&dirty){e.preventDefault();e.returnValue='';}});
 
+  var adminCatalogVersion=null,adminLoadGeneration=0;
+  function loadAdminCatalog(){
+    var generation=++adminLoadGeneration;
+    app.innerHTML='<div class="wrap" style="padding:40px"><h1>جاري تحميل الإدارة…</h1><p id="adminLoadMessage">نراجع أحدث بيانات المتجر قبل التعديل.</p><button class="btn btn-soft" id="retryAdminLoad" hidden>حاول مرة ثانية</button><button class="btn btn-soft" id="leaveAdminLoad">عرض المتجر</button></div>';
+    $('leaveAdminLoad').onclick=function(){go('store');};$('retryAdminLoad').onclick=loadAdminCatalog;
+    api('/admin/catalog',{pin:adminPin}).then(function(j){
+      if(mode!=='admin'||generation!==adminLoadGeneration)return;
+      if(!j.ok||!j.version||!j.data){$('adminLoadMessage').textContent=j.code==='not_found'?'حدّث خادم Cloudflare لفتح الإدارة بالحماية الجديدة.':'تعذر تحميل أحدث البيانات. تأكد من الاتصال وجرّب ثانية.';$('retryAdminLoad').hidden=false;return;}
+      adminCatalogVersion=j.version;applyData(j.data);adminShell();
+    });
+  }
   /* ---------- routing ---------- */
-  function go(m){ window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m !== "pos") { clearInterval(pos.timer); pos.timer = null; } if (m !== "admin") { if(adminSaveObserver){adminSaveObserver.disconnect();adminSaveObserver=null;} clearInterval(posTimer); clearInterval(prepTimer); clearInterval(alertTimer); clearTimeout(admTimer); alertsGeneration++; alertsLoading = false; } if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
+  function go(m){ window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m !== "pos") { clearInterval(pos.timer); pos.timer = null; } if (m !== "admin") { adminLoadGeneration++; if(adminSaveObserver){adminSaveObserver.disconnect();adminSaveObserver=null;} clearInterval(posTimer); clearInterval(prepTimer); clearInterval(alertTimer); clearTimeout(admTimer); alertsGeneration++; alertsLoading = false; } if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); if(!staffAuth||staffAuth.user.role==="manager")loadAdminCatalog();else adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
   var startAdmin = false; try { startAdmin = sessionStorage.getItem("ohod-mode") === "admin"; sessionStorage.removeItem("ohod-mode"); } catch(e){}
   go("store");
   loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);

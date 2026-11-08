@@ -1,3 +1,4 @@
+import { githubMock } from './support/github.mjs';
 // Local-only integration tests: real Worker, SQLite D1 adapter and in-memory KV.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,9 +27,10 @@ const env = { DB, LOCKS, GITHUB_TOKEN: 'test-fixture', ADMIN_PIN: '2468', SECRET
 const catalog = JSON.parse(fs.readFileSync(new URL('../../data.json', import.meta.url)));
 // المالك يقفل المتجر من الإدارة (closed) وهذا يتحفظ في data.json؛ الاختبار لازم ما يتأثر بحالة المحل اليوم
 catalog.store = { ...catalog.store, closed: false }; delete catalog.store.minOrder; delete catalog.store.maxKm;
-globalThis.fetch = async (url, options = {}) => new Response(JSON.stringify(String(url).includes('api.github.com') && !options.method ? catalog : { ok: true }));
+globalThis.fetch = githubMock(() => catalog, async (url, options = {}) => new Response(JSON.stringify(String(url).includes('api.github.com') && !options.method ? catalog : { ok: true })), false);
 let ip = 0;
 async function call(path, body = {}, address) {
+  if(path==='/save'&&body.baseVersion===undefined)body={...body,baseVersion:(await call('/admin/catalog',{pin:body.pin,session:body.session})).version};
   const waits = [];
   const response = await worker.fetch(new Request('https://fixture.invalid' + path, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json', 'CF-Connecting-IP': address || `10.0.0.${++ip}` }, body: JSON.stringify(body) }), env, { waitUntil(p) { waits.push(p); } });
   const result = await response.json(); await Promise.all(waits);

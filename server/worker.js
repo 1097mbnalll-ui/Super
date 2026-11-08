@@ -17,8 +17,6 @@
 
 const MAX_FAILS_PER_IP = 5;        // محاولات غلط لكل جهاز
 const IP_LOCK_SECONDS = 15 * 60;   // مدة القفل لكل جهاز
-const MAX_FAILS_GLOBAL = 40;       // محاولات غلط من كل الأجهزة مع بعض
-const GLOBAL_LOCK_SECONDS = 60 * 60;
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 export default {
@@ -72,17 +70,29 @@ export default {
     try { body = await request.json(); } catch { return reply(400, { ok: false, code: "bad_json" }); }
 
     const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+    if (body.pin != null) body.pin = asciiDigits(String(body.pin));
 
     // طلب من زبون: ما يحتاج رقم سري
     if (path === "/order") {
       if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
       const chat = env.TELEGRAM_BOT_TOKEN ? await env.LOCKS.get("tg_chat") : null;
       if (!env.DB && !chat) return reply(503, { ok: false, code: "no_receiver" });
+      if(body.requestId && body.walletRequestId && body.requestId!==body.walletRequestId)return reply(400,{ok:false,code:'bad_request_id'});
+      const requestId = body.requestId || body.walletRequestId || null;
+      if (requestId && !operationId({requestId})) return reply(400,{ok:false,code:'bad_request_id'});
+      if (requestId && !env.DB) return reply(503,{ok:false,code:'idempotency_unavailable'});
+      let checkout = null;
+      if (requestId) {
+        await ensureSchema(env);
+        checkout = { id: requestId, fingerprint: await checkoutFingerprint(body) };
+        const repeated = await checkoutResult(env, checkout);
+        if (repeated) return reply(repeated.ok ? 200 : 409, repeated);
+      }
       if (env.DB ? await rateHit(env, "ord:" + ip, 6, 600) : await tooManyOrders(env, ip)) return reply(429, { ok: false, code: "slow_down" });
       let data;
       try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
       const priced = priceOrder(data, body);
-      if (priced.error) return reply(400, { ok: false, code: priced.error });
+      if (priced.error) return reply(400, { ok: false, code: priced.error, id: priced.id, max: priced.max });
       // منطقة التوصيل: لو المحل حدد أقصى مسافة
       const S0 = data.store || {}, shop = Array.isArray(S0.shop) && S0.shop.length === 2 ? S0.shop.map(Number) : null, maxKm = Number(S0.maxKm) || 0;
       if (shop && maxKm > 0 && isFinite(Number(body.lat)) && isFinite(Number(body.lng))) {
@@ -113,8 +123,9 @@ export default {
           let sid = short();
           if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
           try {
-            orderNo = await dbInsertOrder(env, record, need, Date.now());
+            orderNo = await dbInsertOrder(env, record, need, Date.now(), false, null, { checkout });
           } catch (e) {
+            if (checkout) { const repeated = await checkoutResult(env, checkout); if (repeated) return reply(repeated.ok ? 200 : 409, repeated); }
             // ممكن طلب ثاني سبقه على آخر حبة: نشيّك المخزون مرة ثانية
             stockBefore = await readStock(env); sid = short();
             if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
@@ -423,6 +434,10 @@ export default {
 
     // Legacy owner PIN remains available; staff cannot grant themselves privileges.
     if (path === "/login") return reply(200, { ok: true, role: principal?.role || "owner" });
+    if (path === '/admin/catalog') {
+      const current = await readCatalog(env);
+      return reply(200,{ok:true,data:current.data,version:await dataVersion(current.data)});
+    }
     if (path === "/admin/staff" || path === "/admin/staff-save") {
       if (principal) return reply(403, { ok: false, code: "forbidden" });
       if (!env.DB) return reply(503, { ok: false, code: "staff_unavailable" });
@@ -742,9 +757,9 @@ export default {
       let oldData = null; try { oldData = await loadData(env); } catch {}
       const oldStock = env.DB && stockSet ? await readStock(env).catch(() => ({})) : {};
       try {
-        await saveToGitHub(env, "data.json", JSON.stringify(data), "تحديث المتجر من صفحة الإدارة");
+        await saveToGitHub(env, "data.json", JSON.stringify(data), "تحديث المتجر من صفحة الإدارة", body.baseVersion);
       } catch (e) {
-        return reply(502, { ok: false, code: e.code || "github", status: e.status || 0 });
+        return reply(e.code === "data_conflict" ? 409 : 502, { ok: false, code: e.code || "github", status: e.status || 0 });
       }
       if (body.newPin) await env.LOCKS.put("pin", await hashPin(env, String(body.newPin)));
       if (body.newDriverPin) {
@@ -756,7 +771,7 @@ export default {
       if (costSet) { try { await setCosts(env, costSet); } catch { return reply(502, { ok: false, code: "stock" }); } }
       if (env.DB) await logSave(env, staff(body), oldData, data, stockSet, oldStock, costSet, body).catch(() => {});
       dataCache = { at: 0, data: null };
-      return reply(200, { ok: true, stock: stockSet ? await readStock(env) : undefined });
+      return reply(200, { ok: true, version: await dataVersion(data), stock: stockSet ? await readStock(env) : undefined });
     }
     return reply(404, { ok: false, code: "not_found" });
     }
@@ -865,6 +880,7 @@ async function dbInsertOrder(env, rec, need, now, force, log, opt = {}) {
     st.push(P("SELECT CASE WHEN qty < ? THEN json('stock') ELSE 1 END x FROM stock WHERE id = ?", need[id], id));
     st.push(P("UPDATE stock SET qty = qty - ? WHERE id = ?", need[id], id));
   }
+  if (opt.checkout) st.push(P(`INSERT INTO checkout_keys(request_id,no,fingerprint) VALUES(?,${NO},?)`,opt.checkout.id,opt.checkout.fingerprint));
   if (rec.walletCents) {
     st.push(P(`INSERT INTO wallet_order_keys(request_id,no) VALUES(?,${NO})`,rec.walletRequestId));
     st.push(...walletMove(env, rec.phone, -rec.walletCents, 'payment', null, 'العميل', 'دفع طلب', 'checkout_'+rec.walletRequestId));
@@ -874,7 +890,8 @@ async function dbInsertOrder(env, rec, need, now, force, log, opt = {}) {
   }
   st.push(...statsStmts(env, rec, day, hour, 1, 0));
   await env.DB.batch(st);
-  const row = opt.cid ? await env.DB.prepare("SELECT no FROM orders WHERE cid = ?").bind(opt.cid).first()
+  const row = opt.checkout ? await env.DB.prepare('SELECT no FROM checkout_keys WHERE request_id = ?').bind(opt.checkout.id).first()
+    : opt.cid ? await env.DB.prepare("SELECT no FROM orders WHERE cid = ?").bind(opt.cid).first()
     : await env.DB.prepare("SELECT MAX(no) no FROM orders WHERE created = ? AND ch = ?").bind(now, ch).first();
   return "#" + (1000 + row.no);
 }
@@ -1029,11 +1046,12 @@ function priceOrder(data, body) {
   const lines = [];
   let base = 0, dealSum = 0, count = 0;
   const dealLines = [];
-  const used = {}, bund = {};
+  const bund = {};
   for (const [key, rawQty] of Object.entries(items)) {
     let qty = Math.floor(Number(rawQty));
     if (!(qty > 0 && qty <= 200)) continue;
     const parts = String(key).split(":");
+    if (!(parts.length === 1 || (parts.length === 2 && ['r','t','d'].includes(parts[0])) || (parts.length === 3 && parts[0] === 'x'))) return {error:'bad_items'};
     // باقة: x:<رقم البنر>:<المنتج>. سعرها من بيانات المتجر، مو من الجوال
     if (parts[0] === "x" && parts.length === 3) {
       const ban = (S.bans || []).find((b) => b.id === parts[1]), bp = byId[parts[2]];
@@ -1046,9 +1064,6 @@ function priceOrder(data, body) {
     const kind = parts.length > 1 ? parts[0] : "r";
     const p = byId[parts.length > 1 ? parts[1] : parts[0]];
     if (!p || !p.stock) return { error: "unavailable", id: key };
-    const max = Math.floor(Number(p.max || 0));
-    if (max > 0) { qty = Math.min(qty, max - (used[p.id] || 0)); if (qty <= 0) continue; }
-    used[p.id] = (used[p.id] || 0) + qty;
     if (kind === "t") {
       if (!daily || daily.id !== p.id) { lines.push({ p, qty, price: Number(p.price), tag: "" }); base += qty * p.price; count += qty; continue; }
       const lim = Number(DAILY.limit || 0);
@@ -1074,6 +1089,12 @@ function priceOrder(data, body) {
     }
   }
   if (DEAL && base >= Number(DEAL.min || 0)) for (const d of dealLines) { lines.push(d); dealSum += d.qty * d.price; count += d.qty; }
+  const quantities = {};
+  for (const l of lines) quantities[l.p.id] = (quantities[l.p.id] || 0) + l.qty;
+  for (const [id, qty] of Object.entries(quantities)) {
+    const max = Math.floor(Number(byId[id].max || 0));
+    if (max > 0 && qty > max) return {error:'item_limit',id,max};
+  }
   if (!count) return { error: "empty" };
   if (S.closed) return { error: "closed" };
   if (Number(S.minOrder) > 0 && base + dealSum < Number(S.minOrder)) return { error: "min_order", min: Number(S.minOrder) };
@@ -1084,7 +1105,7 @@ function priceOrder(data, body) {
 
 function round2(n) { return Math.round(n * 100) / 100; }
 function normPhone(v) {
-  let s = String(v || "").replace(/[^\d+]/g, "").replace(/^\+?966/, "").replace(/^0/, "");
+  let s = asciiDigits(v).replace(/[^\d+]/g, "").replace(/^\+?966/, "").replace(/^0/, "");
   return /^5\d{8}$/.test(s) ? "0" + s : "";
 }
 function mapsUrl(lat, lng) { return `https://www.google.com/maps?q=${Number(lat).toFixed(6)},${Number(lng).toFixed(6)}`; }
@@ -1161,10 +1182,9 @@ async function checkPin(env, pin) {
 
 async function isLocked(env, ip) {
   if (!env.LOCKS) return 0;
-  const [mine, all] = await Promise.all([env.LOCKS.get("fail:" + ip, "json"), env.LOCKS.get("fail:all", "json")]);
+  const mine = await env.LOCKS.get("fail:" + ip, "json");
   const now = Date.now();
   if (mine && mine.n >= MAX_FAILS_PER_IP && mine.until > now) return Math.ceil((mine.until - now) / 1000);
-  if (all && all.n >= MAX_FAILS_GLOBAL && all.until > now) return Math.ceil((all.until - now) / 1000);
   return 0;
 }
 
@@ -1178,7 +1198,7 @@ async function bump(env, key, seconds) {
 
 async function recordFail(env, ip) {
   if (!env.LOCKS) return;
-  await Promise.all([bump(env, "fail:" + ip, IP_LOCK_SECONDS), bump(env, "fail:all", GLOBAL_LOCK_SECONDS)]);
+  await bump(env, "fail:" + ip, IP_LOCK_SECONDS);
 }
 
 async function clearFails(env, ip) {
@@ -1210,29 +1230,46 @@ function toBase64(text) {
   return btoa(bin);
 }
 
-async function saveToGitHub(env, file, text, message) {
-  const url = `https://api.github.com/repos/${env.REPO}/contents/${file}`;
-  const headers = {
-    "Authorization": "Bearer " + env.GITHUB_TOKEN,
-    "Accept": "application/vnd.github+json",
-    "User-Agent": "ohod-admin-worker",
-    "X-GitHub-Api-Version": "2022-11-28",
-  };
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const cur = await fetch(`${url}?ref=${encodeURIComponent(env.BRANCH)}`, { headers });
-    if (cur.status === 401 || cur.status === 403) throw { code: "github_auth", status: cur.status };
-    const sha = cur.ok ? (await cur.json()).sha : undefined;
-    const put = await fetch(url, {
-      method: "PUT",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ message, content: toBase64(text), branch: env.BRANCH, ...(sha ? { sha } : {}) }),
-    });
-    if (put.ok) return;
-    if (put.status === 409 && attempt === 0) continue; // تعارض بسيط: نعيد مرة وحدة
-    if (put.status === 401 || put.status === 403 || put.status === 404) throw { code: "github_auth", status: put.status };
-    throw { code: "github", status: put.status };
+function canonical(value) {
+  if (Array.isArray(value)) return '['+value.map(canonical).join(',')+']';
+  if (value && typeof value==='object') return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}';
+  return JSON.stringify(value);
+}
+async function dataVersion(data) { return tokenHash(canonical(data)); }
+function githubHeaders(env) { return {Authorization:'Bearer '+env.GITHUB_TOKEN,Accept:'application/vnd.github+json','User-Agent':'ohod-admin-worker','X-GitHub-Api-Version':'2022-11-28'}; }
+async function readCatalog(env) {
+  const url=`https://api.github.com/repos/${env.REPO}/contents/data.json`;
+  const response=await fetch(url+'?ref='+encodeURIComponent(env.BRANCH),{headers:githubHeaders(env)});
+  if (!response.ok) throw {code:response.status===401||response.status===403?'github_auth':'github',status:response.status};
+  const file=await response.json();
+  if (!file.sha) throw {code:'github',status:502};
+  let content=file.content;
+  // Contents omits inline base64 for larger files. Read the immutable blob, never another branch snapshot.
+  if(file.encoding==='none'||typeof content!=='string'||!content){
+    const blobResponse=await fetch(`https://api.github.com/repos/${env.REPO}/git/blobs/${encodeURIComponent(file.sha)}`,{headers:githubHeaders(env)});
+    if(!blobResponse.ok)throw {code:'github',status:blobResponse.status};
+    const blob=await blobResponse.json();if(blob.sha!==file.sha||typeof blob.content!=='string')throw {code:'github',status:502};content=blob.content;
   }
-  throw { code: "github_conflict", status: 409 };
+  const bytes=Uint8Array.from(atob(content.replace(/\s/g,'')),c=>c.charCodeAt(0));
+  return {url,sha:file.sha,data:JSON.parse(new TextDecoder().decode(bytes))};
+}
+async function saveToGitHub(env, file, text, message, baseVersion) {
+  const current=await readCatalog(env);
+  if (typeof baseVersion!=='string' || baseVersion!==await dataVersion(current.data)) throw {code:'data_conflict',status:409};
+  const response=await fetch(current.url,{method:'PUT',headers:{...githubHeaders(env),'Content-Type':'application/json'},body:JSON.stringify({message,content:toBase64(text),branch:env.BRANCH,sha:current.sha})});
+  if (response.status===409) throw {code:'data_conflict',status:409};
+  if (!response.ok) throw {code:[401,403,404].includes(response.status)?'github_auth':'github',status:response.status};
+}
+
+function asciiDigits(value) { return String(value??'').replace(/[٠-٩۰-۹]/g,c=>String(c.charCodeAt(0)-(c<='٩'?0x660:0x6f0))); }
+async function checkoutFingerprint(body) {
+  return dataVersion({items:body.items||{},phone:normPhone(body.phone),pay:body.pay==='card'?'card':'cash',name:String(body.name||''),details:String(body.details||''),note:String(body.note||''),sub:body.sub||'call',lat:Number(body.lat),lng:Number(body.lng),wallet:moneyCents(body.walletAmount||0)});
+}
+async function checkoutResult(env, checkout) {
+  const old=await env.DB.prepare('SELECT k.fingerprint,o.no,o.total FROM checkout_keys k JOIN orders o ON o.no=k.no WHERE k.request_id=?').bind(checkout.id).first();
+  if (!old) return null;
+  if (old.fingerprint!==checkout.fingerprint) return {ok:false,code:'request_conflict'};
+  return {ok:true,orderNo:'#'+(1000+old.no),total:old.total,track:true,repeated:true};
 }
 
 // ---------- المخزون ----------
@@ -1643,7 +1680,8 @@ async function readCash(env, drvId) {
   const transfers=(await env.DB.prepare('SELECT * FROM cash ORDER BY id DESC').all()).results||[];
   const team = await staffList(env, "driver"), nm = staffNames(team), solo = await soleDriver(env);
   const keyOf = (d) => solo && (d === '' || d === 'admin') ? solo : d;
-  const since=transfers.length ? Math.min(...transfers.map(x=>x.at)) : 0, daily={}, owed={}, got={};
+  const openings=transfers.filter(t=>Number(t.amount)===0 && t.who==='النظام' && t.note==='بداية الحساب');
+  const since=openings.length ? Math.min(...openings.map(x=>x.at)) : 0, daily={}, owed={}, got={};
   for(const o of rows){const cash=o.cash==null?(o.pay==='cash'?moneyCents(o.total):0):o.cash; const k0=keyOf(o.drv); if(o.delivered_at>=since) owed[k0]=(owed[k0]||0)+cash;
     if(one && k0!==drvId) continue;
     if(o.delivered_at<Date.now()-14*864e5)continue; const day=riyadhDateAt(o.delivered_at); const r=daily[day]||(daily[day]={day,n:0,cash:0,got:0});if(cash){r.n++;r.cash=round2(r.cash+cash/100);}}
@@ -1893,6 +1931,7 @@ async function ensureOperations(env) {
     "CREATE TABLE IF NOT EXISTS driver_settlements(day TEXT PRIMARY KEY,requested_at INTEGER NOT NULL,who TEXT NOT NULL,expected INTEGER NOT NULL,state TEXT NOT NULL CHECK(state IN ('pending','confirmed')),revision INTEGER NOT NULL,actual INTEGER,confirmed_at INTEGER,confirmed_by TEXT,note TEXT)",
     "CREATE TABLE IF NOT EXISTS payment_splits(no INTEGER PRIMARY KEY,cash INTEGER NOT NULL CHECK(cash>=0),card INTEGER NOT NULL CHECK(card>=0),wallet INTEGER NOT NULL CHECK(wallet>=0),revision INTEGER NOT NULL,at INTEGER NOT NULL,who TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS wallet_order_keys(request_id TEXT PRIMARY KEY,no INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS checkout_keys(request_id TEXT PRIMARY KEY,no INTEGER NOT NULL,fingerprint TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS delivery_times(no INTEGER PRIMARY KEY,at INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS collection_changes(id INTEGER PRIMARY KEY AUTOINCREMENT,request_id TEXT UNIQUE NOT NULL,no INTEGER NOT NULL,at INTEGER NOT NULL,who TEXT NOT NULL,note TEXT NOT NULL,before_json TEXT NOT NULL,after_json TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS day_closures(day TEXT PRIMARY KEY,at INTEGER NOT NULL,who TEXT NOT NULL,expected INTEGER NOT NULL,actual INTEGER NOT NULL,cash_total INTEGER NOT NULL,card_total INTEGER NOT NULL,wallet_total INTEGER NOT NULL,sales INTEGER NOT NULL,orders INTEGER NOT NULL,note TEXT NOT NULL)",
@@ -1981,7 +2020,7 @@ async function operationsRoute(env,path,body,who,role){
     if(actual!==request.expected&&!note)return fail('reason_required');
     const cash=await readCash(env,did),snapshot=Math.round(cash.balance*100),soloC=await soleDriver(env);
     // رصيد هالمندوب لازم ما يتغير بين القراءة والتأكيد (طلب انوصّل أو استلام انسجّل بنفس اللحظة)
-    const guard=P("SELECT CASE WHEN (SELECT state FROM driver_settlements2 WHERE day=? AND drv=?)!='pending' OR (SELECT revision FROM driver_settlements2 WHERE day=? AND drv=?)!=? OR ((SELECT COALESCE(SUM(COALESCE(p.cash,CASE WHEN o.pay='cash' THEN CAST(ROUND(o.total*100) AS INTEGER) ELSE 0 END)),0) FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND (?=1 OR IFNULL(o.drv,'')=?) AND COALESCE(d.at,o.updated)>=COALESCE((SELECT MIN(at) FROM cash),0))-(SELECT CAST(ROUND(COALESCE(SUM(amount),0)*100) AS INTEGER) FROM cash WHERE (?=1 OR drv=?)))!=? THEN json('settlement_conflict') ELSE 1 END",request.day,did,request.day,did,request.revision,soloC?1:0,did,soloC?1:0,did,snapshot);
+    const guard=P("SELECT CASE WHEN (SELECT state FROM driver_settlements2 WHERE day=? AND drv=?)!='pending' OR (SELECT revision FROM driver_settlements2 WHERE day=? AND drv=?)!=? OR ((SELECT COALESCE(SUM(COALESCE(p.cash,CASE WHEN o.pay='cash' THEN CAST(ROUND(o.total*100) AS INTEGER) ELSE 0 END)),0) FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND (?=1 OR IFNULL(o.drv,'')=?) AND COALESCE(d.at,o.updated)>=COALESCE((SELECT MIN(at) FROM cash WHERE amount=0 AND who='النظام' AND note='بداية الحساب'),0))-(SELECT CAST(ROUND(COALESCE(SUM(amount),0)*100) AS INTEGER) FROM cash WHERE (?=1 OR drv=?)))!=? THEN json('settlement_conflict') ELSE 1 END",request.day,did,request.day,did,request.revision,soloC?1:0,did,soloC?1:0,did,snapshot);
     try{await env.DB.batch([guard,P('INSERT INTO cash(at,day,who,amount,note,drv) VALUES(?,?,?,?,?,?)',Date.now(),riyadhDate(),who,actual/100,'تسوية المندوب ليوم '+request.day+(note?' — '+note:''),did),P("UPDATE driver_settlements2 SET state='confirmed',actual=?,confirmed_at=?,confirmed_by=?,note=? WHERE day=? AND drv=?",actual,Date.now(),who,note,request.day,did),logStmt(env,who,'driver_settlement',request.day,{expected:request.expected,actual,difference:actual-request.expected})]);}catch{return fail('conflict',409);}
     return {ok:true,difference:actual-request.expected};
   }

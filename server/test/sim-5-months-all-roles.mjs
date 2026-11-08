@@ -1,3 +1,4 @@
+import { githubMock } from './support/github.mjs';
 // محاكاة ٥ شهور لحظة بلحظة: زبائن + إدارة + مندوب على كود الخادم نفسه، مع دفتر مستقل يتحقق من كل رقم.
 import w from '../worker.js'; import fs from 'fs'; import { DatabaseSync } from 'node:sqlite';
 const DBFILE = process.argv[2] || ':memory:', DAYS = Number(process.argv[3] || 150);
@@ -15,11 +16,11 @@ delete data.store.minOrder; delete data.store.closed; data.store.keepDays = 180;
 data.products.forEach(p => { delete p.max; });
 const S = data.store, FEE = Number(S.fee || 0), FREE = Number(S.freeOver || 0);
 const pushes = [];
-globalThis.fetch = async (u, o = {}) => { u = String(u); if (u.includes('api.github.com') && !o.method) return new Response(JSON.stringify(data)); if (u.includes('push.sim')) { pushes.push(u); return new Response('', { status: 201 }); } return new Response('{"ok":true}'); };
+globalThis.fetch = githubMock(() => data, async (u, o = {}) => { u = String(u); if (u.includes('api.github.com') && !o.method) return new Response(JSON.stringify(data)); if (u.includes('push.sim')) { pushes.push(u); return new Response('', { status: 201 }); } return new Response('{"ok":true}'); }, false);
 let NOW = Date.UTC(2026, 10, 7, 3, 0); const RD = Date; Date.now = () => NOW;
 let seed = 11; const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }; Math.random = rnd;
 const O = 'https://1097mbnalll-ui.github.io'; let ipn = 0;
-const call = async (path, body) => { const waits = []; const r = await w.fetch(new Request('https://x.dev' + path, { method: 'POST', headers: { Origin: O, 'CF-Connecting-IP': '10.' + (++ipn % 250) + '.' + (Math.floor(ipn / 250) % 250) + '.' + (Math.floor(ipn / 62500) % 250) }, body: JSON.stringify(body) }), env, { waitUntil: p => waits.push(p) }); const j = await r.json(); await Promise.all(waits); return j; };
+const call = async (path, body) => { if(path==='/save'&&body.baseVersion===undefined)body={...body,baseVersion:(await call('/admin/catalog',{pin:body.pin})).version}; const waits = []; const r = await w.fetch(new Request('https://x.dev' + path, { method: 'POST', headers: { Origin: O, 'CF-Connecting-IP': '10.' + (++ipn % 250) + '.' + (Math.floor(ipn / 250) % 250) + '.' + (Math.floor(ipn / 62500) % 250) }, body: JSON.stringify(body) }), env, { waitUntil: p => waits.push(p) }); const j = await r.json(); await Promise.all(waits); return j; };
 const admin = (path, body, by) => call(path, { pin: '2468', by: by || (rnd() < 0.5 ? 'فهد' : 'أبو محمد'), ...body });
 const dayOf = ms => new RD(ms + 3 * 3600e3).toISOString().slice(0, 10);
 const r2 = n => Math.round(n * 100) / 100;
