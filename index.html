@@ -954,6 +954,8 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-chip svg.i{width:17px;height:17px}
 .kq-chip[aria-pressed="true"]{background:#EEF3FF;border-color:#8FA9F5;color:#2B4FC4}
 .kq-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px;padding-top:6px}
+.imp-sum{display:grid;gap:8px;margin-top:10px}.imp-sum ul{margin:0;padding-inline-start:20px;color:var(--muted);font-size:.9rem}.imp-cats{display:flex;flex-wrap:wrap;gap:6px}.imp-cats span{background:var(--sky,#EEF6F3);border-radius:999px;padding:4px 10px;font-size:.85rem}
+.kq-more{grid-column:1/-1;justify-self:center;min-width:220px;margin:6px 0 12px}.kq-more small{opacity:.7;font-weight:500}
 .kq-card{display:grid;gap:3px;align-content:start;cursor:pointer;min-width:0;position:relative}
 .kq-img{position:relative;aspect-ratio:1/1;max-width:100%;border-radius:18px;background:#F5F6F8;display:grid;place-items:center;overflow:hidden;margin-bottom:6px}
 .kq-img img{width:78%;height:78%;object-fit:contain}
@@ -1636,14 +1638,18 @@ html.sp-on,html.sp-on body{overflow:hidden}
     D.cats.forEach(function(c){ l.push({ id: "c:" + c.id, name: nm(c) }); });
     return l;
   }
+  // آلاف المنتجات: نعرض دفعة (٤٨) وزر «عرض المزيد»، عشان الصفحة ما تثقل على الجوال
+  var MORE = {}, PAGE = 48;
+  function moreBtn(key, rest){ return '<button type="button" class="btn btn-soft kq-more" data-more="' + esc(key) + '">' + tr("عرض المزيد", "Show more") + ' <small>(' + num(rest) + ')</small></button>'; }
+  function pagedCards(list, key, kind){ var n = MORE[key] || PAGE, out = list.slice(0, n).map(function(p){ return card(p, kind); }); if (list.length > n) out.push(moreBtn(key, list.length - n)); return out; }
   function chipItems(){
-    if (chip === "offers") return D.products.filter(function(p){ return avail(p) && onSale(p); }).map(function(p){ return card(p); });
-    if (chip === "deals") return dealsList().map(function(p){ return card(p, "d"); });
-    if (chip.indexOf("b:") === 0) { var bb = banOf(chip.slice(2)); return bb ? (bb.ids || []).map(byId).filter(Boolean).sort(function(a,b){ return avail(b) - avail(a); }).map(function(p){ return card(p); }) : []; }
-    if (chip.indexOf("c:") === 0) { var cid = chip.slice(2); return D.products.filter(function(p){ return p.cat === cid; }).sort(function(a,b){ return avail(b) - avail(a); }).map(function(p){ return card(p); }); }
+    if (chip === "offers") return pagedCards(D.products.filter(function(p){ return avail(p) && onSale(p); }), "chip:offers");
+    if (chip === "deals") return pagedCards(dealsList(), "chip:deals", "d");
+    if (chip.indexOf("b:") === 0) { var bb = banOf(chip.slice(2)); return bb ? pagedCards((bb.ids || []).map(byId).filter(Boolean).sort(function(a,b){ return avail(b) - avail(a); }), "chip:" + chip) : []; }
+    if (chip.indexOf("c:") === 0) { var cid = chip.slice(2); return pagedCards(D.products.filter(function(p){ return p.cat === cid; }).sort(function(a,b){ return avail(b) - avail(a); }), "chip:" + chip); }
     var dd = daily(), fy = idsToList(S.forYou), fyId = {}; fy.forEach(function(p){ fyId[p.id] = 1; });
     var list = S.forOnly && fy.length ? [] : D.products.filter(function(p){ return avail(p) && !fyId[p.id]; }).slice().sort(function(a,b){ return (onSale(b) ? 1 : 0) - (onSale(a) ? 1 : 0); });
-    return (dd && !fyId[dd.p.id] ? [card(dd.p, "t")] : []).concat(fy.concat(list).map(function(p){ return card(p); }));
+    return (dd && !fyId[dd.p.id] ? [card(dd.p, "t")] : []).concat(pagedCards(fy.concat(list), "chip:for"));
   }
   /* ---------- banners: 6 designs + product cut-outs ---------- */
   var BAN_STYLES = ["night", "shelf", "calm", "split", "bundle", "glass"];
@@ -1777,7 +1783,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var c = catOf(openCat) || D.cats[0], items = D.products.filter(function(p){ return p.cat === c.id; }).sort(function(a,b){ return avail(b) - avail(a); });
     return '<div class="aisle-head" style="background:' + tint(c.id) + '">' + imgTag(catPhoto(c), "") + tr('<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + tr('</button><button class="sq" type="button" data-nav="search" aria-label="بحث" style="background:rgba(255,255,255,.75)">', '</button><button class="sq" type="button" data-nav="search" aria-label="Search" style="background:rgba(255,255,255,.75)">') + ic("search") + '</button></div>' +
       '<h1>' + esc(nm(c)) + '</h1><p>' + items.length + tr(' منتج · التوصيل ', ' products · delivery ') + esc(sv("eta") || "") + '</p></div></div>' +
-      '<div class="wrap" style="margin-top:16px"><div class="grid">' + items.map(function(p){ return card(p); }).join("") + '</div></div>';
+      '<div class="wrap" style="margin-top:16px"><div class="grid">' + pagedCards(items, "cat:" + c.id).join("") + '</div></div>';
   }
   function productHTML(){
     var p = byId(openProd); if (!p) return catsHTML();
@@ -1802,6 +1808,16 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (avail(p) ? tr('<div class="buybar"><div class="qtybig"><button type="button" data-pq="-1" aria-label="نقص">', '<div class="buybar"><div class="qtybig"><button type="button" data-pq="-1" aria-label="Decrease">') + ic("minus") + '</button><b id="pq">' + pdQty + tr('</b><button type="button" data-pq="1" aria-label="زيادة">', '</b><button type="button" data-pq="1" aria-label="Increase">') + ic("plus") + '</button></div>' +
         '<button class="btn btn-ink go" type="button" data-addprod="' + p.id + '" data-kind="' + (isDaily ? "t" : "") + tr('">أضف للسلة<span id="pqTotal">', '">Add to cart<span id="pqTotal">') + rial(price * pdQty) + '</span></button></div>' : '');
   }
+  // البحث: يتجاهل الهمزات والتاء المربوطة والتشكيل، وكل كلمة لازم تنوجد (حليب المراعي = المراعي حليب)، ويقبل الباركود
+  function normAr(s){ return String(s || "").toLowerCase().replace(/[إأآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/ؤ/g, "و").replace(/ئ/g, "ي").replace(/[\u064B-\u0652\u0640]/g, ""); }
+  var searchIx = null, searchIxOf = null;
+  function searchProducts(text){
+    if (searchIxOf !== D.products) { searchIxOf = D.products; searchIx = D.products.map(function(p){ var c = catOf(p.cat); return normAr([p.name, p.name_en, p.bc, c && c.name, c && c.name_en].join(" ")); }); }
+    var words = normAr(text).split(/\s+/).filter(Boolean); if (!words.length) return [];
+    var out = [];
+    for (var i = 0; i < D.products.length; i++) { var h = searchIx[i], ok = true; for (var w = 0; w < words.length; w++) if (h.indexOf(words[w]) < 0) { ok = false; break; } if (ok) out.push(D.products[i]); }
+    return out.sort(function(a, b){ return avail(b) - avail(a); });
+  }
   function searchHTML(){
     return '<div class="wrap"><div class="kq-stop"><button class="sq" type="button" data-nav="back" aria-label="' + tr("رجوع", "Back") + '">' + ic("back") + '</button>' +
       '<label class="kq-search" for="q">' + ic("search") + '<input id="q" type="search" placeholder="' + tr("جهز جمعتك.. ابحث عن المشروبات…", "Search drinks, snacks, groceries…") + '" value="' + esc(q) + '" autocomplete="off"><button type="button" class="kq-sf" data-nav="cats" aria-label="' + tr("الأقسام", "Categories") + '">' + ic("filter") + '</button></label></div><div id="sres"></div></div>';
@@ -1810,9 +1826,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var box = $("sres"); if (!box) return;
     if (q) {
       clearTimeout(EVq.t); var q0 = q; EVq.t = setTimeout(function(){ var k = q0.toLowerCase(); if (q0.length > 1 && !EVq[k] && EV.s.length < 15) { EVq[k] = 1; EV.s.push({ q: q0, f: res.length }); } }, 1500);
-      var ql = q.toLowerCase(); var res = D.products.filter(function(p){ var c = catOf(p.cat); return [p.name, p.name_en, c && c.name, c && c.name_en].some(function(s){ return s && String(s).toLowerCase().indexOf(ql) > -1; }); });
+      var res = searchProducts(q);
       box.innerHTML = '<div class="kq-sec"><h2>' + tr("نتائج", "Results for") + ' "' + esc(q) + '"</h2><span class="hint">' + res.length + tr(" منتج", " products") + '</span></div>' +
-        (res.length ? '<div class="kq-grid">' + res.map(function(p){ return card(p); }).join("") + '</div>' : '<div class="empty"><span class="big">' + ic("search") + '</span><b>' + tr("ما لقينا", "No results for") + ' "' + esc(q) + '"</b><span>' + tr("اتصل علينا على ", "Call us at ") + esc(S.phone) + '</span></div>');
+        (res.length ? '<div class="kq-grid">' + pagedCards(res, "q:" + q).join("") + '</div>' : '<div class="empty"><span class="big">' + ic("search") + '</span><b>' + tr("ما لقينا", "No results for") + ' "' + esc(q) + '"</b><span>' + tr("اتصل علينا على ", "Call us at ") + esc(S.phone) + '</span></div>');
       return;
     }
     var findP = function(term){ var tl = term.toLowerCase(); for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if ([p.name, p.name_en].some(function(s){ return s && String(s).toLowerCase().indexOf(tl) > -1; })) return p; } return null; };
@@ -2063,6 +2079,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       $("pq").textContent = pdQty; $("pqTotal").textContent = rial((dd && dd.p.id === openProd ? dd.price : p.price) * pdQty); return; }
     if ((t = e.target.closest("[data-addprod]"))) { var key = (t.dataset.kind ? t.dataset.kind + ":" : "") + t.dataset.addprod, L1 = lineOf(key);
       var nn = (cart[key] || 0) + pdQty; if (L1.limit) nn = Math.min(nn, L1.limit); cart[key] = nn; saveCart(); evAdd("c", L1.p.id); show("back"); return; }
+    if ((t = e.target.closest("[data-more]"))) { var mk = t.dataset.more; MORE[mk] = (MORE[mk] || PAGE) + PAGE * 2; if (mk.indexOf("chip:") === 0 && $("kqGrid")) $("kqGrid").innerHTML = chipItems().join(""); else if (mk.indexOf("q:") === 0) renderSearch(); else refresh(); return; }
     if ((t = e.target.closest("[data-chip]"))) { var hadB = chip.indexOf("b:") === 0; chip = t.dataset.chip; if (screen !== "home") { show("home"); } else if (hadB || chip.indexOf("b:") === 0) { refresh(); } else { Array.prototype.forEach.call(document.querySelectorAll(".kq-chip"), function(c){ c.setAttribute("aria-pressed", c.dataset.chip === chip); }); $("kqGrid").innerHTML = chipItems().join(""); }
       var ch = $("kqChips"); if (ch) window.scrollTo({ top: ch.getBoundingClientRect().top + window.scrollY - 4, behavior: "smooth" }); var on = document.querySelector('.kq-chip[aria-pressed="true"]'); if (on) on.scrollIntoView({ inline: "center", block: "nearest" }); return; }
     if ((t = e.target.closest("[data-jump]"))) { var je = $(t.dataset.jump); if (je) window.scrollTo({ top: je.getBoundingClientRect().top + window.scrollY - 12, behavior: "smooth" }); return; }
@@ -2593,7 +2610,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<section class="adm-panel" data-panel="cust" id="aCust"></section>' +
       '<section class="adm-panel" data-panel="sign" id="aSign"></section>' +
       '<section class="adm-panel" data-panel="bans" id="aBans"></section>' +
-      '<section class="adm-panel" data-panel="prods"><div class="card" id="openItems" hidden></div><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث عن منتج…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
+      '<section class="adm-panel" data-panel="prods"><div class="card" id="aImport"></div><div class="card" id="openItems" hidden></div><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث بالاسم أو الباركود…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
         '<p class="hint">«قبل الخصم» اختياري: لو كتبته أكبر من السعر، يطلع المنتج في العروض مع نسبة الخصم. اضغط على الصورة لتغييرها أو رفع صورة من جهازك. الأسهم ترتّب المنتج داخل قسمه.</p></div><div class="alist prods" id="aProds"></div></section>' +
       '<section class="adm-panel" data-panel="cats"><div class="card"><div class="sec-head" style="margin:0"><h2>الأقسام</h2><button class="btn btn-brand" type="button" id="addCat">+ قسم جديد</button></div><p class="hint">الأسهم ترتّب الأقسام في المتجر كله: الدوائر والشبكة وصفحة الأقسام.</p><div class="alist" id="aCats"></div></div></section>' +
       '<section class="adm-panel" data-panel="offers"><div class="card" id="aPromos"></div></section>' +
@@ -2665,8 +2682,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
       aFilter.q = ""; $("aQ").value = ""; markDirty(); showTab("prods"); renderAProds();
       var first = document.querySelector("#aProds input"); if (first) { first.focus(); first.select(); }
     });
-    $("aQ").addEventListener("input", function(){ aFilter.q = this.value.trim(); renderAProds(); });
-    $("aCat").addEventListener("change", function(){ aFilter.cat = this.value; renderAProds(); });
+    $("aQ").addEventListener("input", function(){ aFilter.q = this.value.trim(); aFilter.show = 0; renderAProds(); });
+    $("aCat").addEventListener("change", function(){ aFilter.cat = this.value; aFilter.show = 0; renderAProds(); });
+    renderImport();
     $("pickClose").addEventListener("click", function(){ $("pickSheet").hidden = true; });
     $("pickSheet").addEventListener("click", function(e){ if (e.target === this) this.hidden = true; });
     $("pickFile").addEventListener("change", onUpload);
@@ -2839,9 +2857,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
     }).join("");
   }
   function renderAProds(){
-    var q = aFilter.q;
-    var list = draft.products.filter(function(p){ return (aFilter.cat === "all" || p.cat === aFilter.cat) && (!q || p.name.indexOf(q) > -1); });
-    $("aProds").innerHTML = list.length ? list.map(function(p){
+    var words = normAr(aFilter.q).split(/\s+/).filter(Boolean), shown = aFilter.show || 40;
+    var all = draft.products.filter(function(p){ if (aFilter.cat !== "all" && p.cat !== aFilter.cat) return false; if (!words.length) return true; var h = normAr(p.name + " " + (p.bc || "")); return words.every(function(w){ return h.indexOf(w) > -1; }); });
+    var list = all.slice(0, shown);
+    $("aProds").innerHTML = (all.length > 40 ? '<p class="hint">' + num(all.length) + ' منتج' + (all.length > shown ? '، معروض أول ' + num(shown) + '. استخدم البحث أو القسم عشان توصل للمنتج بسرعة.' : '') + '</p>' : '') + (list.length ? list.map(function(p){
       return '<div class="arow' + (p.stock ? '' : ' off') + '" data-row="' + p.id + '">' +
         '<button class="imgbtn" type="button" data-pick="prod:' + p.id + '" aria-label="تغيير صورة ' + esc(p.name) + '">' + imgTag(p.img, "") + '</button>' +
         '<label>الاسم<input data-f="name" value="' + esc(p.name) + '"></label>' +
@@ -2861,9 +2880,81 @@ html.sp-on,html.sp-on body{overflow:hidden}
         '<input data-f="badge" value="' + esc(p.badge || "") + '" placeholder="شارة: يُخبز يوميًا" aria-label="شارة المنتج" style="width:150px">' +
         '<button class="btn btn-soft sm" type="button" data-sugg="' + p.id + '">المقترحات' + (p.sugg && p.sugg.length ? ' (' + p.sugg.length + ')' : '') + '</button>' +
         mvBtns('prod', p.id) + '<button class="del" type="button" data-del-prod="' + p.id + '">حذف</button></div></div>';
-    }).join("") : '<p class="empty">ما فيه منتجات بهذا البحث.</p>';
+    }).join("") : '<p class="empty">ما فيه منتجات بهذا البحث.</p>') + (all.length > shown ? '<button type="button" class="btn btn-soft" id="aMore" style="justify-self:center">عرض ٤٠ زيادة (باقي ' + num(all.length - shown) + ')</button>' : '');
+    var mb = $("aMore"); if (mb) mb.onclick = function(){ aFilter.show = shown + 40; renderAProds(); };
+  }
+  /* ----- استيراد ملف أصناف الكاشير (Excel): يختار الأهم، يوزعهم على الأقسام، والتكلفة والمخزون تنحفظ سرية ----- */
+  var imp = { plan: null, file: "", busy: false, msg: "" };
+  function loadScript(src){ return new Promise(function(ok, no){ var x = document.createElement("script"); x.src = src; x.onload = ok; x.onerror = no; document.head.appendChild(x); }); }
+  function importLibs(){
+    var a = window.XLSX ? Promise.resolve() : loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js").catch(function(){ return loadScript("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"); });
+    var b = window.catalogPlan ? Promise.resolve() : loadScript("tools/catalog.js?v=2");
+    return Promise.all([a, b]);
+  }
+  function impCatName(id){ var c = draft.cats.filter(function(x){ return x.id === id; })[0]; if (c) return c.name; var r = (window.CATALOG_RULES || []).filter(function(x){ return x[0] === id; })[0]; return r ? r[1] : "المنزل والمنوعات"; }
+  function renderImport(){
+    var box = $("aImport"); if (!box) return;
+    var P = imp.plan, lim = Number(S.importLimit) || 3000;
+    var h = '<h2>استيراد الأصناف من ملف الكاشير</h2><p class="hint">ارفع ملف الإكسل حق برنامج الكاشير (رقم الصنف، الاسم، الوحدة، الكمية، التكلفة، وسعر البيع). نختار الأهم على حسب الكمية وقيمة المخزون، ونوزعهم على الأقسام من أسمائهم. التكلفة والكمية تنحفظ سرية، ما يشوفها الزبون. رفع الملف مرة ثانية يحدّث المخزون والتكلفة والأسعار للأصناف الموجودة.</p>' +
+      '<div class="adm-tools"><label class="btn btn-ink" style="cursor:pointer">' + (imp.busy ? 'جاري القراءة…' : 'اختر ملف الإكسل') + '<input type="file" id="impFile" accept=".xlsx,.xls,.csv" hidden></label><label>عدد المنتجات في الموقع<input id="impLimit" type="number" min="50" max="5000" step="50" value="' + lim + '" style="width:110px"></label></div>' +
+      (imp.msg ? '<p class="status' + (imp.err ? ' err' : '') + '">' + imp.msg + '</p>' : '');
+    if (P) {
+      var sk = Object.keys(P.skipped).map(function(k){ return '<li>' + esc(k) + ': <b>' + num(P.skipped[k]) + '</b></li>'; }).join("");
+      var withPrice = P.pick.length - P.noPrice;
+      h += '<div class="imp-sum"><p>في الملف <b>' + num(P.rows) + '</b> صنف. يصلح للموقع <b>' + num(P.eligible) + '</b>' + (sk ? '، وانشال:</p><ul>' + sk + '</ul>' : '.</p>') +
+        '<p>الموقع فيه الحين ' + num(draft.products.length) + ' منتج، والحد ' + num(P.limit) + '، فاخترنا <b>' + num(P.pick.length) + '</b> صنف جديد (الأهم فالأهم):</p>' +
+        '<div class="imp-cats">' + Object.keys(P.perCat).sort(function(a, b){ return P.perCat[b] - P.perCat[a]; }).map(function(id){ return '<span>' + esc(impCatName(id)) + ' <b>' + num(P.perCat[id]) + '</b></span>'; }).join("") + '</div>' +
+        (P.needCats.length ? '<p class="hint">بينضاف قسم جديد: ' + P.needCats.map(function(c){ return esc(c.name); }).join("، ") + '.</p>' : '') +
+        (P.update.length ? '<p>و<b>' + num(P.update.length) + '</b> منتج موجود من قبل بيتحدّث مخزونه وتكلفته' + ' (وسعره لو تغيّر).</p>' : '') +
+        (P.noPrice ? '<p class="status err">' + num(P.noPrice) + ' صنف من المختارة ما لها سعر بيع في الملف، فما راح تنضاف. نزّل القائمة تحت، عبّ عمود «سعر البيع» (وتقدر تغيّر «القسم»)، وارفعها هنا.</p>' : '') +
+        '<div class="actions"><button type="button" class="btn btn-brand" id="impApply"' + (withPrice || P.update.length ? '' : ' disabled') + '>اعتمد: أضف ' + num(withPrice) + (P.update.length ? ' وحدّث ' + num(P.update.length) : '') + '</button><button type="button" class="btn btn-soft" id="impSheet">نزّل قائمة المختارة (Excel)</button><button type="button" class="btn btn-ghost" id="impCancel">إلغاء</button></div></div>';
+    }
+    box.innerHTML = h;
+    $("impFile").onchange = function(){ var f = this.files && this.files[0]; if (f) importRead(f); };
+    $("impLimit").onchange = function(){ var v = Math.max(50, Math.min(5000, Math.round(Number(this.value) || 3000))); S.importLimit = v; if (draft.store) draft.store.importLimit = v; if (imp.rows) { imp.plan = catalogPlan(imp.rows, draft.products, { limit: v, cats: draft.cats }); renderImport(); } };
+    if (!P) return;
+    $("impCancel").onclick = function(){ imp.plan = null; imp.rows = null; imp.msg = ""; renderImport(); };
+    $("impSheet").onclick = function(){
+      var head = ["رقم الصنف", "اسم الصنف", "الوحدة", "الكمية المتوفرة", "التكلفة", "القسم", "سعر البيع"];
+      var rows = P.pick.map(function(x){ return [x.code, x.name, x.unit, x.qty, x.cost, impCatName(x.catId), x.price > 0 ? x.price : null]; });
+      var ws = XLSX.utils.aoa_to_sheet([head].concat(rows)); ws["!cols"] = [{ wch: 16 }, { wch: 46 }, { wch: 8 }, { wch: 10 }, { wch: 9 }, { wch: 18 }, { wch: 10 }];
+      var wb = XLSX.utils.book_new(); wb.Workbook = { Views: [{ RTL: true }] }; XLSX.utils.book_append_sheet(wb, ws, "الأصناف"); XLSX.writeFile(wb, "أصناف-الموقع-عبّ-سعر-البيع.xlsx");
+    };
+    $("impApply").onclick = function(){
+      var ap = catalogApply(P, draft.products);
+      P.needCats.forEach(function(c){ if (!draft.cats.some(function(x){ return x.id === c.id; })) draft.cats.push({ id: c.id, name: c.name, img: "" }); });
+      draft.products = draft.products.concat(ap.added);
+      Object.keys(ap.stock).forEach(function(id){ stockEdit[id] = ap.stock[id]; });
+      Object.keys(ap.costs).forEach(function(id){ costEdit[id] = ap.costs[id]; });
+      imp.plan = null; imp.rows = null; imp.err = false;
+      imp.msg = 'انضاف ' + num(ap.added.length) + ' منتج' + (P.update.length ? ' وتحدّث ' + num(P.update.length) : '') + (ap.priced ? ' (تغيّر سعر ' + num(ap.priced) + ')' : '') + '. راجعهم، وبعدين اضغط «احفظ» عشان ينزلون للموقع.';
+      markDirty(); renderImport(); aFilter.show = 0; renderAProds();
+    };
+  }
+  function importRead(f){
+    imp.busy = true; imp.msg = ""; imp.err = false; imp.plan = null; renderImport();
+    importLibs().then(function(){ return f.arrayBuffer(); }).then(function(buf){
+      var wb = XLSX.read(buf, { type: "array", cellDates: true }), aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true });
+      var r = catalogRows(aoa); imp.busy = false;
+      if (r.error) { imp.err = true; imp.msg = "ما لقينا سطر العناوين في الملف. لازم يكون فيه عمود «اسم الصنف» وعمود «رقم الصنف» أو «الكمية»."; renderImport(); return; }
+      imp.rows = r.rows; imp.file = f.name;
+      imp.plan = catalogPlan(r.rows, draft.products, { limit: Number(S.importLimit) || 3000, cats: draft.cats });
+      if (r.cols.indexOf("price") < 0) imp.msg = "الملف ما فيه عمود «سعر البيع»: تقدر تشوف وش بينضاف، بس الإضافة تحتاج السعر.";
+      renderImport();
+    }).catch(function(){ imp.busy = false; imp.err = true; imp.msg = "ما قدرنا نقرأ الملف (تأكد إنه ملف Excel، وإن النت شغال)."; renderImport(); });
   }
   function pOpts(sel){ return draft.cats.map(function(c){ var ps = draft.products.filter(function(p){ return p.cat === c.id; }); if (!ps.length) return ""; return '<optgroup label="' + esc(c.name) + '">' + ps.map(function(p){ return '<option value="' + p.id + '"' + (p.id === sel ? ' selected' : '') + '>' + esc(p.name) + ' · ' + num(p.price) + ' ر.س</option>'; }).join("") + '</optgroup>'; }).join(""); }
+  // قائمة منتجات بالآلاف داخل كل اختيار تثقّل الصفحة: نحط المنتج المختار بس، والقائمة الكاملة تنبني أول ما تفتحها
+  function pOptsLazy(sel){ var p = dById(sel); return '<option value="' + esc(sel || "") + '" selected>' + (p ? esc(p.name) + ' · ' + num(p.price) + ' ر.س' : '—') + '</option>'; }
+  ["mousedown", "focusin", "touchstart", "keydown"].forEach(function(ev){ document.addEventListener(ev, function(e){ var t = e.target && e.target.closest && e.target.closest("select[data-lazyp]"); if (!t) return; t.removeAttribute("data-lazyp"); t.innerHTML = pOpts(t.value); }, true); });
+  var dealQ = "";
+  function dealResults(){ var box = $("dealRes"); if (!box) return; var st = draft.store, words = normAr(dealQ).split(/\s+/).filter(Boolean);
+    if (!words.length) { box.innerHTML = ""; return; }
+    var ids = (st.deal95 && st.deal95.ids) || [], out = [];
+    for (var i = 0; i < draft.products.length && out.length < 24; i++) { var p = draft.products[i], h = normAr(p.name + " " + (p.bc || "")); if (ids.indexOf(p.id) < 0 && words.every(function(w){ return h.indexOf(w) > -1; })) out.push(p); }
+    box.innerHTML = out.length ? out.map(function(p){ return '<button type="button" class="chip" data-dealtoggle="' + p.id + '" aria-pressed="false">' + imgTag(p.img, "") + esc(p.name) + '</button>'; }).join("") : '<span class="hint">ما فيه منتج بهالاسم.</span>';
+  }
+  document.addEventListener("input", function(e){ if (e.target.id === "dealQ") { dealQ = e.target.value; dealResults(); } });
   function renderPromos(){
     var st = draft.store;
     st.deal95 = st.deal95 || { on: false, min: 250, price: 0.95, limit: 1, ids: [] };
@@ -2877,11 +2968,12 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="fields"><label>تنفتح فوق (ريال)<input type="number" min="0" step="1" inputmode="decimal" data-promo="dl.min" value="' + esc(dl.min) + '"></label>' +
       '<label>سعر المنتج في العرض (ريال)<input type="number" min="0" step="0.05" inputmode="decimal" data-promo="dl.price" value="' + esc(dl.price) + '"></label>' +
       '<label>الحد من كل منتج (٠ = بدون حد)<input type="number" min="0" step="1" inputmode="numeric" data-promo="dl.limit" value="' + esc(dl.limit) + '"></label></div>' +
-      '<b style="font-size:.85rem">منتجات العرض (' + num(dl.ids.length) + ')</b><div class="pick">' + draft.products.map(function(p){ var on = dl.ids.indexOf(p.id) > -1; return '<button type="button" class="chip" data-dealtoggle="' + p.id + '" aria-pressed="' + on + '">' + imgTag(p.img, "") + esc(p.name) + '</button>'; }).join("") + '</div></div>' +
+      '<b style="font-size:.85rem">منتجات العرض (' + num(dl.ids.length) + ')</b><div class="pick">' + (dl.ids.length ? dl.ids.map(dById).filter(Boolean).map(function(p){ return '<button type="button" class="chip" data-dealtoggle="' + p.id + '" aria-pressed="true">' + imgTag(p.img, "") + esc(p.name) + '</button>'; }).join("") : '<span class="hint">ما اخترت منتجات للحين.</span>') + '</div>' +
+      '<input class="search" id="dealQ" type="search" placeholder="ابحث عن منتج تضيفه للعرض…" value="' + esc(dealQ) + '" aria-label="بحث عن منتج للعرض" style="margin-top:8px"><div class="pick" id="dealRes"></div></div>' +
       '<div class="pbox"><div class="sec-head" style="margin:0"><b>عرض اليوم</b><label class="chk"><input type="checkbox" data-promo="dy.on"' + (dy.on ? ' checked' : '') + '>مفعّل</label></div>' +
       '<p class="hint">حط قائمة منتجات بأسعار العرض. كل يوم يطلع واحد منها بالترتيب، ويتغير لحاله الساعة ١٢ بالليل.' + (todayP ? ' عرض اليوم الحين: <b>' + esc(todayP.name) + '</b> بـ ' + num(todayIdx.price) + ' ر.س.' : '') + '</p>' +
       '<div class="fields"><label>الحد لكل طلب (٠ = بدون حد)<input type="number" min="0" step="1" inputmode="numeric" data-promo="dy.limit" value="' + esc(dy.limit) + '"></label></div>' +
-      '<div class="alist">' + dy.list.map(function(x, i){ var p = dById(x.id); return '<div class="drow"><span class="dn">' + (i + 1) + '</span><label>المنتج<select data-daily="' + i + '" data-k="id">' + pOpts(x.id) + '</select></label><label>سعر العرض' + (p ? ' (الأصلي ' + num(p.price) + ')' : '') + '<input type="number" min="0" step="0.25" inputmode="decimal" data-daily="' + i + '" data-k="price" value="' + esc(x.price) + '"></label><button class="del" type="button" data-dailydel="' + i + '">حذف</button></div>'; }).join("") + '</div>' +
+      '<div class="alist">' + dy.list.map(function(x, i){ var p = dById(x.id); return '<div class="drow"><span class="dn">' + (i + 1) + '</span><label>المنتج<select data-daily="' + i + '" data-k="id" data-lazyp="1">' + pOptsLazy(x.id) + '</select></label><label>سعر العرض' + (p ? ' (الأصلي ' + num(p.price) + ')' : '') + '<input type="number" min="0" step="0.25" inputmode="decimal" data-daily="' + i + '" data-k="price" value="' + esc(x.price) + '"></label><button class="del" type="button" data-dailydel="' + i + '">حذف</button></div>'; }).join("") + '</div>' +
       '<button class="btn btn-soft" type="button" id="addDaily" style="justify-self:start">+ أضف يوم</button></div>';
   }
   document.addEventListener("input", onPromoInput);
@@ -2898,7 +2990,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (mode !== "admin") return;
     var t, st = draft.store;
     if ((t = e.target.closest("[data-dealtoggle]"))) { var id = t.dataset.dealtoggle, ids = st.deal95.ids, i = ids.indexOf(id);
-      if (i > -1) ids.splice(i, 1); else ids.push(id); markDirty(); renderPromos(); return; }
+      if (i > -1) ids.splice(i, 1); else ids.push(id); markDirty(); renderPromos(); dealResults(); return; }
     if ((t = e.target.closest("[data-dailydel]"))) { st.daily.list.splice(Number(t.dataset.dailydel), 1); markDirty(); renderPromos(); return; }
     if (e.target.closest("#addDaily")) { var p = draft.products[0]; st.daily.list.push({ id: p.id, price: Math.round(p.price * 0.8 * 4) / 4 }); markDirty(); renderPromos(); }
   });
@@ -3120,8 +3212,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (!pp) return;
     var q = $("ppQ").value.trim();
     $("ppSel").innerHTML = pp.ids.length ? pp.ids.map(function(id, i){ var p = dById(id); return '<button type="button" class="chip on" data-pptog="' + id + '" aria-label="شيل ' + esc(p.name) + '"><i>' + (i + 1) + '</i>' + imgTag(p.img, "") + esc(p.name) + '<span aria-hidden="true">×</span></button>'; }).join("") : '<span class="hint">ما اخترت شي للحين. اضغط على المنتجات تحت.</span>';
-    $("ppGrid").innerHTML = draft.products.filter(function(p){ return p.id !== pp.ex && (!q || p.name.indexOf(q) > -1 || (p.name_en || "").toLowerCase().indexOf(q.toLowerCase()) > -1); }).map(function(p){
-      var on = pp.ids.indexOf(p.id) > -1; return '<button type="button" class="chip" data-pptog="' + p.id + '" aria-pressed="' + on + '">' + imgTag(p.img, "") + esc(p.name) + '</button>'; }).join("");
+    // مع آلاف المنتجات: أول ٦٠ نتيجة بس، والبحث يوصلك للباقي (يتجاهل الهمزات والتاء المربوطة، ويقبل الباركود)
+    var words = normAr(q).split(/\s+/).filter(Boolean), hits = draft.products.filter(function(p){ if (p.id === pp.ex) return false; if (!words.length) return true; var h = normAr(p.name + " " + (p.name_en || "") + " " + (p.bc || "")); return words.every(function(w){ return h.indexOf(w) > -1; }); });
+    $("ppGrid").innerHTML = hits.slice(0, 60).map(function(p){
+      var on = pp.ids.indexOf(p.id) > -1; return '<button type="button" class="chip" data-pptog="' + p.id + '" aria-pressed="' + on + '">' + imgTag(p.img, "") + esc(p.name) + '</button>'; }).join("") + (hits.length > 60 ? '<span class="hint" style="flex-basis:100%">و' + num(hits.length - 60) + ' منتج ثاني. اكتب في البحث عشان تلقاه.</span>' : '');
   }
   function ppClose(){ if (!pp) return; var cb = pp.cb, ids = pp.ids.slice(); pp = null; $("ppSheet").hidden = true; cb(ids); markDirty(); }
   document.addEventListener("click", function(e){
@@ -3790,6 +3884,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     sale: function(i){ return i.to ? 'حط خصم على <b>' + esc(i.name) + '</b> (قبل الخصم ' + num(i.to) + ')' : 'شال الخصم عن <b>' + esc(i.name) + '</b>'; },
     avail_on: function(i){ return 'رجّع <b>' + esc(i.name) + '</b> متوفر'; }, avail_off: function(i){ return 'خلّى <b>' + esc(i.name) + '</b> غير متوفر'; },
     prod_add: function(i){ return 'أضاف منتج <b>' + esc(i.name) + '</b> بـ ' + num(i.price) + ' ر.س'; }, prod_del: function(i){ return 'حذف منتج <b>' + esc(i.name) + '</b>'; },
+    bulk_import: function(i){ return 'استيراد أصناف من ملف: انضاف <b>' + num(i.added || 0) + '</b> منتج، تغيّر سعر ' + num(i.prices || 0) + '، مخزون ' + num(i.stock || 0) + '، تكلفة ' + num(i.costs || 0) + (i.removed ? '، انحذف ' + num(i.removed) : ''); },
     stock: function(i){ return 'عدّل مخزون <b>' + esc(i.name) + '</b> من ' + (i.from == null ? 'بدون عدّ' : num(i.from)) + ' إلى ' + (i.to == null ? 'بدون عدّ' : num(i.to)); },
     cost: function(i){ return 'عدّل سعر الشراء لـ <b>' + esc(i.name) + '</b>'; },
     store_close: function(){ return '<b>قفل المحل</b> (وقف الطلبات)'; }, store_open: function(){ return '<b>فتح المحل</b>'; },

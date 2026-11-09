@@ -52,9 +52,12 @@ export default {
     const path = new URL(request.url).pathname.replace(/\/+$/, "");
     if (request.method === "GET" && (path === "" || path === "/ping")) return reply(200, { ok: true, service: "ohod-admin" });
     // المخزون للزبائن: كم باقي من كل منتج عليه عدّ
+    // أي عملية ممكن تغيّر المخزون (طلب، تعديل، إلغاء، حفظ) تفضّي ذاكرة المخزون؛ الاستعلامات الدورية (التتبع، قائمة المندوب…) ما تفضيها
+    if (request.method === "POST" && !/^\/(?:track|ev|stats|driver\/(?:orders|pending|loc|loc-off|cash|login|push)|admin\/(?:orders|alerts|today|stats|log|team|prep|pos-orders|openitems|driver-loc|staff|cash|day-report|settlement-requests))$/.test(path)) stockCache.at = 0;
     if (request.method === "GET" && path === "/stock") {
-      const stock = env.DB ? await readStock(env) : {};
-      return new Response(JSON.stringify({ ok: true, stock }), { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=10" } });
+      // كل زائر يسأل عن المخزون كل دقيقة؛ مع آلاف المنتجات نخزن النتيجة ١٥ ثانية بدل ما نقرأ القاعدة كل مرة
+      if (!stockCache.body || Date.now() - stockCache.at > 15000) stockCache = { at: Date.now(), body: JSON.stringify({ ok: true, stock: env.DB ? await readStock(env) : {} }) };
+      return new Response(stockCache.body, { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=10" } });
     }
     if (request.method === "GET" && path === "/push/key") {
       if (!env.LOCKS || !env.DB) return reply(404, { ok: false, code: "no_push" });
@@ -1264,6 +1267,7 @@ function needOf(rec) {
   for (const l of rec.lines || []) if (l.id) need[l.id] = (need[l.id] || 0) + Number(l.qty || 0);
   return need;
 }
+let stockCache = { at: 0, body: "" };
 async function readStock(env) {
   await ensureSchema(env);
   const rs = await env.DB.prepare("SELECT id, qty FROM stock").all();
@@ -1279,14 +1283,17 @@ async function moveStock(env, need, sign, known) {
 }
 async function setStock(env, map) {
   await ensureSchema(env);
-  const st = [];
+  stockCache = { at: 0, body: "" };
+  const st = [], put = {};
   for (const [id, v] of Object.entries(map).slice(0, 5000)) {
     if (v === null || v === "") st.push(env.DB.prepare("DELETE FROM stock WHERE id = ?").bind(String(id)));
     else {
       const q = Math.floor(Number(v));
-      if (q >= 0 && q <= 1e6) st.push(env.DB.prepare("INSERT INTO stock (id, qty) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET qty = excluded.qty").bind(String(id), q));
+      if (q >= 0 && q <= 1e6) put[String(id)] = q;
     }
   }
+  // كل القيم في جملة وحدة (استيراد ٣٠٠٠ صنف = استعلام واحد بدل ٣٠٠٠)
+  if (Object.keys(put).length) st.push(env.DB.prepare("INSERT INTO stock (id, qty) SELECT key, value FROM json_each(?) WHERE true ON CONFLICT(id) DO UPDATE SET qty = excluded.qty").bind(JSON.stringify(put)));
   if (st.length) await env.DB.batch(st);
 }
 
@@ -1601,11 +1608,12 @@ async function readCosts(env) {
 }
 async function setCosts(env, map) {
   await ensureSchema(env);
-  const st = [];
+  const st = [], put = {};
   for (const [id, v] of Object.entries(map).slice(0, 5000)) {
     if (v === null || v === "") st.push(env.DB.prepare("DELETE FROM pcost WHERE id = ?").bind(String(id)));
-    else { const c = round2(Number(v)); if (c >= 0 && c < 1e6) st.push(env.DB.prepare("INSERT INTO pcost (id, cost) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET cost = excluded.cost").bind(String(id), c)); }
+    else { const c = round2(Number(v)); if (c >= 0 && c < 1e6) put[String(id)] = c; }
   }
+  if (Object.keys(put).length) st.push(env.DB.prepare("INSERT INTO pcost (id, cost) SELECT key, value FROM json_each(?) WHERE true ON CONFLICT(id) DO UPDATE SET cost = excluded.cost").bind(JSON.stringify(put)));
   if (st.length) await env.DB.batch(st);
 }
 // يحط سعر الشراء وقت الطلب على كل سطر، عشان الربح القديم ما يتغير لو تغيّر سعر الشراء بعدين
@@ -1623,7 +1631,7 @@ function logStmt(env, who, act, ref, info) {
   return env.DB.prepare("INSERT INTO alog (at, who, act, ref, info) VALUES (?, ?, ?, ?, ?)").bind(Date.now(), String(who || "").slice(0, 30), act, ref || "", JSON.stringify(info || {}));
 }
 async function logSave(env, who, oldD, newD, stockSet, oldStock, costSet, body) {
-  const st = [], byOld = {}, byNew = {};
+  const st = [], keep = [], byOld = {}, byNew = {};
   for (const p of (oldD && oldD.products) || []) byOld[p.id] = p;
   for (const p of newD.products || []) byNew[p.id] = p;
   if (oldD) {
@@ -1636,17 +1644,25 @@ async function logSave(env, who, oldD, newD, stockSet, oldStock, costSet, body) 
     }
     for (const id of Object.keys(byOld)) if (!byNew[id]) st.push(logStmt(env, who, "prod_del", id, { name: byOld[id].name }));
     const os = oldD.store || {}, ns = newD.store || {};
-    if (!!os.closed !== !!ns.closed) st.push(logStmt(env, who, ns.closed ? "store_close" : "store_open", "", {}));
-    if (Number(os.fee || 0) !== Number(ns.fee || 0) || Number(os.freeOver || 0) !== Number(ns.freeOver || 0)) st.push(logStmt(env, who, "fees", "", { fee: Number(ns.fee || 0), freeOver: Number(ns.freeOver || 0) }));
+    if (!!os.closed !== !!ns.closed) keep.push(logStmt(env, who, ns.closed ? "store_close" : "store_open", "", {}));
+    if (Number(os.fee || 0) !== Number(ns.fee || 0) || Number(os.freeOver || 0) !== Number(ns.freeOver || 0)) keep.push(logStmt(env, who, "fees", "", { fee: Number(ns.fee || 0), freeOver: Number(ns.freeOver || 0) }));
   }
   for (const [id, v] of Object.entries(stockSet || {})) {
     const was = oldStock[id] == null ? null : oldStock[id], now = v === null || v === "" ? null : Math.floor(Number(v));
     if (was !== now) st.push(logStmt(env, who, "stock", id, { name: (byNew[id] || {}).name || id, from: was, to: now }));
   }
   for (const id of Object.keys(costSet || {})) st.push(logStmt(env, who, "cost", id, { name: (byNew[id] || {}).name || id }));
-  if (body.newPin) st.push(logStmt(env, who, "pin_admin", "", {}));
-  if (body.newDriverPin) st.push(logStmt(env, who, "pin_driver", "", {}));
-  if (Math.random() < 0.05) st.push(env.DB.prepare("DELETE FROM alog WHERE at < ?").bind(Date.now() - 400 * 864e5));
+  if (body.newPin) keep.push(logStmt(env, who, "pin_admin", "", {}));
+  if (body.newDriverPin) keep.push(logStmt(env, who, "pin_driver", "", {}));
+  if (Math.random() < 0.05) keep.push(env.DB.prepare("DELETE FROM alog WHERE at < ?").bind(Date.now() - 400 * 864e5));
+  // استيراد كبير: سطر ملخص بدل آلاف الأسطر (كل سطر استعلام، والخطة المجانية لها حد)
+  if (st.length > 120) {
+    const sum = { added: 0, removed: 0, prices: 0, stock: 0, costs: Object.keys(costSet || {}).length };
+    if (oldD) { for (const p of newD.products) { const o = byOld[p.id]; if (!o) sum.added++; else if (Number(o.price) !== Number(p.price)) sum.prices++; } for (const id of Object.keys(byOld)) if (!byNew[id]) sum.removed++; }
+    sum.stock = Object.keys(stockSet || {}).length;
+    st.length = 0; st.push(logStmt(env, who, "bulk_import", "", sum));
+  }
+  st.push(...keep);
   for (let i = 0; i < st.length; i += 80) await env.DB.batch(st.slice(i, i + 80));
 }
 
