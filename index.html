@@ -960,6 +960,16 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-chip[aria-pressed="true"]{background:#EEF3FF;border-color:#8FA9F5;color:#2B4FC4}
 .kq-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px;padding-top:6px}
 .imp-sum{display:grid;gap:8px;margin-top:10px}.imp-sum ul{margin:0;padding-inline-start:20px;color:var(--muted);font-size:.9rem}.imp-cats{display:flex;flex-wrap:wrap;gap:6px}.imp-cats span{background:var(--sky,#EEF6F3);border-radius:999px;padding:4px 10px;font-size:.85rem}
+.subask{background:#FFF7EE;border:1px solid #F5D3AE;border-radius:16px;padding:14px;margin:12px 0;display:grid;gap:8px;color:var(--ink)}.subask p{margin:0;color:var(--muted)}.subask-p{display:flex;gap:12px;align-items:center;background:#fff;border-radius:12px;padding:8px}.subask-p .photo,.subask-p .noimg{width:56px;height:56px;border-radius:10px;flex:none;object-fit:contain}.subask-p>span{display:grid;gap:2px}.subask-p em{font-style:normal;color:var(--sale,#C2410C);font-weight:700;font-size:.85rem}.subask .acts{display:flex;gap:8px;flex-wrap:wrap}
+.cxbox{margin:12px 0;border-top:1px solid rgba(0,0,0,.08);padding-top:10px}.cxbox summary{cursor:pointer;color:var(--sale,#C2410C);font-weight:700}.cx-r{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.cx-go{border-color:var(--sale,#C2410C);color:var(--sale,#C2410C)}
+.trk-sub{display:block;font-style:normal;font-size:.8rem;color:#FFB86B;font-weight:700}
+.opex-g{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:10px 0}.opex-g legend{font-weight:700;padding:0 6px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0}.kpi{border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;gap:4px}.kpi span{font-size:.8rem;color:var(--muted)}.kpi b{font-size:1.15rem}.kpi.ok b{color:#0E9F7B}.kpi.bad b{color:#C2410C}
+.adv-warn{background:#FFF4EC;border:1px solid #F7C9A6;border-radius:12px;padding:8px 12px;margin-top:8px}.adv-warn p{margin:4px 0;color:#9A3412}
+.adv-t{display:grid;gap:6px}.adv-r{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.6fr) minmax(0,1.2fr) auto;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding:6px 0;font-size:.9rem}@media(max-width:700px){.adv-r{grid-template-columns:1fr 1fr}}
+.vd{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700;background:#EEF1F5;color:#374151;justify-self:start}.vd.ok{background:#E6F6F1;color:#0B7A5E}.vd.warn{background:#FFF1E2;color:#B45309}.vd.bad{background:#FDE8E8;color:#B91C1C}
+.zone-map{height:320px;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin:8px 0}.zone-pt{width:14px;height:14px;border-radius:50%;background:#0E9F7B;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.dv-near{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#4B5563;margin:4px 2px 10px}.dv-near b{color:#13213C}.dv-near button,.dv-near a{border:1px solid #D7DEE6;background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-weight:700;color:#13213C;text-decoration:none;cursor:pointer}.dv-stop{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:999px;background:#13213C;color:#fff;font-size:12px;font-weight:700;padding:0 6px}.dv-km{font-size:12px;color:#0E9F7B;font-weight:700}.dv-subw{background:#FFF7EE;border-radius:10px;padding:6px 10px;font-size:13px;color:#9A4A0B;margin-top:6px}
 .kq-more{grid-column:1/-1;justify-self:center;min-width:220px;margin:6px 0 12px}.kq-more small{opacity:.7;font-weight:500}
 .kq-card{display:grid;gap:3px;align-content:start;cursor:pointer;min-width:0;position:relative}
 .kq-img{position:relative;aspect-ratio:1/1;max-width:100%;border-radius:18px;background:#F5F6F8;display:grid;place-items:center;overflow:hidden;margin-bottom:6px}
@@ -1579,6 +1589,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       if (screen !== "sent" || mode !== "store") return clearInterval(trackTimer);
       fetch(String(S.api).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: lastOrder.no, phone: lastOrder.phone }) })
         .then(function(r){ return r.json(); }).then(function(j){ if (!j.ok) return; lastOrder.drv = j.driver || null;
+          var subsNow = JSON.stringify(j.subs || []); if (subsNow !== JSON.stringify(lastOrder.subs || [])) { lastOrder.subs = j.subs || []; saveLast(); if (screen === "sent" && j.status === lastOrder.status) render(); }
           if (j.status !== lastOrder.status) { lastOrder.status = j.status; saveLast(); if (screen === "sent") render(); } else trkUpdate(); }).catch(function(){});
     };
     var every = lastOrder.status === "onway" ? 4000 : 15000;
@@ -1758,7 +1769,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function homeHTML(){
     var h = '<div class="kq-head"><div class="wrap">' +
-      (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span></span>' + ic("fwd") + '</button>' : '') +
+      (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span>' + (lastOrder.subs && lastOrder.subs.length ? '<em class="trk-sub">' + tr("فيه بديل ينتظر موافقتك", "A replacement needs your answer") + '</em>' : '') + '</span>' + ic("fwd") + '</button>' : '') +
       (S.closed ? '<div class="closedbar">' + ic("lock") + '<span><b>' + tr("المحل مقفل الحين", "The store is closed right now") + '</b>' + esc(sv("closedMsg") || tr("تقدر تتصفح المنتجات، والطلب يرجع يشتغل لما نفتح.", "You can browse; ordering resumes when we open.")) + '</span></div>' : '') +
       '<div class="kq-row"><div class="kq-logo"><img src="' + D.imgs.logo + '" alt=""><b>' + esc(sv("name")) + '</b></div>' +
       '<div class="kq-meta"><span class="kq-sched">' + ic("truck") + esc(sv("eta")) + '</span><span class="kq-loc">' + ic("pin") + esc(sv("area")) + ic("down") + '</span></div>' +
@@ -1893,12 +1904,30 @@ html.sp-on,html.sp-on body{overflow:hidden}
     return '<div class="sent"><div class="wrap"><div class="ok"><div>' + ic("check") + tr('</div></div><h1>وصلنا طلبك!</h1>', '</div></div><h1>We got your order!</h1>') +
       (o.status === "delivered" ? tr('<p>وصل طلبك. بالعافية عليك!</p>', '<p>Your order has been delivered. Enjoy!</p>') : o.status === "onway" ? tr('<p>المندوب في الطريق لموقعك الحين.</p>', '<p>The driver is on the way to you now.</p>') : tr('<p>بنتصل عليك على <b dir="ltr" style="color:#fff">', '<p>We will call you at <b dir="ltr" style="color:#fff">') + esc(o.phone || "") + tr('</b> لو احتجنا،<br>والمندوب يجيك على الموقع اللي حددته.</p>', '</b> if needed,<br>and the driver will come to the location you picked.</p>')) +
       tr('<div class="card"><div class="r"><span>رقم الطلب</span><b dir="ltr">', '<div class="card"><div class="r"><span>Order number</span><b dir="ltr">') + esc(o.no || "") + '</b></div>' +
-      stepsHTML(o.status || "new") +
+      stepsHTML(o.status || "new") + subsHTML(o) + cancelHTML(o) +
       (o.status === "onway" && o.track && apiUrl() ? '<div class="trk"><div class="trk-map" id="trkMap"></div><div class="trk-info" id="trkInfo">' + trkInfo() + '</div></div>' : '') +
       (o.track && apiUrl() && o.status !== "delivered" && o.status !== "canceled" ? (o.push ? '<div class="r push-on">' + ic("bell") + '<span>' + tr("بيوصلك إشعار مع كل تغيير في حالة طلبك", "You will get a notification for every status change") + '</span></div>' :
         '<button class="btn btn-ghost pushbtn" type="button" id="pushMe">' + ic("bell") + '<span>' + tr("نبّهني لما تتغير حالة طلبي", "Notify me about my order") + '</span></button><p class="pushmsg" id="pushMsg"' + (pushWhy() && (isIOS() && !isApp()) ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</p>') : '') +
       tr('<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>الإجمالي · ', '<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>Total · ') + (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + tr(' عند الاستلام</span><b>', ' on delivery</span><b>') + rial(o.total || 0) + '</b></div></div>' +
       (o.walletCents ? '<p>مدفوع بالمحفظة '+moneyFromCents(o.walletCents)+' · المتبقي عند الاستلام '+moneyFromCents(Math.max(0,Math.round(o.total*100)-o.walletCents))+'</p>' : '') + '<div class="acts"><a class="btn btn-orange" href="tel:' + esc(S.phone) + '">' + ic("phone") + tr('اتصل على المحل</a><button class="btn btn-ghost" type="button" data-nav="home">رجوع للمتجر</button></div></div></div>', 'Call the store</a><button class="btn btn-ghost" type="button" data-nav="home">Back to store</button></div></div></div>');
+  }
+  // المندوب اقترح بديل لمنتج ناقص: الزبون يوافق أو يشيله
+  function subsHTML(o){
+    if (!o.subs || !o.subs.length || ["delivered", "canceled"].indexOf(o.status) > -1) return "";
+    return o.subs.map(function(x){
+      var d = x.diff ? (x.diff > 0 ? "+" : "−") + num(Math.abs(x.diff)) + tr(" ر.س على الإجمالي", " SAR on your total") : tr("بنفس السعر", "Same price");
+      return '<div class="subask" role="group" aria-label="' + tr("بديل مقترح", "Suggested replacement") + '"><b>' + tr("«", "“") + esc(x.name) + tr("» مو متوفر", "” is not available") + '</b><p>' + tr("المندوب يقترح بداله:", "The driver suggests instead:") + '</p>' +
+        '<div class="subask-p">' + imgTag(x.to.img, x.to.name) + '<span><b>' + esc(x.to.name) + '</b><span>' + esc(x.to.unit || "") + ' · ' + num(x.to.price) + ' ' + tr("ر.س", "SAR") + (x.qty > 1 ? ' × ' + num(x.qty) : '') + '</span><em>' + d + '</em></span></div>' +
+        '<div class="acts"><button type="button" class="btn btn-teal" data-subyes="' + x.id + '">' + tr("موافق على البديل", "Accept") + '</button><button type="button" class="btn btn-soft" data-subno="' + x.id + '">' + tr("لا، شيله من طلبي", "No, remove it") + '</button></div><span class="status" data-submsg="' + x.id + '"></span></div>';
+    }).join("");
+  }
+  function cancelOk(o){ var pol = S.custCancel || "new"; return !!(o.track && apiUrl() && pol !== "off" && (o.status === "new" || (pol === "accepted" && o.status === "accepted"))); }
+  function cancelHTML(o){
+    if (!cancelOk(o)) return "";
+    var R = [tr("طلبته بالغلط", "Ordered by mistake"), tr("أبي أعدّل الطلب", "I want to change it"), tr("تأخر", "It's taking too long"), tr("سبب ثاني", "Other")];
+    return '<details class="cxbox"><summary>' + tr("إلغاء الطلب", "Cancel order") + '</summary><p class="hint">' + tr("تقدر تلغي الطلب قبل ما ", "You can cancel before ") + (o.status === "new" ? tr("يبدأ المندوب التجهيز.", "the driver starts picking.") : tr("يطلع المندوب.", "the driver leaves.")) + '</p>' +
+      '<div class="cx-r">' + R.map(function(r, i){ return '<button type="button" class="kq-chip" data-cxr="' + esc(r) + '" aria-pressed="' + (i === 3) + '">' + esc(r) + '</button>'; }).join("") + '</div>' +
+      '<button type="button" class="btn btn-ghost cx-go" id="cxGo">' + tr("أكّد إلغاء الطلب", "Confirm cancellation") + '</button><span class="status" id="cxMsg"></span></details>';
   }
   function stepsHTML(st){
     if (st === "canceled") return tr('<div class="steps"><div class="s now"><i></i>انلغى الطلب. للاستفسار اتصل على المحل.</div></div>', '<div class="steps"><div class="s now"><i></i>The order was cancelled. Call the store for details.</div></div>');
@@ -1934,10 +1963,32 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (screen === "checkout") initCheckout();
     if ($("toAdmin")) $("toAdmin").addEventListener("click", function(){ if (canEdit) go("admin"); else openPin(); });
     if ($("toDriver")) $("toDriver").addEventListener("click", openDriver);
-    if (screen === "sent") { trkMapInit(); trackPoll(); if ($("pushMe")) $("pushMe").addEventListener("click", function(){ orderPush(this); }); }
+    if (screen === "sent") { bindSent(); trkMapInit(); trackPoll(); if ($("pushMe")) $("pushMe").addEventListener("click", function(){ orderPush(this); }); }
     if ($("pushPref")) $("pushPref").addEventListener("click", function(){ var b = this, m = $("pushPrefMsg"); b.disabled = true;
       pushSub().then(function(){ b.disabled = false; render(); }).catch(function(e){ b.disabled = false; m.hidden = false; m.textContent = pushErrText(e); }); });
     if ($("emptyCart")) $("emptyCart").addEventListener("click", function(){ if (this.dataset.c !== "1") { this.dataset.c = "1"; this.style.background = "var(--sale)"; this.style.color = "#fff"; return; } cart = {}; saveCart(); render(); });
+  }
+  function bindSent(){
+    var o = lastOrder; if (!o) return;
+    var post = function(path, body){ return fetch(apiUrl() + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ no: o.no, phone: o.phone }, body)) }).then(function(r){ return r.json(); }).catch(function(){ return { ok: false, code: "network" }; }); };
+    Array.prototype.forEach.call(document.querySelectorAll("[data-cxr]"), function(b){ b.onclick = function(){ Array.prototype.forEach.call(document.querySelectorAll("[data-cxr]"), function(x){ x.setAttribute("aria-pressed", x === b); }); }; });
+    if ($("cxGo")) $("cxGo").onclick = function(){
+      var b = this, m = $("cxMsg"), r = document.querySelector('[data-cxr][aria-pressed="true"]'); b.disabled = true; m.className = "status"; m.textContent = tr("جاري الإلغاء…", "Cancelling…");
+      post("/cancel", { reason: r ? r.dataset.cxr : "" }).then(function(j){
+        if (j.ok) { o.status = "canceled"; o.subs = []; saveLast(); render(); return; }
+        b.disabled = false; m.className = "status err"; m.textContent = j.code === "too_late" ? tr("المندوب بدأ في طلبك، فما نقدر نلغيه من هنا. اتصل على المحل.", "The driver has started your order. Please call the store.") : j.code === "slow_down" ? tr("محاولات كثيرة، جرّب بعد شوي.", "Too many tries, try again shortly.") : tr("ما قدرنا نلغي الطلب. تأكد من النت أو اتصل على المحل.", "We could not cancel. Check your connection or call the store.");
+      });
+    };
+    Array.prototype.forEach.call(document.querySelectorAll("[data-subyes],[data-subno]"), function(b){ b.onclick = function(){
+      var yes = b.hasAttribute("data-subyes"), id = Number(yes ? b.dataset.subyes : b.dataset.subno), m = document.querySelector('[data-submsg="' + id + '"]');
+      Array.prototype.forEach.call(b.parentNode.querySelectorAll("button"), function(x){ x.disabled = true; });
+      post("/sub-answer", { offer: id, accept: yes }).then(function(j){
+        if (j.ok) { o.subs = (o.subs || []).filter(function(x){ return x.id !== id; }); if (j.order && j.order.total != null) o.total = j.order.total; saveLast(); render(); sToast(yes ? tr("تمام، انبدل المنتج", "Done, item replaced") : tr("تمام، انشال المنتج من طلبك", "Done, item removed")); return; }
+        Array.prototype.forEach.call(b.parentNode.querySelectorAll("button"), function(x){ x.disabled = false; });
+        if (m) { m.className = "status err"; m.textContent = j.code === "last_item" ? tr("هذا آخر منتج في طلبك. وافق على البديل أو الغِ الطلب.", "This is the last item. Accept the replacement or cancel the order.") : j.code === "stale" ? tr("الاقتراح تغيّر، حدّث الصفحة.", "The suggestion changed, refresh.") : j.code === "bad_swap" ? tr("البديل خلص للأسف. المندوب بيقترح غيره.", "That item just ran out; the driver will suggest another.") : tr("ما وصل ردك. جرّب مرة ثانية.", "Your answer did not go through. Try again."); }
+        if (j.code === "stale") { o.subs = (o.subs || []).filter(function(x){ return x.id !== id; }); saveLast(); }
+      });
+    }; });
   }
   function kqBanners(){
     var el = $("kqBans"), dots = $("kqDots"); if (!el || !dots) return;
@@ -1981,12 +2032,18 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // منطقة التوصيل: المسافة من المحل (خط مستقيم)
   function kmFromShop(lat, lng){ var c = S.shop; if (!c || lat == null) return 0; var r = Math.PI / 180, da = (lat - c[0]) * r, dn = (lng - c[1]) * r;
     var h = Math.pow(Math.sin(da / 2), 2) + Math.cos(c[0] * r) * Math.cos(lat * r) * Math.pow(Math.sin(dn / 2), 2); return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h))); }
-  function tooFar(lat, lng){ var mx = Number(S.maxKm) || 0, k = mx > 0 ? kmFromShop(lat, lng) : 0; return k > mx ? Math.round(k * 10) / 10 : 0; }
+  // منطقة التوصيل المرسومة من الإدارة (مضلع). لو موجودة، هي اللي تحكم بدل المسافة بالكيلو (نفس الخادم)
+  function inPoly(poly, lat, lng){ var inside = false; for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) { var yi = poly[i][0], xi = poly[i][1], yj = poly[j][0], xj = poly[j][1]; if ((xi > lng) !== (xj > lng) && lat < (yj - yi) * (lng - xi) / (xj - xi) + yi) inside = !inside; } return inside; }
+  function hasZone(){ return Array.isArray(S.zone) && S.zone.length >= 3; }
+  function zoneOut(lat, lng){ return hasZone() && lat != null && !inPoly(S.zone, lat, lng); }
+  function zoneMsg(){ return tr("موقعك برّا منطقة التوصيل حقتنا. اتصل علينا لو تبغى ترتيب خاص.", "Your location is outside our delivery area. Call us for special arrangements."); }
+  function tooFar(lat, lng){ if (hasZone()) return 0; var mx = Number(S.maxKm) || 0, k = mx > 0 ? kmFromShop(lat, lng) : 0; return k > mx ? Math.round(k * 10) / 10 : 0; }
   function farMsg(k){ var a = String(Math.round(k * 10) / 10), b = String(Number(S.maxKm)); return tr("موقعك يبعد عن المحل " + a + " كم، وتوصيلنا لين " + b + " كم. اتصل علينا لو تبغى ترتيب خاص.", "Your location is " + a + " km from the store; we deliver up to " + b + " km. Call us for special arrangements."); }
   function setLoc(lat, lng){
     form.lat = Math.round(lat * 1e6) / 1e6; form.lng = Math.round(lng * 1e6) / 1e6; saveForm();
     var b = $("addrBox"); if (b) { b.classList.add("ok"); $("addrT").textContent = tr("تم تحديد موقع البيت", "Home location set"); $("addrS").textContent = tr("تقدر تحرّك الخريطة لو تبغى تعدّله", "You can move the map to adjust it"); }
     var lb = document.querySelector(".mapwrap .label"); if (lb) lb.textContent = tr("يوصلك هنا", "We deliver here");
+    if (zoneOut(form.lat, form.lng) && b) { b.classList.remove("ok"); $("addrT").textContent = tr("برّا منطقة التوصيل", "Outside our delivery area"); $("addrS").textContent = zoneMsg(); if (lb) lb.textContent = tr("برّا المنطقة", "Outside the area"); }
     var far = tooFar(form.lat, form.lng); if (far && b) { b.classList.remove("ok"); $("addrT").textContent = tr("برّا منطقة التوصيل", "Outside our delivery area"); $("addrS").textContent = farMsg(far); if (lb) lb.textContent = tr("بعيد عن المحل", "Too far"); }
   }
   function initCheckout(){
@@ -1995,6 +2052,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       var n = $("mapNote"); if (n) n.remove();
       var c = form.lat ? [form.lat, form.lng] : (S.mapCenter || S.shop || DEFAULT_CENTER);
       map = L.map("map", { zoomControl: false, attributionControl: true }).setView(c, form.lat ? 17 : 15);
+      if (hasZone()) L.polygon(S.zone, { color: "#0E9F7B", weight: 2, fillOpacity: 0.06, interactive: false }).addTo(map);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
       map.on("dragend zoomend", function(){ var m = map.getCenter(); setLoc(m.lat, m.lng); });
     });
@@ -2035,6 +2093,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (!form.lat) { sendErr(tr("حدد موقع بيتك على الخريطة أول، أو اضغط «موقعي الحالي».", "Set your home location on the map first, or tap Use my location.")); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     if (!t.n) return;
     if (walletUseAmount && (!walletCustomer || walletCustomer.phone !== phone || walletUseAmount > t.all || walletUseAmount > walletCustomer.balance)) { sendErr('راجع رقم الجوال ورصيد المحفظة والمبلغ المستخدم.'); return; }
+    if (zoneOut(form.lat, form.lng)) { sendErr(zoneMsg()); return; }
     var far0 = tooFar(form.lat, form.lng); if (far0) { sendErr(farMsg(far0)); return; }
     if (!S.api) { sendErr(tr("استقبال الطلبات الأوتوماتيكي لسا ما تفعّل.", "Automatic order receiving is not set up yet."), true); return; }
     var items = {}; Object.keys(cart).forEach(function(k){ items[k] = cart[k]; });
@@ -2071,6 +2130,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
           return sendErr(j.left ? tr("باقي " + j.left + " بس من «" + nm(pj) + "»، وعدّلنا الكمية في سلتك. اضغط أرسل مرة ثانية.", "Only " + j.left + " of " + nm(pj) + " left; we updated your cart. Tap Place order again.") : tr("«" + nm(pj) + "» نفد للتو وشلناه من سلتك. اضغط أرسل مرة ثانية.", nm(pj) + " just sold out and was removed from your cart. Tap Place order again.")); }
         if (c === "unavailable") return sendErr(tr("فيه منتج في سلتك نفد للتو. حدّث الصفحة وجرّب مرة ثانية.", "An item in your cart just sold out. Refresh the page and try again."));
         if (c === "too_far") return sendErr(farMsg(j.km || tooFar(form.lat, form.lng)));
+        if (c === "out_of_zone") return sendErr(zoneMsg());
         if (c === "closed") return sendErr(tr("المحل مقفل الحين وما نستقبل طلبات.", "The store is closed right now."), false);
         if (c === "min_order") return sendErr(tr("أقل مبلغ للطلب ", "Minimum order is ") + rial(j.min || S.minOrder), false);
         if (c === "slow_down") return sendErr(tr("أرسلت طلبات كثيرة بوقت قصير. انتظر شوي أو اتصل علينا.", "You sent many orders in a short time. Wait a bit or call us."), true);
@@ -2344,7 +2404,16 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var g = drvGroups(), t = dToday(), cash = drv.cash ? drv.cash.balance : null;
     var tabs = [["new", tr("جديدة", "New")], ["pick", tr("أجهّزها", "Picking")], ["way", tr("في الطريق", "On the way")], ["done", tr("خلصت", "Done")]];
     if (!g[drv.tab]) drv.tab = "new";
-    var list = g[drv.tab];
+    var list = g[drv.tab], near = "";
+    if (drv.tab !== "done" && list.length >= 2 && !drv.byTime) {
+      var from = geo.pos ? { lat: geo.pos.lat, lng: geo.pos.lng, me: 1 } : drv.here ? { lat: drv.here.lat, lng: drv.here.lng, me: 1 } : (S.shop ? { lat: S.shop[0], lng: S.shop[1] } : null);
+      if (from) { list = routeOrder(from, list);
+        var stops = list.filter(function(o){ return o._km != null; });
+        near = '<div class="dv-near">' + ic("pin") + '<span>' + tr("مرتبة <b>الأقرب فالأقرب</b> من ", "Sorted <b>nearest first</b> from ") + (from.me ? tr("موقعك", "your location") : tr("المحل", "the store")) + '</span>' +
+          '<button type="button" data-dhere>' + tr("حدّث موقعي", "Use my location") + '</button><button type="button" data-dsort>' + tr("رتّب بالوقت", "Sort by time") + '</button>' +
+          (drv.tab === "way" && stops.length >= 2 ? '<a target="_blank" rel="noopener" href="' + esc(routeUrl(from, stops)) + '">' + tr("افتح المسار كامل", "Open full route") + '</a>' : '') + '</div>';
+      }
+    } else if (drv.tab !== "done" && list.length >= 2) near = '<div class="dv-near"><span>' + tr("مرتبة بالوقت", "Sorted by time") + '</span><button type="button" data-dsort>' + tr("رتّب الأقرب فالأقرب", "Nearest first") + '</button></div>';
     return '<header class="dv-top"><div class="dv-row"><img class="lg" src="' + D.imgs.logo + '" alt=""><div class="t"><b>' + tr("طلبات التوصيل", "Delivery orders") + (drv.me && teamOn() ? ' · ' + esc(drv.me.name) : '') + '</b><span class="live" id="drvLive"><i></i>' + tr("متصل · يتحدث تلقائي", "Connected · live") + '</span></div>' +
       '<button class="dv-sq dark" type="button" id="drvSound" aria-label="' + tr("صوت التنبيه", "Alert sound") + '" aria-pressed="' + drv.sound + '">' + (drv.sound ? '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>' : '<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>') + '</button>' +
       '<button class="dv-sq dark" type="button" id="drvOut" aria-label="' + tr("خروج", "Sign out") + '">' + ic("back") + '</button></div>' +
@@ -2352,16 +2421,30 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (APP ? appBox() : drv.push ? '' : '<div class="dv-push"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("فعّل إشعارات الطلبات", "Turn on order alerts") + '</b><span id="drvPushMsg">' + esc(pushWhy() || tr("يوصلك تنبيه مع كل طلب جديد حتى لو الصفحة مقفلة.", "Get an alert for every new order, even when closed.")) + '</span></span><button class="btn btn-orange" type="button" id="drvPushBtn">' + tr("فعّل", "Turn on") + '</button></div>') +
       '<nav class="dv-tabs" aria-label="' + tr("حالة الطلبات", "Order status") + '">' + tabs.map(function(x){ var n = g[x[0]].length; return '<button type="button" data-dtab="' + x[0] + '" aria-pressed="' + (drv.tab === x[0]) + '">' + x[1] + (n && x[0] !== "done" ? ' <em>' + num(n) + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
       (teamOn() && g.mate.length && drv.tab !== "done" ? '<div class="dv-mate">' + ic("user") + '<span>' + g.mate.map(function(o){ return '<b dir="ltr">' + esc(o.no) + '</b> ' + tr("مع ", "with ") + esc(o.drvName || tr("زميلك", "colleague")); }).join(" · ") + '</span></div>' : '') +
-      '<main class="dv-list">' + (list.length ? list.map(dvCard).join("") : '<div class="dv-empty">' + ic("truck") + '<b>' + ({ "new": tr("ما فيه طلبات جديدة", "No new orders"), pick: tr("ما فيه طلبات تتجهز", "Nothing being picked"), way: tr("ما فيه طلبات في الطريق", "Nothing on the way"), done: tr("ما فيه طلبات منتهية", "No finished orders") }[drv.tab]) + '</b><span>' + (drv.tab === "new" ? tr("الصفحة تتحدث لحالها، ويطلع لك تنبيه أول ما يوصل طلب.", "This page updates itself and alerts you when an order arrives.") : '') + '</span></div>') + '</main>';
+      '<main class="dv-list">' + near + (list.length ? list.map(dvCard).join("") : '<div class="dv-empty">' + ic("truck") + '<b>' + ({ "new": tr("ما فيه طلبات جديدة", "No new orders"), pick: tr("ما فيه طلبات تتجهز", "Nothing being picked"), way: tr("ما فيه طلبات في الطريق", "Nothing on the way"), done: tr("ما فيه طلبات منتهية", "No finished orders") }[drv.tab]) + '</b><span>' + (drv.tab === "new" ? tr("الصفحة تتحدث لحالها، ويطلع لك تنبيه أول ما يوصل طلب.", "This page updates itself and alerts you when an order arrives.") : '') + '</span></div>') + '</main>';
   }
+  // ترتيب التوصيل: كل مرة نروح لأقرب طلب من آخر نقطة (أقرب جار). الطلبات بدون موقع تجي آخر شي
+  function kmBetween(a, b){ var r = Math.PI / 180, x = (b.lng - a.lng) * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r; return Math.sqrt(x * x + y * y) * 6371; }
+  function routeOrder(from, list){
+    var left = list.filter(function(o){ return o.lat != null && o.lng != null && isFinite(o.lat) && isFinite(o.lng); }), rest = list.filter(function(o){ return left.indexOf(o) < 0; }), out = [], cur = from;
+    while (left.length) { var bi = 0, bd = 1e9; for (var i = 0; i < left.length; i++) { var d = kmBetween(cur, { lat: Number(left[i].lat), lng: Number(left[i].lng) }); if (d < bd) { bd = d; bi = i; } }
+      var o = Object.assign({}, left[bi], { _km: Math.round(bd * 10) / 10, _stop: out.length + 1 }); out.push(o); cur = { lat: Number(o.lat), lng: Number(o.lng) }; left.splice(bi, 1); }
+    return out.concat(rest.map(function(o){ return Object.assign({}, o, { _km: null, _stop: null }); }));
+  }
+  function routeUrl(from, stops){
+    var pts = stops.slice(0, 10).map(function(o){ return o.lat + "," + o.lng; }), dest = pts.pop();
+    return "https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=" + from.lat + "," + from.lng + "&destination=" + dest + (pts.length ? "&waypoints=" + encodeURIComponent(pts.join("|")) : "");
+  }
+  if (typeof window !== "undefined") window.__ohodRoute = routeOrder; // للاختبار
   function dvCard(o){
     var lines = o.lines || [], ph = lines.slice(0, 5).map(function(l){ return dImg(l.id, "th", l.name); }).join("") + (lines.length > 5 ? '<span class="th more">+' + num(lines.length - 5) + '</span>' : '');
     var act = o.prepStage==='ready' && (o.status==='new'||o.status==='accepted') ? '<button type="button" class="dv-btn go" data-prephandoff="'+esc(o.no)+'">استلمت الطلب الجاهز — ابدأ التوصيل</button>' : o.status === "new" ? '<button type="button" class="dv-btn go" data-dstart="' + esc(o.no) + '">' + tr("ابدأ التجهيز", "Start picking") + ic("fwd") + '</button>' :
       o.status === "accepted" ? '<button type="button" class="dv-btn go" data-dopen="' + esc(o.no) + '">' + tr("كمّل التجهيز", "Continue picking") + ' (' + num(Object.keys(picked(o.no)).length) + '/' + num(lines.length) + ')</button>' :
       o.status === "onway" ? '<button type="button" class="dv-btn ink" data-ddeliver="' + esc(o.no) + '">' + tr("كمّل التوصيل", "Continue delivery") + '</button>' : '<span class="spill ' + o.status + '">' + ST[o.status] + '</span>';
-    return '<article class="dv-card' + (o.status === "new" ? ' hot' : '') + (drv.seen[o.no] === "fresh" ? ' fresh' : '') + '"><div class="h"><b dir="ltr">' + esc(o.no) + '</b>' + (o.source ? '<span class="src ' + o.source + '">' + SRCL[o.source] + '</span>' : '') + '<span class="ago">' + ago(o.created) + '</span></div>' +
+    return '<article class="dv-card' + (o.status === "new" ? ' hot' : '') + (drv.seen[o.no] === "fresh" ? ' fresh' : '') + '"><div class="h">' + (o._stop ? '<span class="dv-stop">' + num(o._stop) + '</span>' : '') + '<b dir="ltr">' + esc(o.no) + '</b>' + (o._km != null ? '<span class="dv-km">' + num(o._km) + tr(" كم", " km") + '</span>' : '') + (o.source ? '<span class="src ' + o.source + '">' + SRCL[o.source] + '</span>' : '') + '<span class="ago">' + ago(o.created) + '</span></div>' +
       '<div class="who"><b>' + esc(o.name || tr("زبون", "Customer")) + '</b><span>' + esc(o.details || "") + '</span></div><div class="ths">' + ph + '</div>' +
       '<div class="money"><b>' + num(o.total) + ' ' + tr("ر.س", "SAR") + '</b><span>· ' + num(o.count) + tr(" قطعة · ", " items · ") + collectionLabel(o) + '</span></div>' +
+      ((o.subs || []).some(function(x){ return x.state === "pending"; }) ? '<p class="dv-subw">' + tr("بديل بانتظار رد الزبون", "Replacement waiting for the customer") + '</p>' : '') +
       (o.prepStage ? '<p class="hint">التجهيز: '+({waiting:'بانتظار التجهيز',preparing:'جارٍ التجهيز',ready:'جاهز للمندوب'})[o.prepStage]+'</p>' : '') + (o.note ? '<div class="note">' + ic("tag") + esc(o.note) + '</div>' : '') + '<div class="acts">' + act +
       (o.status === "accepted" && teamOn() ? '<button type="button" class="dv-link" data-drelease="' + esc(o.no) + '">' + tr("رجّعه للجديدة", "Release") + '</button>' : '') +
       (o.status === "new" || o.status === "accepted" ? '<button type="button" class="dv-link" data-dcancel="' + esc(o.no) + '">' + tr("إلغاء", "Cancel") + '</button>' : '') + '</div></article>';
@@ -2407,10 +2490,12 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function dvMissing(){
     var o = dOrder(drv.no), l = o && (o.lines || []).filter(function(x){ return x.id === drv.miss; })[0]; if (!l) return '';
     var subs = dvSubs(o, l.id), s0 = subs[0], wa = o.phone ? "966" + String(o.phone).replace(/^0/, "") : "";
+    var pend = (o.subs || []).filter(function(x){ return x.line === l.id && x.state === "pending"; })[0], pendP = pend && byId(pend.to), direct = o.sub === "swap";
     var waText = tr("السلام عليكم، معك مندوب ", "Hello, this is the driver from ") + sv("name") + tr(". «", ". “") + l.name + tr("» مو متوفر الحين.", "” is not available right now.") + (s0 ? tr(" نقدر نبدّله بـ «", " We can replace it with “") + nm(s0) + tr("» بسعر ", "” for ") + num(s0.price) + tr(" ر.س؟", " SAR?") : tr(" تبغانا نشيله من الطلب؟", " Shall we remove it?"));
     return '<div class="dv-sheet" id="dvSheet"><section class="pan" role="dialog" aria-modal="true" aria-labelledby="dvMT"><span class="grab"></span>' +
       '<div class="hd">' + dImg(l.id, "im gray", l.name) + '<div><h2 id="dvMT">' + esc(l.name) + tr(" مو موجود", " is not available") + '</h2><span>' + tr("الطلب يبي ", "The order needs ") + num(l.qty) + tr(" · وش تسوي؟", " · what do you want to do?") + '</span></div></div>' +
-      '<div class="pref">' + ic("user") + '<span>' + tr("الزبون اختار وقت الطلب: ", "The customer chose: ") + '<b>' + (SUBL[o.sub] || SUBL.call) + '</b></span></div>' +
+      '<div class="pref">' + ic("user") + '<span>' + tr("الزبون اختار وقت الطلب: ", "The customer chose: ") + '<b>' + (SUBL[o.sub] || SUBL.call) + '</b>' + (direct ? '' : '<br>' + tr("اختر بديل وينرسل للزبون يوافق عليه من جواله.", "Pick a replacement; the customer approves it on their phone.")) + '</span></div>' +
+      (pend ? '<div class="dv-subw">' + tr("بانتظار رد الزبون على «", "Waiting for the customer to answer on “") + esc(pendP ? nm(pendP) : "") + tr("» · ", "” · ") + ago(pend.at) + ' <button type="button" class="dv-link" data-dsubw="' + pend.id + '">' + tr("اسحب الاقتراح", "Withdraw") + '</button></div>' : '') +
       (subs.length ? '<b class="lbl">' + tr("بدائل من نفس القسم", "Alternatives from the same section") + '</b>' + subs.map(function(x){ var d = Math.round((x.price - l.price) * l.qty * 100) / 100;
         return '<button type="button" class="sub" data-dswap="' + esc(x.id) + '">' + dImg(x.id, "im", nm(x)) + '<span class="t"><b>' + esc(nm(x)) + '</b><span>' + esc(un(x)) + ' · ' + num(x.price) + ' ' + tr("ر.س", "SAR") + '</span><em>' + (d ? (d > 0 ? '+' : '') + num(d) + tr(" ر.س على الفاتورة", " SAR on the bill") : tr("نفس السعر", "Same price")) + '</em></span><span class="go">' + tr("خذه", "Use") + '</span></button>'; }).join("") : '<p class="hint">' + tr("ما فيه بديل متوفر من نفس القسم.", "No alternative in stock in this section.") + '</p>') +
       '<div class="acts">' + (wa ? '<a class="dv-btn wa" target="_blank" rel="noopener" href="https://wa.me/' + esc(wa) + '?text=' + encodeURIComponent(waText) + '">' + tr("اسأل الزبون بالواتساب", "Ask on WhatsApp") + '</a><a class="dv-btn line" href="tel:' + esc(o.phone) + '">' + ic("phone") + tr("اتصل", "Call") + '</a>' : '') +
@@ -2443,6 +2528,16 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (pending?'<section class="ls"><b>بانتظار تأكيد الإدارة</b><p>طلبت تسوية '+moneyFromCents(request.expected)+'. حسابك ينقص بعد ما تؤكد الإدارة استلام الكاش.</p></section>':'')+
       (confirmed?'<section class="ls"><b>الإدارة أكدت استلام '+moneyFromCents(request.actual)+'</b><p>'+ (balance>0?'باقي معك مبلغ؛ سلّمه للإدارة لتسجّله.':balance<0?'فيه مبلغ زائد مسجّل؛ راجع الإدارة.':'تمت التسوية، يعطيك العافية.')+'</p></section>':'<button class="dv-btn ok wide" type="button" id="requestDriverSettlement">'+(pending?'حدّث مبلغ طلب التسوية':'إنهاء وتسوية اليوم')+'</button>')+
       '<button class="dv-btn line wide" type="button" id="refreshDriverCash">تحديث الحساب</button><p id="driverSettlementMsg" class="hint" role="status"></p><details class="ls"><summary>تفاصيل الطلبات والتسليمات</summary><p>وصّلت اليوم '+num(t.done.length)+' طلب.</p>'+ (c.history||[]).slice(0,5).map(function(h){return '<p>'+oTime(h.at)+' · سلّمت '+rial(h.amount)+' · '+esc(h.who)+'</p>';}).join('')+'</details></main>';
+  }
+  // بديل لمنتج ناقص: ينرسل للزبون يوافق (إلا لو اختار وقت الطلب «بدّلوه»، فينبدل على طول)
+  function dvPropose(no, id, to){
+    api("/driver/sub-propose", { pin: drv.pin, no: no, id: id, to: to }).then(function(j){
+      if (!j.ok) { dToast(j.code === "bad_swap" ? tr("البديل خلص، اختر غيره.", "That alternative is out, pick another.") : j.code === "not_yours" ? tr("الطلب مع زميلك.", "This order is with a colleague.") : tr("ما انرسل، جرّب مرة ثانية.", "Not sent, try again."), true); drvRender(); return; }
+      var o = dOrder(no);
+      if (j.applied) { if (o) ["lines", "subtotal", "fee", "total", "count", "edits"].forEach(function(k){ o[k] = j.order[k]; }); var pk = picked(no); delete pk[id]; pk[to] = 1; savePick(); drv.miss = ""; drv.view = "pick"; drvRender(); dToast(tr("انبدل (الزبون اختار نبدّل)، ووصله إشعار", "Replaced (customer pre-approved), notified")); return; }
+      if (o) { o.subs = (o.subs || []).filter(function(x){ return !(x.line === id && x.state === "pending"); }).concat([{ id: 0, line: id, to: to, state: "pending", at: Date.now() }]); }
+      drv.miss = ""; drv.view = "pick"; drvRender(); dToast(tr("انرسل للزبون، كمّل باقي الطلب لين يرد", "Sent to the customer; continue while they answer"));
+    });
   }
   function dvEdit(no, op, id, to){
     api("/driver/order-edit", { pin: drv.pin, no: no, op: op, id: id, to: to }).then(function(j){
@@ -2501,7 +2596,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ((t = e.target.closest("[data-dpick]"))) { var pk = picked(drv.no), id = t.dataset.dpick; if (pk[id]) delete pk[id]; else pk[id] = 1; savePick(); drvRender(); return; }
     if ((t = e.target.closest("[data-dmiss]"))) { drv.miss = t.dataset.dmiss; if (drv.view === "prod") drv.view = "pick"; drvRender(); return; }
     if (e.target.closest("[data-dclose]") || e.target.id === "dvSheet") { drv.miss = ""; drvRender(); return; }
-    if ((t = e.target.closest("[data-dswap]"))) { t.disabled = true; dvEdit(drv.no, "swap", drv.miss, t.dataset.dswap); return; }
+    if ((t = e.target.closest("[data-dswap]"))) { t.disabled = true; dvPropose(drv.no, drv.miss, t.dataset.dswap); return; }
+    if ((t = e.target.closest("[data-dsubw]"))) { t.disabled = true; api("/driver/sub-withdraw", { pin: drv.pin, no: drv.no, offer: Number(t.dataset.dsubw) }).then(function(j){ var o = dOrder(drv.no); if (j.ok && o) o.subs = (o.subs || []).filter(function(x){ return x.id !== Number(t.dataset.dsubw); }); drvRender(); }); return; }
+    if ((t = e.target.closest("[data-dhere]"))) { if (!navigator.geolocation) return; t.disabled = true; navigator.geolocation.getCurrentPosition(function(p){ drv.here = { lat: p.coords.latitude, lng: p.coords.longitude }; drvRender(); }, function(){ t.disabled = false; dToast(tr("ما قدرنا نجيب موقعك. اسمح بالموقع للمتصفح.", "Could not get your location. Allow location access."), true); }, { enableHighAccuracy: true, timeout: 10000 }); return; }
+    if ((t = e.target.closest("[data-dsort]"))) { drv.byTime = !drv.byTime; drvRender(); return; }
     if ((t = e.target.closest("[data-dremove]"))) { if (t.dataset.c !== "1") { t.dataset.c = "1"; t.textContent = tr("متأكد؟ اضغط ثاني", "Sure? Tap again"); return; } t.disabled = true; dvEdit(drv.no, "remove", t.dataset.dremove); return; }
     if ((t = e.target.closest("[data-dpacked]"))) { var o = dOrder(t.dataset.dpacked); if (t.getAttribute("aria-disabled") === "true") { dToast(tr("علّم كل المنتجات أول، أو اختر «مو موجود» للناقص", "Mark every item first, or choose Not available"), true); return; }
       setSt(o.no, "onway", function(ok){ if (ok) go2("deliver"); }); return; }
@@ -2623,7 +2721,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (staffAuth && staffAuth.user.role === "preparer") { preparerShell(); return; }
     if (ordersOnly()) { ordersShell(); return; }
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
-    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
+    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
       '<aside class="adm-side"><div class="adm-brand"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b>' + esc(D.store.name) + '</b><span>لوحة الإدارة</span></div></div>' +
       '<nav class="adm-nav" aria-label="أقسام الإدارة">' + TABS.map(function(x){ return '<button type="button" data-atab="' + x[0] + '"' + (x[0] === aTab ? ' aria-current="page"' : '') + '>' + ic(x[2]) + '<span>' + x[1] + '</span>' + (x[0] === "prods" ? '<em class="n">' + draft.products.length + '</em>' : x[0] === "cats" ? '<em class="n">' + draft.cats.length + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
@@ -2641,6 +2739,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         '<p class="hint">«قبل الخصم» اختياري: لو كتبته أكبر من السعر، يطلع المنتج في العروض مع نسبة الخصم. اضغط على الصورة لتغييرها أو رفع صورة من جهازك. الأسهم ترتّب المنتج داخل قسمه.</p></div><div class="alist prods" id="aProds"></div></section>' +
       '<section class="adm-panel" data-panel="cats"><div class="card"><div class="sec-head" style="margin:0"><h2>الأقسام</h2><button class="btn btn-brand" type="button" id="addCat">+ قسم جديد</button></div><p class="hint">الأسهم ترتّب الأقسام في المتجر كله: الدوائر والشبكة وصفحة الأقسام.</p><div class="alist" id="aCats"></div></div></section>' +
       '<section class="adm-panel" data-panel="offers"><div class="card" id="aPromos"></div></section>' +
+      '<section class="adm-panel" data-panel="costs" id="aCosts"></section>' +
       '<section class="adm-panel" data-panel="layout"><div class="card" id="aLayout"></div></section>' +
       '<section class="adm-panel" data-panel="look"><div class="card" id="aLook"></div></section>' +
       '<section class="adm-panel" data-panel="store"><div class="card"><h2>بيانات المحل</h2><div class="fields">' +
@@ -2650,6 +2749,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
           '<label for="sShop">موقع المحل (إحداثيات)<input id="sShop" dir="ltr" value="' + esc(draft.store.shop ? draft.store.shop.join(", ") : "") + '" placeholder="24.8414, 46.8299"></label>' +
           field("sMaxKm","أقصى مسافة للتوصيل (كم، ٠ = بدون حد)",draft.store.maxKm || 0,"number") +
           '<p class="hint wide">وأنت داخل المحل اضغط <button type="button" class="linkbtn" id="sShopHere">استخدم موقعي الحالي</button>. الطلب من أبعد من المسافة ما ينقبل، ويطلع للزبون إنه برّا منطقة التوصيل ويتصل عليكم. <span id="sShopMsg"></span></p>' +
+          '<div class="wide zone-ed"><b>منطقة التوصيل على الخريطة</b><p class="hint">اضغط على الخريطة تحط نقاط حول المنطقة اللي توصلون لها (٣ نقاط أو أكثر). اسحب النقطة تعدّلها، واضغط عليها مرتين تشيلها. لو رسمت منطقة، الطلب من برّاها ما ينقبل، والمسافة بالكيلو ما تنحسب.</p><div id="zoneMap" class="zone-map"></div><div class="actions"><button type="button" class="btn btn-soft sm" id="zoneUndo">شيل آخر نقطة</button><button type="button" class="btn btn-ghost sm" id="zoneClear">امسح المنطقة</button><span class="hint" id="zoneInfo"></span></div></div>' +
+          '<label class="wide">إلغاء الطلب من الزبون<select id="sCustCancel"><option value="new"' + ((draft.store.custCancel || "new") === "new" ? ' selected' : '') + '>يقدر يلغي قبل ما يبدأ المندوب التجهيز</option><option value="accepted"' + (draft.store.custCancel === "accepted" ? ' selected' : '') + '>يقدر يلغي لين يطلع المندوب</option><option value="off"' + (draft.store.custCancel === "off" ? ' selected' : '') + '>ما يقدر يلغي من الموقع (يتصل بالمحل)</option></select></label>' +
           field("sHours","أوقات العمل",draft.store.hours) + field("sHoursEn","أوقات العمل بالإنجليزي",draft.store.hours_en || "") +
           field("sEta","مدة التوصيل",draft.store.eta) + field("sEtaEn","مدة التوصيل بالإنجليزي",draft.store.eta_en || "") +
           field("sPhone","رقم الاتصال",draft.store.phone,"tel") + field("sWa","رقم الواتساب (بالصيغة الدولية 9665…)",draft.store.wa,"tel") +
@@ -2681,6 +2782,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     $("sClosed").addEventListener("change", function(){ if (this.checked) draft.store.closed = true; else delete draft.store.closed; markDirty(); });
     $("sClosedMsg").addEventListener("input", function(){ if (this.value.trim()) draft.store.closedMsg = this.value; else delete draft.store.closedMsg; markDirty(); });
     $("sShop").addEventListener("input", function(){ var m = /(-?\d{1,2}\.\d+)\s*[,،]\s*(-?\d{1,3}\.\d+)/.exec(this.value); if (m) draft.store.shop = [Number(m[1]), Number(m[2])]; else delete draft.store.shop; markDirty(); });
+    $("sCustCancel").addEventListener("change", function(){ if (this.value === "new") delete draft.store.custCancel; else draft.store.custCancel = this.value; markDirty(); });
     $("sMaxKm").addEventListener("input", function(){ var v = Number(this.value || 0); if (v > 0) draft.store.maxKm = v; else delete draft.store.maxKm; markDirty(); });
     $("sShopHere").addEventListener("click", function(){ var m = $("sShopMsg"); if (!navigator.geolocation) { m.textContent = "الجهاز ما يدعم تحديد الموقع."; return; } m.textContent = "جاري تحديد الموقع…";
       navigator.geolocation.getCurrentPosition(function(p){ var la = Math.round(p.coords.latitude * 1e5) / 1e5, lo = Math.round(p.coords.longitude * 1e5) / 1e5; draft.store.shop = [la, lo]; $("sShop").value = la + ", " + lo; m.textContent = "تم. اضغط «حفظ تغييرات المتجر»."; markDirty(); }, function(){ m.textContent = "ما قدرنا نحدد موقعك. اسمح بالموقع للمتصفح."; }, { enableHighAccuracy: true, timeout: 15000 }); });
@@ -2732,7 +2834,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if(staffAuth && staffAuth.user.role==='cashier' && ['pos','settlement'].indexOf(id)<0)return;
     if (staffAuth && staffAuth.user.role === "preparer" && id !== "prep") return;
     if (ordersOnly() && ["olist", "alerts"].indexOf(id) < 0) return;
-    if (id === "staff" && staffAuth) return;
+    if ((id === "staff" || id === "costs") && staffAuth) return;
     if ((id === "pos" || id === "prep") && !(staffAuth && staffAuth.user.role === (id === "pos" ? "cashier" : "preparer"))) return;
     aTab = id;
     if(fullAdminRoot()){if($("adminSectionSearch")?.value){$("adminSectionSearch").value="";$("adminSectionSearch").oninput();}if(adminNavMedia?.matches&&fullAdminRoot().classList.contains("admin-menu-open"))toggleAdminMenu(false);}
@@ -2741,7 +2843,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ($("aTitle")) $("aTitle").textContent = TAB_TITLE[id] || "";
     syncAdminChrome();
     if(fullAdminRoot()&&!dirty&&$('aStatus')&&!$('aStatus').classList.contains('err'))$('aStatus').textContent='';
-    if(id === "store")renderAdminPOSSettings();
+    if(id === "store"){renderAdminPOSSettings();initZoneEditor();}
+    if(id === "costs")renderCosts();
     if(id === "pos")renderPOS();
     if (id === "prep") renderPreparation();
     if (id === "settlement") renderSettlement();
@@ -2890,6 +2993,89 @@ html.sp-on,html.sp-on body{overflow:hidden}
         mvBtns('cat', c.id) + '<button class="del" type="button" data-del-cat="' + c.id + '"' + (n ? ' disabled title="انقل منتجاته أو احذفها أول"' : '') + '>حذف</button></div>';
     }).join("");
   }
+  var zoneEd = null;
+  function initZoneEditor(){
+    var el = $("zoneMap"); if (!el) return;
+    if (zoneEd && zoneEd.el === el) { setTimeout(function(){ zoneEd.map.invalidateSize(); }, 50); return; }
+    loadLeaflet(function(){
+      if (!$("zoneMap") || $("zoneMap")._leaflet_id) return;
+      var st = draft.store, c = st.shop || (st.zone && st.zone[0]) || S.mapCenter || DEFAULT_CENTER;
+      var m = L.map("zoneMap", { attributionControl: true }).setView(c, 14);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(m);
+      if (st.shop) L.marker(st.shop, { title: "المحل" }).addTo(m);
+      zoneEd = { el: $("zoneMap"), map: m, pts: (st.zone || []).map(function(p){ return [Number(p[0]), Number(p[1])]; }), marks: [], poly: null, circle: null };
+      var icon = L.divIcon({ className: "", html: '<div class="zone-pt"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
+      var save = function(){ if (zoneEd.pts.length >= 3) st.zone = zoneEd.pts.map(function(p){ return [Math.round(p[0] * 1e5) / 1e5, Math.round(p[1] * 1e5) / 1e5]; }); else delete st.zone; markDirty(); };
+      var draw = function(){
+        zoneEd.marks.forEach(function(x){ m.removeLayer(x); }); zoneEd.marks = [];
+        if (zoneEd.poly) { m.removeLayer(zoneEd.poly); zoneEd.poly = null; }
+        if (zoneEd.circle) { m.removeLayer(zoneEd.circle); zoneEd.circle = null; }
+        if (zoneEd.pts.length >= 2) zoneEd.poly = L.polygon(zoneEd.pts, { color: "#0E9F7B", weight: 2, fillOpacity: zoneEd.pts.length >= 3 ? 0.12 : 0 }).addTo(m);
+        else if (st.shop && Number(st.maxKm) > 0) zoneEd.circle = L.circle(st.shop, { radius: Number(st.maxKm) * 1000, color: "#FF8A1F", weight: 1, fillOpacity: 0.05, interactive: false }).addTo(m);
+        zoneEd.pts.forEach(function(p, i){ var mk = L.marker(p, { icon: icon, draggable: true }).addTo(m);
+          mk.on("dragend", function(){ var ll = mk.getLatLng(); zoneEd.pts[i] = [ll.lat, ll.lng]; save(); draw(); });
+          mk.on("dblclick", function(e){ L.DomEvent.stop(e); zoneEd.pts.splice(i, 1); save(); draw(); }); zoneEd.marks.push(mk); });
+        $("zoneInfo").textContent = zoneEd.pts.length >= 3 ? "المنطقة فيها " + num(zoneEd.pts.length) + " نقاط. لا تنسَ «حفظ تغييرات المتجر»." : zoneEd.pts.length ? "حط " + num(3 - zoneEd.pts.length) + " نقطة زيادة على الأقل." : (Number(st.maxKm) > 0 ? "ما فيه منطقة مرسومة: الدائرة البرتقالية هي أقصى مسافة (" + num(st.maxKm) + " كم)." : "ما فيه منطقة مرسومة.");
+      };
+      m.on("click", function(e){ if (zoneEd.pts.length >= 40) return; zoneEd.pts.push([e.latlng.lat, e.latlng.lng]); save(); draw(); });
+      m.doubleClickZoom.disable();
+      $("zoneUndo").onclick = function(){ zoneEd.pts.pop(); save(); draw(); };
+      $("zoneClear").onclick = function(){ if (!zoneEd.pts.length) return; if (!confirm("تمسح منطقة التوصيل المرسومة؟")) return; zoneEd.pts = []; save(); draw(); };
+      draw();
+      if (zoneEd.pts.length >= 3) m.fitBounds(L.latLngBounds(zoneEd.pts), { padding: [20, 20] });
+    });
+  }
+  /* ----- التكاليف التشغيلية ومستشار العروض (للمالك بس؛ الأرقام سرية في القاعدة) ----- */
+  var costsState = { opex: null, fields: null, adv: null, busy: false, msg: "" };
+  var OPEX_GROUPS = [["fixed", "المصروفات الثابتة كل شهر (ر.س)"], ["order", "تكلفة كل طلب (ر.س)"], ["pct", "نسب من المبيعات (%)"], ["plan", "توقعاتك (تنفع لين يتجمع سجل طلبات كافي)"]];
+  function renderCosts(){
+    var box = $("aCosts"); if (!box) return;
+    if (staffAuth) { box.innerHTML = '<div class="card"><p class="hint">التكاليف ومستشار العروض لصاحب المتجر بس.</p></div>'; return; }
+    if (!apiUrl()) { box.innerHTML = '<div class="card"><p class="hint">يحتاج ربط الخادم.</p></div>'; return; }
+    if (!costsState.opex) { box.innerHTML = '<div class="card"><p class="hint">جاري التحميل…</p></div>'; api("/admin/opex", { pin: adminPin }).then(function(j){ if (!j.ok) { box.innerHTML = '<div class="card"><p class="status err">' + (j.code === "not_found" ? "حدّث خادم Cloudflare عشان تشتغل هالصفحة." : "ما قدرنا نحمّل التكاليف (" + esc(j.code || "?") + ").") + '</p></div>'; return; } costsState.opex = j.opex || {}; costsState.fields = j.fields; loadAdvice(); }); return; }
+    var o = costsState.opex, F = costsState.fields || [], miss = F.filter(function(f){ return typeof o[f.k] !== "number"; });
+    var h = '<form class="card" id="opexForm"><h2>التكاليف التشغيلية والمصروفات</h2><p class="hint">عبّ كل البنود (حط ٠ إذا البند ما يخصك). الأرقام سرية، ما تطلع لأحد غيرك. مستشار العروض يشتغل بس بعد ما تعتمد التكاليف كاملة.</p>' +
+      OPEX_GROUPS.map(function(g){ var fs = F.filter(function(f){ return f.g === g[0]; }); return '<fieldset class="opex-g"><legend>' + g[1] + '</legend><div class="fields">' + fs.map(function(f){ return '<label>' + esc(f.n) + '<input type="number" min="0" step="0.01" inputmode="decimal" data-opex="' + f.k + '" value="' + (typeof o[f.k] === "number" ? o[f.k] : "") + '"' + (typeof o[f.k] === "number" ? '' : ' placeholder="مطلوب"') + '></label>'; }).join("") + '</div></fieldset>'; }).join("") +
+      '<label>كم مرة يرجع يطلب الزبون الجديد (تقريباً، اختياري)<input type="number" min="1" max="50" step="0.5" data-opex="repeatOrders" value="' + (o.repeatOrders || "") + '" placeholder="٣"></label>' +
+      '<div class="actions"><button type="submit" class="btn btn-brand" value="confirm">احفظ واعتمد التكاليف</button><button type="submit" class="btn btn-soft" value="draft">احفظ بدون اعتماد</button><span class="status" id="opexMsg">' + (o.confirmed ? 'التكاليف معتمدة.' : miss.length ? 'ناقص ' + num(miss.length) + ' بند.' : 'محفوظة، تحتاج «اعتمد».') + '</span></div></form>';
+    h += '<div id="advBox">' + adviceHTML() + '</div>';
+    box.innerHTML = h;
+    $("opexForm").onsubmit = function(e){ e.preventDefault(); var conf = e.submitter && e.submitter.value === "confirm", out = {};
+      Array.prototype.forEach.call(this.querySelectorAll("[data-opex]"), function(i){ if (i.value !== "") out[i.dataset.opex] = Number(i.value); });
+      var b = e.submitter; if (b) b.disabled = true; $("opexMsg").className = "status"; $("opexMsg").textContent = "جاري الحفظ…";
+      api("/admin/opex-save", { pin: adminPin, opex: out, confirm: conf }).then(function(j){ if (b) b.disabled = false;
+        if (!j.ok) { $("opexMsg").className = "status err"; $("opexMsg").textContent = j.code === "bad_opex" ? "فيه رقم غلط: لازم يكون موجب، والنسب من ٠ لـ ١٠٠." : "ما انحفظ (" + esc(j.code || "?") + ")."; return; }
+        costsState.opex = j.opex; costsState.adv = null; $("opexMsg").className = "status"; $("opexMsg").textContent = j.opex.confirmed ? "انحفظت واعتمدت." : "انحفظت (بدون اعتماد)."; if (conf && j.missing.length) { renderCosts(); $("opexMsg").className = "status err"; $("opexMsg").textContent = "ما انعتمد: ناقص " + num(j.missing.length) + " بند. عبّها (ولو بصفر)."; return; } loadAdvice(); });
+    };
+  }
+  function loadAdvice(){ costsState.adv = null; renderCostsLater(); api("/admin/offers-advice", { pin: adminPin }).then(function(j){ costsState.adv = j; renderCostsLater(); }); }
+  function renderCostsLater(){ if (aTab === "costs") { var b = $("advBox"); if (b && costsState.opex) b.innerHTML = adviceHTML(); else renderCosts(); } }
+  function adviceHTML(){
+    var a = costsState.adv; if (!a) return '<div class="card"><p class="hint">جاري تحليل العروض…</p></div>';
+    if (!a.ok) return '<div class="card"><p class="status err">ما قدرنا نحلل (' + esc(a.code || "?") + ').</p></div>';
+    if (!a.ready) return '<div class="card"><h2>مستشار العروض</h2><p class="hint">' + (a.error === "no_costs" ? "حط «سعر الشراء» للمنتجات أول (من المنتجات أو ملف الكاشير)، عشان نعرف هوامشك." : a.missing && a.missing.length ? "عبّ التكاليف فوق كاملة واضغط «احفظ واعتمد» عشان يشتغل المستشار." : "اضغط «احفظ واعتمد التكاليف» عشان يشتغل المستشار.") + '</p></div>';
+    var e = a.eco, r = function(v){ return num(Math.round(v * 100) / 100) + ' ر.س'; };
+    var V = { safe: ['آمن', 'ok'], bait: ['مكلف لكن يجيب زباين', 'warn'], loss: ['خسارة', 'bad'] };
+    var K = { deal: 'كل منتج بسعر موحد', daily: 'عرض اليوم', sale: 'خصم على المنتج' };
+    var h = '<div class="card"><h2>صحة المحل قبل العروض</h2><div class="kpis">' +
+      kpi('صافي كل طلب بعد كل المصروفات', r(e.net), e.net >= 0 ? 'ok' : 'bad') + kpi('صافي الشهر المتوقع', r(e.netMonthly), e.netMonthly >= 0 ? 'ok' : 'bad') +
+      kpi('ربح الطلب قبل المصروفات الثابتة', r(e.contribution)) + kpi('نصيب الطلب من المصروفات الثابتة', r(e.fixedPerOrder)) +
+      kpi('طلبات شهرية تغطي المصروفات', e.breakEvenOrders == null ? '—' : num(e.breakEvenOrders) + ' طلب') + kpi('ميزانية العروض الشهرية المقترحة', r(e.offersBudgetMonthly)) + '</div>' +
+      '<details><summary>كيف حسبناها</summary><ul class="hint">' + a.assumptions.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join("") + '<li>المصروفات الثابتة ' + r(e.fixedMonthly) + ' شهرياً، والمتغيرة ' + r(e.varOrder) + ' لكل طلب.</li><li>أقصى خسارة نتحملها لجلب زبون جديد: ' + r(e.acquisitionBudget) + ' (ربح الطلب × ' + num(e.repeatOrders) + ' طلبات يرجع فيها).</li></ul></details>' +
+      (a.warnings.length ? '<div class="adv-warn">' + a.warnings.map(function(w){ return '<p>' + esc(w) + '</p>'; }).join("") + '</div>' : '') + '</div>';
+    var f = a.freeDelivery;
+    if (f && f.minBasket) h += '<div class="card"><h2>التوصيل المجاني</h2><p>أقل سلة تغطي تكلفة التوصيل بدون رسوم: <b>' + r(f.minBasket) + '</b>. ' + (f.freeOver ? 'عندك الحين مجاني فوق <b>' + r(f.freeOver) + '</b>: ' + (f.safe ? '<span class="vd ok">آمن</span>' : '<span class="vd bad">يخسر</span>') : 'ما عندك توصيل مجاني.') + (f.suggested ? ' المقترح: مجاني فوق <b>' + r(f.suggested) + '</b>.' : '') + '</p></div>';
+    h += '<div class="card"><h2>عروضك الحالية</h2>' + (a.current.length ? '<div class="adv-t">' + a.current.map(function(x){ return '<div class="adv-r"><b>' + esc(x.name) + '</b><span>' + K[x.kind] + ' · ' + r(x.price) + (x.regular && x.regular !== x.price ? ' <s>' + r(x.regular) + '</s>' : '') + '</span>' + (x.noCost ? '<span class="vd">بدون سعر شراء</span>' : '<span>صافي الحبة ' + r(x.unitNet) + '</span><span class="vd ' + V[x.verdict][1] + '">' + V[x.verdict][0] + '</span>') + '</div>'; }).join("") + '</div>' : '<p class="hint">ما فيه عروض شغالة.</p>') +
+      (a.dealSummary ? '<p class="hint">عرض «كل منتج بـ ' + num(a.dealSummary.price) + '»: أسوأ طلب يخسر ' + r(a.dealSummary.worstLoss) + '، وربح سلة الحد الأدنى (' + r(a.dealSummary.minBasket) + ') ' + r(a.dealSummary.marginAtMin) + ' ' + (a.dealSummary.covered ? '<span class="vd ok">يغطي نفسه</span>' : '<span class="vd bad">ما يغطي</span>') + '</p>' : '') + '</div>';
+    h += '<div class="card"><h2>عروض آمنة مقترحة</h2><p class="hint">منتجات تتحرك وهامشها يسمح بخصم وأنت رابح.</p>' + (a.safe.length ? '<div class="adv-t">' + a.safe.map(function(x){ return '<div class="adv-r"><b>' + esc(x.name) + '</b><span>' + r(x.price) + ' ← <b>' + r(x.offer) + '</b></span><span>صافي الحبة بعد العرض ' + r(x.unitNet) + '</span><button type="button" class="btn btn-soft sm" data-advapply="' + esc(x.id) + '" data-advprice="' + x.offer + '">طبّقه خصم</button></div>'; }).join("") + '</div>' : '<p class="hint">ما لقينا منتجات بهامش يسمح.</p>') + '</div>';
+    h += '<div class="card"><h2>عرض قوي مكلف (يجيب زباين جدد)</h2><p class="hint">سعر تحت التعادل: تخسر فيه شوي عشان تجيب الزبون، والخسارة داخل ميزانية جلب الزبون. حط له حد للكمية لكل طلب.</p>' + (e.net < 0 ? '<p class="status err">ما ننصح بعروض مكلفة الحين: المحل ما غطى مصروفاته بعد.</p>' : '') + (a.strong.length ? '<div class="adv-t">' + a.strong.map(function(x){ return '<div class="adv-r"><b>' + esc(x.name) + '</b><span>' + r(x.price) + ' ← <b>' + r(x.offer) + '</b> (التعادل ' + r(x.breakEven) + ')</span><span>خسارة الحبة ' + r(-x.unitNet) + '</span><button type="button" class="btn btn-soft sm" data-advapply="' + esc(x.id) + '" data-advprice="' + x.offer + '">طبّقه خصم</button></div>'; }).join("") + '</div>' : '<p class="hint">ما فيه اقتراحات.</p>') + '</div>';
+    return h;
+  }
+  function kpi(t, v, c){ return '<div class="kpi' + (c ? ' ' + c : '') + '"><span>' + t + '</span><b>' + v + '</b></div>'; }
+  document.addEventListener("click", function(e){ var t = e.target.closest && e.target.closest("[data-advapply]"); if (!t || mode !== "admin") return;
+    var p = dById(t.dataset.advapply), np = Number(t.dataset.advprice); if (!p || !(np > 0)) return;
+    if (!confirm("تحط «" + p.name + "» بـ " + num(np) + " ر.س بدل " + num(p.price) + "؟ يطلع للزبون كخصم بعد ما تحفظ.")) return;
+    if (!(Number(p.old) > Number(p.price))) p.old = p.price; p.price = np; markDirty(); t.disabled = true; t.textContent = "انطبّق، احفظ التغييرات"; });
   function renderAProds(){
     var words = normAr(aFilter.q).split(/\s+/).filter(Boolean), shown = aFilter.show || 40;
     var all = draft.products.filter(function(p){ if (aFilter.cat !== "all" && p.cat !== aFilter.cat) return false; if (!words.length) return true; var h = normAr(p.name + " " + (p.bc || "")); return words.every(function(w){ return h.indexOf(w) > -1; }); });
@@ -4321,7 +4507,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // The same panels and actions remain available; navigation follows daily work.
   var ADMIN_SECTIONS=[
     {name:'المتابعة اليومية',primary:true,items:[['over','اليوم'],['olist','الطلبات'],['alerts','الطلبات المتأخرة'],['settlement','حساب المناديب']]},
-    {name:'المنتجات والعروض',items:[['prods','المنتجات والأسعار'],['cats','الأقسام'],['offers','العروض']]},
+    {name:'المنتجات والعروض',items:[['prods','المنتجات والأسعار'],['cats','الأقسام'],['offers','العروض'],['costs','التكاليف ومستشار العروض']]},
     {name:'العملاء والمحافظ',items:[['cust','التواصل مع العملاء'],['wallets','المحافظ والكاش باك']]},
     {name:'التقارير والمتابعة',items:[['stats','تحليل المبيعات'],['log','سجل التعديلات']]},
     {name:'شكل المتجر والطباعة',items:[['layout','ترتيب الصفحة الرئيسية'],['bans','البنرات والمنتجات المقترحة'],['look','الألوان واللغة'],['sign','طباعة ورقة عرض']]},
@@ -4333,6 +4519,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var adminNavMedia=null,adminSaveObserver=null;
   function fullAdminRoot(){return document.querySelector('.adm[data-simple-admin]');}
   function organizeAdminNavigation(){
+    if(staffAuth){var costBtn=document.querySelector('[data-atab="costs"]');if(costBtn)costBtn.remove();}
     if(ordersOnly())return;var nav=document.querySelector('.adm-nav'),root=nav&&nav.closest('.adm');if(!nav||!root)return;
     root.dataset.simpleAdmin='true';var existing={};nav.querySelectorAll('[data-atab]').forEach(function(b){existing[b.dataset.atab]=b;});nav.innerHTML='';
     ADMIN_SECTIONS.forEach(function(group){var entries=group.items.filter(function(x){return !!existing[x[0]];});if(!entries.length)return;
