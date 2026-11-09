@@ -971,6 +971,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .vd{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700;background:#EEF1F5;color:#374151;justify-self:start}.vd.ok{background:#E6F6F1;color:#0B7A5E}.vd.warn{background:#FFF1E2;color:#B45309}.vd.bad{background:#FDE8E8;color:#B91C1C}
 .zone-map{height:320px;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin:8px 0}.zone-pt{width:14px;height:14px;border-radius:50%;background:#0E9F7B;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .dv-near{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#4B5563;margin:4px 2px 10px}.dv-near b{color:#13213C}.dv-near button,.dv-near a{border:1px solid #D7DEE6;background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-weight:700;color:#13213C;text-decoration:none;cursor:pointer}.dv-stop{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:999px;background:#13213C;color:#fff;font-size:12px;font-weight:700;padding:0 6px}.dv-km{font-size:12px;color:#0E9F7B;font-weight:700}.dv-subw{background:#FFF7EE;border-radius:10px;padding:6px 10px;font-size:13px;color:#9A4A0B;margin-top:6px}
+.txtimg{display:grid;place-items:center;width:100%;height:100%;min-height:100px;padding:12px;box-sizing:border-box;text-align:center;border-radius:inherit}.txtimg b{font-family:var(--display);font-size:15px;line-height:1.35;color:#13213C;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .kq-more{grid-column:1/-1;justify-self:center;min-width:220px;margin:6px 0 12px}.kq-more small{opacity:.7;font-weight:500}
 .kq-card{display:grid;gap:3px;align-content:start;cursor:pointer;min-width:0;position:relative}
 .kq-img{position:relative;aspect-ratio:1/1;max-width:100%;border-radius:18px;background:#F5F6F8;display:grid;place-items:center;overflow:hidden;margin-bottom:6px}
@@ -1565,7 +1566,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
       onSale(p) ? '<span class="kq-badge">' + ic("tag") + tr("عرض السوبر", "Super deal") + '</span>' :
       (p.badge ? '<span class="kq-badge fresh">' + esc(bd(p)) + '</span>' : '');
     var lf = left(p), low = avail(p) && lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '';
-    return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + imgTag(p.img, nm(p)) + badge + low + control(p, kind || "") + '</div>' +
+    // المنتج بدون صورة: بطاقة نصية بلون القسم بدل أيقونة الكيس، عشان الصفحة ما تبين فاضية
+    var pic = isPhoto(p.img) && D.imgs[p.img] ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
+    return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + badge + low + control(p, kind || "") + '</div>' +
       (c ? '<button class="kq-brand" type="button" data-opencat="' + c.id + '">' + ic("fwd") + esc(nm(c)) + '</button>' : '') +
       '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + '</span>' +
       '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '') + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
