@@ -2896,7 +2896,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var box = $("aImport"); if (!box) return;
     var P = imp.plan, lim = Number(S.importLimit) || 3000;
     var h = '<h2>استيراد الأصناف من ملف الكاشير</h2><p class="hint">ارفع ملف الإكسل حق برنامج الكاشير (رقم الصنف، الاسم، الوحدة، الكمية، التكلفة، وسعر البيع). نختار الأهم على حسب الكمية وقيمة المخزون، ونوزعهم على الأقسام من أسمائهم. التكلفة والكمية تنحفظ سرية، ما يشوفها الزبون. رفع الملف مرة ثانية يحدّث المخزون والتكلفة والأسعار للأصناف الموجودة.</p>' +
-      '<div class="adm-tools"><label class="btn btn-ink" style="cursor:pointer">' + (imp.busy ? 'جاري القراءة…' : 'اختر ملف الإكسل') + '<input type="file" id="impFile" accept=".xlsx,.xls,.csv" hidden></label><label>عدد المنتجات في الموقع<input id="impLimit" type="number" min="50" max="5000" step="50" value="' + lim + '" style="width:110px"></label></div>' +
+      '<div class="adm-tools"><label class="btn btn-ink" style="cursor:pointer;color:#fff;flex:0 0 auto">' + (imp.busy ? 'جاري القراءة…' : 'اختر ملف الإكسل') + '<input type="file" id="impFile" accept=".xlsx,.xls,.csv" hidden></label><label>عدد المنتجات في الموقع<input id="impLimit" type="number" min="50" max="5000" step="50" value="' + lim + '" style="width:110px"></label></div>' +
       (imp.msg ? '<p class="status' + (imp.err ? ' err' : '') + '">' + imp.msg + '</p>' : '');
     if (P) {
       var sk = Object.keys(P.skipped).map(function(k){ return '<li>' + esc(k) + ': <b>' + num(P.skipped[k]) + '</b></li>'; }).join("");
