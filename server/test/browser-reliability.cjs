@@ -66,6 +66,9 @@ const root=path.resolve(__dirname,'../..');
   await nav(legacy,'olist');await legacy.locator('#aOList').waitFor();
   const screenshots=process.env.ADMIN_SCREENSHOT_DIR;if(screenshots){fs.mkdirSync(screenshots,{recursive:true});await legacy.screenshot({path:path.join(screenshots,'admin-legacy-desktop.png'),fullPage:true});await legacy.setViewportSize({width:390,height:844});await legacy.screenshot({path:path.join(screenshots,'admin-legacy-mobile.png'),fullPage:true});await legacy.setViewportSize({width:1440,height:1000});}
   await nav(legacy,'prods');const legacyPrice=legacy.locator('#aProds [data-f=price]').first();assert.equal(await legacyPrice.inputValue(),'8.75');await legacyPrice.fill('9.75');assert.equal(await legacy.locator('#aSave').isEnabled(),true);
+  await nav(legacy,'store');const backupButton=legacy.locator('#bkData');const backupFold=backupButton.locator('xpath=ancestor::details[1]');if(await backupFold.count())await backupFold.evaluate(x=>x.open=true);
+  const [backup]=await Promise.all([legacy.waitForEvent('download'),backupButton.click()]);const backedUp=JSON.parse(fs.readFileSync(await backup.path(),'utf8'));assert.equal(backedUp.products[0].price,9.75);await nav(legacy,'prods');
+  console.log('PASS catalogue backup includes the unsaved draft price, not just the loaded catalogue');
   const before=saves.length;await legacy.evaluate(()=>{const b=document.querySelector('#aSave');b.disabled=false;b.click();});await legacy.locator('#aStatus').filter({hasText:'تحديث الخدمة'}).waitFor();assert.equal(saves.length,before);assert.equal(await legacyPrice.inputValue(),'9.75');
   await legacy.locator('#checkAdminCompatibility').click();assert.equal(await legacyPrice.inputValue(),'9.75');assert.equal(await legacy.locator('#adminCompatibilityNotice').count(),1);
   console.log('PASS legacy admin opens with fresh public data; orders are reachable, saves blocked and draft preserved');
