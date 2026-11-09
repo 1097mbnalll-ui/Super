@@ -88,7 +88,9 @@ export default {
       if (priced.error) return reply(400, { ok: false, code: priced.error });
       // منطقة التوصيل: لو المحل حدد أقصى مسافة
       const S0 = data.store || {}, shop = Array.isArray(S0.shop) && S0.shop.length === 2 ? S0.shop.map(Number) : null, maxKm = Number(S0.maxKm) || 0;
-      if (shop && maxKm > 0 && isFinite(Number(body.lat)) && isFinite(Number(body.lng))) {
+      const zone = zoneOf(S0), hasLoc = isFinite(Number(body.lat)) && isFinite(Number(body.lng)) && body.lat !== null && body.lng !== null && body.lat !== "" && body.lng !== "";
+      if (zone && hasLoc && !inPolygon(zone, Number(body.lat), Number(body.lng))) return reply(400, { ok: false, code: "out_of_zone" });
+      if (!zone && shop && maxKm > 0 && hasLoc) {
         const km = distM(shop[0], shop[1], Number(body.lat), Number(body.lng)) / 1000;
         if (km > maxKm) return reply(400, { ok: false, code: "too_far", km: Math.round(km * 10) / 10, max: maxKm });
       }
@@ -148,8 +150,75 @@ export default {
       const row = await env.DB.prepare("SELECT status, updated, data, drv FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
       if (!row) return reply(404, { ok: false, code: "not_found" });
       const out = { ok: true, status: row.status, updated: row.updated };
+      if (["new", "accepted", "onway"].includes(row.status)) {
+        const offs = (await env.DB.prepare("SELECT id, line_id, to_id, created FROM sub_offers WHERE no = ? AND state = 'pending' ORDER BY id").bind(n).all()).results || [];
+        if (offs.length) {
+          let data1 = null; try { data1 = await loadData(env); } catch { /* بدون بيانات: ما نعرض البدائل */ }
+          const rec = safeJson(row.data), byId = {}; for (const p of (data1 && data1.products) || []) byId[p.id] = p;
+          out.subs = offs.map((o) => { const l = (rec.lines || []).find((x) => x.id === o.line_id), t = byId[o.to_id]; return l && t ? { id: o.id, name: l.name, qty: l.qty, price: l.price, to: { id: t.id, name: t.name, unit: t.unit || "", price: Number(t.price), img: t.img || "" }, diff: round2((Number(t.price) - Number(l.price)) * l.qty), at: o.created } : null; }).filter(Boolean);
+        }
+      }
       if (row.status === "onway") { try { out.driver = await driverFor(env, n, safeJson(row.data), row.drv); } catch { /* التتبع إضافة، ما يوقف الحالة */ } }
       return reply(200, out);
+    }
+
+    // الزبون يلغي طلبه (رقم الطلب + نفس الجوال). السماح حسب إعداد المحل: قبل التجهيز (الافتراضي)، قبل ما يطلع المندوب، أو ما يلغي.
+    if (path === "/cancel") {
+      if (!env.DB) return reply(404, { ok: false, code: "no_tracking" });
+      const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000, phone = normPhone(body.phone);
+      if (!(n > 0) || !phone) return reply(400, { ok: false, code: "bad_request" });
+      if (await rateHit(env, "cx:" + ip, 8, 600)) return reply(429, { ok: false, code: "slow_down" });
+      await ensureSchema(env);
+      const row = await env.DB.prepare("SELECT status, data FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
+      if (!row) return reply(404, { ok: false, code: "not_found" });
+      let data0 = {}; try { data0 = await loadData(env); } catch { /* الإعداد الافتراضي */ }
+      const policy = (data0.store || {}).custCancel || "new";
+      const allowed = policy === "off" ? [] : policy === "accepted" ? ["new", "accepted"] : ["new"];
+      if (row.status === "canceled") return reply(200, { ok: true, already: true });
+      if (!allowed.includes(row.status)) return reply(409, { ok: false, code: row.status === "accepted" || row.status === "onway" ? "too_late" : "closed", status: row.status });
+      let r;
+      try { r = await changeStatus(env, n, "canceled", Date.now(), "الزبون", null); } catch { return reply(502, { ok: false, code: "db" }); }
+      if (r && r.conflict) return reply(409, { ok: false, code: "too_late" });
+      const reason = String(body.reason || "").trim().slice(0, 60);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE orders SET data = json_set(data, '$.cancel', json(?)) WHERE no = ?").bind(JSON.stringify({ by: "customer", at: Date.now(), reason }), n),
+        env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND state = 'pending'").bind(Date.now(), n),
+        logStmt(env, "الزبون", "cancel_order", "#" + (1000 + n), { reason, from: row.status }),
+      ]);
+      later(notifyRole(env, "driver", null, { title: "الزبون ألغى الطلب #" + (1000 + n), body: reason ? "السبب: " + reason : "", url: "./#driver", tag: "cancel" + n }));
+      return reply(200, { ok: true });
+    }
+    // الزبون يرد على بديل اقترحه المندوب: يوافق (ينبدل المنتج) أو يرفض (ينشال المنتج من الطلب)
+    if (path === "/sub-answer") {
+      if (!env.DB) return reply(404, { ok: false, code: "no_tracking" });
+      const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000, phone = normPhone(body.phone), oid = Number(body.offer) || 0;
+      if (!(n > 0) || !phone || !oid) return reply(400, { ok: false, code: "bad_request" });
+      if (await rateHit(env, "sa:" + ip, 20, 600)) return reply(429, { ok: false, code: "slow_down" });
+      await ensureSchema(env);
+      const row = await env.DB.prepare("SELECT status, data, drv FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
+      if (!row) return reply(404, { ok: false, code: "not_found" });
+      const off = await env.DB.prepare("SELECT * FROM sub_offers WHERE id = ? AND no = ?").bind(oid, n).first();
+      if (!off || off.state !== "pending" || !["new", "accepted", "onway"].includes(row.status)) return reply(409, { ok: false, code: "stale" });
+      const done = body.accept === true || body.accept === "yes";
+      let data;
+      try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+      const rec = safeJson(row.data), line = (rec.lines || []).find((l) => l.id === off.line_id);
+      if (!line) { await env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE id = ?").bind(Date.now(), oid).run(); return reply(409, { ok: false, code: "stale" }); }
+      const toP = (data.products || []).find((p) => p.id === off.to_id);
+      let lines = (rec.lines || []).map((l) => ({ id: l.id, qty: l.qty, price: l.price }));
+      if (done) {
+        if (!toP || !toP.stock) return reply(409, { ok: false, code: "bad_swap" });
+        const ex = lines.find((l) => l.id === toP.id && l.price === Number(toP.price));
+        lines = lines.filter((l) => l.id !== off.line_id);
+        if (ex) ex.qty += line.qty; else lines.push({ id: toP.id, qty: line.qty, price: Number(toP.price) });
+      } else lines = lines.filter((l) => l.id !== off.line_id);
+      if (!lines.length) return reply(409, { ok: false, code: "last_item" });
+      let r;
+      try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, "الزبون"); } catch { return reply(502, { ok: false, code: "db" }); }
+      if (r.error) return reply(409, { ok: false, code: r.error });
+      await env.DB.prepare("UPDATE sub_offers SET state = ?, answered = ? WHERE id = ?").bind(done ? "accepted" : "rejected", Date.now(), oid).run();
+      later(notifyRole(env, "driver", null, { title: (done ? "الزبون وافق على البديل" : "الزبون رفض البديل") + " · #" + (1000 + n), body: done ? `«${line.name}» ← «${toP.name}»` : `«${line.name}» انشال من الطلب`, url: "./#driver", tag: "sub" + n }));
+      return reply(200, { ok: true, order: { total: r.order.total } });
     }
 
     // تحليل التصفح: مشاهدات المنتجات، الإضافة للسلة، البحث (بدون أي بيانات شخصية)
@@ -274,6 +343,9 @@ export default {
         const team = await staffList(env, "driver");
         const nm = staffNames(team);
         const orders = await enrichOperations(env, (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, drv: r.drv || "", drvName: r.drv ? nm[r.drv] || "" : "" })));
+        const offs = (await env.DB.prepare("SELECT id, no, line_id, to_id, state, created FROM sub_offers WHERE created > ? ORDER BY id").bind(since).all()).results || [];
+        const subMap = {}; for (const o of offs) (subMap["#" + (1000 + o.no)] ||= []).push({ id: o.id, line: o.line_id, to: o.to_id, state: o.state, at: o.created });
+        for (const o of orders) if (subMap[o.no]) o.subs = subMap[o.no];
         return reply(200, { ok: true, orders, now: Date.now(), me: { id: myId, name: actor ? actor.name : me.name, role: who }, team: team.filter((t) => t.active).map((t) => ({ id: t.id, name: t.name })) });
       }
       // المندوب: منتج ناقص (بدّله بمشابه أو شيله). الأسعار من المتجر، مو من الجوال.
@@ -303,9 +375,49 @@ export default {
         let r;
         try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, me.name); } catch { return reply(502, { ok: false, code: "db" }); }
         if (r.error) return reply(400, { ok: false, code: r.error });
+        await env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND line_id = ? AND state = 'pending'").bind(Date.now(), n, id).run();
         const msg = op === "swap" ? `«${line.name}» ما كان متوفر، وبدّلناه بـ «${toP.name}». الإجمالي الجديد ${money(r.order.total)}` : `«${line.name}» ما كان متوفر وشلناه من طلبك. الإجمالي الجديد ${money(r.order.total)}`;
         later(notifyRole(env, "customer", String(n), { title: "تعديل على طلبك #" + (1000 + n), body: msg, url: "./", tag: "order" + n }));
         return reply(200, { ok: true, order: r.order });
+      }
+      // المندوب يقترح بديل: الزبون يوافق من صفحة طلبه (إلا لو اختار وقت الطلب «بدّلوه»، فينبدل مباشرة)
+      if (path === "/driver/sub-propose" || path === "/driver/sub-withdraw") {
+        const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
+        const row = n > 0 ? await env.DB.prepare("SELECT status, data, drv FROM orders WHERE no = ?").bind(n).first() : null;
+        if (!row) return reply(404, { ok: false, code: "not_found" });
+        if (!["new", "accepted", "onway"].includes(row.status)) return reply(400, { ok: false, code: "closed" });
+        if (actor && row.drv && row.drv !== actor.id) return reply(409, { ok: false, code: "not_yours", by: await staffName(env, row.drv) });
+        if (path === "/driver/sub-withdraw") {
+          await env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND id = ? AND state = 'pending'").bind(Date.now(), n, Number(body.offer) || 0).run();
+          return reply(200, { ok: true });
+        }
+        let data;
+        try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+        const rec = safeJson(row.data), id = String(body.id || ""), line = (rec.lines || []).find((l) => l.id === id);
+        const toP = (data.products || []).find((p) => p.id === String(body.to || ""));
+        if (!line) return reply(400, { ok: false, code: "bad_line" });
+        if (!toP || !toP.stock || toP.id === id) return reply(400, { ok: false, code: "bad_swap" });
+        if (rec.sub === "swap") {
+          let lines = (rec.lines || []).map((l) => ({ id: l.id, qty: l.qty, price: l.price }));
+          const ex = lines.find((l) => l.id === toP.id && l.price === Number(toP.price));
+          lines = lines.filter((l) => l.id !== id);
+          if (ex) ex.qty += line.qty; else lines.push({ id: toP.id, qty: line.qty, price: Number(toP.price) });
+          let r;
+          try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, me.name); } catch { return reply(502, { ok: false, code: "db" }); }
+          if (r.error) return reply(400, { ok: false, code: r.error });
+          await env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND line_id = ? AND state = 'pending'").bind(Date.now(), n, id).run();
+          later(notifyRole(env, "customer", String(n), { title: "تعديل على طلبك #" + (1000 + n), body: `«${line.name}» ما كان متوفر، وبدّلناه بـ «${toP.name}» (اخترت وقت الطلب نبدّل بمشابه). الإجمالي الجديد ${money(r.order.total)}`, url: "./", tag: "order" + n }));
+          return reply(200, { ok: true, applied: true, order: r.order });
+        }
+        const pending = (await env.DB.prepare("SELECT COUNT(*) c FROM sub_offers WHERE no = ? AND state = 'pending'").bind(n).first()).c;
+        if (pending >= 8) return reply(429, { ok: false, code: "too_many" });
+        const stmts = [env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND line_id = ? AND state = 'pending'").bind(Date.now(), n, id),
+          env.DB.prepare("INSERT INTO sub_offers (no, line_id, to_id, state, created, who) VALUES (?, ?, ?, 'pending', ?, ?)").bind(n, id, toP.id, Date.now(), me.name),
+          logStmt(env, me.name, "sub_propose", "#" + (1000 + n), { from: line.name, to: toP.name })];
+        await env.DB.batch(stmts);
+        const diff = round2((Number(toP.price) - Number(line.price)) * line.qty);
+        later(notifyRole(env, "customer", String(n), { title: "بديل مقترح لطلبك #" + (1000 + n), body: `«${line.name}» مو متوفر. المندوب يقترح «${toP.name}»${diff ? " (" + (diff > 0 ? "+" : "") + money(diff) + ")" : ""}. افتح طلبك ووافق أو ارفض.`, url: "./", tag: "sub" + n }));
+        return reply(200, { ok: true, pending: true });
       }
       const solo = await soleDriver(env);
       if (path === '/driver/settlement-request') {
@@ -485,6 +597,34 @@ export default {
       await ensureSchema(env);
       await logStmt(env, "صاحب المتجر", "staff_account", username, { role: body.role, active: !!active, reset: !!password, pin: !!pin }).run();
       return reply(200, { ok: true });
+    }
+    // التكاليف التشغيلية والمصروفات (سرية: تنحفظ بالقاعدة مو بملف المتجر العام)
+    if (path === "/admin/opex" || path === "/admin/opex-save") {
+      if (principal) return reply(403, { ok: false, code: "forbidden" });
+      if (!env.DB) return reply(503, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      if (path === "/admin/opex-save") {
+        const o = cleanOpex(body.opex);
+        if (!o) return reply(400, { ok: false, code: "bad_opex" });
+        o.confirmed = body.confirm === true && opexMissing(o).length === 0;
+        await env.DB.batch([env.DB.prepare("INSERT INTO opex (id, data, updated) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated = excluded.updated").bind(JSON.stringify(o), Date.now()),
+          logStmt(env, staff(body), "opex", "", { confirmed: o.confirmed, fixed: opexFixed(o) })]);
+        return reply(200, { ok: true, opex: o, missing: opexMissing(o) });
+      }
+      const o = await readOpex(env);
+      return reply(200, { ok: true, opex: o, missing: opexMissing(o), fields: OPEX_FIELDS });
+    }
+    if (path === "/admin/offers-advice") {
+      if (principal) return reply(403, { ok: false, code: "forbidden" });
+      if (!env.DB) return reply(503, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const o = await readOpex(env), missing = opexMissing(o);
+      if (missing.length || !o.confirmed) return reply(200, { ok: true, ready: false, missing, confirmed: !!o.confirmed });
+      let data;
+      try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+      const adv = await offersAdvice(env, data, o);
+      if (adv.error) return reply(200, { ok: true, ready: false, error: adv.error });
+      return reply(200, { ok: true, ready: true, ...adv });
     }
     if (path === "/admin/alerts") {
       if (!env.DB) return reply(503, { ok: false, code: "config", missing: "DB" });
@@ -798,6 +938,9 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS st_search (day TEXT NOT NULL, q TEXT NOT NULL, n INTEGER NOT NULL, miss INTEGER NOT NULL, PRIMARY KEY (day, q))",
     "CREATE TABLE IF NOT EXISTS rl (k TEXT PRIMARY KEY, n INTEGER NOT NULL, until INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS pcost (id TEXT PRIMARY KEY, cost REAL NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS sub_offers (id INTEGER PRIMARY KEY AUTOINCREMENT, no INTEGER NOT NULL, line_id TEXT NOT NULL, to_id TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('pending','accepted','rejected','withdrawn')), created INTEGER NOT NULL, answered INTEGER, who TEXT NOT NULL DEFAULT '')",
+    "CREATE INDEX IF NOT EXISTS sub_offers_no ON sub_offers (no, state)",
+    "CREATE TABLE IF NOT EXISTS opex (id INTEGER PRIMARY KEY CHECK(id = 1), data TEXT NOT NULL, updated INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS winback (ch TEXT PRIMARY KEY, at INTEGER NOT NULL, who TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 1)",
     "CREATE TABLE IF NOT EXISTS alog (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, who TEXT NOT NULL, act TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', info TEXT NOT NULL DEFAULT '{}')",
     "CREATE INDEX IF NOT EXISTS alog_order_status ON alog(ref, act, at)",
@@ -1220,6 +1363,9 @@ function validate(d) {
   for (const v of Object.values(d.imgs)) {
     if (typeof v !== "string" || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(v)) return "image";
   }
+  const z = d.store.zone;
+  if (z != null && (!Array.isArray(z) || z.length > 40 || (z.length && z.length < 3) || !z.every((p) => Array.isArray(p) && p.length === 2 && Math.abs(Number(p[0])) <= 90 && Math.abs(Number(p[1])) <= 180))) return "zone";
+  if (d.store.custCancel != null && !["off", "new", "accepted"].includes(d.store.custCancel)) return "cancel_policy";
   return "";
 }
 
@@ -1750,6 +1896,19 @@ function bundleAlloc(b, byId) {
 // ---------- تتبع المندوب ----------
 const NEAR_M = 600;           // «المندوب قريب منك» تنرسل مرة وحدة لكل طلب
 const LOC_FRESH_MS = 10 * 60e3; // آخر موقع أقدم من كذا ما ينعرض
+// منطقة التوصيل المرسومة (مضلع). النقطة داخل المضلع؟ (ray casting)
+function inPolygon(poly, lat, lng) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [yi, xi] = poly[i], [yj, xj] = poly[j];
+    if ((xi > lng) !== (xj > lng) && lat < ((yj - yi) * (lng - xi)) / (xj - xi) + yi) inside = !inside;
+  }
+  return inside;
+}
+function zoneOf(S0) {
+  const z = S0 && S0.zone;
+  return Array.isArray(z) && z.length >= 3 && z.every((p) => Array.isArray(p) && isFinite(Number(p[0])) && isFinite(Number(p[1]))) ? z.map((p) => [Number(p[0]), Number(p[1])]) : null;
+}
 function distM(a1, o1, a2, o2) {
   const R = 6371000, r = Math.PI / 180, da = (a2 - a1) * r, dn = (o2 - o1) * r;
   const h = Math.sin(da / 2) ** 2 + Math.cos(a1 * r) * Math.cos(a2 * r) * Math.sin(dn / 2) ** 2;
@@ -1873,6 +2032,109 @@ async function readShift(env, cid, all) {
   };
 }
 
+// ---------- التكاليف التشغيلية ومستشار العروض ----------
+const OPEX_FIELDS = [
+  { k: "rent", g: "fixed", n: "إيجار المحل (شهرياً)" }, { k: "salaries", g: "fixed", n: "رواتب الموظفين والمناديب الثابتة (شهرياً)" },
+  { k: "utilities", g: "fixed", n: "كهرباء وماء وإنترنت (شهرياً)" }, { k: "vehicles", g: "fixed", n: "سيارات: وقود وصيانة وتأمين (شهرياً)" },
+  { k: "marketing", g: "fixed", n: "تسويق وإعلانات (شهرياً)" }, { k: "software", g: "fixed", n: "اشتراكات: دومين، خادم، تطبيقات (شهرياً)" },
+  { k: "other", g: "fixed", n: "مصروفات ثانية: تراخيص، صيانة، متفرقات (شهرياً)" },
+  { k: "driverPerOrder", g: "order", n: "تكلفة توصيل الطلب الواحد (أجرة مندوب، وقود)" }, { k: "packPerOrder", g: "order", n: "تغليف الطلب الواحد (أكياس، ثلج)" },
+  { k: "cardFeePct", g: "pct", n: "عمولة الشبكة (% من مبلغ الدفع بالشبكة)" }, { k: "wastePct", g: "pct", n: "تلف وهالك (% من المبيعات)" },
+  { k: "expectedOrders", g: "plan", n: "عدد الطلبات المتوقع شهرياً" }, { k: "expectedBasket", g: "plan", n: "متوسط قيمة الطلب المتوقع (ر.س)" },
+];
+function cleanOpex(src) {
+  if (!src || typeof src !== "object") return null;
+  const o = {};
+  for (const f of OPEX_FIELDS) {
+    const v = src[f.k];
+    if (v === null || v === undefined || v === "") continue;
+    const n = Number(v), max = f.g === "pct" ? 100 : 1e7;
+    if (!isFinite(n) || n < 0 || n > max) return null;
+    o[f.k] = Math.round(n * 100) / 100;
+  }
+  if (src.repeatOrders !== undefined && src.repeatOrders !== "") { const r = Number(src.repeatOrders); if (!(r >= 1 && r <= 50)) return null; o.repeatOrders = Math.round(r * 10) / 10; }
+  return o;
+}
+const opexMissing = (o) => OPEX_FIELDS.filter((f) => typeof o[f.k] !== "number" || ((f.k === "expectedOrders" || f.k === "expectedBasket") && !(o[f.k] > 0))).map((f) => f.k);
+const opexFixed = (o) => OPEX_FIELDS.filter((f) => f.g === "fixed").reduce((s, f) => s + (Number(o[f.k]) || 0), 0);
+async function readOpex(env) {
+  const r = await env.DB.prepare("SELECT data FROM opex WHERE id = 1").first();
+  return r ? safeJson(r.data) : {};
+}
+const to025 = (n) => Math.round(n * 4) / 4;
+async function offersAdvice(env, data, o) {
+  const S0 = data.store || {}, now = Date.now(), since = now - 30 * 864e5;
+  const agg = (await env.DB.prepare("SELECT COUNT(*) n, IFNULL(SUM(total), 0) rev, IFNULL(SUM(fee), 0) fees, IFNULL(SUM(items), 0) items, IFNULL(SUM(CASE WHEN pay = 'card' THEN total ELSE 0 END), 0) card FROM orders WHERE status != 'canceled' AND src != 'pos' AND created > ?").bind(since).first()) || {};
+  const lines = (await env.DB.prepare("SELECT l.id id, SUM(l.qty) qty, SUM(l.qty * l.price) rev, SUM(l.qty * l.cost) cost FROM oline l JOIN orders o ON o.no = l.no WHERE o.status != 'canceled' AND o.src != 'pos' AND o.created > ? GROUP BY l.id ORDER BY qty DESC LIMIT 600").bind(since).all()).results || [];
+  const costRows = (await env.DB.prepare("SELECT id, cost FROM pcost").all()).results || [], cost = {}; for (const r of costRows) cost[r.id] = r.cost;
+  const stock = await readStock(env), sold = {}; for (const l of lines) sold[l.id] = l;
+  const hist = agg.n >= 15, warnings = [], assumptions = [];
+  const fixed = opexFixed(o), ordersMonth = hist ? agg.n : o.expectedOrders;
+  assumptions.push(hist ? `الطلبات: ${agg.n} آخر ٣٠ يوم (من سجل الطلبات)` : `الطلبات: ${o.expectedOrders} شهرياً (توقعك؛ السجل أقل من ١٥ طلب)`);
+  const fee = hist ? agg.fees / agg.n : Number(S0.fee) || 0;
+  let basket = hist ? Math.max(1, (agg.rev - agg.fees) / agg.n) : o.expectedBasket;
+  assumptions.push(hist ? `متوسط السلة ${money(round2(basket))} (فعلي)` : `متوسط السلة ${money(round2(basket))} (توقعك)`);
+  const withCost = lines.filter((l) => l.cost > 0), revAll = lines.reduce((s, l) => s + l.rev, 0), revCost = withCost.reduce((s, l) => s + l.rev, 0);
+  let gmPct;
+  if (hist && revAll > 0 && revCost / revAll >= 0.5) { gmPct = 1 - withCost.reduce((s, l) => s + l.cost, 0) / revCost; assumptions.push(`هامش الربح الإجمالي ${(gmPct * 100).toFixed(1)}٪ (فعلي)`); if (revCost / revAll < 0.9) warnings.push("تكلفة بعض المنتجات المباعة ناقصة، فالهامش الفعلي ممكن يكون أقل."); }
+  else {
+    const ms = (data.products || []).filter((p) => cost[p.id] > 0 && Number(p.price) > 0).map((p) => 1 - cost[p.id] / Number(p.price));
+    if (!ms.length) return { ok: false, error: "no_costs" };
+    ms.sort((a, b) => a - b); gmPct = ms[Math.floor(ms.length / 2)];
+    assumptions.push(`هامش الربح ${(gmPct * 100).toFixed(1)}٪ (وسيط هوامش منتجاتك، ما فيه سجل كافي)`);
+  }
+  const cardShare = hist && agg.rev > 0 ? agg.card / agg.rev : 0.5;
+  assumptions.push(`طلبات الشبكة ${(cardShare * 100).toFixed(0)}٪${hist ? " (فعلي)" : " (افتراض)"}`);
+  const items = hist && agg.items > 0 ? agg.items / agg.n : 8;
+  const pctVar = (o.cardFeePct / 100) * cardShare + o.wastePct / 100, fixedVarOrder = o.driverPerOrder + o.packPerOrder;
+  const varOrder = fixedVarOrder + pctVar * (basket + fee);
+  const gmOrder = basket * gmPct, contribution = gmOrder + fee - varOrder, fixedPerOrder = fixed / ordersMonth, net = contribution - fixedPerOrder;
+  const eco = { orders30: agg.n, ordersMonth, basket: round2(basket), fee: round2(fee), gmPct: round2(gmPct * 100), gmOrder: round2(gmOrder), varOrder: round2(varOrder), contribution: round2(contribution), fixedMonthly: round2(fixed), fixedPerOrder: round2(fixedPerOrder), net: round2(net), netMonthly: round2(net * ordersMonth), breakEvenOrders: contribution > 0 ? Math.ceil(fixed / contribution) : null, items: round2(items), history: hist };
+  const unitVar = (price) => price * pctVar + fixedVarOrder / items;
+  const unitNet = (price, c) => round2(price - c - unitVar(price));
+  const repeat = o.repeatOrders || 3, budget = Math.max(0, round2(contribution * repeat)); // أقصى خسارة نتحملها لجلب زبون جديد
+  eco.acquisitionBudget = budget; eco.repeatOrders = repeat;
+  const monthlyBudget = net > 0 ? round2(net * ordersMonth * 0.3) : 0; eco.offersBudgetMonthly = monthlyBudget;
+  const byId = {}; for (const p of data.products || []) byId[p.id] = p;
+  const verdictOf = (nu, lim) => nu >= 0 ? "safe" : -nu * (lim || 1) <= budget ? "bait" : "loss"; // الخسارة × أقصى كمية للطلب مقابل ميزانية جلب الزبون
+  // عروض المتجر الحالية
+  const cur = [], seen = {};
+  const addCur = (p, price, kind, extra) => { if (!p || seen[kind + p.id]) return; seen[kind + p.id] = 1; const c = cost[p.id]; if (!(c > 0)) { cur.push({ id: p.id, name: p.name, kind, price: round2(price), regular: Number(p.price), noCost: true }); return; } const nu = unitNet(price, c); cur.push({ id: p.id, name: p.name, kind, price: round2(price), regular: Number(p.price), cost: round2(c), unitNet: nu, marginPct: round2(((price - c) / price) * 100), verdict: verdictOf(nu, extra && extra.limit), ...extra }); };
+  if (S0.deal95 && S0.deal95.on) for (const id of S0.deal95.ids || []) addCur(byId[id], Number(S0.deal95.price) || 0.95, "deal", { limit: Number(S0.deal95.limit) || 1 });
+  if (S0.daily && S0.daily.on) for (const x of S0.daily.list || []) addCur(byId[x.id], Number(x.price), "daily", { limit: Number(S0.daily.limit) || 1 });
+  for (const p of data.products || []) if (Number(p.old) > Number(p.price)) addCur(p, Number(p.price), "sale", {});
+  // عرض «كل منتج بسعر موحد»: أسوأ حالة للطلب الواحد (كل المنتجات بأقصى كمية) مقابل ربح الحد الأدنى للسلة اللي يفتحه
+  let dealSummary = null;
+  if (S0.deal95 && S0.deal95.on) {
+    const ds = cur.filter((x) => x.kind === "deal" && !x.noCost), minB = Number(S0.deal95.min) || 0;
+    const worst = round2(ds.reduce((t, x) => t + Math.max(0, -x.unitNet) * (x.limit || 1), 0)), cover = round2(minB * gmPct - (fixedVarOrder + pctVar * minB));
+    dealSummary = { products: ds.length, price: Number(S0.deal95.price) || 0.95, minBasket: minB, worstLoss: worst, marginAtMin: cover, covered: cover >= worst };
+  }
+  // اقتراحات: الأكثر حركة (مبيعات ٣٠ يوم، وإلا المخزون) والهامش يسمح
+  const cands = (data.products || []).filter((p) => cost[p.id] > 0 && Number(p.price) > 0 && p.stock !== false).map((p) => {
+    const price = Number(p.price), c = cost[p.id], sl = sold[p.id], vel = sl ? sl.qty : 0, stk = stock[p.id] || 0;
+    return { p, price, c, vel, stk, nu: unitNet(price, c) };
+  }).sort((a, b) => (b.vel - a.vel) || (b.stk - a.stk));
+  const safe = [], strong = [];
+  for (const x of cands) {
+    if (safe.length < 12 && x.nu > 0.25) {
+      const cut = Math.min(0.12 * x.price, 0.4 * x.nu), np = to025(x.price - cut);
+      if (np < x.price && x.price - np >= 0.25 && unitNet(np, x.c) >= 0) safe.push({ id: x.p.id, name: x.p.name, price: x.price, offer: np, unitNet: unitNet(np, x.c), cut: round2(x.price - np), vel: x.vel });
+    }
+    if (strong.length < 6 && budget > 0 && x.price >= 2) {
+      const be = to025(x.c + unitVar(x.c) / (1 - pctVar)), lossAllowed = Math.min(budget / 2, 0.25 * x.price), bait = Math.max(0.25, to025(be - lossAllowed));
+      if (bait < x.price) strong.push({ id: x.p.id, name: x.p.name, price: x.price, cost: round2(x.c), breakEven: be, offer: bait, unitNet: unitNet(bait, x.c), vel: x.vel });
+    }
+  }
+  // التوصيل المجاني: أقل سلة تغطي تكلفة التوصيل بدون رسوم
+  const den = gmPct - pctVar, minFree = den > 0 ? round2(fixedVarOrder / den) : null;
+  const free = { freeOver: Number(S0.freeOver) || 0, fee: Number(S0.fee) || 0, minBasket: minFree, safe: minFree != null && (Number(S0.freeOver) || 0) >= minFree, suggested: minFree != null ? Math.ceil((minFree * 1.15) / 5) * 5 : null };
+  if (net < 0) warnings.push(`حالياً كل طلب يخسر ${money(round2(-net))} بعد المصروفات الثابتة. تحتاج ${eco.breakEvenOrders == null ? "رفع الهامش" : "تقريباً " + eco.breakEvenOrders + " طلب شهرياً"} عشان تغطي مصروفاتك، فركّز على عروض آمنة بس.`);
+  if (S0.freeOver > 0 && minFree != null && S0.freeOver < minFree) warnings.push(`التوصيل المجاني فوق ${S0.freeOver} ر.س يخسر: أقل سلة تغطي التوصيل بدون رسوم حوالي ${money(minFree)}.`);
+  if (dealSummary && !dealSummary.covered) warnings.push(`عرض «كل منتج بـ ${dealSummary.price}» خطر: أسوأ طلب يخسر ${money(dealSummary.worstLoss)} وربح الحد الأدنى للسلة (${dealSummary.minBasket} ر.س) ${money(dealSummary.marginAtMin)} بس.`);
+  return { eco, assumptions, warnings, current: cur, safe, strong, freeDelivery: free, dealSummary };
+}
+
 // ---------- Staff accounts and overdue orders ----------
 const staffSchemas = new WeakSet();
 async function ensureStaffSchema(env) {
@@ -1918,7 +2180,7 @@ async function pinTaken(env, pin, self) {
 }
 function publicStaff(u) { return { id: u.id, username: u.username, name: u.name, role: u.role }; }
 function staffMay(role, path, body) {
-  if (path === '/admin/staff' || path === '/admin/staff-save' || path === '/admin/team-save') return false;
+  if (path === '/admin/staff' || path === '/admin/staff-save' || path === '/admin/team-save' || path === '/admin/opex' || path === '/admin/opex-save' || path === '/admin/offers-advice') return false;
   if(role==='cashier')return ['/pos/login','/pos/delivery-orders','/pos/delivery-receipt','/pos/delivery-issue','/login','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/settlement-requests','/admin/settlement-confirm','/admin/payment','/admin/day-report'].includes(path);
   if (role === 'preparer') return ['/login','/admin/prep','/admin/prep-save'].includes(path);
   if (role === 'manager') return !(path === '/save' && (body.newPin || body.newDriverPin));
