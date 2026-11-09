@@ -1,6 +1,6 @@
 // اختبار استيراد ملف أصناف الكاشير: التوزيع على الأقسام، التنظيف، اختيار الأهم، والحفظ الكبير (٣٠٠٠ منتج) على الخادم.
 // التشغيل:  node server/test/catalog-import.mjs   (node 22)
-import { DatabaseSync } from 'node:sqlite'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url'; import { createRequire } from 'node:module';
+import { githubMock } from './support/github.mjs'; import { DatabaseSync } from 'node:sqlite'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url'; import { createRequire } from 'node:module';
 const here = path.dirname(fileURLToPath(import.meta.url)); const require = createRequire(import.meta.url);
 const C = require('../../tools/catalog.js');
 const w = (await import(path.join(here, '../worker.js'))).default;
@@ -49,12 +49,16 @@ const sq = new DatabaseSync(':memory:'); let queries = 0;
 const mk1 = (sql) => { let a = []; const st = { bind(...x) { a = x; return st; }, async first() { queries++; return sq.prepare(sql).get(...a) ?? null; }, async all() { queries++; return { results: sq.prepare(sql).all(...a) }; }, async run() { queries++; const r = sq.prepare(sql).run(...a); return { meta: { changes: r.changes, last_row_id: Number(r.lastInsertRowid) } }; } }; return st; };
 const DB = { prepare: mk1, async batch(l) { sq.exec('BEGIN'); try { const o = []; for (const s of l) o.push(await s.run()); sq.exec('COMMIT'); return o; } catch (e) { sq.exec('ROLLBACK'); throw e; } } };
 const kv = new Map(); const LOCKS = { get: async (k, t) => { const v = kv.get(k); return v == null ? null : (t === 'json' ? JSON.parse(v) : v); }, put: async (k, v) => kv.set(k, v), delete: async (k) => kv.delete(k) };
-const O = 'https://1097mbnalll-ui.github.io'; let saved = null;
+const O = 'https://1097mbnalll-ui.github.io'; let saved = null; // = data (يتحدث مع كل حفظ)
 const env = { GITHUB_TOKEN: 'x', ADMIN_PIN: '2468', SECRET: 's', REPO: 'o/r', BRANCH: 'gh-pages', ALLOWED_ORIGIN: O, LOCKS, DB };
-globalThis.fetch = async (u, o = {}) => { u = String(u); if (u.includes('api.github.com') && !o.method) return new Response(JSON.stringify(saved || data)); if (o.method === 'PUT') { saved = JSON.parse(Buffer.from(JSON.parse(o.body).content, 'base64').toString()); } return new Response('{"ok":true,"content":{"sha":"1"}}'); };
-const call = (p, body, get) => w.fetch(new Request('https://x.dev' + p, get ? { headers: { Origin: O } } : { method: 'POST', headers: { Origin: O, 'CF-Connecting-IP': '3.3.3.3' }, body: JSON.stringify(body) }), env, { waitUntil() {} }).then((r) => r.json());
+globalThis.fetch = githubMock(() => data, async () => new Response('{"ok":true}'), true);
+const call = async (p, body, get) => {
+  if (p === '/save' && body && body.baseVersion === undefined) body = { ...body, baseVersion: (await call('/admin/catalog', { pin: body.pin, session: body.session })).version }; // الحفظ صار يحتاج نسخة المتجر اللي بدأت منها
+  return rawCall(p, body, get);
+};
+const rawCall = (p, body, get) => w.fetch(new Request('https://x.dev' + p, get ? { headers: { Origin: O } } : { method: 'POST', headers: { Origin: O, 'CF-Connecting-IP': '3.3.3.3' }, body: JSON.stringify(body) }), env, { waitUntil() {} }).then((r) => r.json());
 await call('/admin/team', { pin: '2468' }); await call('/save', { pin: '2468', data, stock: { pantry0: 5 }, costs: { pantry0: 1 } }); sq.exec('DELETE FROM alog'); queries = 0; // تجهيز جداول القاعدة أول مرة
-const t1 = Date.now(); const r = await call('/save', { pin: '2468', data: D2, stock: ap.stock, costs: ap.costs });
+const t1 = Date.now(); const r = await call('/save', { pin: '2468', data: D2, stock: ap.stock, costs: ap.costs }); saved = data;
 ok(r.ok && Object.keys(r.stock).length >= 2900, 'حفظ ٣٠٠٠ منتج: ' + (r.ok ? 'تم' : r.code) + ' في ' + (Date.now() - t1) + 'ms، استعلامات القاعدة: ' + queries);
 ok(queries < 40, 'عدد الاستعلامات قليل (مو استعلام لكل منتج): ' + queries);
 ok(saved && saved.products.length === D2.products.length && !JSON.stringify(saved).includes('"cost"'), 'الملف العام فيه المنتجات بدون التكلفة');

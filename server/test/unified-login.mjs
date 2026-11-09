@@ -1,6 +1,6 @@
 // اختبار الدخول الموحد: رقم سري واحد، والرقم يحدد القسم (إدارة، مندوب، كاشير المحل، مجهز، مدير)
 // التشغيل:  node server/test/unified-login.mjs   (node 22)
-import { DatabaseSync } from 'node:sqlite'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
+import { githubMock } from './support/github.mjs'; import { DatabaseSync } from 'node:sqlite'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const w = (await import(path.join(here, '../worker.js'))).default;
 const data = JSON.parse(fs.readFileSync(path.join(here, '../../data.json'), 'utf8')); data.store.closed = false;
@@ -10,9 +10,13 @@ const DB = { prepare: mk1, async batch(l) { sq.exec('BEGIN'); try { const o = []
 const kv = new Map(); const LOCKS = { get: async (k, t) => { const v = kv.get(k); return v == null ? null : (t === 'json' ? JSON.parse(v) : v); }, put: async (k, v) => kv.set(k, v), delete: async (k) => kv.delete(k) };
 const O = 'https://1097mbnalll-ui.github.io';
 const env = { GITHUB_TOKEN: 'x', ADMIN_PIN: '2468', SECRET: 's', REPO: 'o/r', BRANCH: 'gh-pages', ALLOWED_ORIGIN: O, LOCKS, DB };
-globalThis.fetch = async (u, o = {}) => { u = String(u); if (u.includes('api.github.com') && !o.method) return new Response(JSON.stringify(data)); return new Response('{"ok":true}'); };
+globalThis.fetch = githubMock(() => data, async () => new Response('{"ok":true}'), true);
 let ipn = 0;
-const call = (p, body, ip) => w.fetch(new Request('https://x.dev' + p, { method: 'POST', headers: { Origin: O, 'CF-Connecting-IP': ip || '9.8.' + (ipn++ % 250) + '.1' }, body: JSON.stringify(body) }), env, { waitUntil() {} }).then((r) => r.json());
+const call = async (p, body, ip) => {
+  if (p === '/save' && body && body.baseVersion === undefined) body = { ...body, baseVersion: (await call('/admin/catalog', { pin: body.pin, session: body.session })).version }; // الحفظ صار يحتاج نسخة المتجر اللي بدأت منها
+  return rawCall(p, body, ip);
+};
+const rawCall = (p, body, ip) => w.fetch(new Request('https://x.dev' + p, { method: 'POST', headers: { Origin: O, 'CF-Connecting-IP': ip || '9.8.' + (ipn++ % 250) + '.1' }, body: JSON.stringify(body) }), env, { waitUntil() {} }).then((r) => r.json());
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const A = { pin: '2468' };
 
