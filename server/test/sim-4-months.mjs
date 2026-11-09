@@ -9,7 +9,7 @@ const DB = { prepare: mk, async batch(l) { sq.exec('BEGIN'); try { const o = [];
   for (let i = 0; i < l.length; i++) { if (i === failAt) { injected++; throw new Error('injected D1 failure'); } o.push(await l[i].run()); } sq.exec('COMMIT'); return o; } catch (e) { sq.exec('ROLLBACK'); throw e; } } };
 const kv = new Map(); const LOCKS = { get: async (k, t) => { const v = kv.get(k); return v == null ? null : (t === 'json' ? JSON.parse(v) : v); }, put: async (k, v) => kv.set(k, v), delete: async k => kv.delete(k) };
 const env = { GITHUB_TOKEN: 'x', ADMIN_PIN: '2468', SECRET: 's', REPO: 'o/r', BRANCH: 'gh-pages', ALLOWED_ORIGIN: 'https://1097mbnalll-ui.github.io', LOCKS, DB };
-const data = JSON.parse(fs.readFileSync(new URL('../../data.json', import.meta.url), 'utf8'));
+const data = JSON.parse(fs.readFileSync(new URL('./fixtures/catalog.json', import.meta.url), 'utf8'));
 data.store.daily = { on: false, list: [] }; if (data.store.deal95) data.store.deal95.on = false; delete data.store.minOrder; delete data.store.closed; data.store.keepDays = 90; data.store.lowAt = 3;
 data.products.forEach(p => { delete p.max; });
 const S = data.store, FEE = Number(S.fee || 0), FREE = Number(S.freeOver || 0);

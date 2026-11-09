@@ -5,7 +5,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('nod
 const root=path.resolve(__dirname,'../..');
 (async()=>{
  const folder=fs.mkdtempSync(path.join(os.tmpdir(),'ohod-browser-'));
- const catalog=JSON.parse(fs.readFileSync(path.join(root,'data.json')));catalog.store.closed=false;
+ const catalog=JSON.parse(fs.readFileSync(path.join(root,'server/test/fixtures/catalog.json')));catalog.store.closed=false;
  const p=catalog.products.find(x=>x.stock&&x.price>0),p2=catalog.products.find(x=>x.stock&&x.price>0&&x.id!==p.id);p.max=1;
  Object.assign(catalog.store,{daily:{...catalog.store.daily,on:false},deal95:{...catalog.store.deal95,on:false},bans:[{id:'fixture_bundle',title:'باقة الاختبار',style:'bundle',ids:[p.id,p2.id],bprice:1}],promos:[{id:'fixture_bundle',on:true}]});
  const catalogFile=path.join(folder,'catalog.json');fs.writeFileSync(catalogFile,JSON.stringify(catalog));

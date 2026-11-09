@@ -12,7 +12,7 @@ const DB={prepare,batch(statements){const task=queue.then(async()=>{sql.exec('BE
 const values=new Map(),LOCKS={async get(k,type){const v=values.get(k);return v==null?null:type==='json'?JSON.parse(v):v;},async put(k,v){values.set(k,v);},async delete(k){values.delete(k);}};
 const origin='https://1097mbnalll-ui.github.io',owner={pin:'2468'};
 const env={DB,LOCKS,GITHUB_TOKEN:'fixture',ADMIN_PIN:owner.pin,SECRET:'fixture',REPO:'fixture/store',BRANCH:'main',ALLOWED_ORIGIN:origin};
-const catalog=JSON.parse(fs.readFileSync(new URL('../../data.json',import.meta.url)));
+const catalog=JSON.parse(fs.readFileSync(new URL('./fixtures/catalog.json',import.meta.url)));
 Object.assign(catalog.store,{closed:false,fee:0,freeOver:0,daily:{on:false},deal95:{on:false},bans:[]});delete catalog.store.minOrder;delete catalog.store.maxKm;
 let p=catalog.products.find(p=>p.stock&&p.price>0),p2=catalog.products.find(x=>x.stock&&x.price>0&&x.id!==p.id);
 const realNow=Date.now;let now=realNow();Date.now=()=>now;

@@ -124,6 +124,7 @@ KV: `pin` (رقم الإدارة مشفّر)، `driver_pin` (قديم)، `fail:<
 - `node server/test/sim-4-months.mjs` و`sim-5-months-all-roles.mjs` (محاكاة أشهر بفروقات صفر).
 - `ANDROID_JAR=/path/android-all-34.jar node android-driver/test/run-core-test.mjs` (كود جافا التطبيق الحقيقي ضد الخادم الحقيقي).
 - اختبار المتصفح محفوظ في `server/test/browser-reliability.cjs`: يشغّل خادمًا محليًا وقاعدة وهمية، ويختبر ضياع الرد وإعادة التحميل والمهلة والأرقام العربية وحد الباقة وحفظ محررين متزامنين. يحتاج Playwright وChromium؛ حدّد `PLAYWRIGHT_MODULE` و`CHROMIUM_PATH` إذا لم يكونا في مساراتهما الافتراضية.
+- الاختبارات تقرأ المنتجات من `server/test/fixtures/catalog.json` (لقطة ثابتة)، مو من `data.json` الحي، عشان تعديلات المالك ما تكسرها.
 - `node server/test/unified-login.mjs`، `node server/test/catalog-import.mjs`، `node server/test/ops-features.mjs` (الدخول الموحد، استيراد ملف الأصناف، نطاق التوصيل/إلغاء الطلب/البديل/التكاليف ومستشار العروض).
 - الاختبارات تستخدم D1/KV وهمي (SQLite في الذاكرة)، **ما تثبت** سلوك Cloudflare الحقيقي.
 

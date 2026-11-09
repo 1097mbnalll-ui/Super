@@ -24,7 +24,7 @@ const LOCKS = { async get(k, type) { const value = kv.get(k); return value == nu
   async put(k, v) { kv.set(k, v); }, async delete(k) { kv.delete(k); } };
 const origin = 'https://1097mbnalll-ui.github.io';
 const env = { DB, LOCKS, GITHUB_TOKEN: 'test-fixture', ADMIN_PIN: '2468', SECRET: 'test-fixture-only', REPO: 'test/fixture', BRANCH: 'main', ALLOWED_ORIGIN: origin };
-const catalog = JSON.parse(fs.readFileSync(new URL('../../data.json', import.meta.url)));
+const catalog = JSON.parse(fs.readFileSync(new URL('./fixtures/catalog.json', import.meta.url)));
 // المالك يقفل المتجر من الإدارة (closed) وهذا يتحفظ في data.json؛ الاختبار لازم ما يتأثر بحالة المحل اليوم
 catalog.store = { ...catalog.store, closed: false }; delete catalog.store.minOrder; delete catalog.store.maxKm;
 globalThis.fetch = githubMock(() => catalog, async (url, options = {}) => new Response(JSON.stringify(String(url).includes('api.github.com') && !options.method ? catalog : { ok: true })), false);

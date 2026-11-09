@@ -42,7 +42,7 @@ ok(plan.perCat.misc <= 300 && plan.perCat.drinks >= 500, 'المنوعات ≤ �
 const top = plan.pick.filter((x) => x.catId === 'drinks'); ok(top[0].qty >= top[top.length - 1].qty, 'داخل القسم: الأكثر كمية أول');
 
 // ٤) الخادم يحفظ ٣٠٠٠ منتج مع مخزونها وتكلفتها مرة وحدة، والسجل سطر ملخص
-const data = JSON.parse(fs.readFileSync(path.join(here, '../../data.json'), 'utf8')); data.store.closed = false;
+const data = JSON.parse(fs.readFileSync(path.join(here, 'fixtures/catalog.json'), 'utf8')); data.store.closed = false;
 ap = C.catalogApply(plan, data.products);
 const D2 = JSON.parse(JSON.stringify(data)); plan.needCats.forEach((c) => D2.cats.push({ id: c.id, name: c.name, img: '' })); D2.products = D2.products.concat(ap.added);
 const sq = new DatabaseSync(':memory:'); let queries = 0;

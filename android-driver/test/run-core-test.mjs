@@ -10,7 +10,7 @@ execFileSync('javac', ['-encoding', 'UTF-8', '--release', '8', '-Xlint:-options'
 const java = (base, step, pin, ...args) => { const out = execFileSync('java', ['-Dsun.net.http.allowRestrictedHeaders=true', '-Dfile.encoding=UTF-8', '-Dstdout.encoding=UTF-8', '-cp', path.join(root, 'build/test') + ':' + AJ, 'sa.ohod.driver.CoreTestMain', step, base, pin, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); return JSON.parse(out.split('\n').find(l => l.startsWith('RESULT ')).slice(7)); };
 function server(port, env = {}) { return new Promise((res) => { const p = spawn('node', ['--no-warnings', path.join(here, 'mock-worker.mjs')], { env: { ...process.env, PORT: String(port), ...env }, stdio: ['ignore', 'pipe', 'inherit'] }); p.stdout.on('data', d => { if (String(d).includes('mock worker on')) res(p); }); }); }
 const call = (base, p, body) => fetch(base + p, { method: 'POST', headers: { Origin: O, 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
-const data = JSON.parse(fs.readFileSync(path.join(root, '../data.json'), 'utf8'));
+const data = JSON.parse(fs.readFileSync(path.join(root, '../server/test/fixtures/catalog.json'), 'utf8'));
 const procs = [];
 async function scenario(port, label, env) {
   const base = 'http://127.0.0.1:' + port; procs.push(await server(port, env)); console.log('\n== ' + label);

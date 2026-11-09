@@ -4,7 +4,7 @@ import { githubMock } from '../../server/test/support/github.mjs';
 import http from 'node:http'; import { DatabaseSync } from 'node:sqlite'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const w = (await import(process.env.WORKER || path.join(here, '../../server/worker.js'))).default;
-const data = JSON.parse(fs.readFileSync(process.env.CATALOG_FILE || path.join(here, '../../data.json'), 'utf8'));
+const data = JSON.parse(fs.readFileSync(process.env.CATALOG_FILE || path.join(here, '../../server/test/fixtures/catalog.json'), 'utf8'));
 const sq = new DatabaseSync(':memory:');
 const mk1 = (sql) => { let a = []; const st = { bind(...x) { a = x; return st; }, async first() { return sq.prepare(sql).get(...a) ?? null; }, async all() { return { results: sq.prepare(sql).all(...a) }; }, async run() { const r = sq.prepare(sql).run(...a); return { meta: { changes: r.changes, last_row_id: Number(r.lastInsertRowid) } }; } }; return st; };
 const DB = { prepare: mk1, async batch(l) { sq.exec('BEGIN'); try { const o = []; for (const s of l) o.push(await s.run()); sq.exec('COMMIT'); return o; } catch (e) { sq.exec('ROLLBACK'); throw e; } } };
