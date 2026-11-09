@@ -838,6 +838,7 @@ button.stat:hover{border-color:var(--teal)}
 @media (max-width:760px){.wb-res{grid-template-columns:1fr 1fr 1fr}.wb-res b{font-size:1.05rem}}
 /* Admin navigation and progressive disclosure */
 .adm[data-simple-admin] .adm-side{gap:12px}.adm[data-simple-admin] .adm-nav{display:grid;gap:12px}.admin-nav-group{border-top:1px solid var(--line);padding-top:8px}.admin-nav-group>h2,.admin-nav-group>summary{font-size:12px;color:var(--muted);font-weight:700;margin:0;padding:10px 12px;cursor:pointer}.admin-nav-group>h2{cursor:default}.admin-group-links{display:grid;gap:3px}.adm[data-simple-admin] .adm-nav button{min-height:44px;font-size:13px;padding:9px 12px}.admin-nav-search{display:grid;gap:5px;font-size:11px;color:var(--muted)}.admin-nav-search input{width:100%;min-width:0;border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:12px;background:var(--tile)}.admin-page-hint{margin:5px 0 0;font-size:12px;color:var(--muted);line-height:1.7}.adm[data-simple-admin] .adm-top{align-items:center;flex-wrap:wrap}.adm[data-simple-admin] .adm-title{flex:1;min-width:170px}.adm[data-simple-admin] .adm-top #aStatus:empty{display:none}.admin-nav-backdrop{position:fixed;inset:0;border:0;background:rgba(17,29,40,.45);z-index:39}.admin-start{display:grid;gap:14px;padding:24px;border:1px solid #EAD9CA;border-radius:22px;background:linear-gradient(135deg,#FFF5E9,#FFFFFF)}.admin-start h2{margin:0;font-size:22px}.admin-start p{margin:5px 0 0;font-size:13px;color:var(--muted)}.admin-task-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.admin-task-grid button{font:inherit;display:grid;justify-items:start;text-align:start;gap:9px;border:1px solid var(--line);border-radius:16px;background:#fff;padding:17px;color:var(--ink);cursor:pointer}.admin-task-grid button:hover{border-color:var(--teal);background:var(--mint)}.admin-task-grid svg{color:var(--teal);width:25px;height:25px}.admin-task-grid b{font-size:14px}.admin-task-grid span{font-size:11px;color:var(--muted)}.admin-order-summary{display:flex;flex-wrap:wrap;gap:8px 18px;padding:12px 0 16px;font-size:12px;color:var(--muted)}.admin-order-summary b{color:var(--ink)}
+.adm .admin-compatibility{grid-column:1/-1;border-color:#f3d7b2;background:#fff8ee}.admin-compatibility p{font-size:13px;line-height:1.8;color:var(--muted);margin:8px 0 12px}.admin-compatibility .actions{flex-wrap:wrap}
 .admin-fold>summary{font-size:14px;font-weight:700;cursor:pointer;min-height:28px;line-height:1.8}.admin-fold[open]>summary{margin-bottom:14px}.admin-fold-body{min-width:0}.admin-fold .fields{margin-top:12px}.admin-advanced-accounts>summary{font-weight:700;cursor:pointer;padding:8px}.admin-advanced-accounts[open]>summary{margin-bottom:14px}.admin-fold-body .card{padding:0;border:0;box-shadow:none}.orow[data-over-order]{font:inherit;text-align:start;width:100%;cursor:pointer;border:0;background:transparent;color:inherit}.orow[data-over-order]:hover{background:var(--tile)}
 @media(min-width:981px){.admin-menu-toggle,.admin-menu-close{display:none!important}.adm[data-simple-admin] .adm-side{display:flex}.adm[data-simple-admin] .adm-nav{overflow:visible}.adm[data-simple-admin] .adm-nav button{width:100%;white-space:normal}}
 @media(max-width:980px){.adm[data-simple-admin] .adm-side{position:fixed;top:0;bottom:0;inset-inline-start:0;z-index:40;width:min(88vw,330px);height:100dvh;display:flex;flex-direction:column;align-items:stretch;overflow:auto;padding:16px;border-inline-end:1px solid var(--line);background:#fff}.adm[data-simple-admin] .adm-brand{display:flex}.adm[data-simple-admin] .adm-nav{display:grid;width:100%}.adm[data-simple-admin] .adm-nav button{width:100%;white-space:normal;border-radius:12px;background:transparent;min-height:46px;text-align:start}.adm[data-simple-admin] .adm-nav button[aria-current="page"]{background:var(--sky)}.adm[data-simple-admin] .adm-top{top:0;gap:8px;padding:12px}.adm[data-simple-admin] .adm-title{min-width:150px}.adm[data-simple-admin] .admin-menu-toggle{width:100%;justify-content:space-between;min-height:44px}.adm[data-simple-admin] .adm-side .admin-menu-close{align-self:flex-end;min-height:44px}.adm[data-simple-admin] .adm-exit{width:100%;border-radius:12px;padding:12px;text-align:start}.admin-task-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-start{padding:18px}.admin-start h2{font-size:19px}.admin-task-grid button{padding:14px}.adm[data-simple-admin] .adm-top #aSave{flex:1}.admin-page-hint{font-size:11px}.adm[data-simple-admin] .adm-top #adminLogout{padding:0 12px}}
@@ -2715,7 +2716,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     api("/admin/stock", { pin: adminPin }).then(function(j){ if (!j.ok) return; STK = j.stock || {}; COST = j.costs || {}; STK_OK = !!j.hasDB; if (mode === "admin") { renderAProds(); renderOver(); } });
   }
   function uid(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
-  function markDirty(){ dirty = true; if($("aSave"))$("aSave").disabled=false; var s = $("aState"); if (s) { s.textContent = "فيه تعديلات ما انحفظت"; s.className = "adm-state dirty"; } }
+  function markDirty(){ dirty = true; if($("aSave"))$("aSave").disabled=!!adminProtectionCheck; var s = $("aState"); if (s) { s.textContent = "فيه تعديلات ما انحفظت"; s.className = "adm-state dirty"; } }
   function adminShell(){
     if(staffAuth && staffAuth.user.role === "cashier"){cashierShell();return;}
     if (staffAuth && staffAuth.user.role === "preparer") { preparerShell(); return; }
@@ -2788,7 +2789,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       navigator.geolocation.getCurrentPosition(function(p){ var la = Math.round(p.coords.latitude * 1e5) / 1e5, lo = Math.round(p.coords.longitude * 1e5) / 1e5; draft.store.shop = [la, lo]; $("sShop").value = la + ", " + lo; m.textContent = "تم. اضغط «حفظ تغييرات المتجر»."; markDirty(); }, function(){ m.textContent = "ما قدرنا نحدد موقعك. اسمح بالموقع للمتصفح."; }, { enableHighAccuracy: true, timeout: 15000 }); });
     $("sMin").addEventListener("input", function(){ var v = Number(this.value || 0); if (v > 0) draft.store.minOrder = v; else delete draft.store.minOrder; markDirty(); });
     $("sKeep").addEventListener("change", function(){ draft.store.keepDays = Number(this.value); markDirty(); });
-    $("bkData").addEventListener("click", function(){ var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(D)], { type: "application/json" })); a.download = "متاجر-أحد-نسخة-" + new Date().toISOString().slice(0, 10) + ".json"; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); }, 500); });
+    $("bkData").addEventListener("click", function(){ var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(draft || D)], { type: "application/json" })); a.download = "متاجر-أحد-نسخة-" + new Date().toISOString().slice(0, 10) + ".json"; document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); }, 500); });
     if ($("bkOrders")) $("bkOrders").addEventListener("click", function(){ var m = $("bkMsg"), all = []; m.className = "status"; m.textContent = "جاري التجهيز…";
       var page = function(before){ api("/admin/orders", { pin: adminPin, limit: 500, before: before }).then(function(j){
         if (!j.ok) { m.className = "status err"; m.textContent = "ما قدرنا نجيب الطلبات (" + (j.code || "?") + ")."; return; }
@@ -2863,7 +2864,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     window.scrollTo(0, 0);
   }
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t = e.target.closest("[data-atab]"); if (t) { showTab(t.dataset.atab); return; }
     t = e.target.closest("[data-theme-pick]"); if (t) { draft.store.theme = t.dataset.themePick; applyTheme(draft.store.theme); markDirty(); renderLook(); return; }
     t = e.target.closest("[data-lang-def]"); if (t) { draft.store.lang = t.dataset.langDef; markDirty(); renderLook(); return; }
@@ -2894,7 +2895,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
         lowHTML() + (noEn ? '<p class="hint">فيه ' + noEn + ' منتج بدون اسم إنجليزي، ويطلعون بالعربي في النسخة الإنجليزية.</p>' : '') + '</div>';
     simplifyOverview();
     if (apiUrl()) { loadToday(); loadDrvLoc(); $("aDrvRe").addEventListener("click", loadDrvLoc); }
-    $("aToggleOpen").addEventListener("click", function(){ if(dirty){sToast("احفظ تعديلات المتجر أولًا قبل تغيير استقبال الطلبات");return;}if(!draft.store.closed&&!confirm("إيقاف استقبال طلبات جديدة مؤقتًا؟ الطلبات الحالية تستمر."))return; if (draft.store.closed) delete draft.store.closed; else draft.store.closed = true; if ($("sClosed")) $("sClosed").checked = !!draft.store.closed; markDirty(); renderOver(); publish(); });
+    $("aToggleOpen").disabled=!catalogSaveAvailable();
+    $("aToggleOpen").addEventListener("click", function(){ if(!catalogSaveAvailable()){sToast("تغيير استقبال الطلبات يحتاج تحديث الخدمة أولًا");return;}if(dirty){sToast("احفظ تعديلات المتجر أولًا قبل تغيير استقبال الطلبات");return;}if(!draft.store.closed&&!confirm("إيقاف استقبال طلبات جديدة مؤقتًا؟ الطلبات الحالية تستمر."))return; if (draft.store.closed) delete draft.store.closed; else draft.store.closed = true; if ($("sClosed")) $("sClosed").checked = !!draft.store.closed; markDirty(); renderOver(); publish(); });
     if (apiUrl()) api("/driver/orders", { pin: adminPin }).then(function(j){
       var el = $("aOrders"); if (!el) return;
       if (!j.ok) { el.textContent = j.code === "config" ? "قاعدة الطلبات مو مربوطة بعد (الدليل، القسم ٧)." : "ما قدرنا نجيب الطلبات."; return; }
@@ -2971,7 +2973,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     arr.forEach(function(x){ if (x.id === k[1]) x.on = e.target.checked; }); markDirty(); renderLayout();
   });
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t = e.target.closest("[data-mv]"); if (!t) return;
     var k = t.dataset.mv.split(":"), kind = k[0], id = k[1], d = Number(k[2]), moved = false;
     if (kind === "lay" || kind === "promo") { var arr = kind === "lay" ? draft.store.layout : draft.store.promos;
@@ -3199,7 +3201,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   document.addEventListener("input", onPromoInput);
   document.addEventListener("change", onPromoInput);
   function onPromoInput(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t = e.target, st = draft.store;
     if (t.dataset.promo) { var k = t.dataset.promo.split("."), o = k[0] === "dl" ? st.deal95 : st.daily;
       o[k[1]] = t.type === "checkbox" ? t.checked : Number(t.value || 0); markDirty(); return; }
@@ -3207,7 +3209,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       x[t.dataset.k] = t.dataset.k === "price" ? Number(t.value || 0) : t.value; markDirty(); if (e.type === "change") renderPromos(); }
   }
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t, st = draft.store;
     if ((t = e.target.closest("[data-dealtoggle]"))) { var id = t.dataset.dealtoggle, ids = st.deal95.ids, i = ids.indexOf(id);
       if (i > -1) ids.splice(i, 1); else ids.push(id); markDirty(); renderPromos(); dealResults(); return; }
@@ -3216,7 +3218,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   });
   function dById(id){ for (var i=0;i<draft.products.length;i++) if (draft.products[i].id === id) return draft.products[i]; return null; }
   function onAdminInput(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t = e.target;
     if (t.dataset.catName) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catName) c.name = t.value; }); markDirty(); return; }
     if (t.dataset.catLoc) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catLoc) { if (t.value.trim()) c.loc = t.value; else delete c.loc; } }); markDirty(); return; }
@@ -3240,7 +3242,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   document.addEventListener("input", onAdminInput);
   document.addEventListener("change", function(e){ if (e.target.dataset && (e.target.dataset.f === "cat" || e.target.dataset.f === "stock")) onAdminInput(e); });
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t;
     if ((t = e.target.closest("[data-pick]"))) { pickTarget = t.dataset.pick; openPicker(); return; }
     if ((t = e.target.closest("[data-sugg]"))) { var sp = dById(t.dataset.sugg); ppOpen("مقترحات: " + sp.name, "المنتجات اللي تطلع للزبون تحت «يحلى معه» في صفحة هذا المنتج. بالترتيب اللي تختاره.", sp.sugg || [], function(ids){ if (ids.length) sp.sugg = ids; else delete sp.sugg; renderAProds(); }, sp.id); return; }
@@ -3361,6 +3363,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function publish(){
     var st = $("aStatus"), btn = $("aSave");
+    if(!catalogSaveAvailable()){recoverAdminSave(true);return;}
     var bad = draft.products.filter(function(p){ return !p.name.trim() || !(p.price > 0); });
     if (bad.length) { st.className = "status err"; st.textContent = "فيه " + num(bad.length) + " منتج بدون اسم أو سعره صفر. صحّحها وبعدين احفظ."; return; }
     var dyl = (draft.store.daily && draft.store.daily.list) || [];
@@ -3376,7 +3379,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         btn.disabled = false;
         if (j.ok) {
           if (j.stock) { STK = j.stock; LIVE = j.stock; } stockEdit = {}; Object.keys(costEdit).forEach(function(k){ if (costEdit[k] == null) delete COST[k]; else COST[k] = costEdit[k]; }); costEdit = {};
-          if(j.version)adminCatalogVersion=j.version;applyData(payload); dirty = false; if (newPin) adminPin = newPin; newPin = ""; $("sPin").value = ""; newDPin = ""; if ($("sDPin")) $("sDPin").value = ""; if ($("tgCard")) renderTg();
+          if(j.version)adminCatalogVersion=j.version;adminCatalogBase=JSON.parse(JSON.stringify(payload));applyData(payload); dirty = false; if (newPin) adminPin = newPin; newPin = ""; $("sPin").value = ""; newDPin = ""; if ($("sDPin")) $("sDPin").value = ""; if ($("tgCard")) renderTg();
           st.className = "status"; st.textContent = "انحفظ. يوصل للزبائن خلال دقيقة تقريبًا."; $("aState").textContent = "كل شي محفوظ"; return;
         }
         st.className = "status err";
@@ -3645,7 +3648,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     csvDownload("تحليل-متاجر-أحد-" + j.from + ".csv", rows);
   }
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t;
     if ((t = e.target.closest("[data-sdays]"))) { statDays = Number(t.dataset.sdays); renderStats(); return; }
     if ((t = e.target.closest("[data-smetric]"))) { statMetric = t.dataset.smetric; if (statCache) $("aStatBody").innerHTML = statsHTML(statCache); return; }
@@ -3763,7 +3766,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     win.document.close();
   }
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t;
     if ((t = e.target.closest("[data-of]"))) { var k = t.dataset.of.split(":"); if (k[0] === "src" && (oState.src || "online") !== k[1]) { oState.list = null; oState.more = false; oState.f = k[1] === "pos" ? "all" : "active"; } oState[k[0]] = k[0] === "range" ? Number(k[1]) : k[1]; renderOList(); return; }
     if ((t = e.target.closest("[data-oopen]"))) { openOrder(t.dataset.oopen); return; }
@@ -3804,7 +3807,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function upTot(){ var sub = oEdit.lines.reduce(function(a, l){ return a + l.qty * l.price; }, 0); $("oeTot").textContent = num(Math.round((sub + Number(oEdit.fee || 0)) * 100) / 100) + " ر.س"; }
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t;
     if ((t = e.target.closest("[data-oedit]"))) { openEdit(t.dataset.oedit); return; }
     if (!oEdit) return;
@@ -3904,7 +3907,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   document.addEventListener("change", function(e){ if (mode === "admin" && nf && e.target.dataset && e.target.dataset.nfforce !== undefined) nf.force = e.target.checked; });
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t;
     if (e.target.closest("[data-onew]")) { openNewOrder(); return; }
     if (!nf || !$("nfSheet")) return;
@@ -3930,7 +3933,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     return '<div class="card staffask"><b>وش اسمك؟</b><p class="hint">عشان يطلع اسمك في «سجل العمليات» لما تغيّر سعر أو تلغي طلب. ينحفظ على هذا الجهاز بس.</p><div class="o-tools"><input id="staffIn" maxlength="30" placeholder="مثال: فهد"><button class="btn btn-brand" type="button" id="staffSave">احفظ</button></div></div>';
   }
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     if (staffAuth) return;
     if (e.target.closest("[data-staffchg]")) { STAFF = ""; try { localStorage.removeItem("ohod-staff"); } catch(x){} renderOver(); var i = $("staffIn"); if (i) i.focus(); return; }
     if (e.target.closest("#staffSave")) { var v = ($("staffIn").value || "").trim().slice(0, 30); if (!v) return; STAFF = v; try { localStorage.setItem("ohod-staff", v); } catch(x){} renderOver(); }
@@ -4061,7 +4064,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     });
   }
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t;
     if ((t = e.target.closest("[data-sedit]"))) { staffEdit = staffEdit === t.dataset.sedit ? "" : t.dataset.sedit; if (staffLast) staffHTML(staffLast); return; }
     if ((t = e.target.closest("[data-ssave]"))) { var w = t.closest(".sedit"); staffSave({ id: t.dataset.ssave, name: w.querySelector('[data-se="name"]').value, newPin: w.querySelector('[data-se="pin"]').value.trim(), active: w.querySelector('[data-se="active"]').checked }); return; }
@@ -4134,7 +4137,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
           return head + '<div class="logrow' + (x.act === "status" && x.info.to === "canceled" ? ' bad' : '') + '"><span class="tm">' + d.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" }) + '</span><span class="who">' + esc(x.who) + '</span><span class="what">' + (f ? f(x.info || {}, x.ref) : esc(x.act)) + '</span></div>'; }).join("") + '</div>' : '<p class="empty">ما فيه عمليات بهذا الفلتر.</p>') + '</div>';
     $("logRef").addEventListener("click", function(){ renderLog(true); });
   }
-  document.addEventListener("click", function(e){ if (mode !== "admin") return; var t = e.target.closest("[data-logf]"); if (t) { logState.f = t.dataset.logf; renderLog(); } });
+  document.addEventListener("click", function(e){ if (mode !== "admin" || !draft) return; var t = e.target.closest("[data-logf]"); if (t) { logState.f = t.dataset.logf; renderLog(); } });
 
   /* ---------- win back customers who did not return ---------- */
   var wb = { kind: "once", days: 30, data: null, loading: false };
@@ -4177,7 +4180,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var r = $("wbReset"); if (r) r.addEventListener("click", function(){ try { localStorage.removeItem("ohod-wb-msg"); } catch(e){} renderWinback(); });
   }
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t;
     if ((t = e.target.closest("[data-wbf]"))) { var k = t.dataset.wbf.split(":"); wb[k[0]] = k[0] === "days" ? Number(k[1]) : k[1]; wb.data = null; renderWinback(); return; }
     if ((t = e.target.closest("[data-wbsend]"))) { var ch = t.dataset.wbsend; api("/admin/winback-mark", { pin: adminPin, ch: ch, tail: t.dataset.tail });
@@ -4280,7 +4283,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     win.document.close();
   }
   document.addEventListener("click", function(e){
-    if (mode !== "admin") return;
+    if (mode !== "admin" || !draft) return;
     var t;
     if ((t = e.target.closest("[data-sgp]"))) { var p = dById(t.dataset.sgp); if (!p) return; sg.pid = p.id; sg.name = p.name; sg.unit = p.unit || "";
       var onS = p.old && p.old > p.price; sg.price = String(p.price); sg.old = onS ? String(p.old) : ""; sg.img = isPhoto(p.img) && draft.imgs[p.img] ? draft.imgs[p.img] : ""; sg.q = ""; renderSign(); return; }
@@ -4542,13 +4545,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if(adminSaveObserver)adminSaveObserver.disconnect();
     if($('aState')){adminSaveObserver=new MutationObserver(syncAdminChrome);adminSaveObserver.observe($('aState'),{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['class']});}
     $('aSave').textContent='حفظ تغييرات المتجر';$('aSave').title='يحفظ تغييرات المنتجات والأسعار وشكل المتجر ويطبقها للزبائن';
-    simplifyStoreSettings();syncAdminViewport();syncAdminChrome();
+    simplifyStoreSettings();renderAdminCompatibility();syncAdminViewport();syncAdminChrome();
   }
   function syncAdminViewport(){var root=fullAdminRoot();if(!root)return;var mobile=adminNavMedia.matches;root.querySelector('.adm-side').hidden=mobile;$('adminMenuToggle').hidden=!mobile;$('adminMenuClose').hidden=!mobile;$('adminMenuBackdrop').hidden=true;$('adminMenuToggle').setAttribute('aria-expanded','false');root.classList.remove('admin-menu-open');}
   function toggleAdminMenu(open){var root=fullAdminRoot();if(!root||!adminNavMedia.matches)return;var side=root.querySelector('.adm-side');side.hidden=!open;$('adminMenuBackdrop').hidden=!open;root.classList.toggle('admin-menu-open',open);$('adminMenuToggle').setAttribute('aria-expanded',String(open));if(open)$('adminMenuClose').focus();else $('adminMenuToggle').focus();}
   function syncAdminChrome(){
     var root=fullAdminRoot();if(!root)return;var writable=['prods','cats','offers','layout','bans','look','store'].includes(aTab),save=$('aSave'),state=$('aState');
-    if(save){save.hidden=!dirty&&!writable;if(!dirty)save.disabled=true;}
+    if(save){save.hidden=!dirty&&!writable;if(!dirty||adminProtectionCheck)save.disabled=true;save.textContent=!catalogSaveAvailable()&&dirty?'تحقّق واحفظ التغييرات':'حفظ تغييرات المتجر';}var pause=$('aToggleOpen');if(pause)pause.disabled=!catalogSaveAvailable();
     if(state){state.hidden=!dirty&&!writable;var text=dirty?'عندك تغييرات في المتجر ما انحفظت':'تغييرات المتجر محفوظة';if(state.textContent!==text)state.textContent=text;if(state.classList.contains('dirty')!==dirty)state.classList.toggle('dirty',dirty);}
     if($('adminPageHint'))$('adminPageHint').textContent=ADMIN_HINTS[aTab]||'';
     if($('adminMenuToggle'))$('adminMenuToggle').textContent='القائمة · '+(TAB_TITLE[aTab]||'الإدارة');
@@ -4580,16 +4583,55 @@ html.sp-on,html.sp-on body{overflow:hidden}
   document.addEventListener('keydown',function(e){var root=fullAdminRoot();if(!root||!root.classList.contains('admin-menu-open'))return;if(e.key==='Escape'){e.preventDefault();toggleAdminMenu(false);}if(e.key==='Tab'){var side=root.querySelector('.adm-side'),items=Array.from(side.querySelectorAll('button,input,summary')).filter(function(x){return !x.disabled&&x.getClientRects().length;}),first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
   window.addEventListener('beforeunload',function(e){if(mode==='admin'&&dirty){e.preventDefault();e.returnValue='';}});
 
-  var adminCatalogVersion=null,adminLoadGeneration=0;
-  function loadAdminCatalog(){
-    var generation=++adminLoadGeneration;
-    app.innerHTML='<div class="wrap" style="padding:40px"><h1>جاري تحميل الإدارة…</h1><p id="adminLoadMessage">نراجع أحدث بيانات المتجر قبل التعديل.</p><button class="btn btn-soft" id="retryAdminLoad" hidden>حاول مرة ثانية</button><button class="btn btn-soft" id="leaveAdminLoad">عرض المتجر</button></div>';
-    $('leaveAdminLoad').onclick=function(){go('store');};$('retryAdminLoad').onclick=loadAdminCatalog;
+  var adminCatalogVersion=null,adminLoadGeneration=0,adminCatalogFallback=false,adminCatalogBase=null,adminProtectionCheck=null;
+  function catalogSaveAvailable(){return !adminCatalogFallback&&(!apiUrl()||!!adminCatalogVersion);}
+  function renderAdminCompatibility(){
+    var root=fullAdminRoot();if(!root||catalogSaveAvailable()||$('adminCompatibilityNotice'))return;
+    var notice=document.createElement('section');notice.id='adminCompatibilityNotice';notice.className='card admin-compatibility';notice.setAttribute('role','status');
+    notice.innerHTML='<div><b>الإدارة متاحة للمتابعة</b><p>حفظ تعديلات المنتجات والأسعار والإعدادات يحتاج تحديث الخدمة. تقدر تتنقل وتراجع الطلبات والتقارير، ومسودتك تبقى عندك.</p></div><div class="actions"><button type="button" class="btn btn-soft" id="checkAdminCompatibility">إعادة التحقق</button>'+(!staffAuth?'<a class="btn btn-soft" href="https://raw.githubusercontent.com/1097mbnalll-ui/Super/main/server/worker.js" target="_blank" rel="noopener">ملف تحديث الخدمة</a>':'')+'</div>';
+    root.querySelector('.adm-body').prepend(notice);
+    $('checkAdminCompatibility').onclick=function(){recoverAdminSave(false);};
+  }
+  function catalogueComparable(value){
+    if(Array.isArray(value))return '['+value.map(catalogueComparable).join(',')+']';
+    if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(function(k){return JSON.stringify(k)+':'+catalogueComparable(value[k]);}).join(',')+'}';
+    return JSON.stringify(value);
+  }
+  function recoverAdminSave(saveAfterCheck){
+    if(adminProtectionCheck||!draft||!fullAdminRoot())return;
+    var task={generation:adminLoadGeneration,draft:draft,root:fullAdminRoot()};adminProtectionCheck=task;
+    var st=$('aStatus'),btn=$('aSave');btn.disabled=true;st.className='status';st.textContent='جاري التحقق من الحفظ… تعديلاتك باقية.';
     api('/admin/catalog',{pin:adminPin}).then(function(j){
-      if(mode!=='admin'||generation!==adminLoadGeneration)return;
-      if(!j.ok||!j.version||!j.data){$('adminLoadMessage').textContent=j.code==='not_found'?'حدّث خادم Cloudflare لفتح الإدارة بالحماية الجديدة.':'تعذر تحميل أحدث البيانات. تأكد من الاتصال وجرّب ثانية.';$('retryAdminLoad').hidden=false;return;}
-      adminCatalogVersion=j.version;applyData(j.data);adminShell();
+      if(adminProtectionCheck!==task)return;adminProtectionCheck=null;
+      if(mode!=='admin'||task.generation!==adminLoadGeneration||draft!==task.draft||fullAdminRoot()!==task.root)return;
+      btn.disabled=!dirty;
+      if(!j.ok||!j.version||!j.data){st.className='status err';st.textContent=j.code==='not_found'?'الخدمة لم تتحدّث بعد. افتح «ملف تحديث الخدمة» الموجود في التنبيه وحدّثه في Cloudflare، ثم اضغط حفظ؛ مسودتك باقية.': 'تعذر الاتصال بخدمة الحفظ. تأكد من الاتصال وجرّب ثانية؛ مسودتك باقية.';return;}
+      if(dirty&&(!adminCatalogBase||catalogueComparable(adminCatalogBase)!==catalogueComparable(j.data))){st.className='status err';st.textContent='فيه تعديل أحدث من جهاز ثاني. حافظنا على مسودتك؛ افتح الإدارة في تبويب جديد وقارن التعديلات قبل الحفظ.';return;}
+      adminCatalogVersion=j.version;adminCatalogFallback=false;adminCatalogBase=JSON.parse(JSON.stringify(j.data));
+      if(!dirty){applyData(j.data);adminShell();return;}
+      if($('adminCompatibilityNotice'))$('adminCompatibilityNotice').remove();
+      st.className='status';st.textContent='اتصلنا بخدمة الحفظ. مسودتك جاهزة للحفظ.';syncAdminChrome();
+      if(saveAfterCheck)publish();
     });
+  }
+  function loadAdminCatalog(){
+    var generation=++adminLoadGeneration;adminCatalogVersion=null;adminCatalogFallback=false;adminProtectionCheck=null;
+    app.innerHTML='<div class="wrap" style="padding:40px"><h1 id="adminLoadTitle">جاري تحميل الإدارة…</h1><p id="adminLoadMessage" role="status">نراجع أحدث بيانات المتجر قبل التعديل.</p><button class="btn btn-soft" id="retryAdminLoad" hidden>حاول مرة ثانية</button><button class="btn btn-soft" id="leaveAdminLoad">عرض المتجر</button></div>';
+    $('leaveAdminLoad').onclick=function(){go('store');};$('retryAdminLoad').onclick=loadAdminCatalog;
+    function current(){return mode==='admin'&&generation===adminLoadGeneration;}
+    function failed(){if(!current())return;$('adminLoadTitle').textContent='تعذر فتح الإدارة';$('adminLoadMessage').textContent='تعذر تحميل أحدث البيانات. تأكد من الاتصال وجرّب ثانية.';$('retryAdminLoad').hidden=false;}
+    function display(data,version){if(!current())return;adminCatalogVersion=version||null;adminCatalogFallback=!version;if(data)applyData(data);adminCatalogBase=JSON.parse(JSON.stringify(D));adminShell();renderAdminCompatibility();syncAdminChrome();}
+    api('/admin/catalog',{pin:adminPin}).then(function(j){
+      if(!current())return;
+      if(j.ok&&j.version&&j.data){display(j.data,j.version);return;}
+      if(j.code!=='not_found'){failed();return;}
+      // A legacy Worker must not block the dashboard or receive an unprotected full-catalog save.
+      return fetchJSON(new URL('data.json',location.href).href,{cache:'no-store'}).then(function(data){
+        if(!current())return;
+        var valid=data&&data.store&&Array.isArray(data.products)&&Array.isArray(data.cats)&&data.imgs;
+        if(valid)delete data.status;display(valid?data:null,null);
+      });
+    }).catch(failed);
   }
   /* ---------- routing ---------- */
   function go(m){ window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m !== "admin") { adminLoadGeneration++; if(adminSaveObserver){adminSaveObserver.disconnect();adminSaveObserver=null;} clearInterval(posTimer); clearInterval(prepTimer); clearInterval(alertTimer); clearTimeout(admTimer); alertsGeneration++; alertsLoading = false; } if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); if(!staffAuth||staffAuth.user.role==="manager")loadAdminCatalog();else adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
