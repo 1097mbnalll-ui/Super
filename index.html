@@ -2618,7 +2618,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     api("/admin/stock", { pin: adminPin }).then(function(j){ if (!j.ok) return; STK = j.stock || {}; COST = j.costs || {}; STK_OK = !!j.hasDB; if (mode === "admin") { renderAProds(); renderOver(); } });
   }
   function uid(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
-  function markDirty(){ dirty = true; if($("aSave"))$("aSave").disabled=!catalogSaveAvailable(); var s = $("aState"); if (s) { s.textContent = "فيه تعديلات ما انحفظت"; s.className = "adm-state dirty"; } }
+  function markDirty(){ dirty = true; if($("aSave"))$("aSave").disabled=!!adminProtectionCheck; var s = $("aState"); if (s) { s.textContent = "فيه تعديلات ما انحفظت"; s.className = "adm-state dirty"; } }
   function adminShell(){
     if(staffAuth && staffAuth.user.role === "cashier"){cashierShell();return;}
     if (staffAuth && staffAuth.user.role === "preparer") { preparerShell(); return; }
@@ -3177,7 +3177,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function publish(){
     var st = $("aStatus"), btn = $("aSave");
-    if(!catalogSaveAvailable()){st.className="status err";st.textContent="حفظ تعديلات المتجر يحتاج تحديث الخدمة أولًا. مسودتك باقية.";return;}
+    if(!catalogSaveAvailable()){recoverAdminSave(true);return;}
     var bad = draft.products.filter(function(p){ return !p.name.trim() || !(p.price > 0); });
     if (bad.length) { st.className = "status err"; st.textContent = "فيه " + num(bad.length) + " منتج بدون اسم أو سعره صفر. صحّحها وبعدين احفظ."; return; }
     var dyl = (draft.store.daily && draft.store.daily.list) || [];
@@ -3193,7 +3193,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         btn.disabled = false;
         if (j.ok) {
           if (j.stock) { STK = j.stock; LIVE = j.stock; } stockEdit = {}; Object.keys(costEdit).forEach(function(k){ if (costEdit[k] == null) delete COST[k]; else COST[k] = costEdit[k]; }); costEdit = {};
-          if(j.version)adminCatalogVersion=j.version;applyData(payload); dirty = false; if (newPin) adminPin = newPin; newPin = ""; $("sPin").value = ""; newDPin = ""; if ($("sDPin")) $("sDPin").value = ""; if ($("tgCard")) renderTg();
+          if(j.version)adminCatalogVersion=j.version;adminCatalogBase=JSON.parse(JSON.stringify(payload));applyData(payload); dirty = false; if (newPin) adminPin = newPin; newPin = ""; $("sPin").value = ""; newDPin = ""; if ($("sDPin")) $("sDPin").value = ""; if ($("tgCard")) renderTg();
           st.className = "status"; st.textContent = "انحفظ. يوصل للزبائن خلال دقيقة تقريبًا."; $("aState").textContent = "كل شي محفوظ"; return;
         }
         st.className = "status err";
@@ -4364,7 +4364,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function toggleAdminMenu(open){var root=fullAdminRoot();if(!root||!adminNavMedia.matches)return;var side=root.querySelector('.adm-side');side.hidden=!open;$('adminMenuBackdrop').hidden=!open;root.classList.toggle('admin-menu-open',open);$('adminMenuToggle').setAttribute('aria-expanded',String(open));if(open)$('adminMenuClose').focus();else $('adminMenuToggle').focus();}
   function syncAdminChrome(){
     var root=fullAdminRoot();if(!root)return;var writable=['prods','cats','offers','layout','bans','look','store'].includes(aTab),save=$('aSave'),state=$('aState');
-    if(save){save.hidden=!dirty&&!writable;if(!dirty||!catalogSaveAvailable())save.disabled=true;}var pause=$('aToggleOpen');if(pause&&!catalogSaveAvailable())pause.disabled=true;
+    if(save){save.hidden=!dirty&&!writable;if(!dirty||adminProtectionCheck)save.disabled=true;save.textContent=!catalogSaveAvailable()&&dirty?'تحقّق واحفظ التغييرات':'حفظ تغييرات المتجر';}var pause=$('aToggleOpen');if(pause)pause.disabled=!catalogSaveAvailable();
     if(state){state.hidden=!dirty&&!writable;var text=dirty?'عندك تغييرات في المتجر ما انحفظت':'تغييرات المتجر محفوظة';if(state.textContent!==text)state.textContent=text;if(state.classList.contains('dirty')!==dirty)state.classList.toggle('dirty',dirty);}
     if($('adminPageHint'))$('adminPageHint').textContent=ADMIN_HINTS[aTab]||'';
     if($('adminMenuToggle'))$('adminMenuToggle').textContent='القائمة · '+(TAB_TITLE[aTab]||'الإدارة');
@@ -4396,22 +4396,44 @@ html.sp-on,html.sp-on body{overflow:hidden}
   document.addEventListener('keydown',function(e){var root=fullAdminRoot();if(!root||!root.classList.contains('admin-menu-open'))return;if(e.key==='Escape'){e.preventDefault();toggleAdminMenu(false);}if(e.key==='Tab'){var side=root.querySelector('.adm-side'),items=Array.from(side.querySelectorAll('button,input,summary')).filter(function(x){return !x.disabled&&x.getClientRects().length;}),first=items[0],last=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
   window.addEventListener('beforeunload',function(e){if(mode==='admin'&&dirty){e.preventDefault();e.returnValue='';}});
 
-  var adminCatalogVersion=null,adminLoadGeneration=0,adminCatalogFallback=false;
+  var adminCatalogVersion=null,adminLoadGeneration=0,adminCatalogFallback=false,adminCatalogBase=null,adminProtectionCheck=null;
   function catalogSaveAvailable(){return !adminCatalogFallback&&(!apiUrl()||!!adminCatalogVersion);}
   function renderAdminCompatibility(){
     var root=fullAdminRoot();if(!root||catalogSaveAvailable()||$('adminCompatibilityNotice'))return;
     var notice=document.createElement('section');notice.id='adminCompatibilityNotice';notice.className='card admin-compatibility';notice.setAttribute('role','status');
     notice.innerHTML='<div><b>الإدارة متاحة للمتابعة</b><p>حفظ تعديلات المنتجات والأسعار والإعدادات يحتاج تحديث الخدمة. تقدر تتنقل وتراجع الطلبات والتقارير، ومسودتك تبقى عندك.</p></div><div class="actions"><button type="button" class="btn btn-soft" id="checkAdminCompatibility">إعادة التحقق</button>'+(!staffAuth?'<a class="btn btn-soft" href="https://raw.githubusercontent.com/1097mbnalll-ui/Super/main/server/worker.js" target="_blank" rel="noopener">ملف تحديث الخدمة</a>':'')+'</div>';
     root.querySelector('.adm-body').prepend(notice);
-    $('checkAdminCompatibility').onclick=function(){if(dirty){sToast('عندك مسودة غير محفوظة. افتح الإدارة في تبويب جديد لإعادة التحقق مع إبقاء مسودتك.');return;}loadAdminCatalog();};
+    $('checkAdminCompatibility').onclick=function(){recoverAdminSave(false);};
+  }
+  function catalogueComparable(value){
+    if(Array.isArray(value))return '['+value.map(catalogueComparable).join(',')+']';
+    if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(function(k){return JSON.stringify(k)+':'+catalogueComparable(value[k]);}).join(',')+'}';
+    return JSON.stringify(value);
+  }
+  function recoverAdminSave(saveAfterCheck){
+    if(adminProtectionCheck||!draft||!fullAdminRoot())return;
+    var task={generation:adminLoadGeneration,draft:draft,root:fullAdminRoot()};adminProtectionCheck=task;
+    var st=$('aStatus'),btn=$('aSave');btn.disabled=true;st.className='status';st.textContent='جاري التحقق من الحفظ… تعديلاتك باقية.';
+    api('/admin/catalog',{pin:adminPin}).then(function(j){
+      if(adminProtectionCheck!==task)return;adminProtectionCheck=null;
+      if(mode!=='admin'||task.generation!==adminLoadGeneration||draft!==task.draft||fullAdminRoot()!==task.root)return;
+      btn.disabled=!dirty;
+      if(!j.ok||!j.version||!j.data){st.className='status err';st.textContent=j.code==='not_found'?'الخدمة لم تتحدّث بعد. افتح «ملف تحديث الخدمة» الموجود في التنبيه وحدّثه في Cloudflare، ثم اضغط حفظ؛ مسودتك باقية.': 'تعذر الاتصال بخدمة الحفظ. تأكد من الاتصال وجرّب ثانية؛ مسودتك باقية.';return;}
+      if(dirty&&(!adminCatalogBase||catalogueComparable(adminCatalogBase)!==catalogueComparable(j.data))){st.className='status err';st.textContent='فيه تعديل أحدث من جهاز ثاني. حافظنا على مسودتك؛ افتح الإدارة في تبويب جديد وقارن التعديلات قبل الحفظ.';return;}
+      adminCatalogVersion=j.version;adminCatalogFallback=false;adminCatalogBase=JSON.parse(JSON.stringify(j.data));
+      if(!dirty){applyData(j.data);adminShell();return;}
+      if($('adminCompatibilityNotice'))$('adminCompatibilityNotice').remove();
+      st.className='status';st.textContent='اتصلنا بخدمة الحفظ. مسودتك جاهزة للحفظ.';syncAdminChrome();
+      if(saveAfterCheck)publish();
+    });
   }
   function loadAdminCatalog(){
-    var generation=++adminLoadGeneration;adminCatalogVersion=null;adminCatalogFallback=false;
+    var generation=++adminLoadGeneration;adminCatalogVersion=null;adminCatalogFallback=false;adminProtectionCheck=null;
     app.innerHTML='<div class="wrap" style="padding:40px"><h1 id="adminLoadTitle">جاري تحميل الإدارة…</h1><p id="adminLoadMessage" role="status">نراجع أحدث بيانات المتجر قبل التعديل.</p><button class="btn btn-soft" id="retryAdminLoad" hidden>حاول مرة ثانية</button><button class="btn btn-soft" id="leaveAdminLoad">عرض المتجر</button></div>';
     $('leaveAdminLoad').onclick=function(){go('store');};$('retryAdminLoad').onclick=loadAdminCatalog;
     function current(){return mode==='admin'&&generation===adminLoadGeneration;}
     function failed(){if(!current())return;$('adminLoadTitle').textContent='تعذر فتح الإدارة';$('adminLoadMessage').textContent='تعذر تحميل أحدث البيانات. تأكد من الاتصال وجرّب ثانية.';$('retryAdminLoad').hidden=false;}
-    function display(data,version){if(!current())return;adminCatalogVersion=version||null;adminCatalogFallback=!version;if(data)applyData(data);adminShell();renderAdminCompatibility();syncAdminChrome();}
+    function display(data,version){if(!current())return;adminCatalogVersion=version||null;adminCatalogFallback=!version;if(data)applyData(data);adminCatalogBase=JSON.parse(JSON.stringify(D));adminShell();renderAdminCompatibility();syncAdminChrome();}
     api('/admin/catalog',{pin:adminPin}).then(function(j){
       if(!current())return;
       if(j.ok&&j.version&&j.data){display(j.data,j.version);return;}
