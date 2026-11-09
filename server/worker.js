@@ -202,10 +202,10 @@ export default {
       const pin = String(body.pin == null ? "" : body.pin);
       if (/^\d{4,12}$/.test(pin)) {
         const me = await whoIs(env, pin, body);
-        if (me) {
+        // كاشير المحل ما عاد له صفحة (البيع في المحل انشال من الموقع)، فرقمه ما يفتح شي
+        if (me && me.role !== "cashier") {
           await clearFails(env, ip);
-          const go = me.role === "admin" ? "admin" : me.role === "cashier" ? "pos" : "driver";
-          return reply(200, { ok: true, go, name: me.role === "admin" ? "" : me.name });
+          return reply(200, { ok: true, go: me.role === "admin" ? "admin" : "driver", name: me.role === "admin" ? "" : me.name });
         }
         if (env.DB) {
           await ensureStaffSchema(env);

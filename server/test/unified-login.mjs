@@ -20,7 +20,7 @@ let r = await call('/enter', { pin: '2468' }); ok(r.ok && r.go === 'admin', 'ر�
 await call('/admin/team-save', { ...A, name: 'سعيد', role: 'driver', newPin: '1111' });
 await call('/admin/team-save', { ...A, name: 'فهد', role: 'cashier', newPin: '3333' });
 r = await call('/enter', { pin: '1111' }); ok(r.ok && r.go === 'driver' && r.name === 'سعيد', 'رقم المندوب يودي لصفحة المندوب');
-r = await call('/enter', { pin: '3333' }); ok(r.ok && r.go === 'pos' && r.name === 'فهد', 'رقم كاشير المحل يودي لنقاط البيع');
+r = await call('/enter', { pin: '3333' }); ok(r.code === 'bad_pin', 'رقم كاشير المحل ما يفتح شي (البيع في المحل انشال من الموقع)');
 
 // مجهز بدون اسم مستخدم ولا كلمة مرور، رقم سري بس
 r = await call('/admin/staff-save', { ...A, name: 'علي المجهز', role: 'preparer', loginPin: '5555' }); ok(r.ok, 'إضافة مجهز برقم سري بس: ' + JSON.stringify(r));
@@ -58,5 +58,5 @@ ok(last.code === 'locked', 'محاولات غلط كثيرة تقفل الدخو
 ok((await call('/enter', { pin: '2468' }, '7.7.7.7')).code === 'locked', 'حتى الرقم الصح ينتظر لين ينفك القفل');
 
 // الطرق القديمة لسا تشتغل
-ok((await call('/driver/login', { pin: '1111' })).ok && (await call('/pos/login', { pin: '3333' })).ok && (await call('/login', A)).ok, 'الدخول القديم للمندوب والكاشير والإدارة يشتغل');
+ok((await call('/driver/login', { pin: '1111' })).ok && (await call('/login', A)).ok, 'الدخول القديم للمندوب والإدارة يشتغل');
 console.log(fails ? '\n' + fails + ' فحص فشل' : '\nكل الفحوص نجحت'); process.exit(fails ? 1 : 0);

@@ -1300,7 +1300,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
 /* ---------- laptop / desktop ---------- */
 @media (min-width:900px){
   body{padding-top:88px;padding-bottom:40px}
-  body[data-screen="admin"],body[data-screen="driver"],body[data-screen="pos"]{padding-top:0;padding-bottom:0}
+  body[data-screen="admin"],body[data-screen="driver"]{padding-top:0;padding-bottom:0}
   .wrap{max-width:1180px;padding-left:32px;padding-right:32px}
   body[data-screen="cart"] .wrap,body[data-screen="more"] .wrap,body[data-screen="sent"] .wrap{max-width:680px}
   .nav{top:16px;bottom:auto;transform:translateX(-50%);width:min(1180px,calc(100% - 64px));height:60px;display:flex;justify-content:flex-start;gap:6px;padding:0 10px;border-radius:20px}
@@ -1340,90 +1340,6 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   .sent{min-height:calc(100vh - 88px);border-radius:32px;max-width:1180px;margin:0 auto}
   .drv-head{border-radius:0 0 28px 28px;max-width:1180px;margin:0 auto}
   #drvList{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));align-items:start}
-}
-
-/* ---------- نقاط البيع ---------- */
-body[data-screen="pos"]{background:#EEF1F5}
-.pos-login{min-height:100vh;display:grid;place-items:center;padding:16px;background:#13213C}
-.pos-login form{width:min(380px,100%);display:grid;gap:12px;justify-items:center;text-align:center;padding:26px 22px}
-.pos-login img{width:72px;height:72px;border-radius:50%;background:#fff;object-fit:contain}
-.pos-login b{font-family:var(--display);font-size:22px}
-.pos-login .pin{width:100%;height:56px;border-radius:16px;text-align:center;font-size:24px;letter-spacing:.3em}
-.pos-login .btn{width:100%;justify-content:center}
-.pos{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;color:#13213C}
-.pos-top{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#13213C;color:#fff;flex:none}
-.pos-top img{width:38px;height:38px;border-radius:50%;background:#fff;object-fit:contain}
-.pos-top .t{display:grid;margin-inline-end:auto;line-height:1.2}.pos-top .t b{font-family:var(--display);font-size:17px}.pos-top .t span{font-size:12.5px;opacity:.75}
-.pos-top .btn{min-height:40px;padding:0 14px}.pos-top .btn-ghost{color:#fff;border-color:rgba(255,255,255,.3)}
-.pos-net{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;background:rgba(255,255,255,.1);padding:6px 10px;border-radius:999px}
-.pos-net i{width:8px;height:8px;border-radius:50%;background:#22C55E}.pos-net.off i{background:#F59E0B}
-.pos-warn{border:0;border-radius:999px;background:#DC2626;color:#fff;font:inherit;font-size:12.5px;font-weight:700;padding:7px 12px;cursor:pointer}
-.pos-main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 400px}
-.pos-shelf{display:flex;flex-direction:column;min-height:0;min-width:0;padding:12px 14px 0;gap:10px}
-.pos-cats,.pos-search,.pos-grid{min-width:0;max-width:100%}
-.pos-search{display:flex;align-items:center;gap:8px;background:#fff;border:2px solid #D6DCE5;border-radius:16px;padding:0 14px;flex:none}
-.pos-search:focus-within{border-color:#0E9F7B}
-.pos-search .i{width:20px;height:20px;opacity:.55;flex:none}
-.pos-search input{flex:1;border:0;outline:0;background:none;height:52px;font:inherit;font-size:17px;min-width:0}
-.pos-cats{display:flex;gap:6px;overflow-x:auto;flex:none;padding-bottom:2px;scrollbar-width:thin}
-.pos-cats button{flex:none;border:1px solid #D6DCE5;background:#fff;border-radius:999px;padding:8px 14px;font:inherit;font-size:14px;font-weight:600;color:#13213C;cursor:pointer}
-.pos-cats button[aria-pressed="true"]{background:#13213C;color:#fff;border-color:#13213C}
-.pos-grid{flex:1;min-height:0;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:10px;align-content:start;padding-bottom:14px}
-.pos-tile{position:relative;display:grid;justify-items:center;gap:3px;text-align:center;background:#fff;border:1px solid #E1E6ED;border-radius:16px;padding:10px 8px 10px;font:inherit;color:#13213C;cursor:pointer;transition:transform .08s,box-shadow .15s}
-.pos-tile:hover{box-shadow:0 6px 16px rgba(19,33,60,.1)}.pos-tile:active{transform:scale(.97)}
-.pos-tile .pi{width:76px;height:76px;object-fit:contain;mix-blend-mode:multiply}
-.pos-tile .noph{display:grid;place-items:center;background:#F2F4F7;border-radius:14px}.pos-tile .noph .i{width:30px;height:30px;opacity:.4}
-.pos-tile .nm{font-weight:600;font-size:13.5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em}
-.pos-tile .un{font-size:11.5px;color:#6B7480;min-height:1.2em}
-.pos-tile .pr{font-family:var(--display);font-weight:700;font-size:17px;color:#0A7A5E}.pos-tile .pr small{font-size:11px;font-weight:600}
-.pos-tile em{position:absolute;top:6px;inset-inline-start:6px;font-style:normal;font-size:10.5px;font-weight:700;background:#EEF1F5;color:#5B6475;padding:2px 7px;border-radius:999px}
-.pos-tile em.low{background:#FFF1DE;color:#9A5B07}.pos-tile em.zero{background:#FDECEC;color:#B42318}
-.pos-more{grid-column:1/-1;text-align:center}
-.pos-empty{grid-column:1/-1;display:grid;justify-items:center;gap:8px;text-align:center;color:#6B7480;padding:40px 16px}
-.pos-empty .i{width:36px;height:36px;opacity:.4}.pos-empty b{color:#13213C}
-.pos-cart{display:flex;flex-direction:column;min-height:0;background:#fff;border-inline-start:1px solid #DDE3EA}
-.pos-lines{flex:1;min-height:0;overflow-y:auto;padding:6px 12px}
-.pos-line{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #EEF1F5}
-.pos-line .n{display:grid;min-width:0}.pos-line .n b{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pos-line .n span{font-size:12.5px;color:#6B7480}
-.pos-line .n em{font-style:normal;background:#FFF1DE;color:#9A5B07;border-radius:6px;padding:0 5px;font-size:11px;font-weight:700}
-.pos-line .q{display:flex;align-items:center;gap:4px}.pos-line .q b{min-width:26px;text-align:center;font-size:15px}
-.pos-line .q button{width:34px;height:34px;border-radius:10px;border:1px solid #D6DCE5;background:#F7F9FB;font:inherit;font-size:18px;font-weight:700;cursor:pointer;color:#13213C}
-.pos-line .t{min-width:58px;text-align:end;font-family:var(--display);font-size:15px}
-.pos-line .x{width:30px;height:30px;border:0;background:none;color:#B42318;font-size:22px;cursor:pointer;border-radius:8px}
-.pos-sum{padding:10px 14px;border-top:1px solid #EEF1F5;display:grid;gap:4px}
-.pos-sum>div{display:flex;justify-content:space-between;font-size:14px}
-.pos-sum .grand{align-items:baseline}.pos-sum .grand b{font-family:var(--display);font-size:32px;line-height:1}.pos-sum .grand small{font-size:14px}
-.pos-tools{display:flex;gap:6px;padding:0 14px 8px;flex-wrap:wrap}
-.pos-pay{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px 14px}
-.pos-btn{border:0;border-radius:16px;min-height:62px;font:inherit;font-family:var(--display);font-size:20px;font-weight:700;color:#fff;cursor:pointer}
-.pos-btn.cash{background:#0E9F7B}.pos-btn.card{background:#13213C}
-.pos-btn[disabled]{opacity:.35;cursor:default}
-.pos-modal{position:fixed;inset:0;z-index:60;background:rgba(10,18,32,.55);display:grid;place-items:center;padding:16px}
-.pos-dlg{width:min(460px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;background:#fff;border-radius:22px;padding:18px;display:grid;gap:12px;box-shadow:0 30px 60px rgba(0,0,0,.3)}
-.pos-dlg .h{display:flex;align-items:center;justify-content:space-between}.pos-dlg .h b{font-family:var(--display);font-size:19px}
-.pos-dlg .h .x{width:38px;height:38px;border-radius:12px;border:0;background:#F2F4F7;font-size:22px;cursor:pointer}
-.pos-dlg .fld{display:grid;gap:6px;font-weight:600;font-size:14px}.pos-dlg .fld input{height:52px;border:2px solid #D6DCE5;border-radius:14px;padding:0 14px;font:inherit;font-size:19px}
-.pos-dlg .fld input:focus{outline:0;border-color:#0E9F7B}
-.pos-dlg .a{display:flex;gap:10px}.pos-dlg .a>*{flex:1;justify-content:center}
-.pos-due{display:flex;justify-content:space-between;align-items:baseline;background:#F4F7FA;border-radius:14px;padding:12px 14px}.pos-due b{font-family:var(--display);font-size:26px}
-.pos-quick{display:flex;flex-wrap:wrap;gap:8px}.pos-quick button{flex:1;min-width:70px;height:48px;border-radius:12px;border:2px solid #D6DCE5;background:#fff;font:inherit;font-size:17px;font-weight:700;cursor:pointer;color:#13213C}
-.pos-quick button[aria-pressed="true"]{border-color:#0E9F7B;background:#E7F7EF}
-.pos-change{background:#E7F7EF;color:#0A5C46;border-radius:14px;padding:12px 14px;font-size:16px;text-align:center}.pos-change b{font-family:var(--display);font-size:26px}
-.pos-change.bad{background:#FDECEC;color:#B42318}.pos-change.big b{font-size:34px}
-.pos-ok{display:grid;justify-items:center;gap:6px;text-align:center}.pos-ok .i{width:56px;height:56px;padding:12px;border-radius:50%;background:#0E9F7B;color:#fff;stroke:#fff}.pos-ok b{font-family:var(--display);font-size:20px}
-.pos-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.pos-stats div{background:#F4F7FA;border-radius:12px;padding:10px 6px;display:grid;text-align:center}.pos-stats b{font-family:var(--display);font-size:19px}.pos-stats span{font-size:12px;color:#6B7480}
-.pos-close{display:grid;gap:8px;border-top:1px solid #EEF1F5;padding-top:12px}
-.pos-hist{display:grid;gap:2px;font-size:13.5px}.pos-hist>b{margin-bottom:4px}
-.pos-hist div{display:grid;grid-template-columns:62px 64px 1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #F0F2F5}
-.pos-hist div.off{opacity:.5;text-decoration:line-through}.pos-hist em{font-style:normal;color:#B42318;font-size:12px}
-.pos-fails{background:#FDECEC;color:#7A1D16;border-radius:12px;padding:10px 12px;font-size:13px;display:grid;gap:4px}
-@media (max-width:900px){
-  .pos{height:auto;min-height:100dvh;overflow:visible}
-  .pos-main{grid-template-columns:minmax(0,1fr)}
-  .pos-shelf{padding:10px 10px 0}.pos-grid{max-height:none;overflow:visible;grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
-  .pos-cart{border:0;border-top:1px solid #DDE3EA;position:sticky;bottom:0;max-height:62dvh;box-shadow:0 -10px 30px rgba(19,33,60,.12);border-radius:20px 20px 0 0}
-  .pos-lines{max-height:24dvh}
-  .pos-top .t span{display:none}.pos-net{font-size:11px}
 }
 
 /* ---------- شاشة الدخول بشعار المتجر ---------- */
@@ -1537,7 +1453,6 @@ html.sp-on,html.sp-on body{overflow:hidden}
     fetch(apiUrl() + "/stock", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(j){
       if (!j || !j.ok || !j.stock) return; var ch = JSON.stringify(j.stock) !== JSON.stringify(LIVE); LIVE = j.stock;
       if (ch && mode === "store" && screen !== "checkout" && screen !== "search") refresh();
-      if (ch && mode === "pos" && $("posGrid")) $("posGrid").innerHTML = posGridHTML();
     }).catch(function(){});
   }
   /* ---------- browsing analytics (no personal data) ---------- */
@@ -2633,7 +2548,6 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function routeEnter(j, v){
     if (mode === "driver" && j.go !== "driver") { geoStop(true); geo.admin = false; geo.share = false; appManifest(false); clearInterval(drv.timer); drv.timer = null; }
     if (j.go === "driver") { drv.pin = v; try { sessionStorage.setItem("ohod-driver", v); } catch(e){} appCall("session", String(apiUrl()), v, "driver"); drv.first = true; mode = "store"; openDriver(); return; }
-    if (j.go === "pos") { pos.pin = v; try { sessionStorage.setItem("ohod-pos", v); } catch(e){} mode = "store"; openPOS(); return; }
     try { history.replaceState(null, "", location.pathname + location.search.replace(/[?&]app=(driver|pos)/, "")); } catch(e){}
     if (j.go === "staff") { staffAuth = j; adminPin = "staff-session"; } else { staffAuth = null; adminPin = v; }
     aTab = ordersOnly() ? "olist" : "over"; canEdit = true; go("admin");
@@ -2648,306 +2562,6 @@ html.sp-on,html.sp-on body{overflow:hidden}
     });
   }
   function copyText(t, ok){ var s = $("aStatus"); try { navigator.clipboard.writeText(t); } catch(e){} if (s) { s.className = "status"; s.textContent = ok; } }
-
-  /* ---------- نقاط البيع في المحل ---------- */
-  // نفس المنتجات والأسعار والمخزون حق الموقع. البيعة تنحفظ في نفس سجل الطلبات (مصدرها «المحل»).
-  var pos = { pin: "", me: null, cart: [], q: "", cat: "all", modal: "", paid: "", pay: "cash", disc: 0, busy: false, last: null, shift: null, msg: "", autoPrint: false, open: { name: "", price: "", bc: "", qty: 1 }, timer: null, flushing: false, edit: -1, clearAsk: false };
-  try { pos.pin = sessionStorage.getItem("ohod-pos") || ""; pos.me = JSON.parse(sessionStorage.getItem("ohod-pos-me") || "null"); pos.autoPrint = localStorage.getItem("ohod-pos-print") === "1"; } catch(e){}
-  function posQ(){ try { return JSON.parse(localStorage.getItem("ohod-posq") || "[]"); } catch(e){ return []; } }
-  function posQSave(q){ try { localStorage.setItem("ohod-posq", JSON.stringify(q)); } catch(e){} }
-  function posFail(){ try { return JSON.parse(localStorage.getItem("ohod-posfail") || "[]"); } catch(e){ return []; } }
-  function posId(){ return "s" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10); }
-  function r2(n){ return Math.round(n * 100) / 100; }
-  function bcOf(p){ return String(p.bc || "").split(/[\s,،]+/).filter(Boolean); }
-  function openPOS(){
-    mode = "pos"; timers.forEach(clearInterval); timers = []; clearInterval(drv.timer); setDir(LANG);
-    document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "pos");
-    try { if (location.hash !== "#pos") history.replaceState(null, "", "#pos"); } catch(e){}
-    document.title = tr("نقاط البيع", "Point of sale") + " · " + sv("name");
-    if (!pos.pin) return posLogin();
-    posShell();
-    api("/pos/login", { pin: pos.pin }).then(function(j){
-      if (j.ok) { pos.me = j; try { sessionStorage.setItem("ohod-pos-me", JSON.stringify(j)); } catch(e){} posRender(); return; }
-      if (j.code === "network" && pos.me) return;   // بدون نت: نكمل بالبيانات المحفوظة، والبيعات تنحفظ بالجهاز
-      posSignOut();
-    });
-  }
-  function leavePOS(){ clearInterval(pos.timer); pos.timer = null; try { history.replaceState(null, "", location.pathname + location.search.replace(/[?&]app=pos/, "")); } catch(e){} document.title = sv("name"); go("store"); }
-  function posSignOut(){ pos.pin = ""; pos.me = null; pos.cart = []; pos.modal = ""; clearInterval(pos.timer); try { sessionStorage.removeItem("ohod-pos"); sessionStorage.removeItem("ohod-pos-me"); } catch(e){} posLogin(); }
-  function posLogin(){
-    app.innerHTML = '<div class="pos-login"><form class="box" id="posForm" autocomplete="off"><img src="' + D.imgs.logo + '" alt=""><b>' + tr("نقاط البيع", "Point of sale") + '</b>' +
-      '<p class="hint">' + tr("ادخل برقم الكاشير. الرقم تعطيك إياه الإدارة.", "Enter your cashier PIN. The store owner gives it to you.") + '</p>' +
-      '<input id="posPin" class="pin" type="password" inputmode="numeric" maxlength="12" aria-label="' + tr("الرقم السري", "PIN") + '">' +
-      '<button class="btn btn-ink" type="submit">' + ic("lock") + tr("دخول", "Sign in") + '</button><span class="status" id="posMsg" aria-live="polite"></span>' +
-      '<button type="button" class="linkbtn" id="posExit">' + tr("رجوع للمتجر", "Back to the store") + '</button></form></div>';
-    $("posPin").focus();
-    $("posExit").addEventListener("click", leavePOS);
-    $("posForm").addEventListener("submit", function(e){
-      e.preventDefault(); var v = $("posPin").value.trim(), m = $("posMsg"); if (!v) return;
-      if (!apiUrl()) { m.className = "status err"; m.textContent = tr("الخادم مو مربوط.", "The server is not connected."); return; }
-      m.className = "status"; m.textContent = tr("جاري التحقق…", "Checking…");
-      enterFirst(v, ["pos", "admin"]).then(function(r){ return r || api("/pos/login", { pin: v }); }).then(function(j){
-        if (j.moved) return;
-        if (j.ok) { pos.pin = v; pos.me = j; try { sessionStorage.setItem("ohod-pos", v); sessionStorage.setItem("ohod-pos-me", JSON.stringify(j)); } catch(e2){} posShell(); return; }
-        m.className = "status err";
-        m.textContent = j.code === "bad_pin" ? tr("الرقم السري غلط.", "Wrong PIN.") : j.code === "locked" ? tr("انقفل الدخول بسبب محاولات غلط. جرّب بعد ", "Locked after wrong tries. Try again in ") + Math.ceil((j.retryAfter || 900) / 60) + tr(" دقيقة.", " min.") :
-          j.code === "network" ? tr("تأكد من النت.", "Check your connection.") : j.code === "not_found" ? tr("حدّث الخادم في Cloudflare عشان تشتغل نقاط البيع.", "Update the server in Cloudflare to enable the POS.") : tr("صار خطأ (", "Something went wrong (") + (j.code || "?") + ")";
-      });
-    });
-  }
-  function posShell(){
-    app.innerHTML = '<div class="pos" id="pos"></div>'; pos.modal = ""; posRender();
-    loadStock(); posFlush();
-    clearInterval(pos.timer); pos.timer = setInterval(function(){ if (mode !== "pos") { clearInterval(pos.timer); return; } posFlush(); if (!document.hidden) loadStock(); posNet(); }, 20000);
-  }
-  function posItems(){
-    var q = pos.q.trim().toLowerCase();
-    return D.products.filter(function(p){
-      if (pos.cat !== "all" && p.cat !== pos.cat) return false;
-      if (!q) return true;
-      return p.name.toLowerCase().indexOf(q) > -1 || String(p.name_en || "").toLowerCase().indexOf(q) > -1 || bcOf(p).indexOf(q) > -1;
-    });
-  }
-  function posTotal(){ var s = 0, n = 0; pos.cart.forEach(function(l){ s += l.qty * l.price; n += l.qty; }); s = r2(s); var d = Math.min(s, Number(pos.disc) || 0); return { sub: s, disc: d, total: r2(s - d), n: n }; }
-  function posGridHTML(){
-    var list = posItems(), more = list.length > 120;
-    if (!list.length) return '<div class="pos-empty">' + ic("search") + '<b>' + tr("ما لقينا منتج بهالاسم أو الباركود", "No product matches") + '</b><button type="button" class="btn btn-soft" data-pos="open">' + tr("بيعه كصنف يدوي", "Sell as a manual item") + '</button></div>';
-    return list.slice(0, 120).map(function(p){ var l = left(p);
-      return '<button type="button" class="pos-tile" data-posadd="' + p.id + '">' + dImg(p.id, "pi", "") + '<span class="nm">' + esc(nm(p)) + '</span><span class="un">' + esc(un(p) || "") + '</span>' +
-        '<span class="pr">' + num(p.price) + ' <small>' + tr("ر.س", "SAR") + '</small></span>' + (l != null ? '<em class="' + (l <= 0 ? 'zero' : l <= lowAt() ? 'low' : '') + '">' + (l <= 0 ? tr("المخزون صفر", "Stock 0") : tr("باقي ", "") + num(l) + tr("", " left")) + '</em>' : '') + '</button>';
-    }).join("") + (more ? '<p class="hint pos-more">' + tr("يطلع أول ١٢٠ منتج. ابحث أو اختر قسم عشان تلقى الباقي.", "Showing the first 120. Search or pick a category.") + '</p>' : '');
-  }
-  function posLinesHTML(){
-    if (!pos.cart.length) return '<div class="pos-empty">' + ic("cart") + '<b>' + tr("السلة فاضية", "Cart is empty") + '</b><span>' + tr("امسح الباركود أو اضغط على المنتج", "Scan a barcode or tap a product") + '</span></div>';
-    var admin = pos.me && pos.me.role === "admin";
-    return pos.cart.map(function(l, i){
-      return '<div class="pos-line' + (l.id ? '' : ' open') + '"><div class="n"><b>' + esc(l.name) + '</b><span>' + (l.id ? '' : '<em>' + tr("صنف يدوي", "Manual") + '</em> ') + (admin ? '<button type="button" class="linkbtn" data-posprice="' + i + '">' + num(l.price) + '</button>' : num(l.price)) + ' × ' + num(l.qty) + '</span></div>' +
-        '<div class="q"><button type="button" data-posqty="' + i + ':-1" aria-label="' + tr("أنقص", "Less") + '">−</button><b>' + num(l.qty) + '</b><button type="button" data-posqty="' + i + ':1" aria-label="' + tr("زد", "More") + '">+</button></div>' +
-        '<b class="t">' + num(r2(l.qty * l.price)) + '</b><button type="button" class="x" data-posdel="' + i + '" aria-label="' + tr("شيل", "Remove") + '">×</button></div>';
-    }).join("");
-  }
-  function posNetHTML(){ var q = posQ().length, off = navigator.onLine === false; return '<span class="pos-net' + (off || q ? ' off' : '') + '" id="posNet"><i></i>' + (off ? tr("بدون نت · البيع شغّال", "Offline · still selling") : tr("متصل", "Online")) + (q ? ' · ' + num(q) + tr(" بيعة بالجهاز تنتظر الإرسال", " sale(s) waiting to upload") : '') + '</span>'; }
-  function posNet(){ var e = $("posNet"); if (e) e.outerHTML = posNetHTML(); }
-  function posRender(){
-    if(pos.delivery){var target=$('pos');if(!target)return;target.innerHTML='<header class="pos-top"><b>طلبات التوصيل</b><span>'+esc(pos.me?.name||'')+'</span><button class="btn btn-soft" type="button" data-pos-delivery="back">رجوع لنقاط البيع</button></header><main style="padding:16px"><section id="aPOS"></section></main>';renderPOS();return;}
-    var box = $("pos"); if (!box) return;
-    var t = posTotal(), me = pos.me || {}, has = pos.cart.length > 0, fails = posFail().length;
-    box.innerHTML = '<header class="pos-top"><img src="' + D.imgs.logo + '" alt=""><div class="t"><b>' + tr("نقاط البيع", "Point of sale") + '</b><span>' + esc(me.name || "") + (me.role === "admin" ? ' · ' + tr("إدارة", "admin") : '') + '</span></div>' + posNetHTML() +
-        (fails ? '<button type="button" class="pos-warn" data-pos="shift">' + num(fails) + tr(" بيعة ما انقبلت", " sale(s) rejected") + '</button>' : '') +
-        '<button class="btn btn-brand" type="button" data-pos-delivery="open">طلبات التوصيل</button><button class="btn btn-soft" type="button" data-pos="shift">' + tr("الوردية", "Shift") + '</button><button class="btn btn-ghost" type="button" data-pos="out">' + tr("خروج", "Sign out") + '</button></header>' +
-      '<div class="pos-main"><section class="pos-shelf"><div class="pos-search">' + ic("search") + '<input id="posQ" type="search" autocomplete="off" enterkeyhint="go" placeholder="' + tr("امسح الباركود أو اكتب اسم المنتج…", "Scan a barcode or type a product…") + '" value="' + esc(pos.q) + '" aria-label="' + tr("بحث أو باركود", "Search or barcode") + '"></div>' +
-        '<div class="pos-cats">' + [["all", tr("الكل", "All")]].concat(D.cats.map(function(c){ return [c.id, nm(c)]; })).map(function(c){ return '<button type="button" data-poscat="' + c[0] + '" aria-pressed="' + (pos.cat === c[0]) + '">' + esc(c[1]) + '</button>'; }).join("") + '</div>' +
-        '<div class="pos-grid" id="posGrid">' + posGridHTML() + '</div></section>' +
-      '<aside class="pos-cart" aria-label="' + tr("السلة", "Cart") + '"><div class="pos-lines" id="posLines">' + posLinesHTML() + '</div>' +
-        '<div class="pos-sum">' + (t.disc ? '<div><span>' + tr("المجموع", "Subtotal") + '</span><b>' + num(t.sub) + '</b></div><div><span>' + tr("خصم", "Discount") + '</span><b>−' + num(t.disc) + '</b></div>' : '') +
-          '<div class="grand"><span>' + tr("الإجمالي", "Total") + (t.n ? ' · ' + num(t.n) + tr(" قطعة", " items") : '') + '</span><b>' + num(t.total) + ' <small>' + tr("ر.س", "SAR") + '</small></b></div></div>' +
-        '<div class="pos-tools"><button type="button" class="btn btn-soft sm" data-pos="open">' + tr("+ صنف يدوي", "+ Manual item") + '</button>' + (me.role === "admin" ? '<button type="button" class="btn btn-soft sm" data-pos="disc">' + tr("خصم", "Discount") + '</button>' : '') +
-          '<button type="button" class="btn btn-ghost sm" data-pos="clear"' + (has ? '' : ' disabled') + '>' + (pos.clearAsk ? tr("متأكد؟ اضغط ثاني", "Sure? Tap again") : tr("تفريغ", "Clear")) + '</button></div>' +
-        '<div class="pos-pay"><button type="button" class="pos-btn cash" data-pos="cash"' + (has ? '' : ' disabled') + '>' + tr("كاش", "Cash") + '</button><button type="button" class="pos-btn card" data-pos="card"' + (has ? '' : ' disabled') + '>' + tr("شبكة", "Card") + '</button></div></aside></div>' +
-      posModalHTML();
-    var i = $("posQ");
-    i.addEventListener("input", function(){ pos.q = this.value; $("posGrid").innerHTML = posGridHTML(); });
-    i.addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); posScan(this.value.trim()); } });
-    posFocus();
-  }
-  function posFocus(){
-    if (pos.modal && pos.modal !== "done") { var f = document.querySelector(".pos-dlg input"); if (f) f.focus(); return; }
-    var fine = window.matchMedia && matchMedia("(pointer: fine)").matches, i = $("posQ");
-    if (fine && i) i.focus();
-  }
-  // الباركود أو الاسم: لو ينطابق منتج واحد ينضاف، ولو باركود مو مسجّل نسأل عن اسمه وسعره
-  function posScan(v){
-    if (!v) return;
-    if (pos.modal === "done") pos.modal = "";
-    var hit = D.products.filter(function(p){ return bcOf(p).indexOf(v) > -1; })[0];
-    if (!hit) { var l = posItems(); if (l.length === 1) hit = l[0]; }
-    if (hit) { pos.q = ""; posAdd(hit.id); return; }
-    if (/^\d{6,14}$/.test(v)) { pos.open = { bc: v, name: "", price: "", qty: 1 }; pos.q = ""; pos.modal = "open"; posRender(); return; }
-    pos.q = v; posRender();
-  }
-  function posAdd(id){
-    var p = byId(id); if (!p) return;
-    if (pos.modal === "done") pos.modal = "";
-    var l = pos.cart.filter(function(x){ return x.id === id && !x.edited; })[0];
-    if (l) l.qty += 1; else pos.cart.push({ id: id, name: nm(p), unit: un(p) || "", price: Number(p.price), qty: 1 });
-    pos.clearAsk = false; posRender();
-    var ln = $("posLines"); if (ln) ln.scrollTop = l ? ln.scrollTop : ln.scrollHeight;
-  }
-  function posModalHTML(){
-    if (!pos.modal) return '';
-    var t = posTotal(), body = "", title = "", act = "";
-    if (pos.modal === "cash") {
-      var opts = [t.total], step = [5, 10, 50, 100, 200, 500];
-      step.forEach(function(s){ var v = Math.ceil(t.total / s) * s; if (v > t.total && opts.indexOf(v) < 0 && opts.length < 5) opts.push(v); });
-      var paid = pos.paid === "" ? t.total : Number(pos.paid), ch = r2(paid - t.total);
-      title = tr("دفع كاش", "Cash payment");
-      body = '<div class="pos-due"><span>' + tr("المطلوب", "Due") + '</span><b>' + num(t.total) + ' ' + tr("ر.س", "SAR") + '</b></div>' +
-        '<div class="pos-quick">' + opts.map(function(v){ return '<button type="button" data-pospaid="' + v + '" aria-pressed="' + (paid === v) + '">' + num(v) + '</button>'; }).join("") + '</div>' +
-        '<label class="fld">' + tr("الزبون عطاك", "Customer gave") + '<input id="posPaid" type="number" inputmode="decimal" min="0" step="0.5" value="' + esc(pos.paid) + '" placeholder="' + num(t.total) + '"></label>' +
-        '<div class="pos-change' + (ch < 0 ? ' bad' : '') + '" id="posChange">' + (ch < 0 ? tr("ناقص ", "Short by ") + num(-ch) : tr("رجّع له ", "Change ") + '<b>' + num(ch) + '</b> ' + tr("ر.س", "SAR")) + '</div>';
-      act = '<button type="button" class="pos-btn cash" data-pos="sell"' + (pos.busy ? ' disabled' : '') + '>' + (pos.busy ? tr("جاري الحفظ…", "Saving…") : tr("تم البيع", "Complete sale")) + '</button>';
-    } else if (pos.modal === "card") {
-      title = tr("دفع شبكة", "Card payment");
-      body = '<div class="pos-due"><span>' + tr("المبلغ على جهاز الشبكة", "Amount on the card machine") + '</span><b>' + num(t.total) + ' ' + tr("ر.س", "SAR") + '</b></div><p class="hint">' + tr("اكتب المبلغ في جهاز الشبكة، ولما تنجح العملية اضغط «تم البيع».", "Enter the amount on the card machine; when it is approved tap Complete sale.") + '</p>';
-      act = '<button type="button" class="pos-btn card" data-pos="sell"' + (pos.busy ? ' disabled' : '') + '>' + (pos.busy ? tr("جاري الحفظ…", "Saving…") : tr("تم البيع", "Complete sale")) + '</button>';
-    } else if (pos.modal === "open") {
-      title = pos.open.bc ? tr("باركود مو مسجّل", "Unknown barcode") : tr("صنف يدوي", "Manual item");
-      body = (pos.open.bc ? '<p class="hint">' + tr("الباركود ", "Barcode ") + '<b dir="ltr">' + esc(pos.open.bc) + '</b>' + tr(" مو موجود في المتجر. اكتب اسمه وسعره وكمّل البيع، ويطلع للإدارة عشان تضيفه.", " is not in the store. Type its name and price to sell it; it will show up for the owner to add.") + '</p>' : '') +
-        '<label class="fld">' + tr("اسم الصنف", "Item name") + '<input id="posOName" value="' + esc(pos.open.name) + '" maxlength="60"></label>' +
-        '<label class="fld">' + tr("السعر", "Price") + '<input id="posOPrice" type="number" inputmode="decimal" min="0" step="0.25" value="' + esc(pos.open.price) + '"></label>';
-      act = '<button type="button" class="btn btn-brand" data-pos="addopen">' + tr("أضف للسلة", "Add to cart") + '</button>';
-    } else if (pos.modal === "disc") {
-      title = tr("خصم على الفاتورة", "Discount");
-      body = '<label class="fld">' + tr("المبلغ (ر.س)", "Amount (SAR)") + '<input id="posDisc" type="number" inputmode="decimal" min="0" step="0.5" value="' + esc(pos.disc || "") + '"></label>';
-      act = '<button type="button" class="btn btn-brand" data-pos="setdisc">' + tr("طبّق", "Apply") + '</button>';
-    } else if (pos.modal === "price") {
-      var l = pos.cart[pos.edit] || {};
-      title = tr("سعر ", "Price of ") + esc(l.name || "");
-      body = '<label class="fld">' + tr("السعر الجديد (للحبة)", "New unit price") + '<input id="posPrice" type="number" inputmode="decimal" min="0" step="0.25" value="' + esc(l.price) + '"></label><p class="hint">' + tr("ينسجل في سجل العمليات باسمك.", "This is recorded in the activity log.") + '</p>';
-      act = '<button type="button" class="btn btn-brand" data-pos="setprice">' + tr("احفظ", "Save") + '</button>';
-    } else if (pos.modal === "done") {
-      var r = pos.last || {};
-      title = r.queued ? tr("انحفظت في الجهاز", "Saved on this device") : tr("تم البيع", "Sale complete");
-      body = '<div class="pos-ok">' + ic("check") + '<b>' + (r.queued ? tr("بترسل لما يرجع النت", "It will upload when the internet is back") : '<span dir="ltr">' + esc(r.no || "") + '</span>') + '</b></div>' +
-        (r.pay === "cash" && r.change > 0 ? '<div class="pos-change big">' + tr("رجّع للزبون ", "Give change ") + '<b>' + num(r.change) + '</b> ' + tr("ر.س", "SAR") + '</div>' : '') +
-        '<label class="chk"><input type="checkbox" id="posAuto"' + (pos.autoPrint ? ' checked' : '') + '>' + tr("اطبع الإيصال تلقائي بعد كل بيعة", "Print the receipt automatically") + '</label>';
-      act = '<button type="button" class="btn btn-soft" data-pos="print">' + tr("اطبع الإيصال", "Print receipt") + '</button><button type="button" class="btn btn-brand" data-pos="new">' + tr("بيعة جديدة", "New sale") + '</button>';
-    } else if (pos.modal === "shift") {
-      title = tr("الوردية", "Shift"); body = posShiftHTML(); act = '';
-    }
-    return '<div class="pos-modal" data-pos="bg"><div class="pos-dlg" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="h"><b>' + title + '</b><button type="button" class="x" data-pos="close" aria-label="' + tr("إغلاق", "Close") + '">×</button></div>' +
-      body + (pos.msg ? '<p class="status err">' + esc(pos.msg) + '</p>' : '') + (act ? '<div class="a">' + act + '</div>' : '') + '</div></div>';
-  }
-  function posShiftHTML(){
-    var s = pos.shift, fails = posFail(), q = posQ();
-    if (!s) return '<p class="hint">' + tr("جاري التحميل…", "Loading…") + '</p>';
-    if (s.error) return '<p class="status err">' + esc(s.error) + '</p>';
-    var tm = function(ms){ return new Date(ms).toLocaleTimeString(LANG === "en" ? "en-GB" : "ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" }); };
-    return '<p class="hint">' + tr("من ", "Since ") + new Date(s.since).toLocaleString(LANG === "en" ? "en-GB" : "ar-SA-u-nu-latn", { weekday: "short", hour: "numeric", minute: "2-digit" }) + '</p>' +
-      '<div class="pos-stats"><div><b>' + num(s.count) + '</b><span>' + tr("بيعة", "sales") + '</span></div><div><b>' + num(s.total) + '</b><span>' + tr("ر.س الإجمالي", "SAR total") + '</span></div><div><b>' + num(s.cash) + '</b><span>' + tr("كاش", "cash") + '</span></div><div><b>' + num(s.card) + '</b><span>' + tr("شبكة", "card") + '</span></div></div>' +
-      (q.length ? '<p class="status err">' + num(q.length) + tr(" بيعة محفوظة في الجهاز وما وصلت الخادم للحين (تنرسل لحالها لما يرجع النت). ما تدخل في الأرقام فوق.", " sale(s) are saved on this device and not uploaded yet. They are not in the numbers above.") + '</p>' : '') +
-      (fails.length ? '<div class="pos-fails"><b>' + tr("بيعات رفضها الخادم (بلّغ الإدارة):", "Sales the server rejected (tell the owner):") + '</b>' + fails.slice(-10).map(function(f){ return '<div>' + tm(f.at) + ' · ' + num(f.total || 0) + ' ' + tr("ر.س", "SAR") + ' · ' + esc(f.code || "") + '</div>'; }).join("") + '</div>' : '') +
-      '<div class="pos-close"><label class="fld">' + tr("الكاش اللي في الدرج الحين (عدّه)", "Cash in the drawer now (count it)") + '<input id="posCount" type="number" inputmode="decimal" min="0" step="0.5"></label>' +
-        '<button type="button" class="btn btn-ink" data-pos="close-shift">' + tr("أقفل الصندوق", "Close the drawer") + '</button><p class="hint">' + tr("يقارن العدّ بمبيعات الكاش ويسجّل الفرق، وتبدأ وردية جديدة.", "Compares your count with cash sales, records the difference, and starts a new shift.") + '</p></div>' +
-      (s.closed ? '<div class="pos-change' + (s.closed.diff < 0 ? ' bad' : '') + '"><div class="hint" style="margin-bottom:4px">' + tr("انقفلت الوردية: ", "Shift closed: ") + num(s.closed.sales) + tr(" بيعة · كاش ", " sales · cash ") + num(s.closed.cash) + tr(" · عدّيت ", " · counted ") + num(s.closed.counted) + '</div>' + (s.closed.diff === 0 ? tr("مطابق تماماً", "Exact match") : s.closed.diff < 0 ? tr("ناقص ", "Short by ") + num(-s.closed.diff) + ' ' + tr("ر.س", "SAR") : tr("زايد ", "Over by ") + num(s.closed.diff) + ' ' + tr("ر.س", "SAR")) + '</div>' : '') +
-      (s.sales && s.sales.length ? '<div class="pos-hist"><b>' + tr("آخر البيعات", "Recent sales") + '</b>' + s.sales.slice(0, 25).map(function(x){ return '<div' + (x.status === "canceled" ? ' class="off"' : '') + '><span dir="ltr">' + esc(x.no) + '</span><span>' + tm(x.at) + '</span><span>' + (x.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + '</span><b>' + num(x.total) + '</b>' + (x.status === "canceled" ? '<em>' + tr("ملغية", "Voided") + '</em>' : '<button type="button" class="linkbtn" data-posre="' + esc(x.no) + '">' + tr("إيصال", "Receipt") + '</button>') + '</div>'; }).join("") + '</div>' : '');
-  }
-  function posLoadShift(){
-    pos.shift = null; pos.modal = "shift"; posRender();
-    api("/pos/shift", { pin: pos.pin }).then(function(j){ pos.shift = j.ok ? j : { error: j.code === "network" ? tr("ما فيه نت. الوردية تحتاج اتصال.", "No internet. The shift needs a connection.") : tr("ما قدرنا نجيب الوردية.", "Could not load the shift.") }; if (pos.modal === "shift") posRender(); });
-  }
-  function posErr(j){
-    return j.code === "price_locked" ? tr("تغيير السعر والخصم للإدارة بس.", "Only the owner can change prices or give discounts.") : j.code === "bad_line" ? tr("فيه منتج انحذف أو تغيّر من المتجر. فرّغ السلة وأعد.", "A product was removed or changed. Clear the cart and try again.") :
-      j.code === "paid_short" ? tr("المبلغ أقل من الإجمالي.", "The amount is less than the total.") : j.code === "bad_pin" ? tr("انتهت جلستك، ادخل من جديد.", "Your session ended, sign in again.") : tr("ما انحفظت البيعة (", "The sale was not saved (") + (j.code || "?") + ")";
-  }
-  function posSell(){
-    if (pos.busy || !pos.cart.length) return;
-    var t = posTotal(), paid = pos.pay === "cash" ? (pos.paid === "" ? t.total : Number(pos.paid)) : t.total;
-    if (pos.pay === "cash" && !(paid >= t.total)) { pos.msg = tr("المبلغ أقل من الإجمالي.", "The amount is less than the total."); posRender(); return; }
-    var sale = { cid: posId(), at: Date.now(), pay: pos.pay, paid: paid, discount: t.disc || undefined,
-      lines: pos.cart.map(function(l){ return l.id ? { id: l.id, qty: l.qty, price: l.edited ? l.price : undefined } : { bc: l.bc || "", name: l.name, price: l.price, qty: l.qty }; }) };
-    var rec = { cid: sale.cid, at: sale.at, lines: pos.cart.map(function(l){ return { name: l.name, qty: l.qty, price: l.price }; }), sub: t.sub, disc: t.disc, total: t.total, pay: pos.pay, paid: paid, change: r2(paid - t.total), by: (pos.me || {}).name || "" };
-    pos.busy = true; pos.msg = ""; posRender();
-    api("/pos/sale", Object.assign({ pin: pos.pin }, sale)).then(function(j){
-      pos.busy = false;
-      if (j.ok) { rec.no = j.no; rec.total = j.total; }
-      else if (j.code === "network" || j.status >= 500) { var q = posQ(); sale.total = t.total; q.push(sale); posQSave(q); rec.queued = true; }
-      else { if (j.code === "bad_pin") { posSignOut(); return; } pos.msg = posErr(j); posRender(); return; }
-      pos.last = rec; pos.cart = []; pos.disc = 0; pos.paid = ""; pos.q = ""; pos.modal = "done"; posRender();
-      if (pos.autoPrint) posPrint(rec);
-    });
-  }
-  // البيعات المحفوظة بالجهاز (النت مقطوع): تنرسل وحدة وحدة، والخادم يرفض التكرار برقم البيعة
-  function posFlush(){
-    var q = posQ(); if (!q.length || pos.flushing || !pos.pin || navigator.onLine === false) return;
-    pos.flushing = true; var s = q[0];
-    api("/pos/sale", Object.assign({ pin: pos.pin }, s)).then(function(j){
-      pos.flushing = false;
-      if (j.code === "network" || j.status >= 500 || j.code === "bad_pin" || j.code === "locked") { posNet(); return; }
-      posQSave(posQ().filter(function(x){ return x.cid !== s.cid; }));
-      if (!j.ok) { var f = posFail(); f.push({ at: s.at, total: s.total, code: j.code, sale: s }); try { localStorage.setItem("ohod-posfail", JSON.stringify(f.slice(-50))); } catch(e){} if (mode === "pos") posRender(); }
-      posNet(); if (posQ().length) posFlush();
-    });
-  }
-  window.addEventListener("online", function(){ if (mode === "pos") { posFlush(); posNet(); } });
-  window.addEventListener("offline", function(){ if (mode === "pos") posNet(); });
-  // إيصال لطابعة الكاشير (٨٠ ملم)
-  function posPrint(r){
-    var old = $("posFrame"); if (old) old.remove();
-    var fr = document.createElement("iframe"); fr.id = "posFrame"; fr.setAttribute("aria-hidden", "true"); fr.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0";
-    document.body.appendChild(fr);
-    var vat = String(S.vat || "").trim(), vatAmt = r2(r.total * 15 / 115), site = location.origin + location.pathname;
-    var rows = (r.lines || []).map(function(l){ return '<tr><td>' + esc(l.name) + '</td><td>' + l.qty + '</td><td>' + num(r2(l.qty * l.price)) + '</td></tr>'; }).join("");
-    var html = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>' + esc(r.no || "") + '</title><style>@page{size:80mm auto;margin:3mm}*{box-sizing:border-box}body{margin:0;width:74mm;font:12px/1.45 Tahoma,Arial,sans-serif;color:#000}.c{text-align:center}h1{font-size:16px;margin:4px 0 0}table{width:100%;border-collapse:collapse;margin:6px 0}th,td{padding:3px 0;border-bottom:1px dashed #888;text-align:start;vertical-align:top}th:nth-child(2),td:nth-child(2){text-align:center;width:10mm}th:nth-child(3),td:nth-child(3){text-align:end;width:16mm}.r{display:flex;justify-content:space-between}.g{font-size:16px;font-weight:700;border-top:2px solid #000;padding-top:4px;margin-top:4px}hr{border:0;border-top:1px dashed #000;margin:6px 0}img{width:48px;height:48px;object-fit:contain}.s{font-size:10.5px}</style></head><body>' +
-      '<div class="c"><img src="' + D.imgs.logo + '" alt=""><h1>' + esc(sv("name")) + '</h1>' + (S.phone ? '<div>' + esc(S.phone) + '</div>' : '') + (sv("area") ? '<div class="s">' + esc(sv("area")) + '</div>' : '') + '</div><hr>' +
-      '<div class="r"><span>إيصال بيع</span><b dir="ltr">' + (r.no ? esc(r.no) : 'مؤقت ' + esc(String(r.cid || "").slice(-6))) + '</b></div><div class="r"><span>' + new Date(r.at || Date.now()).toLocaleString("ar-SA-u-nu-latn") + '</span><span>' + esc(r.by || "") + '</span></div>' +
-      '<table><tr><th>الصنف</th><th>الكمية</th><th>ر.س</th></tr>' + rows + '</table>' +
-      (r.disc ? '<div class="r"><span>المجموع</span><span>' + num(r.sub) + '</span></div><div class="r"><span>خصم</span><span>−' + num(r.disc) + '</span></div>' : '') +
-      '<div class="r g"><span>الإجمالي</span><span>' + num(r.total) + ' ر.س</span></div>' +
-      '<div class="r"><span>' + (r.pay === "card" ? "شبكة" : "كاش") + '</span><span>' + num(r.paid != null ? r.paid : r.total) + '</span></div>' + (r.pay !== "card" && r.change > 0 ? '<div class="r"><span>الباقي</span><span>' + num(r.change) + '</span></div>' : '') +
-      (vat ? '<hr><div class="s">الرقم الضريبي: ' + esc(vat) + '</div><div class="s">الأسعار شاملة ضريبة القيمة المضافة ١٥٪ (' + num(vatAmt) + ' ر.س)</div>' : '') +
-      '<hr><div class="c">شكراً لزيارتكم</div><div class="c s">اطلب توصيل لبيتك من موقعنا:<br><span dir="ltr">' + esc(site.replace(/^https?:\/\//, "")) + '</span></div>' +
-      '</body></html>';
-    var d = fr.contentWindow.document; d.open(); d.write(html); d.close();
-    var go2 = function(){ try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch(e){} };
-    var img = d.images[0]; if (img && !img.complete) { img.onload = img.onerror = function(){ setTimeout(go2, 50); }; } else setTimeout(go2, 150);
-  }
-  document.addEventListener("click", function(e){
-    if (mode !== "pos") return;
-    var t;
-    if ((t = e.target.closest("[data-posadd]"))) { posAdd(t.dataset.posadd); return; }
-    if ((t = e.target.closest("[data-poscat]"))) { pos.cat = t.dataset.poscat; posRender(); return; }
-    if ((t = e.target.closest("[data-posqty]"))) { var a = t.dataset.posqty.split(":"), l = pos.cart[Number(a[0])]; if (l) { l.qty += Number(a[1]); if (l.qty <= 0) pos.cart.splice(Number(a[0]), 1); } posRender(); return; }
-    if ((t = e.target.closest("[data-posdel]"))) { pos.cart.splice(Number(t.dataset.posdel), 1); posRender(); return; }
-    if ((t = e.target.closest("[data-posprice]"))) { pos.edit = Number(t.dataset.posprice); pos.modal = "price"; pos.msg = ""; posRender(); return; }
-    if ((t = e.target.closest("[data-pospaid]"))) { pos.paid = t.dataset.pospaid; posRender(); return; }
-    if ((t = e.target.closest("[data-posre]"))) { var x = ((pos.shift && pos.shift.sales) || []).filter(function(s){ return s.no === t.dataset.posre; })[0]; if (x) posPrint({ no: x.no, at: x.at, lines: x.lines, total: x.total, pay: x.pay, paid: x.paid, change: x.change, disc: x.discount, sub: r2(x.total + (x.discount || 0)), by: x.by }); return; }
-    if (!(t = e.target.closest("[data-pos]"))) return;
-    var k = t.dataset.pos;
-    if (k === "bg" && e.target !== t) return;
-    if (k === "out") { posSignOut(); return; }
-    if (k === "shift") { posLoadShift(); return; }
-    if (k === "close" || k === "bg") { if (pos.busy) return; pos.modal = ""; pos.msg = ""; posRender(); return; }
-    if (k === "new") { pos.modal = ""; posRender(); return; }
-    if (k === "cash" || k === "card") { if (!pos.cart.length) return; pos.pay = k; pos.paid = ""; pos.msg = ""; pos.modal = k; posRender(); return; }
-    if (k === "sell") { posSell(); return; }
-    if (k === "print") { if (pos.last) posPrint(pos.last); return; }
-    if (k === "open") { pos.open = { bc: "", name: pos.q && !/^\d+$/.test(pos.q) ? pos.q : "", price: "", qty: 1 }; pos.msg = ""; pos.modal = "open"; posRender(); return; }
-    if (k === "addopen") { var n = $("posOName").value.trim(), p = Number($("posOPrice").value);
-      if (!n || !(p > 0)) { pos.open.name = n; pos.open.price = $("posOPrice").value; pos.msg = tr("اكتب الاسم والسعر.", "Enter the name and price."); posRender(); return; }
-      pos.cart.push({ id: "", bc: pos.open.bc, name: n, unit: "", price: r2(p), qty: 1 }); pos.modal = ""; pos.msg = ""; pos.q = ""; posRender(); return; }
-    if (k === "disc") { pos.modal = "disc"; pos.msg = ""; posRender(); return; }
-    if (k === "setdisc") { var dv = Number($("posDisc").value) || 0, tt = posTotal(); if (dv < 0 || dv > tt.sub) { pos.msg = tr("الخصم أكبر من المجموع.", "Discount is larger than the subtotal."); posRender(); return; } pos.disc = r2(dv); pos.modal = ""; posRender(); return; }
-    if (k === "setprice") { var pv = Number($("posPrice").value), ln = pos.cart[pos.edit]; if (!(pv >= 0) || !ln) return; ln.price = r2(pv); ln.edited = true; pos.modal = ""; posRender(); return; }
-    if (k === "clear") { if (!pos.clearAsk) { pos.clearAsk = true; posRender(); setTimeout(function(){ if (pos.clearAsk) { pos.clearAsk = false; if (mode === "pos") posRender(); } }, 4000); return; } pos.cart = []; pos.disc = 0; pos.clearAsk = false; posRender(); return; }
-    if (k === "close-shift") { var c = Number($("posCount").value); if (!($("posCount").value !== "" && c >= 0)) { pos.msg = tr("اكتب الكاش اللي عدّيته.", "Enter the cash you counted."); posRender(); return; }
-      t.disabled = true; api("/pos/close", { pin: pos.pin, counted: c }).then(function(j){ if (!j.ok) { pos.msg = j.code === "network" ? tr("ما فيه نت.", "No internet.") : tr("ما انحفظ.", "Not saved."); posRender(); return; }
-        api("/pos/shift", { pin: pos.pin }).then(function(s){ pos.shift = s.ok ? s : pos.shift; pos.shift.closed = j.closed; pos.msg = ""; posRender(); }); }); return; }
-  });
-  document.addEventListener("input", function(e){
-    if (mode !== "pos") return;
-    if (e.target.id === "posPaid") { pos.paid = e.target.value; var t = posTotal(), paid = pos.paid === "" ? t.total : Number(pos.paid), ch = r2(paid - t.total), el = $("posChange");
-      if (el) { el.className = "pos-change" + (ch < 0 ? " bad" : ""); el.innerHTML = ch < 0 ? tr("ناقص ", "Short by ") + num(-ch) : tr("رجّع له ", "Change ") + '<b>' + num(ch) + '</b> ' + tr("ر.س", "SAR"); }
-      Array.prototype.forEach.call(document.querySelectorAll("[data-pospaid]"), function(b){ b.setAttribute("aria-pressed", String(Number(b.dataset.pospaid) === paid)); }); }
-    if (e.target.id === "posAuto") { pos.autoPrint = e.target.checked; try { localStorage.setItem("ohod-pos-print", pos.autoPrint ? "1" : "0"); } catch(x){} }
-  });
-  document.addEventListener("change", function(e){ if (mode === "pos" && e.target.id === "posAuto") { pos.autoPrint = e.target.checked; try { localStorage.setItem("ohod-pos-print", pos.autoPrint ? "1" : "0"); } catch(x){} } });
-  // قارئ الباركود: يكتب الأرقام بسرعة وبعدها Enter، حتى لو مربع البحث مو محدد
-  var scanBuf = "", scanT = 0;
-  document.addEventListener("keydown", function(e){
-    if (mode !== "pos" || !pos.me) return;
-    var tg = e.target, inField = tg && (tg.tagName === "INPUT" || tg.tagName === "TEXTAREA" || tg.tagName === "SELECT");
-    if (e.key === "Escape" && pos.modal && !pos.busy) { pos.modal = ""; pos.msg = ""; posRender(); return; }
-    if (e.key === "Enter" && inField && pos.modal) {
-      if (tg.id === "posPaid") { e.preventDefault(); posSell(); return; }
-      if (tg.id === "posOName" || tg.id === "posOPrice") { e.preventDefault(); var b = document.querySelector('[data-pos="addopen"]'); if (b) b.click(); return; }
-      if (tg.id === "posDisc") { e.preventDefault(); document.querySelector('[data-pos="setdisc"]').click(); return; }
-      if (tg.id === "posPrice") { e.preventDefault(); document.querySelector('[data-pos="setprice"]').click(); return; }
-    }
-    if (inField) return;
-    if (e.key === "Enter") { if (scanBuf.length >= 4) { e.preventDefault(); posScan(scanBuf); } else if (pos.modal === "card" || pos.modal === "cash") { e.preventDefault(); posSell(); } scanBuf = ""; return; }
-    if (e.key && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { var now = Date.now(); if (now - scanT > 100) scanBuf = ""; scanT = now; scanBuf += e.key; }
-  });
 
   /* ---------- admin console ---------- */
   var draft = null, dirty = false, pickTarget = null, aFilter = { cat: "all", q: "" }, aTab = "over";
@@ -3122,7 +2736,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (apiUrl() ? '<div class="card"><div class="sec-head" style="margin:0"><h2>آخر الطلبات</h2><button class="btn btn-soft" type="button" id="aOpenDrv">صفحة المندوب</button></div><div id="aOrders" class="hint">جاري التحميل…</div></div>' : '') +
       '<div class="card openbox' + (draft.store.closed ? ' closed' : '') + '"><span class="ic">' + ic(draft.store.closed ? "lock" : "unlock") + '</span><span class="t"><b>' + (draft.store.closed ? 'المحل مقفل، والطلبات واقفة' : 'المحل مفتوح ويستقبل الطلبات') + '</b><span>' + (draft.store.minOrder ? 'أقل مبلغ للطلب ' + num(draft.store.minOrder) + ' ر.س' : 'بدون حد أدنى للطلب') + '</span></span><button class="btn ' + (draft.store.closed ? 'btn-brand' : 'btn-ghost') + '" type="button" id="aToggleOpen">' + (draft.store.closed ? 'افتح المحل' : 'اقفل المحل مؤقتًا') + '</button></div>' +
       '<div class="card"><h2>اختصارات</h2><div class="quick">' +
-        '<button type="button" class="btn btn-brand" data-onew>+ طلب بالتلفون أو الواتساب</button>' + (apiUrl() ? '<a class="btn btn-ink" href="#pos">نقاط البيع (الكاشير)</a>' : '') + '<button type="button" class="btn btn-ghost" data-atab="prods">تعديل الأسعار</button><button type="button" class="btn btn-ghost" data-atab="offers">عرض اليوم والعروض</button>' +
+        '<button type="button" class="btn btn-brand" data-onew>+ طلب بالتلفون أو الواتساب</button>' + '<button type="button" class="btn btn-ghost" data-atab="prods">تعديل الأسعار</button><button type="button" class="btn btn-ghost" data-atab="offers">عرض اليوم والعروض</button>' +
         '<button type="button" class="btn btn-ghost" data-atab="layout">ترتيب الصفحة الرئيسية</button><button type="button" class="btn btn-ghost" data-atab="look">الألوان واللغة</button></div>' +
         lowHTML() + (noEn ? '<p class="hint">فيه ' + noEn + ' منتج بدون اسم إنجليزي، ويطلعون بالعربي في النسخة الإنجليزية.</p>' : '') + '</div>';
     if (apiUrl()) { loadToday(); loadDrvLoc(); $("aDrvRe").addEventListener("click", loadDrvLoc); }
@@ -3769,8 +3383,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var seg = function(arr, key){ return '<div class="pays seg mini" role="group">' + arr.map(function(x){ return '<button type="button" data-of="' + key + ':' + x[0] + '" aria-pressed="' + (String(oState[key]) === String(x[0])) + '">' + x[1] + '</button>'; }).join("") + '</div>'; };
     var head = '<div class="card"><div class="o-tools"><input class="search" id="oQ" type="search" placeholder="ابحث برقم الطلب أو الجوال أو الاسم…" value="' + esc(oState.q) + '" aria-label="بحث في الطلبات">' +
       (ordersOnly() ? '' : '<button class="btn btn-brand" type="button" data-onew>+ طلب جديد</button>') + '<button class="btn btn-soft" type="button" id="oRefresh">تحديث</button><button class="btn btn-soft" type="button" id="oExport">نزّل Excel</button></div>' +
-      seg([["online","طلبات التوصيل"],["pos","مبيعات المحل"]], "src") +
-      ((oState.src || "online") === "pos" ? seg([["all","الكل"],["sold","مباعة"],["canceled","ملغية (مرتجع)"]], "f") : seg([["active","الجارية"],["new","جديدة"],["delivered","تم التوصيل"],["canceled","ملغية"],["all","الكل"]], "f")) + seg([[1,"اليوم"],[7,"٧ أيام"],[30,"٣٠ يوم"],[0,"الكل"]], "range") + '</div>';
+      seg([["active","الجارية"],["new","جديدة"],["delivered","تم التوصيل"],["canceled","ملغية"],["all","الكل"]], "f") + seg([[1,"اليوم"],[7,"٧ أيام"],[30,"٣٠ يوم"],[0,"الكل"]], "range") + '</div>';
     if (!oState.list) { box.innerHTML = head + '<div class="card"><p class="hint">جاري التحميل…</p></div>'; bindOTools(); return; }
     if (oState.err) { box.innerHTML = head + '<div class="card"><p class="status err">' + (oState.err === "not_found" ? "حدّث كود الخادم في Cloudflare (الدليل، القسم ٨)." : "ما قدرنا نجيب الطلبات (" + esc(oState.err) + ").") + '</p></div>'; bindOTools(); return; }
     var l = oFiltered(), sum = l.reduce(function(a, o){ return o.status === "canceled" ? a : a + o.total; }, 0);
@@ -4108,20 +3721,20 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function staffHTML(j){
     var box = $("staffCard"); if (!box) return; staffLast = j;
-    if (!j.ok) { box.innerHTML = '<h2>الموظفين</h2><p class="status err">' + (j.code === "not_found" ? "حدّث كود الخادم في Cloudflare عشان تقدر تضيف مناديب وكاشيرية." : "ما قدرنا نجيب القائمة.") + '</p>'; return; }
+    if (!j.ok) { box.innerHTML = '<h2>الموظفين</h2><p class="status err">' + (j.code === "not_found" ? "حدّث كود الخادم في Cloudflare عشان تقدر تضيف مناديب." : "ما قدرنا نجيب القائمة.") + '</p>'; return; }
     var base = location.origin + location.pathname;
     var rows = j.staff.map(function(s){ var t = s.today || {}, ed = staffEdit === s.id;
-      return '<div class="srow' + (s.active ? '' : ' off') + '"><span class="rl ' + s.role + '">' + (s.role === "cashier" ? "كاشير" : "مندوب") + '</span><b>' + esc(s.name) + '</b><span class="hint">' +
-        (!s.active ? 'موقوف، ما يقدر يدخل' : s.role === "cashier" ? 'باع اليوم ' + num(t.done) + (t.done ? ' · ' + num(t.total) + ' ر.س' : '') : 'وصّل اليوم ' + num(t.done) + (t.open ? ' · معه ' + num(t.open) + ' طلب الحين' : '')) + '</span>' +
+      return '<div class="srow' + (s.active ? '' : ' off') + '"><span class="rl ' + s.role + '">' + (s.role === "cashier" ? "كاشير (موقوف)" : "مندوب") + '</span><b>' + esc(s.name) + '</b><span class="hint">' +
+        (!s.active ? 'موقوف، ما يقدر يدخل' : s.role === "cashier" ? 'البيع في المحل انشال من الموقع' : 'وصّل اليوم ' + num(t.done) + (t.open ? ' · معه ' + num(t.open) + ' طلب الحين' : '')) + '</span>' +
         '<button type="button" class="btn btn-soft sm" data-sedit="' + esc(s.id) + '">' + (ed ? 'إغلاق' : 'تعديل') + '</button></div>' +
         (ed ? '<div class="sedit" data-sid="' + esc(s.id) + '"><label>الاسم<input data-se="name" value="' + esc(s.name) + '" maxlength="30"></label><label>رقم سري جديد<input data-se="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="new-password" placeholder="اتركه فاضي إذا ما تبغى تغيّره"></label><label class="chk"><input type="checkbox" data-se="active"' + (s.active ? ' checked' : '') + '>شغّال (يقدر يدخل)</label><button class="btn btn-brand sm" type="button" data-ssave="' + esc(s.id) + '">احفظ</button></div>' : '');
     }).join("");
-    box.innerHTML = '<h2>المناديب والكاشيرية</h2><p class="hint">كل مندوب وكل كاشير له رقم سري خاص، واسمه يطلع في الطلبات والكاش وسجل العمليات. المندوب يدخل من صفحة أو تطبيق المندوب، والكاشير من «نقاط البيع». لو ترك أحد الشغل، اضغط «تعديل» وشيل علامة «شغّال».</p>' +
+    box.innerHTML = '<h2>المناديب</h2><p class="hint">كل مندوب له رقم سري خاص، واسمه يطلع في الطلبات والكاش وسجل العمليات. يدخل برقمه من زر الدخول أو من تطبيق المندوب. لو ترك أحد الشغل، اضغط «تعديل» وشيل علامة «شغّال».</p>' +
       (rows ? '<div class="slist">' + rows + '</div>' : '<p class="hint">ما فيه موظفين للحين.</p>') +
-      '<div class="sadd"><b>أضف موظف</b><label>الاسم<input id="sNew" maxlength="30" placeholder="مثال: سعيد"></label><label>الشغل<select id="sNewRole"><option value="driver">مندوب (يجهّز ويوصّل)</option><option value="cashier">كاشير (نقاط البيع)</option></select></label><label>الرقم السري<input id="sNewPin" type="password" inputmode="numeric" maxlength="12" autocomplete="new-password" placeholder="٤ إلى ١٢ رقم"></label><button class="btn btn-brand" type="button" id="sAdd">أضف</button></div>' +
+      '<div class="sadd"><b>أضف مندوب</b><label>الاسم<input id="sNew" maxlength="30" placeholder="مثال: سعيد"></label><label>الرقم السري<input id="sNewPin" type="password" inputmode="numeric" maxlength="12" autocomplete="new-password" placeholder="٤ إلى ١٢ رقم"></label><button class="btn btn-brand" type="button" id="sAdd">أضف</button></div>' +
       '<p class="status" id="sMsg" aria-live="polite"></p>' +
-      '<div class="actions"><a class="btn btn-ink" href="#pos">افتح نقاط البيع</a><button class="btn btn-soft" type="button" data-scopy="' + esc(base + "#pos") + '">انسخ رابط نقاط البيع</button><button class="btn btn-soft" type="button" data-scopy="' + esc(base + "#driver") + '">انسخ رابط المندوب</button></div>';
-    $("sAdd").addEventListener("click", function(){ staffSave({ name: $("sNew").value, role: $("sNewRole").value, newPin: $("sNewPin").value.trim() }); });
+      '<div class="actions"><button class="btn btn-soft" type="button" data-scopy="' + esc(base + "#driver") + '">انسخ رابط المندوب</button></div>';
+    $("sAdd").addEventListener("click", function(){ staffSave({ name: $("sNew").value, role: "driver", newPin: $("sNewPin").value.trim() }); });
   }
   function staffErr(c){ return c === "pin_taken" ? "هالرقم مستخدم لموظف ثاني أو للإدارة. اختر رقم ثاني." : c === "bad_pin_format" ? "الرقم السري لازم يكون أرقام بس، من ٤ إلى ١٢ رقم." : c === "pin_required" ? "اكتب رقم سري للموظف الجديد." : c === "bad_name" ? "اكتب الاسم." : c === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : "ما انحفظ (" + (c || "?") + ")."; }
   function staffSave(body){
@@ -4137,7 +3750,6 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ((t = e.target.closest("[data-sedit]"))) { staffEdit = staffEdit === t.dataset.sedit ? "" : t.dataset.sedit; if (staffLast) staffHTML(staffLast); return; }
     if ((t = e.target.closest("[data-ssave]"))) { var w = t.closest(".sedit"); staffSave({ id: t.dataset.ssave, name: w.querySelector('[data-se="name"]').value, newPin: w.querySelector('[data-se="pin"]').value.trim(), active: w.querySelector('[data-se="active"]').checked }); return; }
     if ((t = e.target.closest("[data-scopy]"))) { var u = t.dataset.scopy, m = $("sMsg"); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function(){ m.className = "status"; m.textContent = "اننسخ: " + u; }, function(){ m.className = "status"; m.textContent = u; }); return; }
-    if ((t = e.target.closest("[data-posview]"))) { if ((oState.src || "online") !== "pos") { oState.src = "pos"; oState.f = "all"; oState.list = null; } return; }
   });
   document.addEventListener("change", function(e){
     if (mode !== "admin" || !e.target.dataset || !e.target.dataset.oassign) return;
@@ -4526,9 +4138,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   document.addEventListener('click',function(e){var t;if((t=e.target.closest('[data-opsclose]'))||e.target.id==='opsSheet'){var x=$('opsSheet');if(x)x.remove();return;}if(e.target.closest('[data-walletcustomer]')){customerWalletPanel();return;}if(mode==='admin'&&(t=e.target.closest('[data-payment]')))showPaymentEditor(t.dataset.payment);});
   document.addEventListener('input',function(e){if(e.target.id==='checkoutWalletAmount'){var v=Number(e.target.value);walletUseAmount=Number.isFinite(v)&&v>=0?v:0;}});
 
-  document.addEventListener('click',function(e){var b=e.target.closest('[data-pos-delivery]');if(mode!=='pos'||!b)return;pos.delivery=b.dataset.posDelivery==='open';posRender();});
   function deliveryPosAPI(path,body){
-    if(mode==='pos'&&pos.delivery)return api(path.replace('/admin/pos-','/pos/delivery-'),Object.assign({},body,{pin:pos.pin}));
     return api(path,body);
   }
   var posOrders=[],posSearch='',posFilter='active',posTimer=null,posLoading=false;
@@ -4571,14 +4181,15 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
 
   /* ---------- routing ---------- */
-  function go(m){ window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m !== "pos") { clearInterval(pos.timer); pos.timer = null; } if (m !== "admin") { clearInterval(posTimer); clearInterval(prepTimer); clearInterval(alertTimer); clearTimeout(admTimer); alertsGeneration++; alertsLoading = false; } if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
+  function go(m){ window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m !== "admin") { clearInterval(posTimer); clearInterval(prepTimer); clearInterval(alertTimer); clearTimeout(admTimer); alertsGeneration++; alertsLoading = false; } if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
   var startAdmin = false; try { startAdmin = sessionStorage.getItem("ohod-mode") === "admin"; sessionStorage.removeItem("ohod-mode"); } catch(e){}
   go("store");
   loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "store") loadStock(); });
   if (location.hash === "#driver" || /[?&]app=driver/.test(location.search)) openDriver();
-  window.addEventListener("hashchange", function(){ if (location.hash === "#driver" && mode !== "driver") openDriver(); if (location.hash === "#pos" && mode !== "pos") openPOS(); });
-  if (location.hash === "#pos" || /[?&]app=pos/.test(location.search)) openPOS();
+  window.addEventListener("hashchange", function(){ if (location.hash === "#driver" && mode !== "driver") openDriver(); });
+  // نقاط البيع في المحل انشالت (البيع في المحل على برنامج الكاشير حق المحل): الرابط القديم يفتح المتجر
+  if (location.hash === "#pos") { try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
   if (GH) fetch("data.json?v=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
     if (nd && nd.store && nd.products && nd.imgs) { var hadApi = !!apiUrl(); applyData(nd); if (!hadApi) loadStock(); if (mode === "store" && screen !== "checkout") refresh(); }
   }).catch(function(){});
