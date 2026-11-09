@@ -197,6 +197,26 @@ export default {
     const locked = await isLocked(env, ip);
     if (locked) return reply(429, { ok: false, code: "locked", retryAfter: locked });
 
+    // الدخول الموحد: رقم سري واحد، والرقم نفسه يحدد وين يروح صاحبه (إدارة، مندوب، كاشير المحل، مجهز، مدير…)
+    if (path === "/enter") {
+      const pin = String(body.pin == null ? "" : body.pin);
+      if (/^\d{4,12}$/.test(pin)) {
+        const me = await whoIs(env, pin, body);
+        if (me) {
+          await clearFails(env, ip);
+          const go = me.role === "admin" ? "admin" : me.role === "cashier" ? "pos" : "driver";
+          return reply(200, { ok: true, go, name: me.role === "admin" ? "" : me.name });
+        }
+        if (env.DB) {
+          await ensureStaffSchema(env);
+          const user = await env.DB.prepare("SELECT u.* FROM staff_pins p JOIN staff_users u ON u.id = p.user_id WHERE p.pin_hash = ? AND u.active = 1").bind(await staffPinHash(env, pin)).first();
+          if (user) { await clearFails(env, ip); return reply(200, { ok: true, go: "staff", ...(await openStaffSession(env, user)) }); }
+        }
+      }
+      await recordFail(env, ip);
+      return reply(401, { ok: false, code: "bad_pin" });
+    }
+
     // Employee sessions are checked on every request; disabling an account revokes access immediately.
     if (path === "/staff/login") {
       if (!env.DB) return reply(503, { ok: false, code: "staff_unavailable" });
@@ -211,12 +231,7 @@ export default {
         return reply(401, { ok: false, code: "bad_credentials" });
       }
       await clearFails(env, ip);
-      const token = randomHex(32), expires = Date.now() + 8 * 3600e3;
-      await env.DB.batch([
-        env.DB.prepare("DELETE FROM staff_sessions WHERE expires <= ?").bind(Date.now()),
-        env.DB.prepare("INSERT INTO staff_sessions (token_hash, user_id, expires) VALUES (?, ?, ?)").bind(await tokenHash(token), user.id, expires),
-      ]);
-      return reply(200, { ok: true, token, expires, user: publicStaff(user) });
+      return reply(200, { ok: true, ...(await openStaffSession(env, user)) });
     }
     if (body.session) {
       if (!env.DB || !/^[a-f0-9]{64}$/.test(String(body.session))) return reply(401, { ok: false, code: "session_expired" });
@@ -428,17 +443,21 @@ export default {
       if (!env.DB) return reply(503, { ok: false, code: "staff_unavailable" });
       await ensureStaffSchema(env);
       if (path === "/admin/staff") {
-        const rows = await env.DB.prepare("SELECT id, username, name, role, active FROM staff_users ORDER BY username").all();
+        const rows = await env.DB.prepare("SELECT u.id, u.username, u.name, u.role, u.active, (p.user_id IS NOT NULL) AS hasPin FROM staff_users u LEFT JOIN staff_pins p ON p.user_id = u.id ORDER BY u.name").all();
         return reply(200, { ok: true, users: rows.results || [] });
       }
-      const id = Number(body.id) || 0, username = String(body.username || "").trim().toLowerCase();
-      const name = String(body.name || "").trim(), password = String(body.password || "");
+      const id = Number(body.id) || 0;
+      const name = String(body.name || "").trim(), password = String(body.password || ""), pin = String(body.loginPin || "");
+      const existing = id ? await env.DB.prepare("SELECT id, username FROM staff_users WHERE id = ?").bind(id).first() : null;
+      if (id && !existing) return reply(404, { ok: false, code: "not_found" });
+      // اسم المستخدم وكلمة المرور صاروا اختياريين: يكفي رقم سري للدخول الموحد
+      const username = String(body.username || "").trim().toLowerCase() || (existing ? existing.username : "staff-" + randomHex(4));
+      if (pin && !/^\d{4,12}$/.test(pin)) return reply(400, { ok: false, code: "bad_pin_format" });
       if (!/^[a-z0-9._-]{3,32}$/.test(username) || !name || name.length > 30 || !["manager", "orders", "preparer", "cashier"].includes(body.role) ||
-          (id ? password && (password.length < 10 || password.length > 128) : password.length < 10 || password.length > 128)) {
+          (password && (password.length < 10 || password.length > 128)) || (!id && !password && !pin)) {
         return reply(400, { ok: false, code: "bad_staff" });
       }
-      const existing = id ? await env.DB.prepare("SELECT id FROM staff_users WHERE id = ?").bind(id).first() : null;
-      if (id && !existing) return reply(404, { ok: false, code: "not_found" });
+      if (pin && await pinTaken(env, pin, { user: id })) return reply(409, { ok: false, code: "pin_taken" });
       const duplicate = await env.DB.prepare("SELECT id FROM staff_users WHERE username = ? AND id != ?").bind(username, id).first();
       if (duplicate) return reply(409, { ok: false, code: "username_taken" });
       const active = body.active === false ? 0 : 1;
@@ -449,16 +468,19 @@ export default {
           const salt = randomHex(16);
           statements.push(env.DB.prepare("UPDATE staff_users SET password_hash = ?, salt = ? WHERE id = ?").bind(await staffPassword(password, salt), salt, id));
         }
+        if (pin) statements.push(env.DB.prepare("INSERT INTO staff_pins (user_id, pin_hash) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET pin_hash = excluded.pin_hash").bind(id, await staffPinHash(env, pin)));
         await env.DB.batch(statements);
       } else {
         const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM staff_users").first();
         if (count.n >= 100) return reply(400, { ok: false, code: "staff_limit" });
         const salt = randomHex(16);
-        await env.DB.prepare("INSERT INTO staff_users (username, name, role, active, password_hash, salt) VALUES (?, ?, ?, ?, ?, ?)")
-          .bind(username, name, body.role, active, await staffPassword(password, salt), salt).run();
+        // بدون كلمة مرور: نحط كلمة عشوائية ما أحد يعرفها، والدخول يكون بالرقم السري بس
+        const r = await env.DB.prepare("INSERT INTO staff_users (username, name, role, active, password_hash, salt) VALUES (?, ?, ?, ?, ?, ?)")
+          .bind(username, name, body.role, active, await staffPassword(password || randomHex(24), salt), salt).run();
+        if (pin) await env.DB.prepare("INSERT INTO staff_pins (user_id, pin_hash) VALUES (?, ?)").bind(r.meta.last_row_id, await staffPinHash(env, pin)).run();
       }
       await ensureSchema(env);
-      await logStmt(env, "صاحب المتجر", "staff_account", username, { role: body.role, active: !!active, reset: !!password }).run();
+      await logStmt(env, "صاحب المتجر", "staff_account", username, { role: body.role, active: !!active, reset: !!password, pin: !!pin }).run();
       return reply(200, { ok: true });
     }
     if (path === "/admin/alerts") {
@@ -549,10 +571,8 @@ export default {
         if (!cur && !pin) return reply(400, { ok: false, code: "pin_required" });
         let h = cur ? cur.pin : "";
         if (pin) {
-          if (await checkPin(env, pin)) return reply(400, { ok: false, code: "pin_taken" });
+          if (await pinTaken(env, pin, { staff: id0 })) return reply(400, { ok: false, code: "pin_taken" });
           h = await staffHash(env, pin);
-          const other = await env.DB.prepare("SELECT id FROM staff WHERE pin = ? AND id != ? AND active = 1").bind(h, id0).first();
-          if (other) return reply(400, { ok: false, code: "pin_taken" });
         }
         const active = body.active === false ? 0 : 1, who = staff(body);
         const id = cur ? cur.id : (role === "cashier" ? "c" : "d") + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
@@ -729,12 +749,9 @@ export default {
         if (!/^\d{4,12}$/.test(dp)) return reply(400, { ok: false, code: "bad_driver_pin" });
         if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
         if (await checkPin(env, dp)) return reply(400, { ok: false, code: "driver_pin_same" });
-        if (env.DB) { await ensureSchema(env); const o = await env.DB.prepare("SELECT id FROM staff WHERE pin = ? AND id != 'd0' AND active = 1").bind(await staffHash(env, dp)).first(); if (o) return reply(400, { ok: false, code: "driver_pin_same" }); }
+        if (await pinTaken(env, dp, { staff: "d0" })) return reply(400, { ok: false, code: "driver_pin_same" });
       }
-      if (body.newPin && env.DB) {
-        await ensureSchema(env);
-        if (await env.DB.prepare("SELECT id FROM staff WHERE pin = ? AND active = 1").bind(await staffHash(env, String(body.newPin))).first()) return reply(400, { ok: false, code: "pin_taken" });
-      }
+      if (body.newPin && await pinTaken(env, String(body.newPin), { owner: true })) return reply(400, { ok: false, code: "pin_taken" });
       if (data.store) delete data.store.pinHash; // الرقم السري ما ينحفظ في الموقع العام
       const stockSet = body.stock && typeof body.stock === "object" ? body.stock : null;
       const costSet = body.costs && typeof body.costs === "object" ? body.costs : null;
@@ -1848,6 +1865,7 @@ async function ensureStaffSchema(env) {
     env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer','cashier')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS staff_session_user ON staff_sessions(user_id)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_pins (user_id INTEGER PRIMARY KEY, pin_hash TEXT NOT NULL UNIQUE)"),
   ]);
   const definition = await env.DB.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'staff_users'").first();
   if (!definition.sql.includes("'cashier'")) await env.DB.batch([
@@ -1862,6 +1880,25 @@ async function staffPassword(password, salt) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: 100000, hash: 'SHA-256' }, key, 256);
   return Array.from(new Uint8Array(bits), b => b.toString(16).padStart(2, '0')).join('');
+}
+async function staffPinHash(env, pin) { return hashPin(env, "staff:" + pin); }
+async function openStaffSession(env, user) {
+  const token = randomHex(32), expires = Date.now() + 8 * 3600e3;
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM staff_sessions WHERE expires <= ?").bind(Date.now()),
+    env.DB.prepare("INSERT INTO staff_sessions (token_hash, user_id, expires) VALUES (?, ?, ?)").bind(await tokenHash(token), user.id, expires),
+  ]);
+  return { token, expires, user: publicStaff(user) };
+}
+// كل رقم سري لازم يكون لشخص واحد بس، عشان الرقم نفسه يحدد صاحبه في الدخول الموحد
+async function pinTaken(env, pin, self) {
+  self = self || {};
+  if (!self.owner && await checkPin(env, pin)) return true;
+  if (!env.DB) return false;
+  await ensureSchema(env);
+  if (await env.DB.prepare("SELECT id FROM staff WHERE pin = ? AND active = 1 AND id != ?").bind(await staffHash(env, pin), self.staff || "").first()) return true;
+  await ensureStaffSchema(env);
+  return !!(await env.DB.prepare("SELECT user_id FROM staff_pins WHERE pin_hash = ? AND user_id != ?").bind(await staffPinHash(env, pin), Number(self.user) || 0).first());
 }
 function publicStaff(u) { return { id: u.id, username: u.username, name: u.name, role: u.role }; }
 function staffMay(role, path, body) {

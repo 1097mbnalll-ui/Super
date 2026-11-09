@@ -2244,7 +2244,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
       try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume && audioCtx.resume(); } catch(e2){}
       m.className = "status"; m.textContent = tr("جاري التحقق…", "Checking…");
       if (!apiUrl()) { m.className = "status err"; m.textContent = tr("الخادم مو مربوط.", "The server is not connected."); return; }
-      api("/driver/login", { pin: v }).then(function(j){
+      enterFirst(v, ["driver", "admin"]).then(function(r){ return r || api("/driver/login", { pin: v }); }).then(function(j){
+        if (j.moved) return;
         if (j.ok) { drv.pin = v; try { sessionStorage.setItem("ohod-driver", v); } catch(e3){} appCall("session", String(apiUrl()), v, j.role || "driver"); drv.first = true; drvShell(); drvPoll(); return; }
         m.className = "status err";
         m.textContent = j.code === "bad_pin" ? tr("الرقم السري غلط.", "Wrong PIN.") : j.code === "locked" ? tr("انقفل الدخول بسبب محاولات غلط. جرّب بعد ", "Locked after too many wrong tries. Try again in ") + Math.ceil((j.retryAfter || 900) / 60) + tr(" دقيقة.", " min.") :
@@ -2581,20 +2582,20 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var pinFails = 0, pinLockUntil = 0;
   function openPin(){
     var w = document.createElement("div");
-    w.innerHTML = tr('<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>الدخول للإدارة</h2><button class="btn btn-ghost" type="button" id="pinClose">إغلاق</button></div>', '<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>Admin login</h2><button class="btn btn-ghost" type="button" id="pinClose">Close</button></div>') +
-      '<div class="pays" role="group" aria-label="' + tr('نوع الدخول', 'Login type') + '"><button type="button" id="ownerLoginMode" aria-pressed="true">' + tr('صاحب المتجر', 'Owner') + '</button><button type="button" id="employeeLoginMode" aria-pressed="false">' + tr('موظف', 'Employee') + '</button></div>' +
+    w.innerHTML = tr('<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>دخول الإدارة والموظفين</h2><button class="btn btn-ghost" type="button" id="pinClose">إغلاق</button></div>', '<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>Admin login</h2><button class="btn btn-ghost" type="button" id="pinClose">Close</button></div>') +
+      '<p class="hint" style="margin:0">' + tr('اكتب رقمك السري، وبيفتح لك قسمك على طول: الإدارة، أو المندوب، أو التجهيز، أو الكاشير.', 'Type your PIN and your own page opens.') + '</p>' +
       '<label for="staffUsername" id="staffUsernameLabel" hidden>' + tr('اسم المستخدم', 'Username') + '<input id="staffUsername" autocomplete="username" dir="ltr" maxlength="32" disabled></label>' +
-      '<label for="pinIn"><span id="loginPasswordLabel">' + tr('رقم الإدارة السري', 'Owner PIN') + '</span><input id="pinIn" class="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="current-password" required></label>'  +
+      '<label for="pinIn"><span id="loginPasswordLabel">' + tr('الرقم السري', 'PIN') + '</span><input id="pinIn" class="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="current-password" required></label>'  +
       '<div class="actions"><button class="btn btn-ink" type="submit">' + ic("lock") + tr('دخول</button><span class="status" id="pinStatus" aria-live="polite"></span></div>', 'Sign in</button><span class="status" id="pinStatus" aria-live="polite"></span></div>') +
-      tr('<p class="hint">الدخول لصاحب المتجر أو الموظفين المصرّح لهم.</p></form></div>', '<p class="hint">For the store owner and authorized employees.</p></form></div>');
+      '<button type="button" class="linkbtn" id="employeeLoginMode">' + tr('عندك اسم مستخدم وكلمة مرور؟ ادخل من هنا', 'Sign in with username and password') + '</button><button type="button" class="linkbtn" id="ownerLoginMode" hidden>' + tr('رجوع للدخول بالرقم السري', 'Back to PIN sign-in') + '</button></form></div>';
     document.body.appendChild(w.firstChild);
     var close = function(){ var s = $("pinSheet"); if (s) s.remove(); };
     $("pinClose").addEventListener("click", close);
     $("pinSheet").addEventListener("click", function(e){ if (e.target === this) close(); });
     function setAdminLoginMode(employee){
       $('staffUsernameLabel').hidden=!employee;$('staffUsername').disabled=!employee;$('staffUsername').required=employee;$('staffUsername').value='';
-      $('ownerLoginMode').setAttribute('aria-pressed',String(!employee));$('employeeLoginMode').setAttribute('aria-pressed',String(employee));
-      $('loginPasswordLabel').textContent=employee?tr('كلمة مرور الموظف','Employee password'):tr('رقم الإدارة السري','Owner PIN');
+      $('ownerLoginMode').hidden=!employee;$('employeeLoginMode').hidden=employee;
+      $('loginPasswordLabel').textContent=employee?tr('كلمة المرور','Password'):tr('الرقم السري','PIN');
       $('pinIn').setAttribute('inputmode',employee?'text':'numeric');$('pinIn').maxLength=employee?128:12;$('pinIn').value='';$('pinStatus').textContent='';
       (employee?$('staffUsername'):$('pinIn')).focus();
     }
@@ -2610,6 +2611,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
       var attempt = username ? api("/staff/login", { username: username, password: $("pinIn").value }).then(function(j){
         if (!j.ok) { if (j.code === "bad_credentials") return false; throw j; }
         staffAuth = j; return true;
+      }) : apiUrl() ? api("/enter", { pin: v }).then(function(j){
+        if (j.ok) { close(); routeEnter(j, v); return "moved"; }
+        if (j.code === "not_found") return checkPin(v).then(function(ok){ if (ok) staffAuth = null; return ok; }); // خادم قديم ما فيه الدخول الموحد
+        if (j.code === "bad_pin") return false; throw j;
       }) : checkPin(v).then(function(ok){ if (ok) staffAuth = null; return ok; });
       attempt.catch(function(j){
         st.className = "status err";
@@ -2618,10 +2623,28 @@ html.sp-on,html.sp-on body{overflow:hidden}
         return null;
       }).then(function(ok){
         submitButton.disabled=false;if(!st.isConnected)return;
-        if (ok === null) return;
+        if (ok === null || ok === "moved") return;
         if (!ok) { pinFails++; if (pinFails >= 5) { pinLockUntil = Date.now() + 60000; pinFails = 0; } st.className = "status err"; st.textContent = tr("بيانات الدخول غير صحيحة.", "Incorrect login details."); $("pinIn").select(); return; }
         adminPin = username ? "staff-session" : v; aTab = ordersOnly() ? "olist" : "over"; close(); canEdit = true; go("admin");
       });
+    });
+  }
+  // الدخول الموحد: الخادم يقول لمين هالرقم، وهنا نوديه لصفحته
+  function routeEnter(j, v){
+    if (mode === "driver" && j.go !== "driver") { geoStop(true); geo.admin = false; geo.share = false; appManifest(false); clearInterval(drv.timer); drv.timer = null; }
+    if (j.go === "driver") { drv.pin = v; try { sessionStorage.setItem("ohod-driver", v); } catch(e){} appCall("session", String(apiUrl()), v, "driver"); drv.first = true; mode = "store"; openDriver(); return; }
+    if (j.go === "pos") { pos.pin = v; try { sessionStorage.setItem("ohod-pos", v); } catch(e){} mode = "store"; openPOS(); return; }
+    try { history.replaceState(null, "", location.pathname + location.search.replace(/[?&]app=(driver|pos)/, "")); } catch(e){}
+    if (j.go === "staff") { staffAuth = j; adminPin = "staff-session"; } else { staffAuth = null; adminPin = v; }
+    aTab = ordersOnly() ? "olist" : "over"; canEdit = true; go("admin");
+  }
+  // في صفحة المندوب أو الكاشير: لو الرقم لقسم ثاني (مثل المجهز)، نوديه لقسمه بدل ما نقول «الرقم غلط»
+  function enterFirst(v, here){
+    return api("/enter", { pin: v }).then(function(j){
+      if (j.code === "not_found") return null;            // خادم قديم: نكمل الدخول المعتاد
+      if (!j.ok) return j;
+      if (here.indexOf(j.go) > -1) return null;
+      routeEnter(j, v); return { moved: true };
     });
   }
   function copyText(t, ok){ var s = $("aStatus"); try { navigator.clipboard.writeText(t); } catch(e){} if (s) { s.className = "status"; s.textContent = ok; } }
@@ -2663,10 +2686,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
       e.preventDefault(); var v = $("posPin").value.trim(), m = $("posMsg"); if (!v) return;
       if (!apiUrl()) { m.className = "status err"; m.textContent = tr("الخادم مو مربوط.", "The server is not connected."); return; }
       m.className = "status"; m.textContent = tr("جاري التحقق…", "Checking…");
-      api("/pos/login", { pin: v }).then(function(j){
+      enterFirst(v, ["pos", "admin"]).then(function(r){ return r || api("/pos/login", { pin: v }); }).then(function(j){
+        if (j.moved) return;
         if (j.ok) { pos.pin = v; pos.me = j; try { sessionStorage.setItem("ohod-pos", v); sessionStorage.setItem("ohod-pos-me", JSON.stringify(j)); } catch(e2){} posShell(); return; }
         m.className = "status err";
-        m.textContent = j.code === "bad_pin" ? tr("الرقم غلط، أو مو رقم كاشير.", "Wrong PIN, or not a cashier PIN.") : j.code === "locked" ? tr("انقفل الدخول بسبب محاولات غلط. جرّب بعد ", "Locked after wrong tries. Try again in ") + Math.ceil((j.retryAfter || 900) / 60) + tr(" دقيقة.", " min.") :
+        m.textContent = j.code === "bad_pin" ? tr("الرقم السري غلط.", "Wrong PIN.") : j.code === "locked" ? tr("انقفل الدخول بسبب محاولات غلط. جرّب بعد ", "Locked after wrong tries. Try again in ") + Math.ceil((j.retryAfter || 900) / 60) + tr(" دقيقة.", " min.") :
           j.code === "network" ? tr("تأكد من النت.", "Check your connection.") : j.code === "not_found" ? tr("حدّث الخادم في Cloudflare عشان تشتغل نقاط البيع.", "Update the server in Cloudflare to enable the POS.") : tr("صار خطأ (", "Something went wrong (") + (j.code || "?") + ")";
       });
     });
@@ -4407,16 +4431,16 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function drawStaffAccounts(){
     var box = $('aStaff'); if (!box) return;
     var u = staffUsers.filter(function(u){ return u.id === editingStaffId; })[0] || {};
-    box.innerHTML = '<div class="card" id="staffCard"></div><div class="card"><h2>حسابات الموظفين</h2><p class="hint">المدير يدير المتجر والتقارير، دون إدارة الحسابات أو تغيير أرقام الدخول. موظف الطلبات يتابع الطلبات ويغيّر حالاتها ويطبعها؛ لا يغيّر الأسعار ولا يرى التكاليف والأرباح. الكاشير يراجع ويطبع الإيصالات ويسجل التحصيل والتسوية، دون تعديل المنتجات أو إدارة المحافظ. عامل التجهيز يشاهد المنتجات وملاحظات التجهيز فقط. تعديل الحساب ينهي جلساته الحالية.</p><div class="olist2">' + staffUsers.map(function(x){ return '<button type="button" class="orow2" data-editstaff="' + x.id + '"><b>' + esc(x.name) + '</b><span dir="ltr">' + esc(x.username) + '</span><span>' + (x.role === 'manager' ? 'مدير' : x.role === 'preparer' ? 'عامل تجهيز' : x.role==='cashier'?'كاشير التوصيل':'موظف طلبات') + '</span><span>' + (x.active ? 'مفعّل' : 'موقوف') + '</span></button>'; }).join('') + '</div></div>' +
-      '<form class="card" id="staffAccountForm"><h2>' + (u.id ? 'تعديل حساب' : 'حساب جديد') + '</h2><div class="fields"><label>اسم الموظف<input id="suName" maxlength="30" required value="' + esc(u.name || '') + '"></label><label>اسم المستخدم (حروف إنجليزية وأرقام)<input id="suUsername" dir="ltr" pattern="[a-zA-Z0-9._-]{3,32}" minlength="3" maxlength="32" autocomplete="off" required value="' + esc(u.username || '') + '"></label><label>الصلاحية<select id="suRole"><option value="cashier"' + (u.role === 'cashier' ? ' selected' : '') + '>كاشير التوصيل</option><option value="preparer"' + (u.role === 'preparer' ? ' selected' : '') + '>عامل تجهيز</option><option value="orders">موظف طلبات</option><option value="manager"' + (u.role === 'manager' ? ' selected' : '') + '>مدير</option></select></label><label>كلمة المرور (١٠ أحرف على الأقل)' + (u.id ? ' — اتركها فارغة للإبقاء عليها' : '') + '<input id="suPassword" type="password" minlength="10" maxlength="128" autocomplete="new-password"' + (u.id ? '' : ' required') + '></label><label class="chk"><input id="suActive" type="checkbox"' + (u.active !== 0 ? ' checked' : '') + '>الحساب مفعّل</label></div><div class="actions"><button class="btn btn-brand" type="submit">حفظ الحساب</button><button class="btn btn-soft" id="staffNew" type="button">حساب جديد</button><span id="suMessage" class="status" aria-live="polite"></span></div></form>';
+    box.innerHTML = '<div class="card" id="staffCard"></div><div class="card"><h2>حسابات الموظفين</h2><p class="hint">المدير يدير المتجر والتقارير، دون إدارة الحسابات أو تغيير أرقام الدخول. موظف الطلبات يتابع الطلبات ويغيّر حالاتها ويطبعها؛ لا يغيّر الأسعار ولا يرى التكاليف والأرباح. الكاشير يراجع ويطبع الإيصالات ويسجل التحصيل والتسوية، دون تعديل المنتجات أو إدارة المحافظ. عامل التجهيز يشاهد المنتجات وملاحظات التجهيز فقط. كل موظف يدخل برقمه السري من زر الدخول، ويفتح له قسمه على طول. تعديل الحساب ينهي جلساته الحالية.</p><div class="olist2">' + staffUsers.map(function(x){ return '<button type="button" class="orow2" data-editstaff="' + x.id + '"><b>' + esc(x.name) + '</b><span dir="ltr">' + esc(x.username) + '</span><span>' + (x.role === 'manager' ? 'مدير' : x.role === 'preparer' ? 'عامل تجهيز' : x.role==='cashier'?'كاشير التوصيل':'موظف طلبات') + '</span><span>' + (x.active ? (x.hasPin ? 'يدخل برقمه' : 'مفعّل') : 'موقوف') + '</span></button>'; }).join('') + '</div></div>' +
+      '<form class="card" id="staffAccountForm"><h2>' + (u.id ? 'تعديل حساب' : 'حساب جديد') + '</h2><div class="fields"><label>اسم الموظف<input id="suName" maxlength="30" required value="' + esc(u.name || '') + '"></label><label>الصلاحية<select id="suRole"><option value="cashier"' + (u.role === 'cashier' ? ' selected' : '') + '>كاشير التوصيل</option><option value="preparer"' + (u.role === 'preparer' ? ' selected' : '') + '>عامل تجهيز</option><option value="orders">موظف طلبات</option><option value="manager"' + (u.role === 'manager' ? ' selected' : '') + '>مدير</option></select></label><label>الرقم السري للدخول (٤ إلى ١٢ رقم)' + (u.id ? (u.hasPin ? ' — اتركه فاضي إذا ما تبي تغيّره' : ' — حطه عشان يدخل برقمه') : '') + '<input id="suPin" class="pin" type="password" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12" autocomplete="new-password"' + (u.id ? '' : ' required') + '></label><label class="chk"><input id="suActive" type="checkbox"' + (u.active !== 0 ? ' checked' : '') + '>الحساب مفعّل</label></div><details class="hint"><summary>دخول باسم مستخدم وكلمة مرور (اختياري)</summary><div class="fields"><label>اسم المستخدم (حروف إنجليزية وأرقام)<input id="suUsername" dir="ltr" pattern="[a-zA-Z0-9._-]{3,32}" minlength="3" maxlength="32" autocomplete="off" value="' + esc(u.username && u.username.indexOf('staff-') !== 0 ? u.username : '') + '"></label><label>كلمة المرور (١٠ أحرف على الأقل)<input id="suPassword" type="password" minlength="10" maxlength="128" autocomplete="new-password"></label></div></details><div class="actions"><button class="btn btn-brand" type="submit">حفظ الحساب</button><button class="btn btn-soft" id="staffNew" type="button">حساب جديد</button><span id="suMessage" class="status" aria-live="polite"></span></div></form>';
     $('staffNew').onclick = function(){ editingStaffId = 0; drawStaffAccounts(); };
     $('staffAccountForm').onsubmit = function(e){
       e.preventDefault(); var button = this.querySelector('[type=submit]'); button.disabled = true;
       var password = $('suPassword').value;
-      api('/admin/staff-save', { pin: adminPin, id: editingStaffId, name: $('suName').value.trim(), username: $('suUsername').value.trim(), role: $('suRole').value, active: $('suActive').checked, password: password }).then(function(j){
+      api('/admin/staff-save', { pin: adminPin, id: editingStaffId, name: $('suName').value.trim(), username: $('suUsername').value.trim(), role: $('suRole').value, active: $('suActive').checked, password: password, loginPin: $('suPin').value.trim() }).then(function(j){
         password = ''; if (!$('suMessage')) return; button.disabled = false;
-        if (j.ok) { $('suPassword').value = ''; sToast('تم حفظ الحساب'); renderStaffAccounts(); }
-        else { $('suMessage').className = 'status err'; $('suMessage').textContent = j.code === 'username_taken' ? 'اسم المستخدم مستخدم. اختر اسمًا ثانيًا.' : 'تعذر الحفظ. راجع الحقول واتصالك وجرّب ثانية.'; }
+        if (j.ok) { $('suPassword').value = ''; $('suPin').value = ''; sToast('تم حفظ الحساب'); renderStaffAccounts(); }
+        else { $('suMessage').className = 'status err'; $('suMessage').textContent = j.code === 'username_taken' ? 'اسم المستخدم مستخدم. اختر اسمًا ثانيًا.' : j.code === 'pin_taken' ? 'هالرقم السري مستخدم لشخص ثاني أو للإدارة. اختر رقم ثاني.' : j.code === 'bad_pin_format' ? 'الرقم السري لازم يكون من ٤ إلى ١٢ رقم.' : 'تعذر الحفظ. راجع الحقول واتصالك وجرّب ثانية.'; }
       });
     };
     renderStaff();
