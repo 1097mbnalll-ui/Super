@@ -1578,7 +1578,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
 
   /* ---------- screens ---------- */
-  var screen = "home", openCat = null, openProd = null, q = "", stack = [], mode = "store", canEdit = false, timers = [];
+  var screen = "home", openCat = null, openSub = "", openProd = null, q = "", stack = [], mode = "store", canEdit = false, timers = [];
   var recent = []; try { recent = JSON.parse(localStorage.getItem("ohod-recent") || "[]") || []; } catch(e){}
   var form = { name: "", phone: "", details: "", note: "", pay: "cash", lat: null, lng: null, sub: "call" };
   try { var f0 = JSON.parse(localStorage.getItem("ohod-form2") || "null"); if (f0) for (var k0 in f0) form[k0] = f0[k0]; } catch(e){}
@@ -1805,9 +1805,21 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function catHTML(){
     var c = catOf(openCat) || D.cats[0], items = D.products.filter(function(p){ return p.cat === c.id; }).sort(function(a,b){ return avail(b) - avail(a); });
+    // أقسام فرعية (اختيارية): القسم فيه subs، وكل منتج فيه sub. اللي بدون sub (أو sub مو معروف) يروح «أخرى»
+    var subs = Array.isArray(c.subs) ? c.subs : [], known = {}, subBar = "", shown = items;
+    if (subs.length) {
+      subs.forEach(function(s){ known[s.id] = 0; });
+      var other = 0; items.forEach(function(p){ if (p.sub && known[p.sub] != null) known[p.sub]++; else other++; });
+      if (openSub && openSub !== "_other" && !known[openSub]) openSub = "";
+      if (openSub) shown = items.filter(function(p){ return openSub === "_other" ? !(p.sub && known[p.sub] != null) : p.sub === openSub; });
+      var chipB = function(id, label, n){ return '<button type="button" class="kq-chip" data-catsub="' + esc(id) + '" aria-pressed="' + (openSub === id) + '">' + esc(label) + ' <small style="opacity:.6;font-weight:600">' + n + '</small></button>'; };
+      subBar = '<div class="kq-chips cat-subs"><div class="wrap"><div class="row">' + chipB("", tr("الكل", "All"), items.length) +
+        subs.filter(function(s){ return known[s.id]; }).map(function(s){ return chipB(s.id, nm(s), known[s.id]); }).join("") +
+        (other ? chipB("_other", tr("أخرى", "Other"), other) : "") + '</div></div></div>';
+    }
     return '<div class="aisle-head" style="background:' + tint(c.id) + '">' + imgTag(catPhoto(c), "") + tr('<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + tr('</button><button class="sq" type="button" data-nav="search" aria-label="بحث" style="background:rgba(255,255,255,.75)">', '</button><button class="sq" type="button" data-nav="search" aria-label="Search" style="background:rgba(255,255,255,.75)">') + ic("search") + '</button></div>' +
       '<h1>' + esc(nm(c)) + '</h1><p>' + items.length + tr(' منتج · التوصيل ', ' products · delivery ') + esc(sv("eta") || "") + '</p></div></div>' +
-      '<div class="wrap" style="margin-top:16px"><div class="grid">' + pagedCards(items, "cat:" + c.id).join("") + '</div></div>';
+      subBar + '<div class="wrap" style="margin-top:' + (subBar ? 4 : 16) + 'px"><div class="grid">' + pagedCards(shown, "cat:" + c.id + (openSub ? "|" + openSub : "")).join("") + '</div></div>';
   }
   function productHTML(){
     var p = byId(openProd); if (!p) return catsHTML();
@@ -2172,7 +2184,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
       var ch = $("kqChips"); if (ch) window.scrollTo({ top: ch.getBoundingClientRect().top + window.scrollY - 4, behavior: "smooth" }); var on = document.querySelector('.kq-chip[aria-pressed="true"]'); if (on) on.scrollIntoView({ inline: "center", block: "nearest" }); return; }
     if ((t = e.target.closest("[data-jump]"))) { var je = $(t.dataset.jump); if (je) window.scrollTo({ top: je.getBoundingClientRect().top + window.scrollY - 12, behavior: "smooth" }); return; }
     if ((t = e.target.closest("[data-nav]"))) { show(t.dataset.nav); return; }
-    if ((t = e.target.closest("[data-opencat]"))) { openCat = t.dataset.opencat; show("cat"); return; }
+    if ((t = e.target.closest("[data-opencat]"))) { openCat = t.dataset.opencat; openSub = ""; show("cat"); return; }
+    // الأقسام الفرعية داخل القسم (مثل «المنزل والمنوعات»): نفس الصفحة، بس نفلتر المنتجات
+    if ((t = e.target.closest("[data-catsub]"))) { openSub = t.dataset.catsub; refresh(); var onS = document.querySelector('[data-catsub][aria-pressed="true"]'); if (onS && onS.scrollIntoView) onS.scrollIntoView({ inline: "center", block: "nearest" }); return; }
     if ((t = e.target.closest("[data-sub]"))) { form.sub = t.dataset.sub; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-sub]"), function(b){ b.setAttribute("aria-pressed", b.dataset.sub === form.sub); }); return; }
     if ((t = e.target.closest("[data-pay]"))) { form.pay = t.dataset.pay; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-pay]"), function(b){ b.setAttribute("aria-pressed", b.dataset.pay === form.pay); }); return; }
     if ((t = e.target.closest("[data-term]"))) { q = t.dataset.term; $("q").value = q; renderSearch(); return; }
@@ -3133,7 +3147,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function loadScript(src){ return new Promise(function(ok, no){ var x = document.createElement("script"); x.src = src; x.onload = ok; x.onerror = no; document.head.appendChild(x); }); }
   function importLibs(){
     var a = window.XLSX ? Promise.resolve() : loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js").catch(function(){ return loadScript("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"); });
-    var b = window.catalogPlan ? Promise.resolve() : loadScript("tools/catalog.js?v=5");
+    var b = window.catalogPlan ? Promise.resolve() : loadScript("tools/catalog.js?v=6");
     return Promise.all([a, b]);
   }
   function impCatName(id){ var c = draft.cats.filter(function(x){ return x.id === id; })[0]; if (c) return c.name; var r = (window.CATALOG_RULES || []).filter(function(x){ return x[0] === id; })[0]; return r ? r[1] : "المنزل والمنوعات"; }
@@ -3174,7 +3188,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     };
     $("impApply").onclick = function(){
       var ap = catalogApply(P, draft.products);
-      P.needCats.forEach(function(c){ if (!draft.cats.some(function(x){ return x.id === c.id; })) draft.cats.push({ id: c.id, name: c.name, img: "" }); });
+      P.needCats.forEach(function(c){ if (!draft.cats.some(function(x){ return x.id === c.id; })) draft.cats.push(Object.assign({ img: "" }, c)); });
+      var mcat = draft.cats.filter(function(x){ return x.id === "misc"; })[0]; if (mcat && !Array.isArray(mcat.subs) && window.CATALOG_SUBS && ap.added.some(function(p){ return p.sub; })) mcat.subs = CATALOG_SUBS.slice();
       draft.products = draft.products.concat(ap.added);
       Object.keys(ap.stock).forEach(function(id){ stockEdit[id] = ap.stock[id]; });
       Object.keys(ap.costs).forEach(function(id){ costEdit[id] = ap.costs[id]; });

@@ -28,6 +28,8 @@ var CATALOG_GENERAL = { id: "misc", name: "المنزل والمنوعات" };
 // المالك قرر: الأقسام الثانوية كلها قسم واحد في الموقع. القواعد تبقى (تمنع الأكل يضيع في المنوعات)، والنتيجة تنضم للمنوعات
 var CATALOG_MERGE = { kitchen: "misc", stationery: "misc", bbq: "misc", toys: "misc", pets: "misc" };
 function catalogOut(id){ return CATALOG_MERGE[id] || id; }
+// الأقسام الفرعية اللي تطلع داخل «المنزل والمنوعات» (كل منتج ثانوي ياخذ sub = تصنيفه الأصلي)
+var CATALOG_SUBS = [{ id: "kitchen", name: "أدوات المطبخ والمنزل", name_en: "Kitchen & home" }, { id: "toys", name: "الألعاب والهدايا", name_en: "Toys & gifts" }, { id: "stationery", name: "القرطاسية", name_en: "Stationery" }, { id: "bbq", name: "الشواء والرحلات", name_en: "BBQ & outdoor" }, { id: "pets", name: "الحيوانات الأليفة", name_en: "Pets" }];
 var catalogRx = CATALOG_RULES.map(function(r){ return { id: r[0], name: r[1], strong: new RegExp(r[2]), weak: r[3] ? new RegExp(r[3]) : null }; });
 function catalogCatInfo(name){
   var s = " " + String(name || "").replace(/[إأآ]/g, "ا").replace(/\s+/g, " ").trim() + " ", best = null, at = 1e9, i, k;
@@ -164,7 +166,7 @@ function catalogPlan(rows, products, opts){
   var noPrice = pick.filter(function(x){ return !(x.price > 0); });
   var perCat = {}; pick.forEach(function(x){ var o = catalogOut(x.catId); perCat[o] = (perCat[o] || 0) + 1; });
   var needCats = [];
-  Object.keys(perCat).forEach(function(id){ if (!cats.some(function(ct){ return ct.id === id; })) { var rr = CATALOG_RULES.filter(function(q){ return q[0] === id; })[0]; needCats.push({ id: id, name: rr ? rr[1] : CATALOG_GENERAL.name }); } });
+  Object.keys(perCat).forEach(function(id){ if (!cats.some(function(ct){ return ct.id === id; })) { var rr = CATALOG_RULES.filter(function(q){ return q[0] === id; })[0]; needCats.push(id === CATALOG_GENERAL.id ? { id: id, name: CATALOG_GENERAL.name, subs: CATALOG_SUBS.slice() } : { id: id, name: rr ? rr[1] : CATALOG_GENERAL.name }); } });
   return { must: mustHit, mustPicked: forced.length, rows: rows.length, eligible: uniq.length, skipped: skip, pick: pick, noPrice: noPrice.length, update: update, perCat: perCat, needCats: needCats, room: room, limit: limit };
 }
 // يطبّق الخطة على نسخة المنتجات: يرجع المنتجات الجديدة، وتغييرات المخزون والتكلفة (تنحفظ بالقاعدة السرية مو بالملف العام)
@@ -178,8 +180,9 @@ function catalogApply(plan, products){
   plan.pick.forEach(function(x){
     if (!(x.price > 0)) return;
     var p = { id: catalogId(x.code), name: x.name, unit: catalogUnit(x.unit), price: x.price, cat: catalogOut(x.catId), img: "", stock: true, bc: x.code };
+    if (CATALOG_MERGE[x.catId]) p.sub = x.catId;
     added.push(p); stock[p.id] = Math.floor(x.qty); if (x.cost > 0) costs[p.id] = Math.round(x.cost * 100) / 100;
   });
   return { added: added, stock: stock, costs: costs, priced: priced };
 }
-if (typeof module !== "undefined") module.exports = { CATALOG_RULES: CATALOG_RULES, CATALOG_GENERAL: CATALOG_GENERAL, catalogCat: catalogCat, catalogCatInfo: catalogCatInfo, catalogOut: catalogOut, CATALOG_MERGE: CATALOG_MERGE, catalogRows: catalogRows, catalogPlan: catalogPlan, catalogApply: catalogApply, catalogUnit: catalogUnit, catalogNorm: catalogNorm };
+if (typeof module !== "undefined") module.exports = { CATALOG_RULES: CATALOG_RULES, CATALOG_GENERAL: CATALOG_GENERAL, catalogCat: catalogCat, catalogCatInfo: catalogCatInfo, catalogOut: catalogOut, CATALOG_MERGE: CATALOG_MERGE, CATALOG_SUBS: CATALOG_SUBS, catalogRows: catalogRows, catalogPlan: catalogPlan, catalogApply: catalogApply, catalogUnit: catalogUnit, catalogNorm: catalogNorm };

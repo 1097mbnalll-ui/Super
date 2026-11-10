@@ -122,5 +122,8 @@ pl = C.catalogPlan([mk('6281000007001', 'لعبة مسدس ماء', 9, 5), mk('6
 const apM = C.catalogApply(pl, []);
 ok(apM.added.filter((p) => p.cat === 'misc').length === 5 && apM.added.find((p) => p.name.startsWith('شيبس')).cat === 'sweets', 'الثانوية كلها تنضاف للمنوعات، والأكل يبقى بقسمه');
 ok(!pl.needCats.length && Object.keys(pl.perCat).every((c) => ['misc', 'sweets'].includes(c)), 'ما ينطلب قسم جديد للثانوية: ' + JSON.stringify(pl.perCat));
+ok(apM.added.find((p) => p.name === 'لعبة مسدس ماء').sub === 'toys' && apM.added.find((p) => p.name === 'فحم الطيب صغير').sub === 'bbq' && !apM.added.find((p) => p.name.startsWith('شيبس')).sub, 'الثانوي ياخذ قسمه الفرعي، والرئيسي بدون');
+const plN = C.catalogPlan([mk('6281000007010', 'دفتر رسم', 9, 5)], [], { limit: 100, cats: [] });
+ok(plN.needCats.length === 1 && plN.needCats[0].id === 'misc' && plN.needCats[0].subs.length === 5, 'قسم المنوعات الجديد ينضاف مع أقسامه الفرعية');
 
 console.log(fails ? '\n' + fails + ' فحص فشل' : '\nكل الفحوص نجحت'); process.exit(fails ? 1 : 0);
