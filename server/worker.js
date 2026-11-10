@@ -95,7 +95,7 @@ export default {
       let data;
       try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
       const priced = priceOrder(data, body);
-      if (priced.error) return reply(400, { ok: false, code: priced.error, id: priced.id, max: priced.max });
+      if (priced.error) return reply(400, { ok: false, code: priced.error, id: priced.id, max: priced.max, min: priced.min });
       // منطقة التوصيل: لو المحل حدد أقصى مسافة
       const S0 = data.store || {}, shop = Array.isArray(S0.shop) && S0.shop.length === 2 ? S0.shop.map(Number) : null, maxKm = Number(S0.maxKm) || 0;
       const zone = zoneOf(S0), hasLoc = isFinite(Number(body.lat)) && isFinite(Number(body.lng)) && body.lat !== null && body.lng !== null && body.lat !== "" && body.lng !== "";
@@ -1131,7 +1131,7 @@ async function editOrder(env, data, body, who) {
   for (const x of Array.isArray(body.lines) ? body.lines.slice(0, 200) : []) {
     const id = String(x.id || ""), q = Math.floor(Number(x.qty)), pr = Number(x.price);
     const p = byId[id] || oldBy[id];
-    if (!p || !(q > 0 && q <= 500) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
+    if (!p || !(q > 0 && q <= (p.print || oldBy[id] ? 5000 : 500)) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
     lines.push({ id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined });
   }
   if (!lines.length) return { error: "empty" };
@@ -1212,11 +1212,12 @@ function priceOrder(data, body) {
   const bund = {};
   for (const [key, rawQty] of Object.entries(items)) {
     let qty = Math.floor(Number(rawQty));
-    if (!(qty > 0 && qty <= 200)) continue;
+    if (!(qty > 0 && qty <= 5000)) continue;   // الطباعة بالصفحة: ١٢٠ صفحة × ٣ نسخ = ٣٦٠ سطر واحد؛ الباقي أقصاه ٢٠٠ (تحت)
     const parts = String(key).split(":");
     if (!(parts.length === 1 || (parts.length === 2 && ['r','t','d'].includes(parts[0])) || (parts.length === 3 && parts[0] === 'x'))) return {error:'bad_items'};
     // باقة: x:<رقم البنر>:<المنتج>. سعرها من بيانات المتجر، مو من الجوال
     if (parts[0] === "x" && parts.length === 3) {
+      if (qty > 200) continue;
       const ban = (S.bans || []).find((b) => b.id === parts[1]), bp = byId[parts[2]];
       if (!bp || !bp.stock) return { error: "unavailable", id: key };
       const al = ban && bundleAlloc(ban, byId);
@@ -1227,6 +1228,7 @@ function priceOrder(data, body) {
     const kind = parts.length > 1 ? parts[0] : "r";
     const p = byId[parts.length > 1 ? parts[1] : parts[0]];
     if (!p || !p.stock) return { error: "unavailable", id: key };
+    if (qty > (p.print ? 5000 : 200)) continue;
     if (kind === "t") {
       if (!daily || daily.id !== p.id) { lines.push({ p, qty, price: Number(p.price), tag: "" }); base += qty * p.price; count += qty; continue; }
       const lim = Number(DAILY.limit || 0);
@@ -1260,7 +1262,9 @@ function priceOrder(data, body) {
   }
   if (!count) return { error: "empty" };
   if (S.closed) return { error: "closed" };
-  if (Number(S.minOrder) > 0 && base + dealSum < Number(S.minOrder)) return { error: "min_order", min: Number(S.minOrder) };
+  const onlyPrint = lines.length > 0 && lines.every((l) => l.p.print), PR = S.print && typeof S.print === "object" ? S.print : null;
+  const minOrder = onlyPrint && PR && PR.minOrder != null ? Number(PR.minOrder) || 0 : Number(S.minOrder) || 0;
+  if (minOrder > 0 && base + dealSum < minOrder) return { error: "min_order", min: minOrder };
   const subtotal = round2(base + dealSum);
   const fee = S.freeOver && subtotal >= S.freeOver ? 0 : Number(S.fee || 0);
   return { lines, subtotal, fee, total: round2(subtotal + fee), count, phone };

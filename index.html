@@ -1290,6 +1290,12 @@ body[data-screen="driver"]{background:#F3F4F6}
 .kq-cat .tile{width:100%;aspect-ratio:1/1;max-width:100%;border-radius:18px;background:linear-gradient(180deg,#F6FAFC 0%,#F6FAFC 55%,var(--sky) 100%);border:1px solid #EEF2F5;display:grid;place-items:center;overflow:hidden}
 .kq-cat .tile img{width:76%;height:76%;object-fit:contain}
 .kq-cat .tile img[src^="cat/"]{width:100%;height:100%;object-fit:cover}
+.print-box{display:grid;gap:14px;margin-top:16px;padding-bottom:24px}.pr-lead{margin:0;color:var(--muted);font-size:13.5px;line-height:1.6}
+.pr-types{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pr-type{display:grid;gap:4px;justify-items:center;padding:16px 8px;border-radius:18px;border:1.5px solid #E6EAEE;background:#fff;font:inherit;color:var(--ink);cursor:pointer}.pr-type b{font-size:15px}.pr-type span{font-size:12.5px;color:var(--muted)}.pr-type[aria-pressed="true"]{border-color:var(--teal);background:#EAF6F4}
+.pr-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:700}.pr-seg{display:inline-flex;background:#F1F4F6;border-radius:999px;padding:3px}.pr-seg button{border:0;background:transparent;border-radius:999px;padding:7px 16px;font:inherit;font-weight:700;color:var(--ink);cursor:pointer}.pr-seg button[aria-pressed="true"]{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.pr-sum{background:#F7FAFB;border:1px dashed #CFE3E0;border-radius:16px;padding:14px;text-align:center;font-size:15px}.pr-sum b{font-size:19px}.pr-sum small{color:var(--muted)}
+.pr-cart{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#EAF6F4;border-radius:16px;padding:10px 14px;font-size:13px}.pr-steps{margin:0;padding:0 18px;color:var(--muted);font-size:13px;line-height:1.9}
+.pr-acts{display:flex;align-items:center;gap:8px}.pr-acts .btn{padding:6px 12px;font-size:12.5px}.pr-wa{display:grid;gap:8px}.pr-wa p{margin:0;color:inherit;opacity:.85;font-size:13.5px}
 .kq-recent{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .kq-rchip{flex:none;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px 0 6px;border-radius:12px;border:1px solid #E6EAEE;background:#fff;font:inherit;font-size:12.5px;color:var(--ink);cursor:pointer}
 .kq-rchip img{width:26px;height:26px;object-fit:contain;border-radius:7px;background:#F5F6F8}
@@ -1526,7 +1532,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   /* ---------- cart ---------- */
   var cart = {}; try { cart = JSON.parse(localStorage.getItem("ohod-cart") || "{}") || {}; } catch(e) { cart = {}; }
   function saveCart(){ try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} }
+  // البيانات المدمجة بالصفحة قديمة (ما فيها أغلب المنتجات): ما ننظّف السلة المحفوظة إلا بعد ما ينحمّل data.json الحقيقي، وإلا الزبون يفقد سلته كل ما يفتح الموقع
+  var dataReady = !GH;
   function normalize(){
+    if (!dataReady) return;
     // الباقة لازم تكون كاملة وبنفس العدد من كل منتج، وإلا تنشال
     var bq = {}; Object.keys(cart).forEach(function(k){ var x = k.split(":"); if (x[0] === "x") (bq[x[1]] = bq[x[1]] || []).push(k); });
     Object.keys(bq).forEach(function(bid){ var al = bundleAlloc(banOf(bid)), keys = bq[bid], qs = keys.map(function(k){ return cart[k]; });
@@ -1542,7 +1551,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function totals(){
     normalize();
     var n = 0, base = 0, dn = 0, dsum = 0;
-    Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (!L || !avail(L.p)) { delete cart[k]; return; }
+    Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (!L || !avail(L.p)) { if (dataReady) delete cart[k]; return; }
       if (L.kind === "d") { dn += cart[k]; dsum += cart[k] * L.price; } else { n += cart[k]; base += cart[k] * L.price; } });
     var min = dealOn() ? Number(DEAL.min || 0) : 0, unlocked = dealOn() && base >= min;
     var s = base + (unlocked ? dsum : 0), cnt = n + (unlocked ? dn : 0);
@@ -1803,8 +1812,55 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div>' +
       (D.products.some(function(p){ return avail(p) && onSale(p); }) ? '<div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + D.products.filter(function(p){ return avail(p) && onSale(p); }).map(function(p){ return card(p); }).join("") + '</div>' : '') + '</div>';
   }
+
+  /* ---------- قسم الطباعة: حاسبة (نوع، صفحات، نسخ) تضيف للسلة، والملف يوصل واتساب برقم الطلب ---------- */
+  var PRID = { bw: "print_bw", color: "print_color" }, PR = { type: "bw", pages: "", copies: 1, sides: "1" };
+  var printJobs = {}; try { printJobs = JSON.parse(localStorage.getItem("ohod-print-jobs") || "{}") || {}; } catch(e){ printJobs = {}; }
+  function savePrintJobs(){ try { localStorage.setItem("ohod-print-jobs", JSON.stringify(printJobs)); } catch(e){} }
+  function printProd(t){ return byId(PRID[t]); }
+  function printOK(){ var a = printProd("bw"), b = printProd("color"); return !!(a && b && a.print && b.print); }
+  function printQty(){ var pg = Math.floor(Number(asciiDigits(PR.pages))) || 0, cp = Math.max(1, Math.floor(Number(PR.copies)) || 1); return { pages: pg, copies: cp, qty: pg * cp }; }
+  function printSumHTML(){ var q = printQty(), p = printProd(PR.type); if (!p || !q.qty) return tr("اكتب عدد صفحات الملف وبيطلع لك السعر", "Enter the number of pages to see the price");
+    return tr("المجموع: ", "Total: ") + '<b>' + rial(Math.round(Number(p.price) * q.qty * 100) / 100) + '</b> <small>(' + q.pages + tr(" صفحة × ", " pages × ") + q.copies + tr(" نسخة", " copies") + ')</small>'; }
+  function printNote(){ var out = []; ["bw", "color"].forEach(function(t){ var p = printProd(t), qty = p ? cart[p.id] : 0; if (!qty) return; var j = printJobs[t];
+      out.push("🖨️ طباعة " + (t === "bw" ? "أبيض وأسود" : "ألوان") + ": " + (j && j.pages * j.copies === qty ? j.pages + " صفحة × " + j.copies + " نسخة" + (j.sides === "2" ? " (وجهين)" : "") : qty + " صفحة")); }); return out.join("\n"); }
+  function minOrderNow(){ var ks = Object.keys(cart), only = ks.length > 0 && ks.every(function(k){ var L = lineOf(k); return L && L.p && L.p.print; });
+    return only && S.print && S.print.minOrder != null ? Number(S.print.minOrder) || 0 : Number(S.minOrder) || 0; }
+  function printSync(){
+    Array.prototype.forEach.call(document.querySelectorAll("[data-ptype]"), function(b){ b.setAttribute("aria-pressed", b.dataset.ptype === PR.type); });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-psides]"), function(b){ b.setAttribute("aria-pressed", b.dataset.psides === PR.sides); });
+    var c = $("prCopies"); if (c) c.textContent = PR.copies; var sm = $("prSum"); if (sm) sm.innerHTML = printSumHTML();
+  }
+  function printAdd(){
+    var q = printQty(), p = printProd(PR.type);
+    if (!p || !avail(p)) { sToast(tr("الطباعة مو متاحة الحين", "Printing is not available right now")); return; }
+    if (!q.pages) { sToast(tr("اكتب عدد صفحات الملف", "Enter the number of pages")); var i = $("prPages"); if (i) i.focus(); return; }
+    if (q.qty > 5000) { sToast(tr("الحد الأقصى ٥٠٠٠ صفحة في الطلب (الصفحات × النسخ)", "Maximum 5000 pages per order (pages × copies)")); return; }
+    cart[p.id] = q.qty; printJobs[PR.type] = { pages: q.pages, copies: q.copies, sides: PR.sides }; saveCart(); savePrintJobs();
+    sToast(tr("انضافت للسلة. كمّل الطلب وبعدها ارسل الملف على واتساب", "Added to cart. Check out, then send your file on WhatsApp")); refresh();
+  }
+  function printHTML(){
+    var pb = printProd("bw"), pc = printProd("color");
+    var typeBtn = function(t, label, p){ return '<button type="button" class="pr-type" data-ptype="' + t + '" aria-pressed="' + (PR.type === t) + '"><b>' + label + '</b><span>' + rial(p.price) + tr(" / صفحة", " / page") + '</span></button>'; };
+    var segBtn = function(v, label){ return '<button type="button" data-psides="' + v + '" aria-pressed="' + (PR.sides === v) + '">' + label + '</button>'; };
+    var inCart = ["bw", "color"].filter(function(t){ var p = printProd(t); return p && cart[p.id]; });
+    return '<div class="wrap print-box">' +
+      '<p class="pr-lead">' + tr("اختر نوع الطباعة وعدد الصفحات، وبعد ما تكمّل الطلب ترسل الملف على واتساب المحل برقم طلبك، ونطبعه ونوصّله لك.", "Choose the print type and number of pages. After you check out, send your file on the shop's WhatsApp with your order number and we print and deliver it.") + '</p>' +
+      '<div class="pr-types">' + typeBtn("bw", tr("أبيض وأسود", "Black & white"), pb) + typeBtn("color", tr("ألوان", "Color"), pc) + '</div>' +
+      '<label class="fld" for="prPages">' + tr("عدد صفحات الملف", "Pages in your file") + '<input id="prPages" type="text" inputmode="numeric" autocomplete="off" placeholder="' + tr("مثلاً 24", "e.g. 24") + '" value="' + esc(PR.pages) + '"></label>' +
+      '<div class="pr-row"><span>' + tr("عدد النسخ", "Copies") + '</span><span class="stepper"><button type="button" data-pcopies="-1" aria-label="' + tr("نقص", "Decrease") + '">' + ic("minus") + '</button><b id="prCopies">' + PR.copies + '</b><button type="button" class="plus" data-pcopies="1" aria-label="' + tr("زيادة", "Increase") + '">' + ic("plus") + '</button></span></div>' +
+      '<div class="pr-row"><span>' + tr("الطباعة", "Sides") + '</span><span class="pr-seg">' + segBtn("1", tr("وجه", "Single")) + segBtn("2", tr("وجهين", "Double")) + '</span></div>' +
+      '<div class="pr-sum" id="prSum">' + printSumHTML() + '</div>' +
+      '<button class="btn btn-teal" type="button" id="prAdd">' + tr("أضف للسلة", "Add to cart") + '</button>' +
+      (inCart.length ? '<div class="pr-cart"><span>' + tr("في سلتك: ", "In your cart: ") + inCart.map(function(t){ var p = printProd(t); return cart[p.id] + tr(" صفحة ", " pages ") + (t === "bw" ? tr("أبيض وأسود", "B&W") : tr("ألوان", "color")); }).join(" · ") + '</span><button type="button" class="btn btn-ghost" data-nav="cart">' + tr("افتح السلة", "Open cart") + '</button></div>' : '') +
+      '<ol class="pr-steps"><li>' + tr("أضف للسلة وكمّل الطلب (الدفع عند الاستلام)", "Add to cart and check out (pay on delivery)") + '</li><li>' + tr("بعد الطلب يطلع لك زر «أرسل الملف على واتساب»", "After ordering you get a “Send file on WhatsApp” button") + '</li><li>' + tr("نطبع ونوصّل لك بأسرع وقت", "We print and deliver as fast as we can") + '</li></ol></div>';
+  }
+  function printLineHTML(k, L, p, off){
+    return '<div class="line' + (off ? ' off' : '') + '"><span class="plate" style="background:' + tint(p.cat) + '">' + imgTag(catPhoto(catOf(p.cat) || {}), "") + '</span><span class="nm"><b>' + esc(nm(p)) + '</b><span>' + cart[k] + tr(" صفحة", " pages") + '</span><span class="price" style="font-size:14px">' + rial(L.price * cart[k]) + '</span></span>' +
+      '<span class="pr-acts"><button type="button" class="btn btn-ghost" data-opencat="print">' + tr("تعديل", "Edit") + '</button><button type="button" class="sq" data-pdel="' + esc(k) + '" aria-label="' + tr("حذف", "Remove") + '">' + ic("trash") + '</button></span></div>';
+  }
   function catHTML(){
-    var c = catOf(openCat) || D.cats[0], items = D.products.filter(function(p){ return p.cat === c.id; }).sort(function(a,b){ return avail(b) - avail(a); });
+    var c = catOf(openCat) || D.cats[0], items = D.products.filter(function(p){ return p.cat === c.id; }).sort(function(a,b){ return avail(b) - avail(a); }), isPrint = c.id === "print" && printOK();
     // أقسام فرعية (اختيارية): القسم فيه subs، وكل منتج فيه sub. اللي بدون sub (أو sub مو معروف) يروح «أخرى»
     var subs = Array.isArray(c.subs) ? c.subs : [], known = {}, subBar = "", shown = items;
     if (subs.length) {
@@ -1818,8 +1874,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
         (other ? chipB("_other", tr("أخرى", "Other"), other) : "") + '</div></div></div>';
     }
     return '<div class="aisle-head" style="background:' + tint(c.id) + '">' + imgTag(catPhoto(c), "") + tr('<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + tr('</button><button class="sq" type="button" data-nav="search" aria-label="بحث" style="background:rgba(255,255,255,.75)">', '</button><button class="sq" type="button" data-nav="search" aria-label="Search" style="background:rgba(255,255,255,.75)">') + ic("search") + '</button></div>' +
-      '<h1>' + esc(nm(c)) + '</h1><p>' + items.length + tr(' منتج · التوصيل ', ' products · delivery ') + esc(sv("eta") || "") + '</p></div></div>' +
-      subBar + '<div class="wrap" style="margin-top:' + (subBar ? 4 : 16) + 'px"><div class="grid">' + pagedCards(shown, "cat:" + c.id + (openSub ? "|" + openSub : "")).join("") + '</div></div>';
+      '<h1>' + esc(nm(c)) + '</h1><p>' + (isPrint ? tr("اطبع أوراقك وتوصلك", "Print your papers, delivered") : items.length + tr(' منتج · التوصيل ', ' products · delivery ') + esc(sv("eta") || "")) + '</p></div></div>' +
+      (isPrint ? printHTML() : subBar + '<div class="wrap" style="margin-top:' + (subBar ? 4 : 16) + 'px"><div class="grid">' + pagedCards(shown, "cat:" + c.id + (openSub ? "|" + openSub : "")).join("") + '</div></div>');
   }
   function productHTML(){
     var p = byId(openProd); if (!p) return catsHTML();
@@ -1889,11 +1945,12 @@ html.sp-on,html.sp-on body{overflow:hidden}
       if (L.kind === "x") { if (bseen[L.ban]) return ""; bseen[L.ban] = 1; var bb = banOf(L.ban), al = bundleAlloc(bb), bq2 = cart[k];
         return '<div class="line bund"><span class="plate bimgs">' + al.ids.slice(0, 3).map(function(id){ var bp = byId(id); return bp ? imgTag(bp.img, "") : ''; }).join("") + '</span><span class="nm"><b>' + esc((LANG === "en" && bb.title_en) || bb.title || tr("باقة", "Bundle")) + '<span class="ltag day">' + tr("باقة", "Bundle") + '</span></b><span>' + al.ids.map(function(id){ var bp = byId(id); return bp ? esc(nm(bp)) : ''; }).join(" + ") + '</span><span class="price sale" style="font-size:14px">' + rial(al.price * bq2) + ' <s style="color:var(--muted);font-weight:400;font-size:12px">' + rial(al.sum * bq2) + '</s></span></span>' +
           '<span class="stepper"><button type="button" data-bund="' + esc(L.ban) + '" data-bd="-1" aria-label="' + tr("نقص", "Decrease") + '">' + ic("minus") + '</button><b>' + bq2 + '</b><button type="button" data-bund="' + esc(L.ban) + '" data-bd="1" aria-label="' + tr("زيادة", "Increase") + '">' + ic("plus") + '</button></span></div>'; } var p = L.p, off = L.kind === "d" && !t.unlocked, full = L.limit && cart[k] >= L.limit;
+      if (p.print) return printLineHTML(k, L, p, off);
       var tag = L.kind === "d" ? tr('<span class="ltag deal">عرض ', '<span class="ltag deal">') + num(L.price) + '</span>' : L.kind === "t" ? tr('<span class="ltag day">عرض اليوم</span>', '<span class="ltag day">Deal of the day</span>') : '';
       return '<div class="line' + (off ? ' off' : '') + '"><span class="plate" style="background:' + tint(p.cat) + '">' + imgTag(p.img, "") + '</span><span class="nm"><b>' + esc(nm(p)) + tag + '</b><span>' + esc(un(p)) + '</span><span class="price' + (L.kind !== "r" ? ' sale' : '') + '" style="font-size:14px">' + (off ? tr('مقفول', 'Locked') : rial(L.price * cart[k])) + '</span></span>' +
         '<span class="stepper"><button type="button" data-act="dec" data-id="' + k + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button><b>' + cart[k] + '</b><button type="button" data-act="inc" data-id="' + k + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full || off ? ' disabled' : '') + '>' + ic("plus") + '</button></span></div>'; }).join("") + '</div>';
     h += tr('<div class="box totals"><div><span>المنتجات</span><span>', '<div class="box totals"><div><span>Items</span><span>') + rial(t.s) + tr('</span></div><div><span>التوصيل</span><span>', '</span></div><div><span>Delivery</span><span>') + (t.fee ? rial(t.fee) : tr("مجاني", "Free")) + tr('</span></div><div class="grand"><b>الإجمالي</b><span class="price">', '</span></div><div class="grand"><b>Total</b><span class="price">') + num(t.all) + tr(' <small>ر.س</small></span></div></div></div></div>', ' <small>SAR</small></span></div></div></div></div>');
-    var minO = Number(S.minOrder) || 0, short = minO && t.s < minO;
+    var minO = minOrderNow(), short = minO && t.s < minO;
     if (S.closed) h = h.replace('<div class="lines">', '<div class="alert">' + tr("المحل مقفل الحين، وما نستقبل طلبات. ", "The store is closed and not taking orders right now. ") + esc(sv("closedMsg") || "") + '</div><div class="lines">');
     else if (short) h = h.replace('<div class="lines">', '<div class="alert soft">' + tr("أقل مبلغ للطلب ", "Minimum order is ") + rial(minO) + tr("، باقي لك ", ", add ") + rial(minO - t.s) + tr("", " more") + '</div><div class="lines">');
     h += '<div class="bottomcta"><button class="btn btn-teal" type="button" data-nav="checkout"' + (t.n && !S.closed && !short ? '' : ' disabled') + tr('>كمّل الطلب', '>Continue to checkout') + ic("fwd") + '</button></div>';
@@ -1922,6 +1979,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     return '<div class="sent"><div class="wrap"><div class="ok"><div>' + ic("check") + tr('</div></div><h1>وصلنا طلبك!</h1>', '</div></div><h1>We got your order!</h1>') +
       (o.status === "delivered" ? tr('<p>وصل طلبك. بالعافية عليك!</p>', '<p>Your order has been delivered. Enjoy!</p>') : o.status === "onway" ? tr('<p>المندوب في الطريق لموقعك الحين.</p>', '<p>The driver is on the way to you now.</p>') : tr('<p>بنتصل عليك على <b dir="ltr" style="color:#fff">', '<p>We will call you at <b dir="ltr" style="color:#fff">') + esc(o.phone || "") + tr('</b> لو احتجنا،<br>والمندوب يجيك على الموقع اللي حددته.</p>', '</b> if needed,<br>and the driver will come to the location you picked.</p>')) +
       tr('<div class="card"><div class="r"><span>رقم الطلب</span><b dir="ltr">', '<div class="card"><div class="r"><span>Order number</span><b dir="ltr">') + esc(o.no || "") + '</b></div>' +
+      (o.printText && waNumber() && o.status !== "canceled" ? '<div class="card pr-wa"><b>' + tr("باقي خطوة: أرسل ملف الطباعة", "One more step: send your print file") + '</b><p>' + tr("أرسل الملف على واتساب المحل برقم طلبك ونبدأ نطبعه.", "Send the file on the shop's WhatsApp with your order number and we start printing.") + '</p><a class="btn btn-teal" target="_blank" rel="noopener" href="https://wa.me/' + waNumber() + '?text=' + encodeURIComponent("السلام عليكم، طلب طباعة رقم " + (o.no || "") + "\n" + o.printText + "\nالملف مرفق 👇") + '">' + tr("أرسل الملف على واتساب", "Send the file on WhatsApp") + '</a></div>' : '') +
       stepsHTML(o.status || "new") + subsHTML(o) + cancelHTML(o) +
       (o.status === "onway" && o.track && apiUrl() ? '<div class="trk"><div class="trk-map" id="trkMap"></div><div class="trk-info" id="trkInfo">' + trkInfo() + '</div></div>' : '') +
       (o.track && apiUrl() && o.status !== "delivered" && o.status !== "canceled" ? (o.push ? '<div class="r push-on">' + ic("bell") + '<span>' + tr("بيوصلك إشعار مع كل تغيير في حالة طلبك", "You will get a notification for every status change") + '</span></div>' :
@@ -2115,7 +2173,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var far0 = tooFar(form.lat, form.lng); if (far0) { sendErr(farMsg(far0)); return; }
     if (!S.api) { sendErr(tr("استقبال الطلبات الأوتوماتيكي لسا ما تفعّل.", "Automatic order receiving is not set up yet."), true); return; }
     var items = {}; Object.keys(cart).forEach(function(k){ items[k] = cart[k]; });
-    var payload={items:items,phone:phone,name:form.name,details:form.details,note:form.note,pay:form.pay,sub:form.sub||'call',lat:form.lat,lng:form.lng,walletAmount:walletCustomer?walletUseAmount:0};
+    var pnote = printNote(), fullNote = pnote ? pnote + (form.note ? "\n" + form.note : "") : form.note;
+    var payload={items:items,phone:phone,name:form.name,details:form.details,note:fullNote,pay:form.pay,sub:form.sub||'call',lat:form.lat,lng:form.lng,walletAmount:walletCustomer?walletUseAmount:0};
     var signature=JSON.stringify(payload);
     if(checkoutAttempt&&checkoutAttempt.signature!==signature){
       if(!confirm('عندك طلب سابق ما تأكدت نتيجته. بنعيد تأكيد نفس الطلب السابق أولًا قبل إرسال أي طلب جديد. تبي تكمل؟'))return;
@@ -2129,7 +2188,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       .then(function(j){
         btn.disabled = false; btn.firstChild.textContent = tr("أرسل الطلب", "Place order");
         if (j.ok) {
-          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast();
+          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, printText: pnote, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast();
           if (j.track && PUSH_PREF && pushOn()) orderPush(null);
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
@@ -2186,6 +2245,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ((t = e.target.closest("[data-nav]"))) { show(t.dataset.nav); return; }
     if ((t = e.target.closest("[data-opencat]"))) { openCat = t.dataset.opencat; openSub = ""; show("cat"); return; }
     // الأقسام الفرعية داخل القسم (مثل «المنزل والمنوعات»): نفس الصفحة، بس نفلتر المنتجات
+    if ((t = e.target.closest("[data-ptype]"))) { PR.type = t.dataset.ptype; printSync(); return; }
+    if ((t = e.target.closest("[data-pcopies]"))) { PR.copies = Math.max(1, Math.min(100, (Number(PR.copies) || 1) + Number(t.dataset.pcopies))); printSync(); return; }
+    if ((t = e.target.closest("[data-psides]"))) { PR.sides = t.dataset.psides; printSync(); return; }
+    if (e.target.closest("#prAdd")) { printAdd(); return; }
+    if ((t = e.target.closest("[data-pdel]"))) { delete cart[t.dataset.pdel]; saveCart(); refresh(); return; }
     if ((t = e.target.closest("[data-catsub]"))) { openSub = t.dataset.catsub; refresh(); var onS = document.querySelector('[data-catsub][aria-pressed="true"]'); if (onS && onS.scrollIntoView) onS.scrollIntoView({ inline: "center", block: "nearest" }); return; }
     if ((t = e.target.closest("[data-sub]"))) { form.sub = t.dataset.sub; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-sub]"), function(b){ b.setAttribute("aria-pressed", b.dataset.sub === form.sub); }); return; }
     if ((t = e.target.closest("[data-pay]"))) { form.pay = t.dataset.pay; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-pay]"), function(b){ b.setAttribute("aria-pressed", b.dataset.pay === form.pay); }); return; }
@@ -3221,7 +3285,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     for (var i = 0; i < draft.products.length && out.length < 24; i++) { var p = draft.products[i], h = normAr(p.name + " " + (p.bc || "")); if (ids.indexOf(p.id) < 0 && words.every(function(w){ return h.indexOf(w) > -1; })) out.push(p); }
     box.innerHTML = out.length ? out.map(function(p){ return '<button type="button" class="chip" data-dealtoggle="' + p.id + '" aria-pressed="false">' + imgTag(p.img, "") + esc(p.name) + '</button>'; }).join("") : '<span class="hint">ما فيه منتج بهالاسم.</span>';
   }
-  document.addEventListener("input", function(e){ if (e.target.id === "dealQ") { dealQ = e.target.value; dealResults(); } });
+  document.addEventListener("input", function(e){ if (e.target.id === "dealQ") { dealQ = e.target.value; dealResults(); } if (e.target.id === "prPages") { PR.pages = asciiDigits(e.target.value).replace(/\D/g, "").slice(0, 5); var sm = $("prSum"); if (sm) sm.innerHTML = printSumHTML(); } });
   function renderPromos(){
     var st = draft.store;
     st.deal95 = st.deal95 || { on: false, min: 250, price: 0.95, limit: 1, ids: [] };
@@ -4695,8 +4759,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // نقاط البيع في المحل انشالت (البيع في المحل على برنامج الكاشير حق المحل): الرابط القديم يفتح المتجر
   if (location.hash === "#pos") { try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
   if (GH) fetch("data.json?v=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
+    dataReady = true;
     if (nd && nd.store && nd.products && nd.imgs) { var hadApi = !!apiUrl(); applyData(nd); if (!hadApi) loadStock(); if (mode === "store" && screen !== "checkout") refresh(); }
-  }).catch(function(){});
+  }).catch(function(){ dataReady = true; });
   if (window.claude && claude.use) {
     claude.use("user").then(function(u){ return u ? u.canEdit() : false; }).then(function(ok){
       canEdit = !!ok; if (canEdit && startAdmin) go("admin");
