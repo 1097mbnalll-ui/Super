@@ -1421,10 +1421,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var src = function(k){ return D.imgs[k] || D.imgs.e1f6d2; };
   var isPhoto = function(k){ return /^u/.test(k); };
   // صور الأقسام ملفات منفصلة في مجلد cat/ (مو داخل data.json)، فما تثقّل الملف ولا تنحمّل إلا لما تنعرض
-  var isPath = function(k){ return /^cat\/[\w-]+\.(?:webp|png|jpg)$/.test(k || ""); };
+  var isPath = function(k){ return /^(?:cat|p)\/[\w-]+\.(?:webp|png|jpg)$/.test(k || ""); };
+  // صورة المنتج: ملف منفصل في p/ (الجديد، ما يثقّل data.json) أو صورة مدمجة قديمة في D.imgs
+  var hasPic = function(k){ return isPath(k) || (isPhoto(k) && !!D.imgs[k]); };
+  var picSrc = function(k){ return isPath(k) ? k : D.imgs[k]; };
   var imgTag = function(k, alt){ if (isPath(k)) return '<img src="' + esc(k) + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy" decoding="async">'; return isPhoto(k) && D.imgs[k] ? '<img src="' + D.imgs[k] + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy">' : '<span class="noimg" role="img" aria-label="' + esc(alt||"") + '"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>'; };
-  function catPhoto(c){ if (isPath(c.img)) return c.img; for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if (p.cat === c.id && avail(p) && isPhoto(p.img) && D.imgs[p.img]) return p.img; } return isPhoto(c.img) ? c.img : ""; }
-  function photosOf(list){ return list.map(function(p){ return p.img; }).filter(function(k){ return isPhoto(k) && D.imgs[k]; }); }
+  function catPhoto(c){ if (isPath(c.img)) return c.img; for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if (p.cat === c.id && avail(p) && hasPic(p.img)) return p.img; } return isPhoto(c.img) ? c.img : ""; }
+  function photosOf(list){ return list.map(function(p){ return p.img; }).filter(function(k){ return hasPic(k); }); }
   var IC = {
     bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
     chart:'<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
@@ -1582,7 +1585,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (p.badge ? '<span class="kq-badge fresh">' + esc(bd(p)) + '</span>' : '');
     var lf = left(p), low = avail(p) && lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '';
     // المنتج بدون صورة: بطاقة نصية بلون القسم بدل أيقونة الكيس، عشان الصفحة ما تبين فاضية
-    var pic = isPhoto(p.img) && D.imgs[p.img] ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
+    var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
     return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + badge + low + control(p, kind || "") + '</div>' +
       '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '') + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
       '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + '</span></article>';
@@ -1700,8 +1703,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     alloc[ps[ps.length - 1].id] = Math.round((bp - acc) * 100) / 100;
     return { ids: ids, alloc: alloc, sum: sum, price: bp };
   }
-  function kbImg(id, cls){ var p = byId(id); if (!p || !isPhoto(p.img) || !D.imgs[p.img]) return ''; var c = CUT[p.img];
-    return '<img class="kb-p ' + cls + (c && c.boxed ? ' boxed' : '') + '" src="' + (c ? c.src : D.imgs[p.img]) + '" data-cut="' + esc(p.img) + '" alt="' + esc(nm(p)) + '">'; }
+  function kbImg(id, cls){ var p = byId(id); if (!p || !hasPic(p.img)) return ''; var c = CUT[p.img];
+    return '<img class="kb-p ' + cls + (c && c.boxed ? ' boxed' : '') + '" src="' + (c ? c.src : picSrc(p.img)) + '" data-cut="' + esc(p.img) + '" alt="' + esc(nm(p)) + '">'; }
   function banHTML(id, M, o){
     o = o || {};
     var txt = function(k){ var v = (LANG === "en" && o[k + "_en"]) || o[k]; return v ? esc(v) : (M[k] || ""); };
@@ -1710,7 +1713,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (style === "bundle" && !M.bundle) style = "shelf";
     var cls = "kq-ban kb s-" + style + (o.dark ? " dk" : "") + (full ? " img" : "");
     var st = o.color ? ' style="--bc:' + esc(o.color) + (o.color2 ? ';--bc2:' + esc(o.color2) : '') + '"' : '';
-    var n = o.picsN == null ? 3 : Number(o.picsN), ids = (M.ids || []).filter(function(x){ var p = byId(x); return p && isPhoto(p.img) && D.imgs[p.img]; }).slice(0, n);
+    var n = o.picsN == null ? 3 : Number(o.picsN), ids = (M.ids || []).filter(function(x){ var p = byId(x); return p && hasPic(p.img); }).slice(0, n);
     var go = o.noGo ? '' : '<span class="go">' + txt("go") + '</span>';
     var head = (txt("k") ? '<span class="k">' + txt("k") + '</span>' : '') + '<h2>' + txt("title") + '</h2>';
     var body = '';
@@ -1733,7 +1736,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var CUT = {}, CUTQ = {};
   function cutImg(key){
     if (CUT[key] || CUTQ[key]) return CUTQ[key] || Promise.resolve(CUT[key]);
-    var SRC = D.imgs[key];
+    var SRC = picSrc(key);
     CUTQ[key] = new Promise(function(res){ var im = new Image(); im.onload = function(){ try {
       var w = im.naturalWidth, h = im.naturalHeight, c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(im, 0, 0);
       var d = x.getImageData(0, 0, w, h), p = d.data, seen = new Uint8Array(w * h), st = [], cleared = 0;
@@ -1777,7 +1780,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (deals.length) B.deals = banHTML("deals", { tag: "button", style: "split", act: 'data-chip="deals"', k: t.unlocked ? tr("انفتحت لك!", "Unlocked!") : tr("مكافأة السلة الكبيرة", "Big-basket reward"), title: tr("منتجات بسعر رمزي", "Items at a token price"),
       sub: t.unlocked ? tr("ضيف اللي تبغاه", "Add what you like") : tr("تنفتح لطلبك فوق ", "Unlocks over ") + rial(DEAL.min), go: tr("شوف المنتجات", "See items"), ids: pk("deals", idsOf(deals)), price: num(DEAL.price) }, E.deals);
     if (bakery) B.bakery = banHTML("bakery", { tag: "button", style: "shelf", act: 'data-opencat="' + bakery.id + '"', k: tr("من فرن ", "From the oven of ") + esc(sv("name")), title: tr("الخبز طالع<br>من الفرن", "Fresh bread<br>from the oven"),
-      go: tr("اطلبه حار", "Order it hot"), ids: pk("bakery", idsOf(D.products.filter(function(p){ return p.cat === bakery.id && avail(p) && isPhoto(p.img) && D.imgs[p.img]; }))), chip: tr("يوصلك حار", "Arrives hot") }, E.bakery);
+      go: tr("اطلبه حار", "Order it hot"), ids: pk("bakery", idsOf(D.products.filter(function(p){ return p.cat === bakery.id && avail(p) && hasPic(p.img); }))), chip: tr("يوصلك حار", "Arrives hot") }, E.bakery);
     if (offers.length) B.offers = banHTML("offers", { tag: "button", style: "glass", act: 'data-chip="offers"', k: tr("عروض الأسبوع", "Weekly offers"), title: tr("خصومات على<br>", "Discounts on<br>") + num(offers.length) + tr(" منتج", " items"),
       go: tr("تسوّق العروض", "Shop offers"), ids: pk("offers", idsOf(offers)), chip: '<small>' + tr("خصم لين", "Up to") + '</small><b>' + num(maxOff) + tr("٪", "% off") + '</b>' }, E.offers);
     var list = orderOf(S.promos, promoDefs()).filter(function(x){ return x.on && B[x.id]; }).map(function(x){ return B[x.id]; });
@@ -2434,7 +2437,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function savePick(){ var ks = Object.keys(PICK); if (ks.length > 40) ks.slice(0, ks.length - 40).forEach(function(k){ delete PICK[k]; }); try { localStorage.setItem("ohod-pick", JSON.stringify(PICK)); } catch(e){} }
   function picked(no){ return PICK[no] || (PICK[no] = {}); }
   function dOrder(no){ for (var i = 0; i < drv.orders.length; i++) if (drv.orders[i].no === no) return drv.orders[i]; return null; }
-  function dImg(id, cls, alt){ var p = byId(id); return p && isPhoto(p.img) && D.imgs[p.img] ? '<img class="' + cls + '" src="' + D.imgs[p.img] + '" alt="' + esc(alt || "") + '">' : '<span class="' + cls + ' noph">' + ic("box") + '</span>'; }
+  function dImg(id, cls, alt){ var p = byId(id); return p && hasPic(p.img) ? '<img class="' + cls + '" src="' + esc(picSrc(p.img)) + '" alt="' + esc(alt || "") + '">' : '<span class="' + cls + ' noph">' + ic("box") + '</span>'; }
   function dLoc(id){ var p = byId(id), c = p && catOf(p.cat); return (p && p.loc) || (c && c.loc) || (c ? nm(c) : tr("أخرى", "Other")); }
   function dZone(id){ var p = byId(id), c = p && catOf(p.cat); return (c && c.loc) || (p && p.loc) || (c ? nm(c) : tr("أخرى", "Other")); }
   function dChecks(p){ return String((p && p.checks) || "").split(/\n|،|,/).map(function(x){ return x.trim(); }).filter(Boolean); }
@@ -2574,7 +2577,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var p = byId(id); if (!p) return [];
     var inOrder = {}; (o.lines || []).forEach(function(l){ inOrder[l.id] = 1; });
     return D.products.filter(function(x){ return x.cat === p.cat && x.id !== id && !inOrder[x.id] && avail(x); })
-      .sort(function(a, b){ return ((isPhoto(b.img) && D.imgs[b.img]) ? 1 : 0) - ((isPhoto(a.img) && D.imgs[a.img]) ? 1 : 0) || Math.abs(a.price - p.price) - Math.abs(b.price - p.price); }).slice(0, 3);
+      .sort(function(a, b){ return (hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0) || Math.abs(a.price - p.price) - Math.abs(b.price - p.price); }).slice(0, 3);
   }
   function dvMissing(){
     var o = dOrder(drv.no), l = o && (o.lines || []).filter(function(x){ return x.id === drv.miss; })[0]; if (!l) return '';
@@ -4406,7 +4409,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (mode !== "admin" || !draft) return;
     var t;
     if ((t = e.target.closest("[data-sgp]"))) { var p = dById(t.dataset.sgp); if (!p) return; sg.pid = p.id; sg.name = p.name; sg.unit = p.unit || "";
-      var onS = p.old && p.old > p.price; sg.price = String(p.price); sg.old = onS ? String(p.old) : ""; sg.img = isPhoto(p.img) && draft.imgs[p.img] ? draft.imgs[p.img] : ""; sg.q = ""; renderSign(); return; }
+      var onS = p.old && p.old > p.price; sg.price = String(p.price); sg.old = onS ? String(p.old) : ""; sg.img = isPath(p.img) ? p.img : isPhoto(p.img) && draft.imgs[p.img] ? draft.imgs[p.img] : ""; sg.q = ""; renderSign(); return; }
     if ((t = e.target.closest("[data-sgt]"))) { sg.tpl = t.dataset.sgt; renderSign(); return; }
     if ((t = e.target.closest("[data-sgs]"))) { sg.paper = t.dataset.sgs; renderSign(); return; }
   });
