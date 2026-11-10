@@ -1376,7 +1376,7 @@ function validate(d) {
   if (!d.store || typeof d.store !== "object") return "store";
   if (!Array.isArray(d.cats) || !Array.isArray(d.products)) return "lists";
   if (!d.imgs || typeof d.imgs !== "object" || !d.imgs.logo) return "imgs";
-  if (d.products.length > 5000 || d.cats.length > 200) return "too many";
+  if (d.products.length > 12000 || d.cats.length > 200) return "too many";
   for (const p of d.products) {
     if (!p || typeof p.id !== "string" || typeof p.name !== "string" || !(Number(p.price) >= 0)) return "product";
   }
@@ -1468,7 +1468,7 @@ async function setStock(env, map) {
   await ensureSchema(env);
   stockCache = { at: 0, body: "" };
   const st = [], put = {};
-  for (const [id, v] of Object.entries(map).slice(0, 5000)) {
+  for (const [id, v] of Object.entries(map).slice(0, 12000)) {
     if (v === null || v === "") st.push(env.DB.prepare("DELETE FROM stock WHERE id = ?").bind(String(id)));
     else {
       const q = Math.floor(Number(v));
@@ -1792,7 +1792,7 @@ async function readCosts(env) {
 async function setCosts(env, map) {
   await ensureSchema(env);
   const st = [], put = {};
-  for (const [id, v] of Object.entries(map).slice(0, 5000)) {
+  for (const [id, v] of Object.entries(map).slice(0, 12000)) {
     if (v === null || v === "") st.push(env.DB.prepare("DELETE FROM pcost WHERE id = ?").bind(String(id)));
     else { const c = round2(Number(v)); if (c >= 0 && c < 1e6) put[String(id)] = c; }
   }
