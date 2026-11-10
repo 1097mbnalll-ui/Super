@@ -3129,7 +3129,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function loadScript(src){ return new Promise(function(ok, no){ var x = document.createElement("script"); x.src = src; x.onload = ok; x.onerror = no; document.head.appendChild(x); }); }
   function importLibs(){
     var a = window.XLSX ? Promise.resolve() : loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js").catch(function(){ return loadScript("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"); });
-    var b = window.catalogPlan ? Promise.resolve() : loadScript("tools/catalog.js?v=3");
+    var b = window.catalogPlan ? Promise.resolve() : loadScript("tools/catalog.js?v=4");
     return Promise.all([a, b]);
   }
   function impCatName(id){ var c = draft.cats.filter(function(x){ return x.id === id; })[0]; if (c) return c.name; var r = (window.CATALOG_RULES || []).filter(function(x){ return x[0] === id; })[0]; return r ? r[1] : "المنزل والمنوعات"; }
