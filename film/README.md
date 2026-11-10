@@ -8,6 +8,15 @@
 - `tools/capture.cjs`: يلتقط الشاشات بـPlaywright (زبون، مجهز، كاشير، مندوب، إدارة).
 - `tools/pack-shots.py`: يحوّل اللقطات الخام إلى webp.
 
+## النسخة البيعية (للبيع على محلات ثانية)
+
+ما فيها اسم متاجر أحد ولا شعاره. لقطاتها (`shots/n-*.webp`) من نفس النظام بس على متجر تجريبي باسم وشعار مختلقين: «سوق الريحان» بلون أخضر. لما تبيع لمحل معيّن، تقدر تعيد الالتقاط باسمه وشعاره بتعديل `NEUTRAL` في `tools/demo-server.mjs` و`tools/neutral-logo.webp`.
+
+```
+NEUTRAL=1 node film/tools/demo-server.mjs
+PREFIX=n- ONLY=customer,driver,prep,cashier,adminm node film/tools/capture.cjs
+```
+
 ## إعادة توليد اللقطات
 
 ```

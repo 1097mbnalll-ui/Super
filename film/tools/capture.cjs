@@ -1,6 +1,6 @@
 // يلتقط لقطات الفيلم من الواجهة الحقيقية (index.html بدون أي تعديل) على خادم العرض المحلي.
 // التشغيل:  node film/tools/demo-server.mjs   ثم في نافذة ثانية:  node film/tools/capture.cjs
-// الصور تنحفظ PNG في film/shots/raw ثم تتحول webp بـ film/tools/pack-shots.py
+// الصور تنحفظ PNG في film/shots/raw (PREFIX=n- مع NEUTRAL=1 في خادم العرض = نسخة بلا اسم المتجر) ثم تتحول webp بـ film/tools/pack-shots.py
 // LEAFLET_DIR = مجلد dist حق leaflet (npm i leaflet) لو الشبكة ما توصل unpkg.
 // لو خرائط OpenStreetMap محجوبة تنحط بدالها خلفية محايدة: أعد التقاط لقطات الخريطة من شبكة مفتوحة قبل المونتاج.
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -32,7 +32,7 @@ fs.mkdirSync(out, { recursive: true });
     });
     return ctx;
   };
-  const snap = async (page, name, opts) => { await page.waitForTimeout(600); await page.screenshot({ path: path.join(out, name + '.png'), ...(opts || {}) }); console.log('shot', name); };
+  const snap = async (page, name, opts) => { await page.waitForTimeout(600); await page.screenshot({ path: path.join(out, (process.env.PREFIX || '') + name + '.png'), ...(opts || {}) }); console.log('shot', name); };
   const api = async (p, body) => (await fetch(base + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json();
   const live = (await (await fetch(base + '/__live')).json()).live;
   const staffIn = async (ctx, pin) => { const page = await ctx.newPage(); page.on('pageerror', (e) => console.error('PAGE ERROR', e.message)); await page.goto(site + '#driver'); await page.locator('#drvPin').waitFor(); await page.locator('#drvPin').fill(pin); await page.locator('#drvPin').press('Enter'); await page.waitForTimeout(3500); return page; };
@@ -130,6 +130,8 @@ fs.mkdirSync(out, { recursive: true });
     await nav('stats'); await at('المبيعات كل يوم', 'm2-days'); await at('أوقات الطلب', 'm3-hours'); await at('الأكثر مبيع', 'm4-top');
     await nav('settlement'); await snap(page, 'm5-settlement');
     await nav('costs'); await at('صحة المحل قبل العروض', 'm6-advisor');
+    await nav('cust'); await snap(page, 'm7-winback');
+    await nav('prods'); await snap(page, 'm8-products');
     await ctx.close();
   }
   await browser.close();

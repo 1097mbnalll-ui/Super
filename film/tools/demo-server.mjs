@@ -8,6 +8,12 @@ const here = path.dirname(fileURLToPath(import.meta.url)), root = path.resolve(h
 const w = (await import(path.join(root, 'server/worker.js'))).default;
 const data = JSON.parse(fs.readFileSync(path.join(root, 'data.json'), 'utf8'));
 delete data.store.closed; data.store.keepDays = 180;
+// NEUTRAL=1: نسخة بلا اسم متاجر أحد ولا شعاره (للنسخة البيعية اللي تنعرض على محلات ثانية)
+if (process.env.NEUTRAL) {
+  // متجر تجريبي باسم وشعار يبانون حقيقيين (مو «شعارك» فاضي) عشان المقطع يقنع؛ الاسم والشعار مختلقين للعرض
+  Object.assign(data.store, { name: 'سوق الريحان', name_en: 'Al Rayhan Market', tagline: 'سوق ومخبز', tagline_en: 'Market & bakery', area: 'حي الياسمين', area_en: 'Al Yasmin', theme: 'mint' });
+  data.imgs.logo = 'data:image/webp;base64,' + fs.readFileSync(path.join(here, 'neutral-logo.webp')).toString('base64');
+}
 
 const sq = new DatabaseSync(':memory:');
 const mk = (sql) => { let a = []; const st = { bind(...x) { a = x; return st; }, async first() { return sq.prepare(sql).get(...a) ?? null; }, async all() { return { results: sq.prepare(sql).all(...a) }; }, async run() { const r = sq.prepare(sql).run(...a); return { meta: { changes: r.changes, last_row_id: Number(r.lastInsertRowid) } }; } }; return st; };
@@ -51,7 +57,7 @@ const Q = []; const at = (t, f) => Q.push([t, f]);
 const runUntil = async (t) => { for (;;) { Q.sort((a, b) => a[0] - b[0]); if (!Q.length || Q[0][0] > t) break; const [tt, f] = Q.shift(); NOW = Math.max(NOW, tt); await f(); } NOW = Math.max(NOW, t); };
 const stats = { placed: 0, delivered: 0, rejected: {} };
 async function place(c, opts = {}) {
-  const j = await call('/order', { items: opts.items || basket(), phone: c.phone, name: c.name, pay: rnd() < 0.42 ? 'card' : 'cash', sub: ['swap', 'remove', 'call'][Math.floor(rnd() * 3)], lat: c.lat, lng: c.lng, details: 'حي الرمال، بيت ' + (1 + Math.floor(rnd() * 80)), requestId: 'demo-' + (++ipn) + '-' + Math.floor(rnd() * 1e9) });
+  const j = await call('/order', { items: opts.items || basket(), phone: c.phone, name: c.name, pay: rnd() < 0.42 ? 'card' : 'cash', sub: ['swap', 'remove', 'call'][Math.floor(rnd() * 3)], lat: c.lat, lng: c.lng, details: data.store.area + '، بيت ' + (1 + Math.floor(rnd() * 80)), requestId: 'demo-' + (++ipn) + '-' + Math.floor(rnd() * 1e9) });
   if (!j.ok) { stats.rejected[j.code] = (stats.rejected[j.code] || 0) + 1; return null; }
   stats.placed++; return j.orderNo;
 }
