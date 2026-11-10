@@ -3079,6 +3079,24 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var p = dById(t.dataset.advapply), np = Number(t.dataset.advprice); if (!p || !(np > 0)) return;
     if (!confirm("تحط «" + p.name + "» بـ " + num(np) + " ر.س بدل " + num(p.price) + "؟ يطلع للزبون كخصم بعد ما تحفظ.")) return;
     if (!(Number(p.old) > Number(p.price))) p.old = p.price; p.price = np; markDirty(); t.disabled = true; t.textContent = "انطبّق، احفظ التغييرات"; });
+  // طريقة البيع: حبة / كرتون / شدّة… تنكتب في «الوحدة» نفسها، فتطلع للزبون وفي السلة والطلب وعند المندوب بدون أي تغيير ثاني
+  var UNIT_KINDS = ["حبة", "كرتون", "شدّة", "كيس", "علبة", "كيلو"];
+  function unitParse(u){
+    var m = /^(حبة|حبه|كرتون|شدّة|شدة|كيس|علبة|علبه|كيلو)(?:\s+(\d+)\s*(?:حبة|حبات|حبه|حبتين))?$/.exec(String(u || "").trim());
+    if (!m) return { kind: String(u || "").trim() ? "other" : "حبة", n: 0 };
+    var k = m[1].replace(/^حبه$/, "حبة").replace(/^شدة$/, "شدّة").replace(/^علبه$/, "علبة");
+    return { kind: k, n: Number(m[2] || 0) };
+  }
+  function unitText(kind, n){
+    if (kind === "حبة" || kind === "كيلو" || !(n > 1)) return kind;
+    return kind + " " + (n === 2 ? "حبتين" : n + (n <= 10 ? " حبات" : " حبة"));
+  }
+  function unitFields(p){
+    var u = unitParse(p.unit), packs = u.kind !== "حبة" && u.kind !== "كيلو" && u.kind !== "other";
+    return '<label>طريقة البيع<select data-f="ukind">' + UNIT_KINDS.concat(["other"]).map(function(k){ return '<option value="' + k + '"' + (u.kind === k ? ' selected' : '') + '>' + (k === "other" ? "غيرها (اكتبها)" : k) + '</option>'; }).join("") + '</select></label>' +
+      '<label data-upack' + (packs ? '' : ' hidden') + '>كم حبة فيها<input data-f="upack" type="number" min="0" max="999" step="1" inputmode="numeric" value="' + (u.n || "") + '" placeholder="مثلاً ٢٤"></label>' +
+      '<label data-uother' + (u.kind === "other" ? '' : ' hidden') + '>الوحدة<input data-f="unit" value="' + esc(p.unit) + '" placeholder="مثلاً: كيس ٦ حبات"></label>';
+  }
   function renderAProds(){
     var words = normAr(aFilter.q).split(/\s+/).filter(Boolean), shown = aFilter.show || 40;
     var all = draft.products.filter(function(p){ if (aFilter.cat !== "all" && p.cat !== aFilter.cat) return false; if (!words.length) return true; var h = normAr(p.name + " " + (p.bc || "")); return words.every(function(w){ return h.indexOf(w) > -1; }); });
@@ -3088,7 +3106,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         '<button class="imgbtn" type="button" data-pick="prod:' + p.id + '" aria-label="تغيير صورة ' + esc(p.name) + '">' + imgTag(p.img, "") + '</button>' +
         '<label>الاسم<input data-f="name" value="' + esc(p.name) + '"></label>' +
         '<label>الاسم بالإنجليزي<input data-f="name_en" value="' + esc(p.name_en || "") + '" dir="ltr"></label>' +
-        '<label>الحجم / الوحدة<input data-f="unit" value="' + esc(p.unit) + '"></label>' +
+        unitFields(p) +
         '<label>الوحدة بالإنجليزي<input data-f="unit_en" value="' + esc(p.unit_en || "") + '" dir="ltr"></label>' +
         '<label>الباركود <small>(للكاشير، امسحه هنا)</small><input data-f="bc" value="' + esc(p.bc || "") + '" dir="ltr" inputmode="numeric" autocomplete="off" placeholder="اختياري"></label>' +
         '<label>السعر<input data-f="price" type="number" min="0" step="0.25" inputmode="decimal" value="' + esc(p.price) + '"></label>' +
@@ -3236,12 +3254,18 @@ html.sp-on,html.sp-on body{overflow:hidden}
     else if (f === "badge") { if (t.value.trim()) p.badge = t.value.trim(); else delete p.badge; }
     else if (f === "name_en" || f === "unit_en") { if (t.value.trim()) p[f] = t.value; else delete p[f]; }
     else if (f === "bc") { var bv = t.value.replace(/[^\w,، -]/g, "").trim(); if (bv) p.bc = bv; else delete p.bc; }
+    else if (f === "ukind" || f === "upack") {
+      var kind = row.querySelector('[data-f="ukind"]').value, n = Math.floor(Number(row.querySelector('[data-f="upack"]').value) || 0);
+      var packs = kind !== "حبة" && kind !== "كيلو" && kind !== "other";
+      row.querySelector("[data-upack]").hidden = !packs; row.querySelector("[data-uother]").hidden = kind !== "other";
+      if (kind !== "other") { p.unit = unitText(kind, packs ? n : 0); row.querySelector('[data-f="unit"]').value = p.unit; }
+    }
     else p[f] = t.value;
     markDirty();
     if (f === "cat") renderACats();
   }
   document.addEventListener("input", onAdminInput);
-  document.addEventListener("change", function(e){ if (e.target.dataset && (e.target.dataset.f === "cat" || e.target.dataset.f === "stock")) onAdminInput(e); });
+  document.addEventListener("change", function(e){ if (e.target.dataset && (e.target.dataset.f === "cat" || e.target.dataset.f === "stock" || e.target.dataset.f === "ukind")) onAdminInput(e); });
   document.addEventListener("click", function(e){
     if (mode !== "admin" || !draft) return;
     var t;
