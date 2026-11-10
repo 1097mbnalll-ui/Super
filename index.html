@@ -1279,6 +1279,9 @@ body[data-screen="driver"]{background:#F3F4F6}
 .kq-badge.fresh{background:#fff;color:var(--teal-deep);box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .kq-badge.deal{background:var(--teal);color:#fff}
 .kq-badge.out{background:var(--ink)}
+.kq-badge.multi{background:var(--teal);color:#fff}
+.kq-multi{display:grid;gap:1px;width:100%;margin:4px 0 2px;padding:5px 8px;border:1.5px solid var(--teal);border-radius:10px;background:var(--mint);color:var(--teal-deep);font:inherit;text-align:start;cursor:pointer}.kq-multi b{font-size:13.5px;font-weight:800;white-space:normal;line-height:1.25}.kq-multi small{font-size:11px;font-weight:700;opacity:.85}
+.pd-pack.offer{border-color:var(--teal);border-style:dashed}.pd-pack.offer b{color:var(--teal-deep);font-size:14px}.pd-pack small{font-size:11px;color:var(--teal-deep);font-weight:700}
 .kq-card .ctl{left:8px;right:auto;bottom:8px}
 [dir="ltr"] .kq-card .ctl{left:auto;right:8px}
 .kq-card .add{width:36px;height:36px;border-radius:50%;background:#fff;color:var(--teal);box-shadow:0 2px 10px rgba(0,0,0,.12)}
@@ -1514,6 +1517,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function catOf(id){ for (var i=0;i<D.cats.length;i++) if (D.cats[i].id === id) return D.cats[i]; return null; }
   function tint(catId){ for (var i=0;i<D.cats.length;i++) if (D.cats[i].id === catId) return D.cats[i].tint || TINTS[i % TINTS.length]; return TINTS[TINTS.length-1]; }
   function onSale(p){ return p.old && p.old > p.price; }
+  function isOffer(p){ return onSale(p) || !!multiOf(p); }
   /* ---------- live stock ---------- */
   var LIVE = {};
   function left(p){ if (p && p.per) { var b = LIVE[p.base]; return b == null ? null : Math.floor(Number(b) / p.per); } var v = p && LIVE[p.id]; return v == null ? null : Number(v); }
@@ -1613,8 +1617,18 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (!n) return '<span class="ctl" data-for="' + key + '"><button class="add" type="button" data-act="inc" data-id="' + key + tr('" aria-label="أضف ', '" aria-label="Add ') + esc(nm(p)) + tr(' للسلة">', ' to cart">') + ic("plus") + '</button></span>';
     return '<span class="ctl" data-for="' + key + '"><span class="stepper"><button type="button" data-act="dec" data-id="' + key + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button><b>' + n + '</b><button class="plus" type="button" data-act="inc" data-id="' + key + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full ? ' disabled' : '') + '>' + ic("plus") + '</button></span></span>';
   }
+  // عرض الكمية: أول خيار بيع لأكثر من حبة سعره أرخص من الحبة (مثل ٣ بـ ١٠)
+  function multiOf(p){
+    var L = p && Array.isArray(p.packs) ? p.packs : [];
+    for (var i = 0; i < L.length; i++) { var x = L[i], n = Math.floor(Number(x.n) || 0), pr = Number(x.price) || 0;
+      if (n > 1 && pr > 0 && pr < n * Number(p.price || 0) - 0.001) return { i: i, n: n, price: pr }; }
+    return null;
+  }
+  function pcs(n){ return n === 2 ? "حبتين" : n <= 10 ? num(n) + " حبات" : num(n) + " حبة"; }
+  function multiTxt(m){ return tr(pcs(m.n) + " بـ " + num(m.price) + " ر.س", m.n + " pcs for " + num(m.price) + " SAR"); }
+  function multiEach(m){ return tr("الحبة بـ " + num(Math.round(m.price / m.n * 100) / 100), num(Math.round(m.price / m.n * 100) / 100) + " each"); }
   function card(p, kind){
-    var dd = daily(), isDaily = kind === "t", isDeal = kind === "d";
+    var dd = daily(), isDaily = kind === "t", isDeal = kind === "d", mo = !kind && avail(p) ? multiOf(p) : null;
     var price = isDeal ? Number(DEAL.price || 0.95) : isDaily ? dd.price : p.price;
     var was = isDeal || isDaily ? p.price : (onSale(p) ? p.old : 0);
     var c = catOf(p.cat), inCart = cart[(kind ? kind + ":" : "") + p.id] || 0;
@@ -1622,13 +1636,15 @@ html.sp-on,html.sp-on body{overflow:hidden}
       isDeal ? '<span class="kq-badge deal">' + ic("lock") + tr("بـ ", "") + num(price) + tr(" ر.س", " SAR") + '</span>' :
       isDaily ? '<span class="kq-badge">' + ic("flame") + tr("عرض اليوم", "Deal of the day") + '</span>' :
       onSale(p) ? '<span class="kq-badge">' + tr("وفّر ", "Save ") + num(Math.round((p.old - p.price) * 100) / 100) + '</span>' :
+      mo ? '<span class="kq-badge multi">' + tr("عرض " + pcs(mo.n), mo.n + " pcs offer") + '</span>' :
       (p.badge ? '<span class="kq-badge fresh">' + esc(bd(p)) + '</span>' : '');
     var lf = left(p), low = avail(p) && lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '';
     // المنتج بدون صورة: بطاقة نصية بلون القسم بدل أيقونة الكيس، عشان الصفحة ما تبين فاضية
     var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
     return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + badge + low + control(p, kind || "") + '</div>' +
       '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '') + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
-      '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + (Array.isArray(p.packs) && p.packs.length ? ' · ' + p.packs.map(function(x){ return esc(String(x.u || "").split(" ")[0]); }).join(" · ") : '') + '</span></article>';
+      (mo ? '<button type="button" class="kq-multi" data-open="' + p.id + '" data-openpack="' + mo.i + '"><b>' + esc(multiTxt(mo)) + '</b><small>' + esc(multiEach(mo)) + '</small></button>' : '') +
+      '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + (function(){ var L = Array.isArray(p.packs) ? p.packs.filter(function(x){ return !/^عرض/.test(String(x.u || "")); }) : []; return L.length ? ' · ' + L.map(function(x){ return esc(String(x.u || "").split(" ")[0]); }).join(" · ") : ''; })() + '</span></article>';
   }
 
   /* ---------- screens ---------- */
@@ -1711,7 +1727,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function chipList(){
     var l = [{ id: "for", name: tr("لك", "For you"), icon: "spark" }], cb = chip.indexOf("b:") === 0 && banOf(chip.slice(2));
     if (cb) l.push({ id: chip, name: LANG === "en" && cb.title_en || cb.title || "", icon: "tag" });
-    if (D.products.some(function(p){ return avail(p) && onSale(p); })) l.push({ id: "offers", name: tr("العروض", "Offers"), icon: "tag" });
+    if (D.products.some(function(p){ return avail(p) && isOffer(p); })) l.push({ id: "offers", name: tr("العروض", "Offers"), icon: "tag" });
     if (dealsList().length) l.push({ id: "deals", name: tr("بـ ", "") + num(DEAL.price) + tr(" ر.س", " SAR"), icon: "lock" });
     D.cats.forEach(function(c){ l.push({ id: "c:" + c.id, name: nm(c) }); });
     return l;
@@ -1721,7 +1737,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function moreBtn(key, rest){ return '<button type="button" class="btn btn-soft kq-more" data-more="' + esc(key) + '">' + tr("عرض المزيد", "Show more") + ' <small>(' + num(rest) + ')</small></button>'; }
   function pagedCards(list, key, kind){ var n = MORE[key] || PAGE, out = list.slice(0, n).map(function(p){ return card(p, kind); }); if (list.length > n) out.push(moreBtn(key, list.length - n)); return out; }
   function chipItems(){
-    if (chip === "offers") return pagedCards(D.products.filter(function(p){ return avail(p) && onSale(p); }), "chip:offers");
+    if (chip === "offers") return pagedCards(D.products.filter(function(p){ return avail(p) && isOffer(p); }), "chip:offers");
     if (chip === "deals") return pagedCards(dealsList(), "chip:deals", "d");
     if (chip.indexOf("b:") === 0) { var bb = banOf(chip.slice(2)); return bb ? pagedCards((bb.ids || []).map(byId).filter(Boolean).sort(function(a,b){ return avail(b) - avail(a); }), "chip:" + chip) : []; }
     if (chip.indexOf("c:") === 0) { var cid = chip.slice(2); return pagedCards(D.products.filter(function(p){ return p.cat === cid; }).sort(function(a,b){ return avail(b) - avail(a); }), "chip:" + chip); }
@@ -1805,8 +1821,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     return 'data-chip="b:' + esc(b.id) + '"';
   }
   function banners(){
-    var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && onSale(p); }), bakery = catOf("bakery") || D.cats[0];
-    var maxOff = offers.reduce(function(m, p){ return Math.max(m, Math.round((1 - p.price / p.old) * 100)); }, 0);
+    var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }), bakery = catOf("bakery") || D.cats[0];
+    var maxOff = offers.reduce(function(m, p){ var mo = multiOf(p), r = onSale(p) ? 1 - p.price / p.old : mo ? 1 - mo.price / (mo.n * p.price) : 0; return Math.max(m, Math.round(r * 100)); }, 0);
     var E = S.banEdit || {}, B = {}, pk = function(id, def){ var ids = S.banPicks && S.banPicks[id]; return ids && ids.length ? ids.filter(function(x){ return byId(x); }) : def; };
     var idsOf = function(list){ return list.map(function(p){ return p.id; }); };
     (S.bans || []).forEach(function(b){
@@ -1835,7 +1851,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="kq-meta"><span class="kq-sched">' + ic("truck") + esc(sv("eta")) + '</span><span class="kq-loc">' + ic("pin") + esc(sv("area")) + ic("down") + '</span></div>' +
       '<button class="langbtn" type="button" data-lang="' + (LANG === "en" ? "ar" : "en") + '" aria-label="' + tr("English", "العربية") + '">' + (LANG === "en" ? "ع" : "EN") + '</button></div>' +
       '<button class="kq-search" type="button" data-nav="search">' + ic("search") + '<span id="ph">' + tr("قهوتك ناقصها حلا؟ ابحث عن الشوكولاتة…", "Your coffee needs something sweet? Search…") + '</span></button></div></div>';
-    var SEC = {}, offers = D.products.filter(function(p){ return avail(p) && onSale(p); }), deals = dealsList(), tt = totals();
+    var SEC = {}, offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }), deals = dealsList(), tt = totals();
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
     SEC.free = S.freeOver ? '<div class="wrap kq-sec-wrap"><button type="button" class="kq-free" data-chip="for"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("احصل على توصيلك المجاني!", "Get free delivery!") + ' <em>' + tr("مجاني", "Free") + '</em></b><span>' + tr("لطلباتك فوق ", "On orders over ") + rial(S.freeOver) + '</span></span>' + ic("fwd") + '</button></div>' : '';
     SEC.catgrid = '<div class="wrap"><div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-nav="cats">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div></div>';
@@ -1855,7 +1871,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (deals.length ? '<button type="button" class="kq-recipe" data-chip="deals"><span class="ic">' + ic("tag") + '</span><span class="t"><b>' + tr("كل منتج بـ ", "Everything for ") + num(DEAL.price) + ' ' + tr("ر.س", "SAR") + '</b><span>' + (t.unlocked ? tr("انفتحت لك، ضيف اللي تبغاه", "Unlocked, add what you like") : tr("لطلبات فوق ", "For orders over ") + rial(DEAL.min)) + '</span></span>' + ic("fwd") + '</button>' : '') +
       '<div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-chip="for">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div>' +
       '<div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div>' +
-      (D.products.some(function(p){ return avail(p) && onSale(p); }) ? '<div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + D.products.filter(function(p){ return avail(p) && onSale(p); }).map(function(p){ return card(p); }).join("") + '</div>' : '') + '</div>';
+      (D.products.some(function(p){ return avail(p) && isOffer(p); }) ? '<div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + D.products.filter(function(p){ return avail(p) && isOffer(p); }).map(function(p){ return card(p); }).join("") + '</div>' : '') + '</div>';
   }
 
   /* ---------- قسم الطباعة: حاسبة (نوع، صفحات، نسخ) تضيف للسلة، والملف يوصل واتساب برقم الطلب ---------- */
@@ -1929,7 +1945,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var p = byId(openProd); if (!p) return catsHTML();
     var packBase = p, packs = Array.isArray(p.packs) && p.packs.length ? p.packs : null;
     if (packs && pdPack >= 0 && byId(p.id + "~" + pdPack)) p = byId(p.id + "~" + pdPack); else pdPack = -1;
-    var packHTML = packs ? '<div class="pd-packs" role="group" aria-label="' + tr("طريقة الشراء", "Buy as") + '">' + [-1].concat(packs.map(function(x, i){ return i; })).map(function(i){ var q = i < 0 ? packBase : byId(packBase.id + "~" + i); if (!q) return ""; return '<button type="button" class="pd-pack" data-pdpack="' + i + '" aria-pressed="' + (pdPack === i) + '"><b>' + esc(un(q)) + '</b><span>' + num(q.price) + ' ' + tr("ر.س", "SAR") + '</span></button>'; }).join("") + '</div>' : '';
+    var packHTML = packs ? '<div class="pd-packs" role="group" aria-label="' + tr("طريقة الشراء", "Buy as") + '">' + [-1].concat(packs.map(function(x, i){ return i; })).map(function(i){ var q = i < 0 ? packBase : byId(packBase.id + "~" + i); if (!q) return ""; var mo2 = i >= 0 ? multiOf(packBase) : null; var isO = mo2 && mo2.i === i; return '<button type="button" class="pd-pack' + (isO ? ' offer' : '') + '" data-pdpack="' + i + '" aria-pressed="' + (pdPack === i) + '"><b>' + (isO ? esc(tr("عرض ", "Offer: ") + (tr(pcs(mo2.n), mo2.n + " pcs"))) : esc(un(q))) + '</b><span>' + num(q.price) + ' ' + tr("ر.س", "SAR") + '</span>' + (isO ? '<small>' + esc(multiEach(mo2)) + '</small>' : '') + '</button>'; }).join("") + '</div>' : '';
     var dd = daily(), isDaily = dd && dd.p.id === p.id, price = isDaily ? dd.price : p.price, was = isDaily ? p.price : (onSale(p) ? p.old : 0);
     var c = catOf(p.cat);
     var pairs = idsToList(p.sugg).filter(function(x){ return x.id !== p.id; }).slice(0, 12);
@@ -1976,7 +1992,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     }
     var findP = function(term){ var tl = term.toLowerCase(); for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if ([p.name, p.name_en].some(function(s){ return s && String(s).toLowerCase().indexOf(tl) > -1; })) return p; } return null; };
     var sug = D.products.filter(function(p){ return avail(p); }).slice(0, 8).map(function(p){ return nm(p); });
-    var offers = D.products.filter(function(p){ return avail(p) && onSale(p); });
+    var offers = D.products.filter(function(p){ return avail(p) && isOffer(p); });
     box.innerHTML = (recent.length ? '<div class="kq-sec"><h2>' + tr("عمليات البحث الأخيرة", "Recent searches") + '</h2><button type="button" id="clrR" class="clr">' + tr("مسح الكل", "Clear all") + '</button></div><div class="kq-recent">' +
         recent.map(function(r){ var p = findP(r); return '<button class="kq-rchip" type="button" data-term="' + esc(r) + '">' + (p ? imgTag(p.img, "") : '') + esc(r) + '</button>'; }).join("") + '</div>' : '') +
       '<div class="kq-sec"><h2>' + tr("مقترحات ذكية", "Smart suggestions") + '</h2></div><div class="kq-sugs">' + sug.map(function(s){ return '<button class="kq-sug" type="button" data-term="' + esc(s) + '">' + ic("search") + esc(s) + '</button>'; }).join("") + '</div>' +
@@ -2305,7 +2321,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ((t = e.target.closest("[data-pay]"))) { form.pay = t.dataset.pay; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-pay]"), function(b){ b.setAttribute("aria-pressed", b.dataset.pay === form.pay); }); return; }
     if ((t = e.target.closest("[data-term]"))) { q = t.dataset.term; $("q").value = q; renderSearch(); return; }
     if ((t = e.target.closest("[data-pdpack]"))) { pdPack = Number(t.dataset.pdpack); pdQty = 1; render(); return; }
-    if ((t = e.target.closest("[data-open]"))) { openProd = t.dataset.open; pdQty = 1; pdPack = -1; evAdd("v", openProd); if (screen === "product") { render(); window.scrollTo(0,0); } else show("product"); return; }
+    if ((t = e.target.closest("[data-open]"))) { openProd = t.dataset.open; pdQty = 1; pdPack = t.dataset.openpack != null ? Number(t.dataset.openpack) : -1; evAdd("v", openProd); if (screen === "product") { render(); window.scrollTo(0,0); } else show("product"); return; }
   });
   document.addEventListener("keydown", function(e){ if (e.key === "Escape") { var k = $("pickSheet"); if (k) k.hidden = true; var ps = $("pinSheet"); if (ps) ps.remove(); } });
   var lastDay = dayNo(); setInterval(function(){ if (dayNo() !== lastDay) { lastDay = dayNo(); if (mode === "store" && screen !== "checkout") render(); } }, 30000);
