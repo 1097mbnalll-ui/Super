@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
         s.setBuiltInZoomControls(false);
         s.setSupportZoom(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " OhodDriverApp/3");
+        s.setUserAgentString(s.getUserAgentString() + " OhodDriverApp/4");
         WebView.setWebContentsDebuggingEnabled(false);
         wv.addJavascriptInterface(new Bridge(), "OhodApp");
 
@@ -75,7 +75,13 @@ public class MainActivity extends Activity {
                 Uri u = r.getUrl();
                 String sc = u.getScheme();
                 if ("about".equals(sc)) return false;
-                if ("https".equals(sc) && HOST.equals(u.getHost()) && u.getPath() != null && u.getPath().startsWith("/Super")) return false;
+                if ("https".equals(sc) && HOST.equals(u.getHost()) && u.getPath() != null && u.getPath().startsWith("/Super")) {
+                    // التطبيق للمندوب بس: أي صفحة ثانية من الموقع (المتجر مثلاً) ترجع لصفحة المندوب
+                    String q = u.getQuery(), f = u.getFragment();
+                    if ("driver".equals(f) || (q != null && q.contains("app=driver"))) return false;
+                    v.loadUrl(START);
+                    return true;
+                }
                 try {   // الخرائط والاتصال والواتساب تنفتح بتطبيقاتها
                     startActivity(new Intent(Intent.ACTION_VIEW, u).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 } catch (Exception ignored) {
@@ -92,6 +98,12 @@ public class MainActivity extends Activity {
         wv.setWebChromeClient(new WebChromeClient() {
             @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback cb) {
                 cb.invoke(origin, hasLocation(), false);
+            }
+        });
+
+        wv.setDownloadListener(new android.webkit.DownloadListener() {
+            @Override public void onDownloadStart(String url, String ua, String cd, String mime, long len) {
+                try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { }
             }
         });
 
@@ -135,8 +147,7 @@ public class MainActivity extends Activity {
         wv.evaluateJavascript("(function(){try{return window.__ohodBack?window.__ohodBack():false}catch(e){return false}})()", new ValueCallback<String>() {
             @Override public void onReceiveValue(String v) {
                 if ("true".equals(v)) return;
-                if (wv.canGoBack()) wv.goBack();
-                else moveTaskToBack(true);
+                moveTaskToBack(true);   // ما نرجع بالصفحات أبداً (عشان ما يطلع المتجر)، نصغّر التطبيق بس
             }
         });
     }
@@ -218,7 +229,7 @@ public class MainActivity extends Activity {
 
     /** الجسر بين صفحة المندوب (جافاسكربت) والتطبيق. ما ينكشف إلا لصفحات موقعنا فقط (شوف shouldOverrideUrlLoading). */
     private final class Bridge {
-        @JavascriptInterface public String version() { return "3"; }
+        @JavascriptInterface public String version() { return String.valueOf(Updater.installed(MainActivity.this)); }
 
         @JavascriptInterface public String savedPin() { return Prefs.pin(MainActivity.this); }
 

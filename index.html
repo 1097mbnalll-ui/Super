@@ -2328,6 +2328,24 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var APP = !!window.OhodApp;   // شغّال داخل تطبيق الأندرويد؟
   if (APP && !drv.pin) { try { drv.pin = String(OhodApp.savedPin() || ""); } catch(e){} }
   function appCall(fn, a, b, c){ if (!APP) return; try { OhodApp[fn](a, b, c); } catch(e){} }
+  // تطبيق المندوب: النسخ القديمة ما فيها تحديث من داخلها، فالصفحة نفسها تطلّع رسالة «حدّث الآن»
+  var APPV = 0; if (APP) { try { APPV = Number(OhodApp.version()) || 1; } catch(e){ APPV = 1; } }
+  function appUpdateCheck(){
+    if (!APP || APPV >= 3 || $("appUpd")) return;   // من ١٫٢ وفوق التطبيق نفسه يطلّع الرسالة ويحدّث
+    fetch("driver-app.json?t=" + Math.floor(Date.now() / 60000), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+      if (!j || !(Number(j.code) > APPV) || $("appUpd")) return;
+      var url = "https://raw.githubusercontent.com/1097mbnalll-ui/super/gh-pages/driver-app.apk?v=" + Number(j.code);
+      document.body.insertAdjacentHTML("beforeend", '<div id="appUpd" role="dialog" aria-modal="true" aria-labelledby="appUpdT" style="position:fixed;inset:0;z-index:9999;background:rgba(19,33,60,.92);display:grid;place-items:center;padding:20px">' +
+        '<div style="background:#fff;color:#13213C;border-radius:22px;padding:26px 22px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)">' +
+        '<div style="width:64px;height:64px;border-radius:50%;background:#FFF1E3;color:#FF8A1F;display:grid;place-items:center;margin:0 auto 14px;font-size:30px;font-weight:700">↓</div>' +
+        '<h2 id="appUpdT" style="margin:0 0 8px;font-size:21px">فيه تحديث جديد للتطبيق</h2>' +
+        '<p style="margin:0 0 18px;line-height:1.7;opacity:.8">' + esc(j.note || "نزل إصدار أحدث فيه تحسينات.") + (j.name ? '<br><b>الإصدار ' + esc(j.name) + '</b>' : '') + '</p>' +
+        '<a href="' + url + '" style="display:block;background:#FF8A1F;color:#2B1300;font-weight:700;font-size:18px;padding:16px;border-radius:16px;text-decoration:none">حدّث الآن</a>' +
+        '<p style="margin:14px 0 0;font-size:13.5px;line-height:1.8;opacity:.75">بعد ما ينزل الملف افتحه واضغط <b>«تحديث»</b>. لو طلب منك الجوال تسمح بالتثبيت، اسمح وارجع اضغط تحديث.</p>' +
+        (Number(j.min) > APPV ? '' : '<button type="button" id="appUpdLater" style="margin-top:12px;background:none;border:0;color:#13213C;opacity:.6;font:inherit;text-decoration:underline">لاحقاً</button>') + '</div></div>');
+      if ($("appUpdLater")) $("appUpdLater").onclick = function(){ $("appUpd").remove(); };
+    }).catch(function(){});
+  }
   try { drv.sound = localStorage.getItem("ohod-drv-sound") !== "0"; drv.push = localStorage.getItem("ohod-drv-push") === "1" && "Notification" in window && Notification.permission === "granted"; } catch(e){}
   var audioCtx = null;
   function beep(){
@@ -2354,7 +2372,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       tr('<div class="wrap"><form class="box" id="drvForm" style="margin-top:18px;display:grid;gap:12px" autocomplete="off"><b style="font-family:var(--display);font-size:17px">ادخل بالرقم السري</b>', '<div class="wrap"><form class="box" id="drvForm" style="margin-top:18px;display:grid;gap:12px" autocomplete="off"><b style="font-family:var(--display);font-size:17px">Enter your PIN</b>') +
       tr('<p class="hint">الرقم يعطيك إياه صاحب المحل.</p><input id="drvPin" class="pin" type="password" inputmode="numeric" maxlength="12" aria-label="الرقم السري" style="height:56px;border-radius:16px">', '<p class="hint">The store owner gives you the PIN.</p><input id="drvPin" class="pin" type="password" inputmode="numeric" maxlength="12" aria-label="PIN" style="height:56px;border-radius:16px">') +
       '<button class="btn btn-ink" type="submit">' + ic("lock") + tr('دخول</button><span class="status" id="drvMsg" aria-live="polite"></span></form></div>', 'Sign in</button><span class="status" id="drvMsg" aria-live="polite"></span></form></div>');
-    $("drvExit").addEventListener("click", leaveDriver);
+    if (APP) $("drvExit").style.visibility = "hidden"; else $("drvExit").addEventListener("click", leaveDriver);
     $("drvPin").focus();
     if (!APP && /Android/i.test(navigator.userAgent)) $("drvForm").insertAdjacentHTML("afterend", '<div class="wrap" style="margin-top:12px"><a class="btn btn-soft" href="driver-app.apk" download style="width:100%;justify-content:center">' + tr("حمّل تطبيق المندوب للأندرويد", "Get the driver app for Android") + '</a></div>');
     $("drvForm").addEventListener("submit", function(e){
@@ -2442,7 +2460,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   });
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "driver") { geoWake(); geoSend(true); } });
 
-  function leaveDriver(){ geoStop(true); geo.admin = false; geo.share = false; appManifest(false); clearInterval(drv.timer); drv.timer = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} document.title = tr("متاجر أحد", "Matajer Ohod"); go("store"); }
+  function leaveDriver(){ if (APP) { geoStop(true); geo.admin = false; geo.share = false; clearInterval(drv.timer); drv.timer = null; drv.view = "list"; openDriver(); return; } geoStop(true); geo.admin = false; geo.share = false; appManifest(false); clearInterval(drv.timer); drv.timer = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} document.title = tr("متاجر أحد", "Matajer Ohod"); go("store"); }
   /* ----- new driver app: list → pick with photos → product → missing → deliver → my cash ----- */
   drv.view = "list"; drv.no = ""; drv.pid = ""; drv.miss = ""; drv.given = 0; drv.cash = null;
   var PICK = {}; try { PICK = JSON.parse(localStorage.getItem("ohod-pick") || "{}") || {}; } catch(e){ PICK = {}; }
@@ -4799,13 +4817,17 @@ html.sp-on,html.sp-on body{overflow:hidden}
     }).catch(failed);
   }
   /* ---------- routing ---------- */
-  function go(m){ window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m !== "admin") { adminLoadGeneration++; if(adminSaveObserver){adminSaveObserver.disconnect();adminSaveObserver=null;} clearInterval(posTimer); clearInterval(prepTimer); clearInterval(alertTimer); clearTimeout(admTimer); alertsGeneration++; alertsLoading = false; } if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); if(!staffAuth||staffAuth.user.role==="manager")loadAdminCatalog();else adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
+  function go(m){ if (appLock && m !== "driver") { openDriver(); return; } window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m !== "admin") { adminLoadGeneration++; if(adminSaveObserver){adminSaveObserver.disconnect();adminSaveObserver=null;} clearInterval(posTimer); clearInterval(prepTimer); clearInterval(alertTimer); clearTimeout(admTimer); alertsGeneration++; alertsLoading = false; } if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); if(!staffAuth||staffAuth.user.role==="manager")loadAdminCatalog();else adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
+  var appLock = false;
   var startAdmin = false; try { startAdmin = sessionStorage.getItem("ohod-mode") === "admin"; sessionStorage.removeItem("ohod-mode"); } catch(e){}
   go("store");
   loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "store") loadStock(); });
-  if (location.hash === "#driver" || /[?&]app=driver/.test(location.search)) openDriver();
-  window.addEventListener("hashchange", function(){ if (location.hash === "#driver" && mode !== "driver") openDriver(); });
+  if (location.hash === "#driver" || /[?&]app=driver/.test(location.search) || APP) openDriver();
+  // داخل تطبيق المندوب: التطبيق للمندوب بس، ما يقدر يرجع للمتجر
+  if (APP) { appLock = true; appUpdateCheck(); document.addEventListener("visibilitychange", function(){ if (!document.hidden) appUpdateCheck(); });
+    window.addEventListener("popstate", function(){ if (mode !== "driver" || location.hash !== "#driver") openDriver(); }); }
+  window.addEventListener("hashchange", function(){ if ((location.hash === "#driver" || appLock) && mode !== "driver") openDriver(); });
   // نقاط البيع في المحل انشالت (البيع في المحل على برنامج الكاشير حق المحل): الرابط القديم يفتح المتجر
   if (location.hash === "#pos") { try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
   if (GH) fetch("data.json?v=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){

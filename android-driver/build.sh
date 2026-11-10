@@ -41,5 +41,5 @@ apksigner sign --ks "$KS" --ks-pass "pass:$(cat "$KP")" --key-pass "pass:$(cat "
 # ملف الإصدار: التطبيق يقرأه من الموقع ويعرض «حدّث الآن». انسخه بجنب driver-app.apk
 VC=$(aapt dump badging out/ohod-driver.apk | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -1)
 VN=$(aapt dump badging out/ohod-driver.apk | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -1)
-printf '{"code":%s,"name":"%s","url":"driver-app.apk","sha256":"%s","min":0,"note":"نزل إصدار أحدث من التطبيق فيه تحسينات."}\n' "$VC" "$VN" "$(sha256sum out/ohod-driver.apk | cut -d' ' -f1)" > out/driver-app.json
+printf '{"code":%s,"name":"%s","url":"driver-app.apk","sha256":"%s","min":%s,"note":"%s"}\n' "$VC" "$VN" "$(sha256sum out/ohod-driver.apk | cut -d' ' -f1)" "${MIN_CODE:-0}" "${UPDATE_NOTE:-نزل إصدار أحدث من التطبيق فيه تحسينات.}" > out/driver-app.json
 apksigner verify out/ohod-driver.apk && echo "OK: out/ohod-driver.apk ($(du -h out/ohod-driver.apk | cut -f1))"
