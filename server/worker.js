@@ -221,7 +221,7 @@ export default {
         if (!toP || !toP.stock) return reply(409, { ok: false, code: "bad_swap" });
         const ex = lines.find((l) => l.id === toP.id && l.price === Number(toP.price));
         lines = lines.filter((l) => l.id !== off.line_id);
-        if (ex) ex.qty += line.qty; else lines.push({ id: toP.id, qty: line.qty, price: Number(toP.price) });
+        if (ex) ex.qty += line.qty * (Number(line.per) || 1); else lines.push({ id: toP.id, qty: line.qty * (Number(line.per) || 1), price: Number(toP.price) });
       } else lines = lines.filter((l) => l.id !== off.line_id);
       if (!lines.length) return reply(409, { ok: false, code: "last_item" });
       let r;
@@ -380,7 +380,7 @@ export default {
           if (!toP || !toP.stock || toP.id === id) return reply(400, { ok: false, code: "bad_swap" });
           const ex = lines.find((l) => l.id === toP.id && l.price === Number(toP.price));
           lines = lines.filter((l) => l.id !== id);
-          if (ex) ex.qty += line.qty; else lines.push({ id: toP.id, qty: line.qty, price: Number(toP.price) });
+          if (ex) ex.qty += line.qty * (Number(line.per) || 1); else lines.push({ id: toP.id, qty: line.qty * (Number(line.per) || 1), price: Number(toP.price) });
         } else lines = lines.filter((l) => l.id !== id);
         if (!lines.length) return reply(400, { ok: false, code: "last_item" });
         let r;
@@ -412,7 +412,7 @@ export default {
           let lines = (rec.lines || []).map((l) => ({ id: l.id, qty: l.qty, price: l.price }));
           const ex = lines.find((l) => l.id === toP.id && l.price === Number(toP.price));
           lines = lines.filter((l) => l.id !== id);
-          if (ex) ex.qty += line.qty; else lines.push({ id: toP.id, qty: line.qty, price: Number(toP.price) });
+          if (ex) ex.qty += line.qty * (Number(line.per) || 1); else lines.push({ id: toP.id, qty: line.qty * (Number(line.per) || 1), price: Number(toP.price) });
           let r;
           try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, me.name); } catch { return reply(502, { ok: false, code: "db" }); }
           if (r.error) return reply(400, { ok: false, code: r.error });
@@ -1017,7 +1017,7 @@ async function ensureSchema(env) {
 }
 function orderRecord(o, body) {
   return {
-    lines: o.lines.map((l) => ({ id: l.p.id, name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, regularPrice: Math.max(Number(l.price), Number(l.p.price)||0, Number(l.p.old)||0), tag: l.tag || "" })),
+    lines: o.lines.map((l) => ({ id: l.p.id, name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, regularPrice: Math.max(Number(l.price), Number(l.p.price)||0, Number(l.p.old)||0), tag: l.tag || "", ...(l.p.per ? { per: l.p.per } : {}) })),
     subtotal: o.subtotal, fee: o.fee, total: o.total, count: o.count, phone: o.phone,
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
     pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
@@ -1132,7 +1132,7 @@ async function editOrder(env, data, body, who) {
     const id = String(x.id || ""), q = Math.floor(Number(x.qty)), pr = Number(x.price);
     const p = byId[id] || oldBy[id];
     if (!p || !(q > 0 && q <= (p.print || oldBy[id] ? 5000 : 500)) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
-    lines.push({ id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined });
+    lines.push({ id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined, ...(oldBy[id] && oldBy[id].per ? { per: Number(oldBy[id].per) } : {}) });
   }
   if (!lines.length) return { error: "empty" };
   const fee = Math.max(0, Number(body.fee ?? rec.fee) || 0);
@@ -1226,7 +1226,7 @@ function priceOrder(data, body) {
       continue;
     }
     const kind = parts.length > 1 ? parts[0] : "r";
-    const p = byId[parts.length > 1 ? parts[1] : parts[0]];
+    const p = kind === "r" && String(parts[0]).includes("~") ? packProduct(byId, parts[0]) : byId[parts.length > 1 ? parts[1] : parts[0]];
     if (!p || !p.stock) return { error: "unavailable", id: key };
     if (qty > (p.print ? 5000 : 200)) continue;
     if (kind === "t") {
@@ -1254,10 +1254,11 @@ function priceOrder(data, body) {
     }
   }
   if (DEAL && base >= Number(DEAL.min || 0)) for (const d of dealLines) { lines.push(d); dealSum += d.qty * d.price; count += d.qty; }
+  // الحد لكل طلب بالحبات: الكرتون يحسب بعدد حباته
   const quantities = {};
-  for (const l of lines) quantities[l.p.id] = (quantities[l.p.id] || 0) + l.qty;
+  for (const l of lines) { const b = l.p.base || l.p.id; quantities[b] = (quantities[b] || 0) + l.qty * (l.p.per || 1); }
   for (const [id, qty] of Object.entries(quantities)) {
-    const max = Math.floor(Number(byId[id].max || 0));
+    const max = Math.floor(Number((byId[id] || {}).max || 0));
     if (max > 0 && qty > max) return {error:'item_limit',id,max};
   }
   if (!count) return { error: "empty" };
@@ -1270,6 +1271,13 @@ function priceOrder(data, body) {
   return { lines, subtotal, fee, total: round2(subtotal + fee), count, phone };
 }
 
+// وحدة بيع ثانية لنفس المنتج: «<المنتج>~<رقم الخيار>»، سعرها من بيانات المتجر، والمخزون ينخصم بعدد حباتها من المنتج الأساسي
+function packProduct(byId, key) {
+  const [pid, k] = String(key).split("~"), base = byId[pid], pk = base && Array.isArray(base.packs) ? base.packs[Number(k)] : null;
+  if (!pk || !/^\d{1,2}$/.test(String(k)) || !(Number(pk.price) > 0)) return null;
+  return { ...base, id: pid + "~" + Number(k), unit: String(pk.u || ""), price: Number(pk.price), old: undefined, max: undefined, base: pid, per: Math.max(1, Math.floor(Number(pk.n) || 1)) };
+}
+function baseOf(id) { return String(id || "").split("~")[0]; }
 function round2(n) { return Math.round(n * 100) / 100; }
 function normPhone(v) {
   let s = asciiDigits(v).replace(/[^\d+]/g, "").replace(/^\+?966/, "").replace(/^0/, "");
@@ -1387,6 +1395,7 @@ function validate(d) {
   for (const v of Object.values(d.imgs)) {
     if (typeof v !== "string" || !/^data:image\/(png|jpeg|webp|gif);base64,/.test(v)) return "image";
   }
+  for (const p of d.products) if (p.packs != null && (!Array.isArray(p.packs) || p.packs.length > 5 || !p.packs.every((x) => x && typeof x.u === "string" && x.u.length <= 40 && Number(x.n) >= 1 && Number(x.n) <= 999 && Number(x.price) > 0))) return "packs";
   const z = d.store.zone;
   if (z != null && (!Array.isArray(z) || z.length > 40 || (z.length && z.length < 3) || !z.every((p) => Array.isArray(p) && p.length === 2 && Math.abs(Number(p[0])) <= 90 && Math.abs(Number(p[1])) <= 180))) return "zone";
   if (d.store.custCancel != null && !["off", "new", "accepted"].includes(d.store.custCancel)) return "cancel_policy";
@@ -1451,7 +1460,7 @@ const STATUS_MSG = {
 };
 function needOf(rec) {
   const need = {};
-  for (const l of rec.lines || []) if (l.id) need[l.id] = (need[l.id] || 0) + Number(l.qty || 0);
+  for (const l of rec.lines || []) if (l.id) { const b = baseOf(l.id); need[b] = (need[b] || 0) + Number(l.qty || 0) * (Number(l.per) || 1); }
   return need;
 }
 let stockCache = { at: 0, body: "" };
@@ -1806,7 +1815,7 @@ async function setCosts(env, map) {
 // يحط سعر الشراء وقت الطلب على كل سطر، عشان الربح القديم ما يتغير لو تغيّر سعر الشراء بعدين
 async function withCost(env, rec, keepOld) {
   const costs = await readCosts(env);
-  for (const l of rec.lines || []) { if (keepOld && l.cost != null) continue; l.cost = Number(costs[l.id] || 0); }
+  for (const l of rec.lines || []) { if (keepOld && l.cost != null) continue; l.cost = round2(Number(costs[baseOf(l.id)] || 0) * (Number(l.per) || 1)); }
   return rec;
 }
 function costOf(rec) { return round2((rec.lines || []).reduce((s, l) => s + Number(l.qty || 0) * Number(l.cost || 0), 0)); }

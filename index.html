@@ -973,6 +973,8 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .zone-map{height:320px;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin:8px 0}.zone-pt{width:14px;height:14px;border-radius:50%;background:#0E9F7B;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .dv-near{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#4B5563;margin:4px 2px 10px}.dv-near b{color:#13213C}.dv-near button,.dv-near a{border:1px solid #D7DEE6;background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-weight:700;color:#13213C;text-decoration:none;cursor:pointer}.dv-stop{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:999px;background:#13213C;color:#fff;font-size:12px;font-weight:700;padding:0 6px}.dv-km{font-size:12px;color:#0E9F7B;font-weight:700}.dv-subw{background:#FFF7EE;border-radius:10px;padding:6px 10px;font-size:13px;color:#9A4A0B;margin-top:6px}
 .txtimg{display:grid;place-items:center;width:100%;height:100%;min-height:100px;padding:12px;box-sizing:border-box;text-align:center;border-radius:inherit}.txtimg b{font-family:var(--display);font-size:15px;line-height:1.35;color:#13213C;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.pd-packs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}.pd-pack{flex:1 1 90px;display:grid;gap:2px;justify-items:center;border:1.5px solid var(--line,#E3E7EC);background:#fff;border-radius:14px;padding:9px 10px;font:inherit;cursor:pointer;color:var(--ink,#13213C)}.pd-pack b{font-size:13px}.pd-pack span{font-size:12px;color:#6B7280}.pd-pack[aria-pressed="true"]{border-color:#0E9F7B;background:#E9F7F2}.pd-pack[aria-pressed="true"] span{color:#0B7A5E;font-weight:700}
+.pk-ed{display:grid;gap:6px;border-top:1px dashed var(--line);padding-top:8px}.pk-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:end}
 .kq-more{grid-column:1/-1;justify-self:center;min-width:220px;margin:6px 0 12px}.kq-more small{opacity:.7;font-weight:500}
 .kq-card{display:grid;gap:3px;align-content:start;cursor:pointer;min-width:0;position:relative}
 .kq-img{position:relative;aspect-ratio:1/1;max-width:100%;border-radius:18px;background:#F5F6F8;display:grid;place-items:center;overflow:hidden;margin-bottom:6px}
@@ -1471,13 +1473,19 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var GH = /\.github\.io$/.test(location.hostname);
   var GHREPO = GH ? { owner: location.hostname.split(".")[0], repo: location.pathname.split("/")[1] || "" } : null;
   function applyData(nd){ D = nd; S = D.store; DEAL = S.deal95 || null; DAILY = S.daily || null; applyTheme(S.theme); }
-  function byId(id){ for (var i=0;i<D.products.length;i++) if (D.products[i].id === id) return D.products[i]; return null; }
+  function byId(id){ for (var i=0;i<D.products.length;i++) if (D.products[i].id === id) return D.products[i]; var t = String(id || "").split("~"); return t.length === 2 ? packOf(byId(t[0]), t[1]) : null; }
+  // خيار بيع ثاني لنفس المنتج (شدّة، كرتون): منتج مشتق بسعره ووحدته، والمخزون من المنتج الأساسي بعدد الحبات
+  function packOf(base, k){
+    var pk = base && Array.isArray(base.packs) && /^\d{1,2}$/.test(String(k)) ? base.packs[Number(k)] : null;
+    if (!pk || !(Number(pk.price) > 0)) return null;
+    return Object.assign({}, base, { id: base.id + "~" + Number(k), unit: pk.u, unit_en: pk.u, price: Number(pk.price), old: undefined, max: undefined, packs: undefined, base: base.id, per: Math.max(1, Math.floor(Number(pk.n) || 1)) });
+  }
   function catOf(id){ for (var i=0;i<D.cats.length;i++) if (D.cats[i].id === id) return D.cats[i]; return null; }
   function tint(catId){ for (var i=0;i<D.cats.length;i++) if (D.cats[i].id === catId) return D.cats[i].tint || TINTS[i % TINTS.length]; return TINTS[TINTS.length-1]; }
   function onSale(p){ return p.old && p.old > p.price; }
   /* ---------- live stock ---------- */
   var LIVE = {};
-  function left(p){ var v = p && LIVE[p.id]; return v == null ? null : Number(v); }
+  function left(p){ if (p && p.per) { var b = LIVE[p.base]; return b == null ? null : Math.floor(Number(b) / p.per); } var v = p && LIVE[p.id]; return v == null ? null : Number(v); }
   function avail(p){ return !!(p && p.stock && left(p) !== 0); }
   function lowAt(){ var v = Number(S.lowAt); return S.lowAt == null || isNaN(v) ? 3 : v; }
   function capOf(p, base){ var c = Number(base || 0), m = Number(p.max || 0), l = left(p);
@@ -1563,8 +1571,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var fee = cnt ? ((S.freeOver && s >= S.freeOver) ? 0 : Number(S.fee || 0)) : 0;
     return { n: cnt, s: s, fee: fee, all: s + fee, base: base, unlocked: unlocked, dn: dn, left: Math.max(0, min - base) };
   }
-  function cartProductQty(id){return Object.keys(cart).reduce(function(sum,key){var line=lineOf(key);return sum+(line&&line.p.id===id?Number(cart[key])||0:0);},0);}
-  function canAddProduct(id,qty){var p=byId(id),total=cartProductQty(id)+qty,remaining=left(p),max=Number(p&&p.max)||0;return !!p&&(!max||total<=max)&&(remaining==null||total<=remaining);}
+  // الحد والمخزون بالحبات: الكرتون يحسب بعدد حباته من نفس المنتج
+  function cartProductQty(id){return Object.keys(cart).reduce(function(sum,key){var line=lineOf(key);return sum+(line&&(line.p.base||line.p.id)===id?(Number(cart[key])||0)*(line.p.per||1):0);},0);}
+  function canAddProduct(id,qty){var p=byId(id);if(!p)return false;var b=byId(p.base||p.id),total=cartProductQty(b.id)+qty*(p.per||1),remaining=left(b),max=Number(b.max)||0;return (!max||total<=max)&&(remaining==null||total<=remaining);}
   function control(p, kind){
     if (!avail(p)) return '';
     var key = kind ? kind + ":" + p.id : p.id, L = lineOf(key), n = cart[key] || 0;
@@ -1588,7 +1597,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
     return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + badge + low + control(p, kind || "") + '</div>' +
       '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '') + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
-      '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + '</span></article>';
+      '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + (Array.isArray(p.packs) && p.packs.length ? ' · ' + p.packs.map(function(x){ return esc(String(x.u || "").split(" ")[0]); }).join(" · ") : '') + '</span></article>';
   }
 
   /* ---------- screens ---------- */
@@ -1597,7 +1606,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var form = { name: "", phone: "", details: "", note: "", pay: "cash", lat: null, lng: null, sub: "call" };
   try { var f0 = JSON.parse(localStorage.getItem("ohod-form2") || "null"); if (f0) for (var k0 in f0) form[k0] = f0[k0]; } catch(e){}
   function saveForm(){ try { localStorage.setItem("ohod-form2", JSON.stringify(form)); } catch(e){} }
-  var lastOrder = null, pdQty = 1;
+  var lastOrder = null, pdQty = 1, pdPack = -1;
   try { lastOrder = JSON.parse(localStorage.getItem("ohod-last") || "null"); } catch(e){}
   function saveLast(){ try { localStorage.setItem("ohod-last", JSON.stringify(lastOrder)); } catch(e){} }
   function activeOrder(){ return lastOrder && lastOrder.track && Date.now() - lastOrder.at < 12 * 3600e3 && lastOrder.status !== "delivered" && lastOrder.status !== "canceled"; }
@@ -1887,6 +1896,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function productHTML(){
     var p = byId(openProd); if (!p) return catsHTML();
+    var packBase = p, packs = Array.isArray(p.packs) && p.packs.length ? p.packs : null;
+    if (packs && pdPack >= 0 && byId(p.id + "~" + pdPack)) p = byId(p.id + "~" + pdPack); else pdPack = -1;
+    var packHTML = packs ? '<div class="pd-packs" role="group" aria-label="' + tr("طريقة الشراء", "Buy as") + '">' + [-1].concat(packs.map(function(x, i){ return i; })).map(function(i){ var q = i < 0 ? packBase : byId(packBase.id + "~" + i); if (!q) return ""; return '<button type="button" class="pd-pack" data-pdpack="' + i + '" aria-pressed="' + (pdPack === i) + '"><b>' + esc(un(q)) + '</b><span>' + num(q.price) + ' ' + tr("ر.س", "SAR") + '</span></button>'; }).join("") + '</div>' : '';
     var dd = daily(), isDaily = dd && dd.p.id === p.id, price = isDaily ? dd.price : p.price, was = isDaily ? p.price : (onSale(p) ? p.old : 0);
     var c = catOf(p.cat);
     var pairs = idsToList(p.sugg).filter(function(x){ return x.id !== p.id; }).slice(0, 12);
@@ -1900,7 +1912,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="sheet-b"><div class="wrap">' +
       '<div class="ttl"><div style="display:grid;gap:4px"><span class="chipline">' + esc(bd(p) || (c ? nm(c) : "")) + (isDaily ? tr(' · عرض اليوم', ' · Deal of the day') : '') + '</span><h1>' + esc(nm(p)) + '</h1><span class="unit">' + esc(un(p)) + '</span></div>' +
       '<div style="display:grid;justify-items:end"><span class="price' + (was ? ' sale' : '') + '">' + num(price) + tr('<small> ر.س</small></span>', '<small> SAR</small></span>') + (was ? '<s class="was" style="font-size:13px">' + rial(was) + '</s>' : '') + '</div></div>' +
-      (was ? '<div class="savebar">' + ic("flame") + tr('وفّر ', 'Save ') + rial(was - price) + (isDaily ? tr(' · العرض ينتهي الساعة ١٢ بالليل', ' · deal ends at midnight') + (lim ? tr(' · الحد ', ' · limit ') + lim + tr(' لكل طلب', ' per order') : '') : tr(' على كل ', ' per ') + esc(un(p))) + '</div>' : '') +
+      packHTML + (was ? '<div class="savebar">' + ic("flame") + tr('وفّر ', 'Save ') + rial(was - price) + (isDaily ? tr(' · العرض ينتهي الساعة ١٢ بالليل', ' · deal ends at midnight') + (lim ? tr(' · الحد ', ' · limit ') + lim + tr(' لكل طلب', ' per order') : '') : tr(' على كل ', ' per ') + esc(un(p))) + '</div>' : '') +
       (!avail(p) ? tr('<div class="alert">هذا المنتج نفد حاليًا.</div>', '<div class="alert">This item is sold out right now.</div>') : '') +
       (avail(p) && ((lf != null && lf <= lowAt()) || Number(p.max) > 0) ? '<div class="pd-lims">' + (lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '') + (Number(p.max) > 0 ? '<span>' + tr("الحد الأقصى ", "Max ") + Number(p.max) + tr(" لكل طلب", " per order") + '</span>' : '') + '</div>' : '') +
       (pairs.length ? '<div class="pd-sugg"><b>' + (p.sugg && p.sugg.length ? tr("يحلى معه", "Goes well with") : tr("ممكن يعجبك", "You may also like")) + '</b><div class="rail">' + pairs.map(function(x){ return card(x); }).join("") + '</div></div>' : '') +
@@ -2029,8 +2041,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="actions"><a class="btn btn-teal" href="tel:' + esc(S.phone) + '">' + ic("phone") + tr('اتصل</a>', 'Call</a>') + (waNumber() ? '<a class="btn btn-soft" href="https://wa.me/' + waNumber() + tr('" target="_blank" rel="noopener">واتساب</a>', '" target="_blank" rel="noopener">WhatsApp</a>') : '') + '</div></div>' +
       (apiUrl() ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("الإشعارات", "Notifications") + '</b><span>' + (PUSH_PREF && pushOn() ? tr("مفعّلة. بيوصلك تنبيه مع كل تغيير في حالة طلباتك.", "On. You will be notified about every change to your orders.") : tr("فعّلها عشان يوصلك تنبيه لما طلبك ينقبل ولما المندوب يطلع لك.", "Turn them on to be alerted when your order is accepted and when the driver is on the way.")) + '</span><span class="pushmsg" id="pushPrefMsg"' + (isIOS() && !isApp() ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</span></span>' +
         (PUSH_PREF && pushOn() ? '<span class="on">' + ic("check") + '</span>' : '<button class="btn btn-teal" type="button" id="pushPref">' + tr("فعّل", "Turn on") + '</button>') + '</div>' : '') +
-      tr('<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">الإدارة</b><p class="hint">لصاحب المحل: المنتجات والأسعار والعروض والصور.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">', '<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">Admin</b><p class="hint">For the store owner: products, prices, offers and photos.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">') + ic("gear") + tr('الدخول للإدارة</button></div>', 'Admin login</button></div>') +
-      tr('<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">المندوب</b><p class="hint">صفحة طلبات التوصيل للمندوب، برقم سري خاص فيه.</p><button class="btn btn-ink" type="button" id="toDriver" style="justify-self:start">', '<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">Driver</b><p class="hint">The delivery orders page for the driver, with their own PIN.</p><button class="btn btn-ink" type="button" id="toDriver" style="justify-self:start">') + ic("truck") + tr('دخول المندوب</button></div>', 'Driver login</button></div>') +
+      tr('<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">الدخول</b><p class="hint">للإدارة والموظفين والمناديب: كل واحد يدخل بكلمة السر حقته، ويفتح له قسمه.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">', '<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">Sign in</b><p class="hint">For the owner, staff and drivers: everyone signs in with their own password.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">') + ic("lock") + tr('الدخول</button></div>', 'Sign in</button></div>') +
       '<div class="box" style="margin-top:12px"><b>محفظتي والكاش باك</b><p class="hint">رصيدك وسجل حركاتك. تفعيل الدخول من الإدارة بعد التحقق من رقمك.</p><button class="btn btn-soft" type="button" data-walletcustomer>افتح المحفظة</button></div>' +
       tr('<p class="credit">صور بعض الخضار والفواكه من مجموعة Fruits-360 لـ Mihai Oltean (رخصة MIT). الخريطة © مساهمو OpenStreetMap.</p></div>', '<p class="credit">Some fruit and vegetable photos are from the Fruits-360 collection by Mihai Oltean (MIT license). Map © OpenStreetMap contributors.</p></div>');
   }
@@ -2240,9 +2251,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
       if (inc) evAdd("c", L0.p.id);
       if (n <= 0) delete cart[id]; else cart[id] = n; saveCart(); refresh(); return;
     }
-    if ((t = e.target.closest("[data-pq]"))) { var p = byId(openProd), dd = daily(), lim = lineOf((dd && dd.p.id === openProd ? "t:" : "") + openProd).limit;
+    if ((t = e.target.closest("[data-pq]"))) { var cur = pdPack >= 0 ? openProd + "~" + pdPack : openProd, p = byId(cur), dd = daily(), lim = lineOf((dd && dd.p.id === cur ? "t:" : "") + cur).limit;
       pdQty = Math.max(1, pdQty + Number(t.dataset.pq)); if (lim) pdQty = Math.min(pdQty, lim);
-      $("pq").textContent = pdQty; $("pqTotal").textContent = rial((dd && dd.p.id === openProd ? dd.price : p.price) * pdQty); return; }
+      $("pq").textContent = pdQty; $("pqTotal").textContent = rial((dd && dd.p.id === cur ? dd.price : p.price) * pdQty); return; }
     if ((t = e.target.closest("[data-addprod]"))) { var key = (t.dataset.kind ? t.dataset.kind + ":" : "") + t.dataset.addprod, L1 = lineOf(key);
       if(!canAddProduct(L1.p.id,pdQty)){sToast(tr("الكمية تتجاوز المتاح أو الحد المسموح، قلّلها","Reduce the quantity to the available purchase limit"));return;}
       var nn = (cart[key] || 0) + pdQty; if (L1.limit) nn = Math.min(nn, L1.limit); cart[key] = nn; saveCart(); evAdd("c", L1.p.id); show("back"); return; }
@@ -2262,7 +2273,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ((t = e.target.closest("[data-sub]"))) { form.sub = t.dataset.sub; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-sub]"), function(b){ b.setAttribute("aria-pressed", b.dataset.sub === form.sub); }); return; }
     if ((t = e.target.closest("[data-pay]"))) { form.pay = t.dataset.pay; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-pay]"), function(b){ b.setAttribute("aria-pressed", b.dataset.pay === form.pay); }); return; }
     if ((t = e.target.closest("[data-term]"))) { q = t.dataset.term; $("q").value = q; renderSearch(); return; }
-    if ((t = e.target.closest("[data-open]"))) { openProd = t.dataset.open; pdQty = 1; evAdd("v", openProd); if (screen === "product") { render(); window.scrollTo(0,0); } else show("product"); return; }
+    if ((t = e.target.closest("[data-pdpack]"))) { pdPack = Number(t.dataset.pdpack); pdQty = 1; render(); return; }
+    if ((t = e.target.closest("[data-open]"))) { openProd = t.dataset.open; pdQty = 1; pdPack = -1; evAdd("v", openProd); if (screen === "product") { render(); window.scrollTo(0,0); } else show("product"); return; }
   });
   document.addEventListener("keydown", function(e){ if (e.key === "Escape") { var k = $("pickSheet"); if (k) k.hidden = true; var ps = $("pinSheet"); if (ps) ps.remove(); } });
   var lastDay = dayNo(); setInterval(function(){ if (dayNo() !== lastDay) { lastDay = dayNo(); if (mode === "store" && screen !== "checkout") render(); } }, 30000);
@@ -2731,24 +2743,17 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var pinFails = 0, pinLockUntil = 0;
   function openPin(){
     var w = document.createElement("div");
-    w.innerHTML = tr('<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>دخول الإدارة والموظفين</h2><button class="btn btn-ghost" type="button" id="pinClose">إغلاق</button></div>', '<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>Admin login</h2><button class="btn btn-ghost" type="button" id="pinClose">Close</button></div>') +
-      '<p class="hint" style="margin:0">' + tr('اكتب رقمك السري، وبيفتح لك قسمك على طول: الإدارة، أو المندوب، أو التجهيز، أو الكاشير.', 'Type your PIN and your own page opens.') + '</p>' +
+    w.innerHTML = tr('<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>الدخول</h2><button class="btn btn-ghost" type="button" id="pinClose">إغلاق</button></div>', '<div class="sheet" id="pinSheet"><form class="panel" id="pinForm" autocomplete="off"><div class="panel-head"><h2>Admin login</h2><button class="btn btn-ghost" type="button" id="pinClose">Close</button></div>') +
+      '<p class="hint" style="margin:0">' + tr('اكتب كلمة السر حقتك، وبيفتح لك قسمك على طول.', 'Type your password and your own page opens.') + '</p>' +
       '<label for="staffUsername" id="staffUsernameLabel" hidden>' + tr('اسم المستخدم', 'Username') + '<input id="staffUsername" autocomplete="username" dir="ltr" maxlength="32" disabled></label>' +
-      '<label for="pinIn"><span id="loginPasswordLabel">' + tr('الرقم السري', 'PIN') + '</span><input id="pinIn" class="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="current-password" required></label>'  +
+      '<label for="pinIn"><span id="loginPasswordLabel">' + tr('كلمة السر', 'Password') + '</span><input id="pinIn" class="pin" type="password" inputmode="numeric" maxlength="12" autocomplete="current-password" required></label>'  +
       '<div class="actions"><button class="btn btn-ink" type="submit">' + ic("lock") + tr('دخول</button><span class="status" id="pinStatus" aria-live="polite"></span></div>', 'Sign in</button><span class="status" id="pinStatus" aria-live="polite"></span></div>') +
-      '<button type="button" class="linkbtn" id="employeeLoginMode">' + tr('عندك اسم مستخدم وكلمة مرور؟ ادخل من هنا', 'Sign in with username and password') + '</button><button type="button" class="linkbtn" id="ownerLoginMode" hidden>' + tr('رجوع للدخول بالرقم السري', 'Back to PIN sign-in') + '</button></form></div>';
+      '</form></div>';
     document.body.appendChild(w.firstChild);
     var close = function(){ var s = $("pinSheet"); if (s) s.remove(); };
     $("pinClose").addEventListener("click", close);
     $("pinSheet").addEventListener("click", function(e){ if (e.target === this) close(); });
-    function setAdminLoginMode(employee){
-      $('staffUsernameLabel').hidden=!employee;$('staffUsername').disabled=!employee;$('staffUsername').required=employee;$('staffUsername').value='';
-      $('ownerLoginMode').hidden=!employee;$('employeeLoginMode').hidden=employee;
-      $('loginPasswordLabel').textContent=employee?tr('كلمة المرور','Password'):tr('الرقم السري','PIN');
-      $('pinIn').setAttribute('inputmode',employee?'text':'numeric');$('pinIn').maxLength=employee?128:12;$('pinIn').value='';$('pinStatus').textContent='';
-      (employee?$('staffUsername'):$('pinIn')).focus();
-    }
-    $('ownerLoginMode').onclick=function(){setAdminLoginMode(false);};$('employeeLoginMode').onclick=function(){setAdminLoginMode(true);};
+
     $("pinIn").focus();
     $("pinForm").addEventListener("submit", function(e){
       e.preventDefault();
@@ -3187,6 +3192,26 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<label data-upack' + (packs ? '' : ' hidden') + '>كم حبة فيها<input data-f="upack" type="number" min="0" max="999" step="1" inputmode="numeric" value="' + (u.n || "") + '" placeholder="مثلاً ٢٤"></label>' +
       '<label data-uother' + (u.kind === "other" ? '' : ' hidden') + '>الوحدة<input data-f="unit" value="' + esc(p.unit) + '" placeholder="مثلاً: كيس ٦ حبات"></label>';
   }
+  // خيارات بيع إضافية للزبون (شدّة، كرتون…) بسعرها: الزبون يختار من صفحة المنتج، والمخزون ينخصم بعدد الحبات
+  var PACK_KINDS = ["شدّة", "كرتون", "كيس", "علبة"];
+  function packsFields(p){
+    var L = Array.isArray(p.packs) ? p.packs : [];
+    return '<div class="wide pk-ed"><b>خيارات بيع إضافية للزبون</b> <small class="hint">مثلاً: شدّة ٦ حبات أو كرتون ٢٤ حبة، ولكل خيار سعره. المخزون ينخصم بالحبات.</small>' +
+      L.map(function(x, i){ var u = unitParse(x.u), k = u.kind === "other" ? "كرتون" : u.kind;
+        return '<div class="pk-row" data-pk="' + i + '"><select data-pf="kind" aria-label="الوحدة">' + PACK_KINDS.map(function(o){ return '<option' + (o === k ? ' selected' : '') + '>' + o + '</option>'; }).join("") + '</select>' +
+          '<label>كم حبة<input data-pf="n" type="number" min="1" max="999" step="1" inputmode="numeric" value="' + esc(x.n || "") + '"></label>' +
+          '<label>السعر<input data-pf="price" type="number" min="0" step="0.25" inputmode="decimal" value="' + esc(x.price || "") + '"></label>' +
+          '<button type="button" class="del" data-pkdel="' + i + '">شيل</button></div>'; }).join("") +
+      (L.length < 5 ? '<button type="button" class="btn btn-soft sm" data-pkadd="' + p.id + '">+ أضف خيار (شدّة / كرتون)</button>' : '') + '</div>';
+  }
+  document.addEventListener("click", function(e){
+    if (mode !== "admin" || !draft) return;
+    var t = e.target.closest && e.target.closest("[data-pkadd],[data-pkdel]"); if (!t) return;
+    var row = t.closest("[data-row]"), p = row && dById(row.dataset.row); if (!p) return;
+    if (t.dataset.pkadd != null) { p.packs = (p.packs || []).concat([{ u: "كرتون", n: 0, price: 0 }]); }
+    else { p.packs.splice(Number(t.dataset.pkdel), 1); if (!p.packs.length) delete p.packs; }
+    markDirty(); renderAProds();
+  });
   function renderAProds(){
     var words = normAr(aFilter.q).split(/\s+/).filter(Boolean), shown = aFilter.show || 40;
     var all = draft.products.filter(function(p){ if (aFilter.cat !== "all" && p.cat !== aFilter.cat) return false; if (!words.length) return true; var h = normAr(p.name + " " + (p.bc || "")); return words.every(function(w){ return h.indexOf(w) > -1; }); });
@@ -3196,7 +3221,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         '<button class="imgbtn" type="button" data-pick="prod:' + p.id + '" aria-label="تغيير صورة ' + esc(p.name) + '">' + imgTag(p.img, "") + '</button>' +
         '<label>الاسم<input data-f="name" value="' + esc(p.name) + '"></label>' +
         '<label>الاسم بالإنجليزي<input data-f="name_en" value="' + esc(p.name_en || "") + '" dir="ltr"></label>' +
-        unitFields(p) +
+        unitFields(p) + packsFields(p) +
         '<label>الوحدة بالإنجليزي<input data-f="unit_en" value="' + esc(p.unit_en || "") + '" dir="ltr"></label>' +
         '<label>الباركود <small>(للكاشير، امسحه هنا)</small><input data-f="bc" value="' + esc(p.bc || "") + '" dir="ltr" inputmode="numeric" autocomplete="off" placeholder="اختياري"></label>' +
         '<label>السعر<input data-f="price" type="number" min="0" step="0.25" inputmode="decimal" value="' + esc(p.price) + '"></label>' +
@@ -3340,7 +3365,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (t.dataset.catName) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catName) c.name = t.value; }); markDirty(); return; }
     if (t.dataset.catLoc) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catLoc) { if (t.value.trim()) c.loc = t.value; else delete c.loc; } }); markDirty(); return; }
     if (t.dataset.catNameEn) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catNameEn) { if (t.value.trim()) c.name_en = t.value; else delete c.name_en; } }); markDirty(); return; }
-    var row = t.closest("[data-row]"); if (!row || !t.dataset.f) return;
+    var row = t.closest("[data-row]"); if (!row || !(t.dataset.f || t.dataset.pf)) return;
     var p = dById(row.dataset.row), f = t.dataset.f;
     if (f === "stock") { p.stock = t.checked; row.classList.toggle("off", !t.checked); }
     else if (f === "price") p.price = Number(t.value || 0);
@@ -3352,6 +3377,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
     else if (f === "badge") { if (t.value.trim()) p.badge = t.value.trim(); else delete p.badge; }
     else if (f === "name_en" || f === "unit_en") { if (t.value.trim()) p[f] = t.value; else delete p[f]; }
     else if (f === "bc") { var bv = t.value.replace(/[^\w,، -]/g, "").trim(); if (bv) p.bc = bv; else delete p.bc; }
+    else if (t.dataset.pf) {
+      var pr = t.closest("[data-pk]"), i = Number(pr.dataset.pk), x = p.packs && p.packs[i]; if (!x) return;
+      var kd = pr.querySelector('[data-pf="kind"]').value, nn = Math.floor(Number(pr.querySelector('[data-pf="n"]').value) || 0);
+      x.n = nn; x.price = Math.max(0, Number(pr.querySelector('[data-pf="price"]').value) || 0); x.u = unitText(kd, nn);
+    }
     else if (f === "ukind" || f === "upack") {
       var kind = row.querySelector('[data-f="ukind"]').value, n = Math.floor(Number(row.querySelector('[data-f="upack"]').value) || 0);
       var packs = kind !== "حبة" && kind !== "كيلو" && kind !== "other";
@@ -3497,6 +3527,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (newPin && !/^\d{4,12}$/.test(newPin)) { btn.disabled = false; st.className = "status err"; st.textContent = "الرقم السري الجديد لازم يكون أرقام بس، من ٤ إلى ١٢ رقم."; return; }
     if (apiUrl()) {
       var payload = gcData(JSON.parse(JSON.stringify(draft))); delete payload.store.pinHash;
+      // خيار بيع ناقص (بدون عدد حبات أو سعر) ما ينحفظ
+      payload.products.forEach(function(p){ if (!Array.isArray(p.packs)) return; p.packs = p.packs.filter(function(x){ return Number(x.n) >= 1 && Number(x.price) > 0; }); if (!p.packs.length) delete p.packs; });
       var stockSend = Object.keys(stockEdit).length ? stockEdit : undefined, costSend = Object.keys(costEdit).length ? costEdit : undefined;
       api("/save", { pin: adminPin, data: payload, newPin: newPin || undefined, newDriverPin: newDPin || undefined, stock: stockSend, costs: costSend, baseVersion: adminCatalogVersion }).then(function(j){
         btn.disabled = false;
@@ -4488,7 +4520,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var box = $('aStaff'); if (!box) return;
     var u = staffUsers.filter(function(u){ return u.id === editingStaffId; })[0] || {};
     box.innerHTML = '<div class="card" id="staffCard"></div><details class="card admin-advanced-accounts" id="advancedAdminAccounts"><summary>حسابات إضافية للوحة الإدارة</summary><div class="card"><h2>حسابات لوحة الإدارة</h2><p class="hint">المدير يدير المتجر والتقارير، دون إدارة الحسابات أو تغيير أرقام الدخول. موظف الطلبات يتابع الطلبات ويغيّر حالاتها ويطبعها؛ لا يغيّر الأسعار ولا يرى التكاليف والأرباح. الكاشير يراجع ويطبع الإيصالات ويسجل التحصيل والتسوية، دون تعديل المنتجات أو إدارة المحافظ. عامل التجهيز يشاهد المنتجات وملاحظات التجهيز فقط. كل موظف يدخل برقمه السري من زر الدخول، ويفتح له قسمه على طول. تعديل الحساب ينهي جلساته الحالية.</p><div class="olist2">' + staffUsers.map(function(x){ return '<button type="button" class="orow2" data-editstaff="' + x.id + '"><b>' + esc(x.name) + '</b><span dir="ltr">' + esc(x.username) + '</span><span>' + (x.role === 'manager' ? 'مدير' : x.role === 'preparer' ? 'عامل تجهيز' : x.role==='cashier'?'كاشير التوصيل':'موظف طلبات') + '</span><span>' + (x.active ? (x.hasPin ? 'يدخل برقمه' : 'مفعّل') : 'موقوف') + '</span></button>'; }).join('') + '</div></div>' +
-      '<form class="card" id="staffAccountForm"><h2>' + (u.id ? 'تعديل حساب' : 'حساب جديد') + '</h2><div class="fields"><label>اسم الموظف<input id="suName" maxlength="30" required value="' + esc(u.name || '') + '"></label><label>الصلاحية<select id="suRole"><option value="cashier"' + (u.role === 'cashier' ? ' selected' : '') + '>كاشير التوصيل</option><option value="preparer"' + (u.role === 'preparer' ? ' selected' : '') + '>عامل تجهيز</option><option value="orders">موظف طلبات</option><option value="manager"' + (u.role === 'manager' ? ' selected' : '') + '>مدير</option></select></label><label>الرقم السري للدخول (٤ إلى ١٢ رقم)' + (u.id ? (u.hasPin ? ' — اتركه فاضي إذا ما تبي تغيّره' : ' — حطه عشان يدخل برقمه') : '') + '<input id="suPin" class="pin" type="password" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12" autocomplete="new-password"' + (u.id ? '' : ' required') + '></label><label class="chk"><input id="suActive" type="checkbox"' + (u.active !== 0 ? ' checked' : '') + '>الحساب مفعّل</label></div><details class="hint"><summary>دخول باسم مستخدم وكلمة مرور (اختياري)</summary><div class="fields"><label>اسم المستخدم (حروف إنجليزية وأرقام)<input id="suUsername" dir="ltr" pattern="[a-zA-Z0-9._-]{3,32}" minlength="3" maxlength="32" autocomplete="off" value="' + esc(u.username && u.username.indexOf('staff-') !== 0 ? u.username : '') + '"></label><label>كلمة المرور (١٠ أحرف على الأقل)<input id="suPassword" type="password" minlength="10" maxlength="128" autocomplete="new-password"></label></div></details><div class="actions"><button class="btn btn-brand" type="submit">حفظ الحساب</button><button class="btn btn-soft" id="staffNew" type="button">حساب جديد</button><span id="suMessage" class="status" aria-live="polite"></span></div></form></details>';
+      '<form class="card" id="staffAccountForm"><h2>' + (u.id ? 'تعديل حساب' : 'حساب جديد') + '</h2><div class="fields"><label>اسم الموظف<input id="suName" maxlength="30" required value="' + esc(u.name || '') + '"></label><label>الصلاحية<select id="suRole"><option value="cashier"' + (u.role === 'cashier' ? ' selected' : '') + '>كاشير التوصيل</option><option value="preparer"' + (u.role === 'preparer' ? ' selected' : '') + '>عامل تجهيز</option><option value="orders">موظف طلبات</option><option value="manager"' + (u.role === 'manager' ? ' selected' : '') + '>مدير</option></select></label><label>كلمة السر للدخول (أرقام، من ٤ إلى ١٢)' + (u.id ? (u.hasPin ? ' — اتركه فاضي إذا ما تبي تغيّره' : ' — حطه عشان يدخل برقمه') : '') + '<input id="suPin" class="pin" type="password" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12" autocomplete="new-password"' + (u.id ? '' : ' required') + '></label><label class="chk"><input id="suActive" type="checkbox"' + (u.active !== 0 ? ' checked' : '') + '>الحساب مفعّل</label></div><input id="suUsername" type="hidden" value=""><input id="suPassword" type="hidden" value=""><div class="actions"><button class="btn btn-brand" type="submit">حفظ الحساب</button><button class="btn btn-soft" id="staffNew" type="button">حساب جديد</button><span id="suMessage" class="status" aria-live="polite"></span></div></form></details>';
     if(editingStaffId)$('advancedAdminAccounts').open=true;
     $('staffNew').onclick = function(){ editingStaffId = 0; drawStaffAccounts(); };
     $('staffAccountForm').onsubmit = function(e){
