@@ -1295,7 +1295,9 @@ body[data-screen="driver"]{background:#F3F4F6}
 .pr-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:700}.pr-seg{display:inline-flex;background:#F1F4F6;border-radius:999px;padding:3px}.pr-seg button{border:0;background:transparent;border-radius:999px;padding:7px 16px;font:inherit;font-weight:700;color:var(--ink);cursor:pointer}.pr-seg button[aria-pressed="true"]{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .pr-sum{background:#F7FAFB;border:1px dashed #CFE3E0;border-radius:16px;padding:14px;text-align:center;font-size:15px}.pr-sum b{font-size:19px}.pr-sum small{color:var(--muted)}
 .pr-cart{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#EAF6F4;border-radius:16px;padding:10px 14px;font-size:13px}.pr-steps{margin:0;padding:0 18px;color:var(--muted);font-size:13px;line-height:1.9}
-.pr-acts{display:flex;align-items:center;gap:8px}.pr-acts .btn{padding:6px 12px;font-size:12.5px}.pr-wa{display:grid;gap:8px}.pr-wa p{margin:0;color:inherit;opacity:.85;font-size:13.5px}
+.pr-acts{display:flex;align-items:center;gap:8px}.pr-acts .btn{padding:6px 12px;font-size:12.5px}.kq-cat .tile{position:relative}.kq-cat .soon{position:absolute;top:6px;inset-inline-start:6px;background:#E8590C;color:#fff;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px}
+.pr-soon{background:#FFF4EA;border:1px dashed #F3B98A;border-radius:18px;padding:20px;text-align:center;display:grid;gap:6px}.pr-soon b{font-size:20px;color:#C2410C}.pr-soon p{margin:0;color:var(--muted);line-height:1.7}
+.pr-wa{display:grid;gap:8px}.pr-wa p{margin:0;color:inherit;opacity:.85;font-size:13.5px}
 .kq-recent{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .kq-rchip{flex:none;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px 0 6px;border-radius:12px;border:1px solid #E6EAEE;background:#fff;font:inherit;font-size:12.5px;color:var(--ink);cursor:pointer}
 .kq-rchip img{width:26px;height:26px;object-fit:contain;border-radius:7px;background:#F5F6F8}
@@ -1793,7 +1795,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var SEC = {}, offers = D.products.filter(function(p){ return avail(p) && onSale(p); }), deals = dealsList(), tt = totals();
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
     SEC.free = S.freeOver ? '<div class="wrap kq-sec-wrap"><button type="button" class="kq-free" data-chip="for"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("احصل على توصيلك المجاني!", "Get free delivery!") + ' <em>' + tr("مجاني", "Free") + '</em></b><span>' + tr("لطلباتك فوق ", "On orders over ") + rial(S.freeOver) + '</span></span>' + ic("fwd") + '</button></div>' : '';
-    SEC.catgrid = '<div class="wrap"><div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-nav="cats">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div></div>';
+    SEC.catgrid = '<div class="wrap"><div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-nav="cats">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div></div>';
     SEC.offers = offers.length ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + offers.map(function(p){ return card(p); }).join("") + '</div></div>' : '';
     SEC.deals = deals.length ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("lock") + tr("كل منتج بـ ", "Everything for ") + num(DEAL.price) + ' ' + tr("ر.س", "SAR") + '</h2><button type="button" data-chip="deals">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><p class="hint" style="margin:-6px 0 10px">' + (tt.unlocked ? tr("انفتحت لك، ضيف اللي تبغاه", "Unlocked, add what you like") : tr("تنفتح لطلبات فوق ", "Unlocks for orders over ") + rial(DEAL.min) + ' · ' + tr("باقي ", "Add ") + rial(tt.left)) + '</p><div class="rail">' + deals.map(function(p){ return card(p, "d"); }).join("") + '</div></div>' : '';
     SEC.grid = '<div class="kq-chips" id="kqChips"><div class="wrap"><div class="row">' +
@@ -1809,7 +1811,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<button class="kq-search" type="button" data-nav="search">' + ic("search") + '<span>' + tr("ابحث في كل الأقسام…", "Search all categories…") + '</span></button></div></div><div class="wrap">' +
       (deals.length ? '<button type="button" class="kq-recipe" data-chip="deals"><span class="ic">' + ic("tag") + '</span><span class="t"><b>' + tr("كل منتج بـ ", "Everything for ") + num(DEAL.price) + ' ' + tr("ر.س", "SAR") + '</b><span>' + (t.unlocked ? tr("انفتحت لك، ضيف اللي تبغاه", "Unlocked, add what you like") : tr("لطلبات فوق ", "For orders over ") + rial(DEAL.min)) + '</span></span>' + ic("fwd") + '</button>' : '') +
       '<div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-chip="for">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div>' +
-      '<div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div>' +
+      '<div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div>' +
       (D.products.some(function(p){ return avail(p) && onSale(p); }) ? '<div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + D.products.filter(function(p){ return avail(p) && onSale(p); }).map(function(p){ return card(p); }).join("") + '</div>' : '') + '</div>';
   }
 
@@ -1818,6 +1820,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var printJobs = {}; try { printJobs = JSON.parse(localStorage.getItem("ohod-print-jobs") || "{}") || {}; } catch(e){ printJobs = {}; }
   function savePrintJobs(){ try { localStorage.setItem("ohod-print-jobs", JSON.stringify(printJobs)); } catch(e){} }
   function printProd(t){ return byId(PRID[t]); }
+  function printSoon(){ return !!(S.print && S.print.soon); }
+  function soonTag(c){ return c && c.id === "print" && printSoon() ? '<span class="soon">' + tr("قريباً", "Soon") + '</span>' : ''; }
   function printOK(){ var a = printProd("bw"), b = printProd("color"); return !!(a && b && a.print && b.print); }
   function printQty(){ var pg = Math.floor(Number(asciiDigits(PR.pages))) || 0, cp = Math.max(1, Math.floor(Number(PR.copies)) || 1); return { pages: pg, copies: cp, qty: pg * cp }; }
   function printSumHTML(){ var q = printQty(), p = printProd(PR.type); if (!p || !q.qty) return tr("اكتب عدد صفحات الملف وبيطلع لك السعر", "Enter the number of pages to see the price");
@@ -1840,6 +1844,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     sToast(tr("انضافت للسلة. كمّل الطلب وبعدها ارسل الملف على واتساب", "Added to cart. Check out, then send your file on WhatsApp")); refresh();
   }
   function printHTML(){
+    if (printSoon()) return '<div class="wrap print-box"><div class="pr-soon"><b>' + tr("قريباً", "Coming soon") + '</b><p>' + tr("قريب بنطلق خدمة طباعة أوراق المراجعة والمستندات (أبيض وأسود وألوان) وتوصيلها لبيتك بأسرع وقت.", "Soon: printing for review sheets and documents (black & white and colour), delivered to your door fast.") + '</p></div></div>';
     var pb = printProd("bw"), pc = printProd("color");
     var typeBtn = function(t, label, p){ return '<button type="button" class="pr-type" data-ptype="' + t + '" aria-pressed="' + (PR.type === t) + '"><b>' + label + '</b><span>' + rial(p.price) + tr(" / صفحة", " / page") + '</span></button>'; };
     var segBtn = function(v, label){ return '<button type="button" data-psides="' + v + '" aria-pressed="' + (PR.sides === v) + '">' + label + '</button>'; };
@@ -1907,7 +1912,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (searchIxOf !== D.products) { searchIxOf = D.products; searchIx = D.products.map(function(p){ var c = catOf(p.cat); return normAr([p.name, p.name_en, p.bc, c && c.name, c && c.name_en].join(" ")); }); }
     var words = normAr(text).split(/\s+/).filter(Boolean); if (!words.length) return [];
     var out = [];
-    for (var i = 0; i < D.products.length; i++) { var h = searchIx[i], ok = true; for (var w = 0; w < words.length; w++) if (h.indexOf(words[w]) < 0) { ok = false; break; } if (ok) out.push(D.products[i]); }
+    for (var i = 0; i < D.products.length; i++) { var h = searchIx[i], ok = true; for (var w = 0; w < words.length; w++) if (h.indexOf(words[w]) < 0) { ok = false; break; } if (ok && !D.products[i].print) out.push(D.products[i]); }
     return out.sort(function(a, b){ return avail(b) - avail(a); });
   }
   function searchHTML(){

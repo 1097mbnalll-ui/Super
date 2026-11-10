@@ -1,17 +1,19 @@
 // اختبار قسم الطباعة في المتصفح (جوال): الحاسبة، السلة، ملاحظة الطلب، زر واتساب، الحد الأدنى، وحفظ السلة بعد إعادة الفتح.
 // التشغيل: CHROMIUM_PATH=/opt/pw-browsers/chromium node server/test/browser-print.cjs   (يحتاج Playwright وChromium)
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright'); const fs = require('fs'), path = require('path'), assert = require('node:assert/strict');
-const root = path.resolve(__dirname, '../..'), HOST = 'https://1097mbnalll-ui.github.io/Super/'; const data = JSON.parse(fs.readFileSync(path.join(root, 'data.json'), 'utf8'));
+const root = path.resolve(__dirname, '../..'), HOST = 'https://1097mbnalll-ui.github.io/Super/'; const real = JSON.parse(fs.readFileSync(path.join(root, 'data.json'), 'utf8'));
+// نسخة «شغّالة» من البيانات (بدون «قريباً» والمنتجات متوفرة) لتجربة الرحلة كاملة؛ والبيانات الحقيقية لتجربة «قريباً»
+const data = JSON.parse(JSON.stringify(real)); data.store.print = { ...(data.store.print || {}), soon: false }; data.products.forEach((p) => { if (p.print) p.stock = true; });
 const API = data.store.api; const types = { html: 'text/html; charset=utf-8', json: 'application/json', js: 'text/javascript', png: 'image/png', webp: 'image/webp' };
 const z = data.store.zone, [lat, lng] = z.reduce((a, p) => [a[0] + p[0] / z.length, a[1] + p[1] / z.length], [0, 0]);
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
-  const mkPage = async (cartObj) => { const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const pg = await ctx.newPage(); const errs = [], posts = [];
+  const mkPage = async (cartObj, served = data) => { const ctx = await b.newContext({ viewport: { width: 390, height: 844 } }); const pg = await ctx.newPage(); const errs = [], posts = [];
     await pg.addInitScript(({ lat, lng, cartObj }) => { try { sessionStorage.setItem('ohod-sp', '1'); localStorage.setItem('ohod-form2', JSON.stringify({ phone: '0551234567', lat, lng, details: '', name: 'تجربة', note: 'بدون دبوس', pay: 'cash', sub: 'call' })); if (cartObj) localStorage.setItem('ohod-cart', JSON.stringify(cartObj)); } catch (e) {} }, { lat, lng, cartObj });
     pg.on('pageerror', e => errs.push(e.message)); pg.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|net::ERR/.test(m.text())) errs.push(m.text()); });
     await pg.route('**/*', r => { const u = r.request().url();
-      if (u.startsWith(HOST)) { const rel = decodeURIComponent(u.slice(HOST.length).split('?')[0]) || 'index.html'; const f = path.join(root, rel); if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) return r.fulfill({ status: 404, body: '' }); return r.fulfill({ status: 200, body: fs.readFileSync(f), contentType: types[f.split('.').pop()] || 'application/octet-stream' }); }
+      if (u.startsWith(HOST)) { const rel = decodeURIComponent(u.slice(HOST.length).split('?')[0]) || 'index.html'; if (rel === 'data.json') return r.fulfill({ status: 200, body: JSON.stringify(served), contentType: 'application/json' }); const f = path.join(root, rel); if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) return r.fulfill({ status: 404, body: '' }); return r.fulfill({ status: 200, body: fs.readFileSync(f), contentType: types[f.split('.').pop()] || 'application/octet-stream' }); }
       if (API && u.startsWith(API)) { const p = new URL(u).pathname; const h = { 'access-control-allow-origin': '*' }; if (p === '/order') { posts.push(JSON.parse(r.request().postData() || '{}')); return r.fulfill({ status: 200, headers: h, contentType: 'application/json', body: JSON.stringify({ ok: true, orderNo: '#1234', total: 540, track: false }) }); } return r.fulfill({ status: 200, headers: h, contentType: 'application/json', body: JSON.stringify({ ok: true, stock: {} }) }); }
       return r.abort(); });
     await pg.goto(HOST + 'index.html', { waitUntil: 'load' }); await pg.waitForTimeout(3200); return { pg, errs, posts }; };
@@ -39,5 +41,15 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   x = await minCase({ print_bw: Math.ceil(min / bw) }); ok(x.line && !x.off, 'طلب الطباعة عند حده الأدنى مسموح');
   const std = data.products.find(p => !p.print && p.price > 0 && p.price < 5).id;
   x = await minCase({ [std]: 1, print_bw: Math.ceil(min / bw) }); ok(x.off && x.alert.includes(String(gen)), 'الطلب المختلط يلتزم بالحد العام (' + gen + ')');
+  // ٣) وضع «قريباً» بالبيانات الحقيقية (لو مفعّل فيها)
+  if (real.store.print && real.store.print.soon) {
+    const r = await mkPage(null, real); await r.pg.click('text=الأقسام'); await r.pg.waitForTimeout(700);
+    ok(await r.pg.evaluate(() => /قريب/.test(document.querySelector('.kq-cat[data-opencat="print"] .soon')?.innerText || '')), '«قريباً» على بلاطة قسم الطباعة');
+    await r.pg.click('.kq-cat[data-opencat="print"]'); await r.pg.waitForTimeout(700);
+    ok(await r.pg.evaluate(() => !!document.querySelector('.pr-soon') && !document.querySelector('#prAdd')), 'صفحة الطباعة تعرض «قريباً» بدون حاسبة ولا زر إضافة');
+    await r.pg.click('[data-nav="back"]').catch(() => {}); await r.pg.waitForTimeout(500);
+    ok(real.products.filter((p) => p.print).every((p) => p.stock === false), 'منتجات الطباعة غير متوفرة في الملف (الخادم يرفض أي طلب لها)');
+    ok(r.errs.length === 0, 'وضع «قريباً» بدون أخطاء JavaScript'); await r.pg.context().close();
+  }
   await b.close(); console.log(fails ? '\n' + fails + ' فحص فشل' : '\nكل الفحوص نجحت'); process.exit(fails ? 1 : 0);
 })();
