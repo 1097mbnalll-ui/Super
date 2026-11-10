@@ -16,6 +16,9 @@ final class Prefs {
     static String role(Context c) { return p(c).getString("role", "driver"); }
     static boolean share(Context c) { return p(c).getBoolean("share", false); }
     static long lastOrder(Context c) { return p(c).getLong("last", -1); }
+    /** وضع «للتوصيل بس»: وقت آخر طلب صار جاهز، عشان ننبّه على الجاهز الجديد بس */
+    static long lastReady(Context c) { return p(c).getLong("readyAt", -1); }
+    static void setLastReady(Context c, long v) { p(c).edit().putLong("readyAt", v).apply(); }
     static boolean flag(Context c, String k) { return p(c).getBoolean(k, false); }
 
     static void setLastOrder(Context c, long n) { p(c).edit().putLong("last", n).apply(); }

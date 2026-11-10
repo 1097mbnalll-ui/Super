@@ -39,5 +39,21 @@ for (let i = 0; i < 30; i++) java(base1, 'pending', '1357');
 const after = Number(await (await fetch(base1 + '/__kvdeletes')).text());
 ok(after - before === 0, `٣٠ نداء ناجح = ${after - before} عملية حذف في KV`);
 await scenario(8798, 'خادم قديم بدون المسار الخفيف (تراجع تلقائي)', { OLD: '1' });
+// وضع «المندوب للتوصيل بس»: فيه مجهز مفعّل، والطلب يوصل المندوب بعد ما يجهز
+{
+  const base = 'http://127.0.0.1:8797'; procs.push(await server(8797)); console.log('\n== المندوب للتوصيل بس (فيه مجهز)');
+  await call(base, '/save', { pin: '2468', data, newDriverPin: '1357' });
+  const st = await call(base, '/admin/staff-save', { pin: '2468', name: 'المجهز', role: 'preparer', loginPin: '8642' }); ok(st.ok, 'إضافة مجهز: ' + JSON.stringify(st));
+  for (const [ph, nm] of [['0551111111', 'أبو فهد'], ['0552222222', 'أم سعد']]) await call(base, '/admin/order-new', { pin: '2468', source: 'phone', phone: ph, name: nm, loc: '24.8400,46.8300', lines: [{ id: 'pantry0', qty: 1 }] });
+  let p = java(base, 'pending', '1357'); ok(p.ok && p.ready && p.fresh === 0 && p.readyAt === 0, 'طلبين جدد ما جهزوا = ما فيه شي للمندوب: ' + JSON.stringify(p));
+  const early = await call(base, '/driver/status', { pin: '1357', no: '#1002', status: 'accepted' }); ok(early.code === 'not_ready', 'المندوب ما يقدر يمسك طلب قبل ما يجهز: ' + JSON.stringify(early));
+  const prep = await call(base, '/admin/prep', { pin: '2468' }); const o1 = prep.orders.find((o) => o.no === '#1001');
+  const sv = await call(base, '/admin/prep-save', { pin: '2468', no: '#1001', version: o1.version, orderUpdated: o1.orderUpdated, stage: 'ready', checks: { 0: 'picked' } }); ok(sv.ok, 'المجهز علّم #1001 جاهز: ' + JSON.stringify(sv));
+  p = java(base, 'pending', '1357'); ok(p.ready && p.fresh === 1 && p.readyAt > 0 && p.last === 1001, 'صار فيه طلب جاهز واحد: ' + JSON.stringify(p));
+  const f = java(base, 'fresh', '1357', '0', 'ready'); ok(f.count === 1 && f.text.includes('#1001') && f.text.includes('أبو فهد'), 'نص إشعار الطلب الجاهز: ' + f.text);
+  const list = await call(base, '/driver/orders', { pin: '1357' }); ok(list.mode === 'ready' && list.orders.find((o) => o.no === '#1001').prepStage === 'ready', 'صفحة المندوب تعرف إنه وضع التوصيل بس');
+  const a = await call(base, '/driver/status', { pin: '1357', no: '#1001', status: 'accepted' }), b = await call(base, '/driver/status', { pin: '1357', no: '#1001', status: 'onway' }); ok(a.ok && b.ok, 'استلم الجاهز وطلع للتوصيل');
+  p = java(base, 'pending', '1357'); ok(p.fresh === 0 && p.onway === 1, 'بعد ما طلع: ما فيه جاهز، وواحد في الطريق: ' + JSON.stringify(p));
+}
 for (const p of procs) p.kill();
 console.log(fails ? `\n${fails} فشل` : '\nكل الفحوص نجحت'); process.exit(fails ? 1 : 0);

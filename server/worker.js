@@ -357,7 +357,7 @@ export default {
         const offs = (await env.DB.prepare("SELECT id, no, line_id, to_id, state, created FROM sub_offers WHERE created > ? ORDER BY id").bind(since).all()).results || [];
         const subMap = {}; for (const o of offs) (subMap["#" + (1000 + o.no)] ||= []).push({ id: o.id, line: o.line_id, to: o.to_id, state: o.state, at: o.created });
         for (const o of orders) if (subMap[o.no]) o.subs = subMap[o.no];
-        return reply(200, { ok: true, orders, now: Date.now(), me: { id: myId, name: actor ? actor.name : me.name, role: who }, team: team.filter((t) => t.active).map((t) => ({ id: t.id, name: t.name })) });
+        return reply(200, { ok: true, orders, mode: (await prepMode(env)) ? "ready" : "pick", now: Date.now(), me: { id: myId, name: actor ? actor.name : me.name, role: who }, team: team.filter((t) => t.active).map((t) => ({ id: t.id, name: t.name })) });
       }
       // المندوب: منتج ناقص (بدّله بمشابه أو شيله). الأسعار من المتجر، مو من الجوال.
       if (path === "/driver/order-edit") {
@@ -449,6 +449,13 @@ export default {
           ? await env.DB.prepare("SELECT COUNT(*) AS c FROM orders WHERE status = 'onway' AND drv = ?").bind(me.id).first()
           : await env.DB.prepare("SELECT COUNT(*) AS c FROM orders WHERE status = 'onway' AND (drv IS NULL OR drv = 'admin')").first();
         const last = (a && a.last) || 0;
+        if (await prepMode(env)) {
+          // الجاهز اللي ما مسكه أحد، أو محوّل لي أنا. readyAt يكبر مع كل طلب يصير جاهز، والتطبيق ينبّه عليه
+          const mineQ = me.role === "driver" ? "(o.drv IS NULL OR o.drv = ?)" : "(o.drv IS NULL OR o.drv = 'admin')";
+          const q = "SELECT COUNT(*) c, COALESCE(MAX(p.updated), 0) at, COALESCE(MAX(o.no), 0) mx FROM orders o JOIN prep_orders p ON p.no = o.no WHERE p.stage = 'ready' AND o.status IN ('new','accepted') AND " + mineQ;
+          const r = me.role === "driver" ? await env.DB.prepare(q).bind(me.id).first() : await env.DB.prepare(q).first();
+          return reply(200, { ok: true, mode: "ready", last: r && r.mx ? 1000 + r.mx : 0, new: (r && r.c) || 0, ready: (r && r.c) || 0, readyAt: (r && r.at) || 0, onway: (c && c.c) || 0, now: Date.now() });
+        }
         return reply(200, { ok: true, last: last ? 1000 + last : 0, new: (b && b.c) || 0, onway: (c && c.c) || 0, now: Date.now() });
       }
       // تتبع المندوب: آخر نقطة بس لكل مندوب (بدون سجل تحركات)، وتنمسح لما يخلص التوصيل
@@ -485,7 +492,7 @@ export default {
         const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
         const st = String(body.status || "");
         if (!(n > 0) || !["new", "accepted", "onway", "delivered", "canceled"].includes(st)) return reply(400, { ok: false, code: "bad_request" });
-        if(st === 'onway') { const prep=await env.DB.prepare('SELECT stage FROM prep_orders WHERE no=?').bind(n).first(); if(prep && prep.stage!=='ready')return reply(409,{ok:false,code:'not_ready'}); }
+        if(st === 'onway' || (st === 'accepted' && actor && await prepMode(env))) { const prep=await env.DB.prepare('SELECT stage FROM prep_orders WHERE no=?').bind(n).first(); if(st === 'onway' ? prep && prep.stage!=='ready' : !prep || prep.stage!=='ready')return reply(409,{ok:false,code:'not_ready'}); }
         let res;
         try { res = await changeStatus(env, n, st, Date.now(), me.name, actor); } catch (e) { return reply(e.message === "pos_required" ? 409 : 502, { ok: false, code: e.message === "pos_required" ? "pos_required" : "db" }); }
         if (!res) return reply(404, { ok: false, code: "not_found" });
@@ -656,7 +663,7 @@ export default {
     if (['/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
       if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
       await ensureSchema(env);
-      const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner');
+      const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner', later);
       return reply(result.status || 200, result);
     }
     if (path === "/admin/stock") {
@@ -765,7 +772,7 @@ export default {
         env.DB.prepare("UPDATE orders SET drv = ?, status = ?, updated = ? WHERE no = ?").bind(to || null, status, now, n),
         logStmt(env, who, "assign", "#" + (1000 + n), { from: await staffName(env, row.drv), to: d ? d.name : "", status }),
       ]);
-      if (d) later(notifyRole(env, "driver", d.id, { title: "طلب لك #" + (1000 + n), body: "الإدارة حوّلت لك هالطلب. افتح التطبيق وابدأ التجهيز.", url: "./#driver", tag: "assign" + n }));
+      if (d) later(notifyRole(env, "driver", d.id, { title: "طلب لك #" + (1000 + n), body: (await prepMode(env)) ? "الإدارة حوّلت لك هالطلب. بيوصلك تنبيه أول ما يصير جاهز." : "الإدارة حوّلت لك هالطلب. افتح التطبيق وابدأ التجهيز.", url: "./#driver", tag: "assign" + n }));
       return reply(200, { ok: true, state: status, drv: to });
     }
     // أصناف انباعت في المحل وهي مو مسجلة في المتجر (باركود جديد)
@@ -1493,13 +1500,18 @@ async function setStock(env, map) {
   if (st.length) await env.DB.batch(st);
 }
 
+// وضع «المندوب للتوصيل بس»: يشتغل تلقائي لما يكون فيه مجهز مفعّل. الطلب يوصل المندوب بعد ما يعلّمه المجهز «جاهز»
+async function prepMode(env) {
+  try { return !!(await env.DB.prepare("SELECT 1 x FROM staff_users WHERE role = 'preparer' AND active = 1 LIMIT 1").first()); } catch { return false; }
+}
+
 // بعد الطلب: التحليل + إشعار الإدارة والمندوب + تنبيه المخزون
 async function afterOrder(env, data, rec, orderNo, before, quiet) {
   if (!env.LOCKS) return;
   const n = Number(String(orderNo).replace(/\D/g, ""));
   if (!quiet) {
   const msg = { title: "طلب جديد " + ({ phone: "(اتصال) ", whatsapp: "(واتساب) ", store: "(من المحل) " }[rec.source] || "") + orderNo, body: rec.count + " منتج · " + money(rec.total) + " · " + (rec.pay === "card" ? "شبكة" : "كاش") + (rec.name ? " · " + rec.name : ""), url: "./#driver", tag: "new" + n };
-  await Promise.all([notifyRole(env, "admin", null, msg), notifyRole(env, "driver", null, msg)]);
+  await Promise.all([notifyRole(env, "admin", null, msg), env.DB && (await prepMode(env)) ? null : notifyRole(env, "driver", null, msg)]);
   }
   const lowAt = Math.max(0, Number((data.store || {}).lowAt ?? 3));
   const need = needOf(rec), names = {};
@@ -2329,7 +2341,7 @@ async function dayReport(env,day,drvId){
   report.closure=await env.DB.prepare('SELECT * FROM day_closures WHERE day=?').bind(day).first()||null;
   report.adjustment=report.closure?report.cash-report.closure.cash_total:0;report.adjustments=report.closure?{cash:report.adjustment,card:report.card-report.closure.card_total,wallet:report.wallet-report.closure.wallet_total,sales:report.sales-report.closure.sales,count:report.count-report.closure.orders}:{cash:0,card:0,wallet:0,sales:0,count:0};return report;
 }
-async function operationsRoute(env,path,body,who,role){
+async function operationsRoute(env,path,body,who,role,later=(p)=>p){
   const fail=(code,status=400)=>({ok:false,code,status});const P=(q,...a)=>env.DB.prepare(q).bind(...a);
   if(path.startsWith('/admin/pos-'))return posRoute(env,path,body,who,role);
   if(path==='/admin/settlement-requests'){
@@ -2402,6 +2414,8 @@ async function operationsRoute(env,path,body,who,role){
     lines.forEach((l,i)=>{const v=body.checks?.[String(i)];if(['picked','missing'].includes(v))checks[String(i)]=v;if(v!=='picked')complete=false;});
     if(body.stage==='ready'&&!complete)return fail('missing_items');
     try{await env.DB.batch([P("SELECT CASE WHEN COALESCE((SELECT version FROM prep_orders WHERE no=?),0) != ? OR (SELECT status FROM orders WHERE no=?) NOT IN ('new','accepted') OR (SELECT updated FROM orders WHERE no=?) != ? THEN json('prep_conflict') ELSE 1 END",no,prior?.version||0,no,no,row.updated),P('INSERT INTO prep_orders(no,stage,checks,updated,who,version) VALUES(?,?,?,?,?,?) ON CONFLICT(no) DO UPDATE SET stage=excluded.stage,checks=excluded.checks,updated=excluded.updated,who=excluded.who,version=excluded.version',no,body.stage,JSON.stringify(checks),Date.now(),who,(prior?.version||0)+1),logStmt(env,who,'prep','#'+(1000+no),{stage:body.stage,missing:Object.values(checks).filter(v=>v==='missing').length})]);}catch{return fail('conflict',409);}
+    if(body.stage==='ready'&&prior?.stage!=='ready'){const d=safeJson(row.data),drvId=(await P('SELECT drv FROM orders WHERE no=?',no).first())?.drv||null;
+      later(notifyRole(env,'driver',drvId&&drvId!=='admin'?drvId:null,{title:'طلب جاهز للتوصيل #'+(1000+no),body:[d.name,d.details,money(d.total)].filter(Boolean).join(' · '),url:'./#driver',tag:'ready'+no}));}
     return {ok:true};
   }
   if(path==='/admin/cashback'){

@@ -2470,7 +2470,14 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function drvShell(){ app.innerHTML = '<div class="dv" id="dv"></div>'; drvRender(); loadDrvCash(); appCall("resume"); }
   function drvGroups(){
     var g = { "new": [], pick: [], way: [], done: [] };
-    g.mate = [];
+    g.mate = []; g.prep = [];
+    if (drv.mode === "ready") { // المندوب للتوصيل بس: يشوف الجاهز، والباقي عند المجهز
+      drv.orders.forEach(function(o){ var open = o.status === "new" || o.status === "accepted";
+        if (open && o.prepStage !== "ready") { g.prep.push(o); return; }
+        if (!mine(o)) { if (o.status === "accepted" || o.status === "onway") g.mate.push(o); return; }
+        if (open) g["new"].push(o); else if (o.status === "onway") g.way.push(o); else if (o.status !== "new") g.done.push(o); });
+      return g;
+    }
     drv.orders.forEach(function(o){ if (o.status === "new") g["new"].push(o); else if (!mine(o)) { if (o.status === "accepted" || o.status === "onway") g.mate.push(o); } else if (o.status === "accepted") g.pick.push(o); else if (o.status === "onway") g.way.push(o); else g.done.push(o); });
     return g;
   }
@@ -2506,7 +2513,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function dvBack(to, title, sub){ return '<header class="dv-bar"><button type="button" class="dv-sq" data-dview="' + to + '" aria-label="' + tr("رجوع", "Back") + '">' + ic("back") + '</button><div class="t"><b>' + title + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div></header>'; }
   function dvList(){
     var g = drvGroups(), t = dToday(), cash = drv.cash ? drv.cash.balance : null;
-    var tabs = [["new", tr("جديدة", "New")], ["pick", tr("أجهّزها", "Picking")], ["way", tr("في الطريق", "On the way")], ["done", tr("خلصت", "Done")]];
+    var tabs = drv.mode === "ready" ? [["new", tr("جاهزة", "Ready")], ["way", tr("في الطريق", "On the way")], ["done", tr("خلصت", "Done")]] : [["new", tr("جديدة", "New")], ["pick", tr("أجهّزها", "Picking")], ["way", tr("في الطريق", "On the way")], ["done", tr("خلصت", "Done")]];
+    if (drv.mode === "ready" && drv.tab === "pick") drv.tab = "new";
     if (!g[drv.tab]) drv.tab = "new";
     var list = g[drv.tab], near = "";
     if (drv.tab !== "done" && list.length >= 2 && !drv.byTime) {
@@ -2525,7 +2533,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (APP ? appBox() : drv.push ? '' : '<div class="dv-push"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("فعّل إشعارات الطلبات", "Turn on order alerts") + '</b><span id="drvPushMsg">' + esc(pushWhy() || tr("يوصلك تنبيه مع كل طلب جديد حتى لو الصفحة مقفلة.", "Get an alert for every new order, even when closed.")) + '</span></span><button class="btn btn-orange" type="button" id="drvPushBtn">' + tr("فعّل", "Turn on") + '</button></div>') +
       '<nav class="dv-tabs" aria-label="' + tr("حالة الطلبات", "Order status") + '">' + tabs.map(function(x){ var n = g[x[0]].length; return '<button type="button" data-dtab="' + x[0] + '" aria-pressed="' + (drv.tab === x[0]) + '">' + x[1] + (n && x[0] !== "done" ? ' <em>' + num(n) + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
       (teamOn() && g.mate.length && drv.tab !== "done" ? '<div class="dv-mate">' + ic("user") + '<span>' + g.mate.map(function(o){ return '<b dir="ltr">' + esc(o.no) + '</b> ' + tr("مع ", "with ") + esc(o.drvName || tr("زميلك", "colleague")); }).join(" · ") + '</span></div>' : '') +
-      '<main class="dv-list">' + near + (list.length ? list.map(dvCard).join("") : '<div class="dv-empty">' + ic("truck") + '<b>' + ({ "new": tr("ما فيه طلبات جديدة", "No new orders"), pick: tr("ما فيه طلبات تتجهز", "Nothing being picked"), way: tr("ما فيه طلبات في الطريق", "Nothing on the way"), done: tr("ما فيه طلبات منتهية", "No finished orders") }[drv.tab]) + '</b><span>' + (drv.tab === "new" ? tr("الصفحة تتحدث لحالها، ويطلع لك تنبيه أول ما يوصل طلب.", "This page updates itself and alerts you when an order arrives.") : '') + '</span></div>') + '</main>';
+      '<main class="dv-list">' + (drv.mode === "ready" && drv.tab === "new" && g.prep.length ? '<div class="dv-near">' + ic("box") + '<span>' + tr("يتجهز الحين: ", "Being prepared: ") + '<b>' + num(g.prep.length) + '</b>' + tr(" طلب · يوصلك تنبيه أول ما يجهز", " · you get an alert when ready") + '</span></div>' : '') + near + (list.length ? list.map(dvCard).join("") : '<div class="dv-empty">' + ic("truck") + '<b>' + ({ "new": drv.mode === "ready" ? tr("ما فيه طلبات جاهزة", "No ready orders") : tr("ما فيه طلبات جديدة", "No new orders"), pick: tr("ما فيه طلبات تتجهز", "Nothing being picked"), way: tr("ما فيه طلبات في الطريق", "Nothing on the way"), done: tr("ما فيه طلبات منتهية", "No finished orders") }[drv.tab]) + '</b><span>' + (drv.tab === "new" ? tr("الصفحة تتحدث لحالها، ويطلع لك تنبيه أول ما يوصل طلب.", "This page updates itself and alerts you when an order arrives.") : '') + '</span></div>') + '</main>';
   }
   // ترتيب التوصيل: كل مرة نروح لأقرب طلب من آخر نقطة (أقرب جار). الطلبات بدون موقع تجي آخر شي
   function kmBetween(a, b){ var r = Math.PI / 180, x = (b.lng - a.lng) * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r; return Math.sqrt(x * x + y * y) * 6371; }
@@ -2542,16 +2550,16 @@ html.sp-on,html.sp-on body{overflow:hidden}
   if (typeof window !== "undefined") window.__ohodRoute = routeOrder; // للاختبار
   function dvCard(o){
     var lines = o.lines || [], ph = lines.slice(0, 5).map(function(l){ return dImg(l.id, "th", l.name); }).join("") + (lines.length > 5 ? '<span class="th more">+' + num(lines.length - 5) + '</span>' : '');
-    var act = o.prepStage==='ready' && (o.status==='new'||o.status==='accepted') ? '<button type="button" class="dv-btn go" data-prephandoff="'+esc(o.no)+'">استلمت الطلب الجاهز — ابدأ التوصيل</button>' : o.status === "new" ? '<button type="button" class="dv-btn go" data-dstart="' + esc(o.no) + '">' + tr("ابدأ التجهيز", "Start picking") + ic("fwd") + '</button>' :
+    var act = o.prepStage==='ready' && (o.status==='new'||o.status==='accepted') ? '<button type="button" class="dv-btn go" data-prephandoff="'+esc(o.no)+'">' + tr("استلمت الطلب، ابدأ التوصيل", "Picked up, start delivery") + ic("fwd") + '</button>' : drv.mode === "ready" && (o.status === "new" || o.status === "accepted") ? '<span class="spill new">' + tr("يتجهز", "Being prepared") + '</span>' : o.status === "new" ? '<button type="button" class="dv-btn go" data-dstart="' + esc(o.no) + '">' + tr("ابدأ التجهيز", "Start picking") + ic("fwd") + '</button>' :
       o.status === "accepted" ? '<button type="button" class="dv-btn go" data-dopen="' + esc(o.no) + '">' + tr("كمّل التجهيز", "Continue picking") + ' (' + num(Object.keys(picked(o.no)).length) + '/' + num(lines.length) + ')</button>' :
       o.status === "onway" ? '<button type="button" class="dv-btn ink" data-ddeliver="' + esc(o.no) + '">' + tr("كمّل التوصيل", "Continue delivery") + '</button>' : '<span class="spill ' + o.status + '">' + ST[o.status] + '</span>';
     return '<article class="dv-card' + (o.status === "new" ? ' hot' : '') + (drv.seen[o.no] === "fresh" ? ' fresh' : '') + '"><div class="h">' + (o._stop ? '<span class="dv-stop">' + num(o._stop) + '</span>' : '') + '<b dir="ltr">' + esc(o.no) + '</b>' + (o._km != null ? '<span class="dv-km">' + num(o._km) + tr(" كم", " km") + '</span>' : '') + (o.source ? '<span class="src ' + o.source + '">' + SRCL[o.source] + '</span>' : '') + '<span class="ago">' + ago(o.created) + '</span></div>' +
       '<div class="who"><b>' + esc(o.name || tr("زبون", "Customer")) + '</b><span>' + esc(o.details || "") + '</span></div><div class="ths">' + ph + '</div>' +
       '<div class="money"><b>' + num(o.total) + ' ' + tr("ر.س", "SAR") + '</b><span>· ' + num(o.count) + tr(" قطعة · ", " items · ") + collectionLabel(o) + '</span></div>' +
       ((o.subs || []).some(function(x){ return x.state === "pending"; }) ? '<p class="dv-subw">' + tr("بديل بانتظار رد الزبون", "Replacement waiting for the customer") + '</p>' : '') +
-      (o.prepStage ? '<p class="hint">التجهيز: '+({waiting:'بانتظار التجهيز',preparing:'جارٍ التجهيز',ready:'جاهز للمندوب'})[o.prepStage]+'</p>' : '') + (o.note ? '<div class="note">' + ic("tag") + esc(o.note) + '</div>' : '') + '<div class="acts">' + act +
-      (o.status === "accepted" && teamOn() ? '<button type="button" class="dv-link" data-drelease="' + esc(o.no) + '">' + tr("رجّعه للجديدة", "Release") + '</button>' : '') +
-      (o.status === "new" || o.status === "accepted" ? '<button type="button" class="dv-link" data-dcancel="' + esc(o.no) + '">' + tr("إلغاء", "Cancel") + '</button>' : '') + '</div></article>';
+      (o.prepStage && drv.mode !== "ready" ? '<p class="hint">التجهيز: '+({waiting:'بانتظار التجهيز',preparing:'جارٍ التجهيز',ready:'جاهز للمندوب'})[o.prepStage]+'</p>' : '') + (o.note ? '<div class="note">' + ic("tag") + esc(o.note) + '</div>' : '') + '<div class="acts">' + act +
+      (drv.mode !== "ready" && o.status === "accepted" && teamOn() ? '<button type="button" class="dv-link" data-drelease="' + esc(o.no) + '">' + tr("رجّعه للجديدة", "Release") + '</button>' : '') +
+      (drv.mode !== "ready" && (o.status === "new" || o.status === "accepted") ? '<button type="button" class="dv-link" data-dcancel="' + esc(o.no) + '">' + tr("إلغاء", "Cancel") + '</button>' : '') + '</div></article>';
   }
   function dvGroupsOf(o){
     var groups = {}, order = [];
@@ -2661,11 +2669,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
         if (!j.ok) { if (live) { live.className = "live off"; live.lastChild.textContent = j.code === "network" ? tr("ما فيه اتصال", "No connection") : tr("انقطع", "Disconnected"); }
           if (j.code === "bad_pin") { drv.pin = ""; try { sessionStorage.removeItem("ohod-driver"); } catch(e){} appCall("logout"); openDriver(); } return; }
         drv.now = j.now || Date.now();
-        var fresh = 0;
-        j.orders.forEach(function(o){ if (!drv.seen[o.no]) { drv.seen[o.no] = drv.first ? "old" : "fresh"; if (!drv.first && o.status === "new") fresh++; } });
+        var fresh = 0; drv.mode = j.mode || "pick"; drv.seenReady = drv.seenReady || {};
+        if (drv.mode === "ready") j.orders.forEach(function(o){ var rd = o.prepStage === "ready" && (o.status === "new" || o.status === "accepted") && mine(o);
+          if (rd && !drv.seenReady[o.no]) { drv.seenReady[o.no] = 1; if (!drv.first) { fresh++; drv.seen[o.no] = "fresh"; } } if (!drv.seen[o.no]) drv.seen[o.no] = "old"; });
+        else j.orders.forEach(function(o){ if (!drv.seen[o.no]) { drv.seen[o.no] = drv.first ? "old" : "fresh"; if (!drv.first && o.status === "new") fresh++; } });
         var cur = drv.no && dOrder(drv.no), nowCur = drv.no && j.orders.filter(function(o){ return o.no === drv.no; })[0];
         drv.orders = j.orders; drv.first = false; if (j.me) drv.me = j.me; drv.team = j.team || []; geoSync();
-        if (fresh) { beep(); if (drv.view === "list") drv.tab = "new"; else dToast(tr("وصل طلب جديد", "A new order arrived")); }
+        if (fresh) { beep(); if (drv.view === "list") drv.tab = "new"; else dToast(drv.mode === "ready" ? tr("فيه طلب جاهز للتوصيل", "An order is ready for delivery") : tr("وصل طلب جديد", "A new order arrived")); }
         if (drv.view !== "list" && cur && nowCur && nowCur.status === "canceled" && cur.status !== "canceled") { dToast(tr("الطلب انلغى من الإدارة", "The order was cancelled by the store"), true); drv.view = "list"; drv.miss = ""; }
         if (drv.view === "cash") loadDrvCash(); else if (drv.view === "list") drvRender();
       });

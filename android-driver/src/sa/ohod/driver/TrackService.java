@@ -170,6 +170,16 @@ public class TrackService extends Service implements LocationListener {
         onway = p.onway;
         pendingNew = p.fresh;
 
+        if (p.ready) {   // للتوصيل بس: ننبّه لما يصير طلب جاهز، مو لما ينطلب
+            long rb = Prefs.lastReady(this);
+            if (rb < 0 || p.readyAt < rb) Prefs.setLastReady(this, p.readyAt);
+            else if (p.readyAt > rb) {
+                Prefs.setLastReady(this, p.readyAt);
+                Core.Fresh f = Core.fresh(api, pin, 0, true);
+                if (f.count > 0 && !MainActivity.visible) Notif.newOrder(this, f.count, f.text, true);
+            }
+            Prefs.setLastOrder(this, p.last);
+        } else {
         long base = Prefs.lastOrder(this);
         if (base < 0 || p.last < base) {
             Prefs.setLastOrder(this, p.last);   // أول مرة: نبدأ من الطلبات الموجودة، بدون إشعار عليها
@@ -178,6 +188,7 @@ public class TrackService extends Service implements LocationListener {
             Prefs.setLastOrder(this, p.last);
             if (f.count > 0 && !MainActivity.visible) Notif.newOrder(this, f.count, f.text);   // والتطبيق مفتوح الصفحة نفسها تنبّه
         }
+        }
 
         boolean want = p.onway > 0 && (!"admin".equals(Prefs.role(this)) || Prefs.share(this));
         if (want) startLoc(); else stopLoc(true);
@@ -185,7 +196,7 @@ public class TrackService extends Service implements LocationListener {
         if ("denied".equals(track)) setText("اسمح للتطبيق بالموقع عشان الزبون يشوفك");
         else if ("gpsoff".equals(track)) setText("شغّل الموقع (GPS) في الجوال");
         else if (p.onway > 0) setText("في الطريق: " + p.onway + (want ? ("on".equals(track) ? " · الزبون يشوف موقعك" : " · نحدد موقعك…") : ""));
-        else if (p.fresh > 0) setText(p.fresh + (p.fresh == 1 ? " طلب جديد ينتظرك" : " طلبات جديدة تنتظرك"));
+        else if (p.fresh > 0) setText(p.ready ? p.fresh + (p.fresh == 1 ? " طلب جاهز ينتظرك" : " طلبات جاهزة تنتظرك") : p.fresh + (p.fresh == 1 ? " طلب جديد ينتظرك" : " طلبات جديدة تنتظرك"));
         else setText("جاهز لاستقبال الطلبات");
         return POLL_MS;
     }

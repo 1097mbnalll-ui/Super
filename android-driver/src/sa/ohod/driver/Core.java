@@ -19,6 +19,8 @@ final class Core {
         int fresh;     // كم طلب جديد ينتظر
         int onway;     // كم طلب في الطريق
         long retry;    // ثواني الانتظار لو الدخول موقوف
+        boolean ready; // وضع «للتوصيل بس»: الطلب يوصل بعد ما يجهزه المجهز
+        long readyAt;  // وقت آخر طلب صار جاهز
     }
 
     static final class Fresh {
@@ -38,6 +40,8 @@ final class Core {
             r.last = j.optLong("last");
             r.fresh = j.optInt("new");
             r.onway = j.optInt("onway");
+            r.ready = "ready".equals(j.optString("mode"));
+            r.readyAt = j.optLong("readyAt");
             return r;
         }
         if (r.status == 404 && "not_found".equals(r.code)) {
@@ -62,14 +66,28 @@ final class Core {
 
     /** الطلبات الجديدة اللي رقمها أكبر من {@code after}، عشان نكتب نص الإشعار. */
     static Fresh fresh(String api, String pin, long after) {
+        return fresh(api, pin, after, false);
+    }
+
+    /** {@code ready}: الطلبات الجاهزة للتوصيل (ما مسكها زميل) بدل الجديدة، و{@code after} يصير رقم أكبر طلب جاهز شفناه. */
+    static Fresh fresh(String api, String pin, long after, boolean ready) {
         Fresh f = new Fresh();
         JSONObject o = Api.post(api, "/driver/orders", Api.pin(pin));
         if (!o.optBoolean("ok")) return f;
         JSONArray a = o.optJSONArray("orders");
+        JSONObject me = o.optJSONObject("me");
+        String myId = me == null ? "" : me.optString("id", "");
         for (int i = 0; a != null && i < a.length(); i++) {
             JSONObject x = a.optJSONObject(i);
-            if (x == null || !"new".equals(x.optString("status"))) continue;
-            if (number(x.optString("no")) <= after) continue;
+            if (x == null) continue;
+            String st = x.optString("status"), drv = x.optString("drv", "");
+            if (ready) {
+                if (!("new".equals(st) || "accepted".equals(st)) || !"ready".equals(x.optString("prepStage"))) continue;
+                if (drv.length() > 0 && !drv.equals(myId)) continue;
+            } else {
+                if (!"new".equals(st)) continue;
+                if (number(x.optString("no")) <= after) continue;
+            }
             f.count++;
             if (f.text.length() == 0) {
                 String name = x.optString("name", "").trim();

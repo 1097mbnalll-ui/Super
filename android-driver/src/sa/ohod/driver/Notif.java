@@ -60,9 +60,13 @@ final class Notif {
     }
 
     static void newOrder(Context c, int count, String text) {
+        newOrder(c, count, text, false);
+    }
+
+    static void newOrder(Context c, int count, String text, boolean ready) {
         Notification.Builder b = builder(c, CH_ORDERS)
                 .setSmallIcon(R.drawable.ic_stat)
-                .setContentTitle(count == 1 ? "طلب جديد" : count + " طلبات جديدة")
+                .setContentTitle(ready ? (count == 1 ? "طلب جاهز للتوصيل" : count + " طلبات جاهزة للتوصيل") : (count == 1 ? "طلب جديد" : count + " طلبات جديدة"))
                 .setContentText(text)
                 .setAutoCancel(true)
                 .setCategory(Notification.CATEGORY_MESSAGE)
