@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>فيلم متاجر أُحد</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap">
+<style>
+/* التخطيط: غرفة مونتاج. فوق: إطار المعاينة وتحته خط زمني مرسوم بنسبة مدة كل مشهد. تحت: ملف الإنتاج كاملاً للقراءة. */
+:root{
+  color-scheme:dark;
+  --bg:#1A110B; --panel:#241810; --panel-2:#2F2117; --line:#47362A; --fg:#F8EEE3; --muted:#BDA998;
+  --accent:#F27D22; --accent-ink:#1F0F02; --teal:#3DB8A8; --past:#DDA94F; --warn:#F2A65A; --bad:#F08A7E; --good:#6FCF97;
+  /* داخل إطار الفيلم: ألوان ثابتة في الوضعين لأنها صورة المشهد نفسها */
+  --stage:#120B07; --stage-fg:#FFF4E8; --stage-dim:#C9B6A5; --paper:#EAD8B2; --paper-line:#C9B48A; --ink-old:#3A2A1C;
+  --cold:#DCE7E4; --cold-ink:#1D2B2A; --brand-brown:#2A1C12; --brand-orange:#E46A12; --brand-teal:#2A9D8F; --white:#FFFFFF;
+  --font:"Readex Pro",Tahoma,"Segoe UI",sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){
+  color-scheme:light;
+  --bg:#FBF6F0; --panel:#FFFFFF; --panel-2:#F5ECE2; --line:#E6D8C8; --fg:#2A1C12; --muted:#75614F;
+  --accent:#C4540A; --accent-ink:#FFFFFF; --teal:#1E7F74; --past:#8F6410; --warn:#9A5B0C; --bad:#B3261E; --good:#1C7C45;
+}}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#FBF6F0; --panel:#FFFFFF; --panel-2:#F5ECE2; --line:#E6D8C8; --fg:#2A1C12; --muted:#75614F;
+  --accent:#C4540A; --accent-ink:#FFFFFF; --teal:#1E7F74; --past:#8F6410; --warn:#9A5B0C; --bad:#B3261E; --good:#1C7C45;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.75;font-weight:400}
+.wrap{max-width:1180px;margin-inline:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3,h4{font-family:var(--font);margin:0;line-height:1.3;text-wrap:balance}
+h2{font-size:clamp(22px,3vw,30px);font-weight:700}
+h3{font-size:17px;font-weight:600}
+p{margin:0}
+a{color:var(--accent)}
+button{font-family:var(--font);cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+.muted{color:var(--muted)}
+.eyebrow{font-size:12.5px;font-weight:600;color:var(--accent);letter-spacing:.02em}
+
+/* رأس الصفحة */
+.top{padding-block:22px 14px;display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-end;justify-content:space-between}
+.brand{display:flex;gap:12px;align-items:center;min-width:0}
+.brand img{width:46px;height:46px;border-radius:50%;background:var(--white);flex:none}
+.brand h1{font-size:clamp(20px,3.2vw,28px);font-weight:700}
+.brand p{font-size:13px;color:var(--muted)}
+.versions{display:flex;gap:6px;background:var(--panel-2);padding:5px;border-radius:999px;border:1px solid var(--line)}
+.versions button{border:0;background:transparent;color:var(--muted);padding:9px 16px;border-radius:999px;font-size:13.5px;font-weight:600;line-height:1.3}
+.versions button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.versions small{display:block;font-weight:400;font-size:11.5px;opacity:.85}
+
+/* المعاينة */
+.room{display:grid;gap:14px}.room>*,.stagebox>*,.sheet>*,.doc>*,.doc section>*{min-width:0}
+.stagebox{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;gap:12px}
+.frame-holder{display:flex;justify-content:center;min-width:0}
+.frame{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;background:var(--stage);color:var(--stage-fg);border-radius:10px;overflow:hidden;container-type:size;isolation:isolate}
+.frame.tall{aspect-ratio:9/16;width:auto;height:min(72vh,680px);max-width:100%}
+.frame .art{position:absolute;inset:0;display:grid;place-items:center}
+.frame .bars::before,.frame .bars::after{content:"";position:absolute;inset-inline:0;height:12.4cqh;background:var(--stage);z-index:3;transition:height .9s ease}
+.frame .bars::before{top:0}.frame .bars::after{bottom:0}
+.frame .bars.open::before,.frame .bars.open::after{height:0}
+.frame .tc{position:absolute;top:2.2cqh;left:2cqw;z-index:5;font-size:max(10px,1.6cqw);background:color-mix(in srgb,var(--stage) 70%,transparent);color:var(--stage-fg);padding:.2em .7em;border-radius:6px}
+.frame.tall .tc{font-size:max(10px,3.2cqw)}
+.frame .slug{position:absolute;top:2.2cqh;right:2cqw;z-index:5;font-size:max(10px,1.45cqw);color:var(--stage-dim);background:color-mix(in srgb,var(--stage) 70%,transparent);padding:.2em .7em;border-radius:6px;max-width:66cqw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frame.tall .slug{font-size:max(10px,2.9cqw);max-width:58cqw}
+.frame .sub{position:absolute;inset-inline:0;bottom:0;z-index:6;padding:7cqh 5cqw 4.2cqh;text-align:center;font-size:max(13px,2.5cqw);font-weight:500;line-height:1.5;background:linear-gradient(to top,color-mix(in srgb,var(--stage) 92%,transparent) 35%,transparent);min-height:17cqh;display:flex;align-items:flex-end;justify-content:center;text-wrap:balance}
+.frame.tall .sub{font-size:max(14px,5.2cqw);padding:6cqh 6cqw 4cqh}
+.frame .sub.silence{color:var(--stage-dim);font-weight:300;font-style:normal}
+
+/* لوحات المشاهد المرسومة */
+.a-ledger{background:radial-gradient(120% 90% at 70% 30%,#6B4423 0%,#2B1A0E 60%,var(--stage) 100%)}
+.a-ledger .page{width:56cqw;height:62cqh;background:var(--paper);color:var(--ink-old);border-radius:.6cqw;transform:rotate(-2.2deg);box-shadow:0 2cqh 6cqh rgba(0,0,0,.55);padding:5cqh 3cqw;background-image:repeating-linear-gradient(to bottom,transparent 0 7.6cqh,var(--paper-line) 7.6cqh 7.8cqh);display:grid;align-content:start;gap:0}
+.a-ledger .page span{height:7.8cqh;display:flex;align-items:flex-end;justify-content:space-between;font-size:2.5cqw;font-weight:500;padding-bottom:.6cqh}
+.a-ledger .page span b{font-weight:600}
+.a-ledger .page span:nth-child(3){opacity:.75}.a-ledger .page span:nth-child(5){opacity:.55}
+.frame.tall .a-ledger .page{width:80cqw;height:44cqh}.frame.tall .a-ledger .page span{font-size:4.4cqw;height:5.5cqh}.frame.tall .a-ledger .page{background-image:repeating-linear-gradient(to bottom,transparent 0 5.3cqh,var(--paper-line) 5.3cqh 5.5cqh)}
+.a-shelves{background:linear-gradient(90deg,#3A2412 0%,#3D3A32 55%,var(--cold) 130%);align-content:center;gap:3cqh;grid-auto-rows:min-content;padding-inline:4cqw}
+.a-shelves .row{display:flex;gap:.7cqw;align-items:flex-end;height:15cqh;border-bottom:.8cqh solid rgba(0,0,0,.45);width:92cqw;justify-content:flex-start}
+.a-shelves .row i{display:block;width:2.1cqw;border-radius:.3cqw .3cqw 0 0;background:var(--past)}
+.a-shelves .row i:nth-child(3n){background:var(--brand-teal)}.a-shelves .row i:nth-child(4n){background:var(--paper)}.a-shelves .row i:nth-child(7n){background:var(--brand-orange)}
+.a-shelves .code{position:absolute;left:5cqw;bottom:20cqh;background:var(--white);padding:1.2cqh 1cqw;border-radius:.5cqw;display:flex;gap:.25cqw;height:9cqh;align-items:stretch}
+.a-shelves .code i{display:block;width:.35cqw;background:var(--cold-ink)}.a-shelves .code i:nth-child(3n){width:.8cqw}.a-shelves .code i:nth-child(5n){width:.18cqw}
+.a-phones{background:linear-gradient(160deg,#22302E,#101716)}
+.a-phones .note,.a-phones .bub{position:absolute;font-size:2.2cqw;font-weight:500;padding:1.4cqh 1.6cqw;line-height:1.5}
+.a-phones .note{background:#F6E58D;color:var(--cold-ink);box-shadow:0 1cqh 2.5cqh rgba(0,0,0,.4)}
+.a-phones .bub{background:var(--cold);color:var(--cold-ink);border-radius:2cqw 2cqw 2cqw .4cqw}
+.a-phones .bub.me{background:#BFE3D0;border-radius:2cqw 2cqw .4cqw 2cqw}
+.a-phones .ring{position:absolute;font-size:5cqw;font-weight:700;color:var(--stage-fg);opacity:.16;letter-spacing:.2em}
+.frame.tall .a-phones .note,.frame.tall .a-phones .bub{font-size:4.2cqw}
+.a-question{background:radial-gradient(60% 60% at 50% 55%,#33261B 0%,#120C08 75%)}
+.a-question .qs{display:flex;flex-wrap:wrap;gap:1.4cqw;justify-content:center;max-width:80cqw;margin-bottom:4cqh}
+.a-question .qs span{font-size:2.3cqw;color:var(--stage-dim);border:1px solid #5A4636;border-radius:999px;padding:.6cqh 1.6cqw}
+.a-question .big{font-size:7.4cqw;font-weight:700;text-align:center}
+.a-question .inner{display:grid;justify-items:center}
+.frame.tall .a-question .qs span{font-size:4.2cqw}.frame.tall .a-question .big{font-size:12cqw}
+.a-title,.a-end{background:var(--brand-brown)}
+.a-title::before,.a-end::before{content:"";position:absolute;width:46cqw;height:46cqw;border-radius:50%;background:var(--brand-orange);opacity:.55;top:-18cqw;left:-10cqw}
+.a-title::after,.a-end::after{content:"";position:absolute;width:30cqw;height:30cqw;border-radius:50%;background:var(--brand-teal);opacity:.28;bottom:-12cqw;right:-8cqw}
+.a-title .inner,.a-end .inner{position:relative;z-index:1;display:grid;justify-items:center;gap:1.6cqh;text-align:center;padding-inline:6cqw}
+.a-title img,.a-end img{width:13cqw;height:13cqw;border-radius:50%;background:var(--white)}
+.a-title .name{font-size:8cqw;font-weight:700;line-height:1.2}
+.a-title .place{font-size:2.4cqw;color:var(--stage-dim)}
+.a-end .line{font-size:4.4cqw;font-weight:700;line-height:1.35}
+.a-end .cta{background:var(--brand-orange);color:var(--white);font-size:2.6cqw;font-weight:600;border-radius:999px;padding:1.2cqh 3.4cqw;margin-top:1cqh}
+.a-end .contact{font-size:2cqw;color:var(--stage-dim)}
+.a-end .fine{font-size:1.45cqw;color:var(--stage-dim);opacity:.8}
+.frame.tall .a-title img,.frame.tall .a-end img{width:28cqw;height:28cqw}.frame.tall .a-title .name{font-size:15cqw}.frame.tall .a-title .place{font-size:4.6cqw}
+.frame.tall .a-end .line{font-size:8.6cqw}.frame.tall .a-end .cta{font-size:5.2cqw}.frame.tall .a-end .contact{font-size:4cqw}.frame.tall .a-end .fine{font-size:3cqw}
+.a-city{background:linear-gradient(to top,#5B3413 0%,#2B1B12 45%,#141018 100%)}
+.a-city .dots{display:grid;grid-template-columns:repeat(16,1fr);gap:2.6cqh 2.6cqw;width:86cqw}
+.a-city .dots i{display:block;width:.9cqw;height:.9cqw;border-radius:50%;background:#6B5646;justify-self:center}
+.a-city .dots i.on{background:var(--past);box-shadow:0 0 2.4cqw 1cqw rgba(221,169,79,.45)}
+.a-city .dots i.us{background:var(--brand-orange);box-shadow:0 0 3cqw 1.4cqw rgba(228,106,18,.6);width:1.3cqw;height:1.3cqw}
+.frame.tall .a-city .dots{grid-template-columns:repeat(8,1fr)}.frame.tall .a-city .dots i{width:1.8cqw;height:1.8cqw}
+.a-hook{background:linear-gradient(160deg,#22302E,#101716)}
+.a-hook .big{font-size:12.5cqw;font-weight:700;line-height:1.35;text-align:center;padding-inline:7cqw}
+.a-hook .big em{font-style:normal;color:var(--brand-orange)}
+.a-problem{background:linear-gradient(160deg,#22302E,#101716);align-content:center;gap:3cqh;padding-inline:8cqw}
+.a-problem div{background:var(--cold);color:var(--cold-ink);border-radius:3cqw;padding:2.6cqh 5cqw;font-size:6cqw;font-weight:600;width:100%;text-align:center}
+.a-problem div:nth-child(2){transform:rotate(-2deg)}.a-problem div:nth-child(3){transform:rotate(1.5deg)}
+.a-problem div.q{background:transparent;color:var(--stage-fg);border:1px dashed #6E8480;font-weight:400}
+
+/* لقطات النظام الحقيقية: بنسبتها الأصلية بلا قص ولا إمالة */
+.frame .screens{background:radial-gradient(90% 90% at 50% 40%,#3A2819 0%,var(--brand-brown) 55%,var(--stage) 100%);display:flex;gap:1.6cqw;align-items:center;justify-content:center;padding:9cqh 2cqw 15cqh}
+.screens figure{margin:0;display:grid;justify-items:center;gap:1cqh;transition:opacity .4s,transform .4s;opacity:.5;transform:scale(.94)}
+.screens figure.on{opacity:1;transform:none}
+.screens img{display:block;border-radius:1.6cqw;border:.35cqw solid #0B0705;box-shadow:0 1.5cqh 4cqh rgba(0,0,0,.5);background:var(--white)}
+.screens .ph img{height:66cqh;width:auto}
+.screens.n4 .ph img{height:62cqh}.screens.n5 .ph img{height:56cqh}
+.screens .dk img{height:auto;width:56cqw;border-radius:.8cqw}
+.screens.n2 .dk img,.screens.n3 .dk img,.screens.n4 .dk img,.screens.n5 .dk img{width:auto;height:52cqh}
+.screens figcaption{font-size:max(9px,1.3cqw);color:var(--stage-dim)}
+.screens.deck figure{display:none}.screens.deck figure.on{display:grid}
+.screens.deck .dk img{width:74cqw;height:auto}
+.frame.tall .screens{padding:12cqh 4cqw 17cqh}
+.frame.tall .screens figure{display:none}.frame.tall .screens figure.on{display:grid}
+.frame.tall .screens .ph img{height:62cqh}.frame.tall .screens img{border-radius:4cqw;border-width:.8cqw}
+.frame.tall .screens figcaption{font-size:max(10px,3cqw)}
+.screens .tag{position:absolute;top:3cqh;inset-inline:0;text-align:center;font-size:max(10px,1.4cqw);color:var(--stage-dim)}
+.frame.tall .screens .tag{top:7.5cqh;font-size:max(10px,3cqw)}
+@container (max-width:560px){.frame:not(.tall) .screens .tag{display:none}.frame:not(.tall) .slug{max-width:56cqw}}
+
+/* أزرار التشغيل والخط الزمني */
+.transport{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.transport button{border:1px solid var(--line);background:var(--panel-2);color:var(--fg);border-radius:10px;min-height:40px;padding:0 14px;font-size:13.5px;font-weight:600}
+.transport button.play{background:var(--accent);color:var(--accent-ink);border-color:transparent;min-width:104px}
+.transport .time{margin-inline-start:auto;font-size:14px;font-weight:600}
+.timeline{position:relative;display:flex;gap:3px;direction:rtl}
+.timeline button{position:relative;border:0;min-width:0;height:54px;border-radius:7px;background:var(--panel-2);color:var(--muted);padding:6px 4px;font-size:11.5px;line-height:1.25;overflow:hidden;text-align:center;border-bottom:4px solid var(--ch,var(--line))}
+.timeline button b{display:block;font-size:12.5px;color:var(--fg);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.timeline button[aria-current="true"]{background:color-mix(in srgb,var(--ch) 22%,var(--panel-2));outline:1px solid var(--ch)}
+.timeline .head{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--fg);pointer-events:none;border-radius:2px}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:6px;vertical-align:-1px}
+
+/* ورقة المشهد */
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:grid;gap:18px}
+.sheet header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;justify-content:space-between}
+.sheet header h2{font-size:22px}
+.sheet .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:22px}
+.vo{display:grid;gap:4px;align-content:start}
+.vo div{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:5px 8px;border-radius:8px;font-size:16.5px;line-height:1.7}
+.vo div.sil{color:var(--muted);font-size:13.5px}
+.vo div.now{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.vo div span{color:var(--muted);font-size:12.5px;padding-top:5px}
+.notes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 20px;margin:0;align-content:start}
+.notes div{min-width:0}
+.notes dt{font-size:12.5px;font-weight:600;color:var(--accent);margin-bottom:2px}
+.notes dd{margin:0;font-size:14px;line-height:1.75}
+.notes .wide{grid-column:1/-1}
+
+/* ملف الإنتاج */
+.doc{display:grid;gap:44px;padding-block:44px 64px}
+.doc section{display:grid;gap:16px;scroll-margin-top:16px}
+.doc section>p,.doc li{max-width:72ch}
+.lead{font-size:17px;line-height:1.85}
+.toc{display:flex;flex-wrap:wrap;gap:8px}
+.toc a{font-size:13px;text-decoration:none;color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:5px 13px;background:var(--panel)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:8px;align-content:start;min-width:0}
+.card ul,.doc ul,.doc ol{margin:0;padding-inline-start:20px;display:grid;gap:6px}
+.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:1px 10px;border:1px solid currentColor;white-space:nowrap}
+.pill.ok{color:var(--good)}.pill.wait{color:var(--warn)}.pill.no{color:var(--bad)}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th,td{text-align:start;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.6}
+th{font-size:12.5px;color:var(--muted);font-weight:600;background:var(--panel-2)}
+tr:last-child td{border-bottom:0}
+.script{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:grid;gap:16px}
+.script .hd{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.script .hd button{border:1px solid var(--line);background:var(--panel-2);color:var(--fg);border-radius:10px;min-height:38px;padding:0 14px;font-size:13px;font-weight:600}
+.script .blk{display:grid;grid-template-columns:118px minmax(0,1fr);gap:14px;padding-top:14px;border-top:1px solid var(--line)}
+.script .blk h4{font-size:13.5px;font-weight:600}
+.script .blk small{color:var(--muted);font-size:12px;display:block}
+.script .blk p{font-size:17px;line-height:2}
+.script .blk p i{font-style:normal;color:var(--muted);font-size:13px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.gallery figure{margin:0;display:grid;gap:6px;align-content:start}
+.gallery img{width:100%;height:auto;border-radius:10px;border:1px solid var(--line);background:var(--white);display:block}
+.gallery figcaption{font-size:12.5px;color:var(--muted);line-height:1.5}
+.gallery.wide{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))}
+.callout{border:1px solid var(--warn);border-radius:var(--r);padding:16px 18px;background:color-mix(in srgb,var(--warn) 9%,var(--panel));display:grid;gap:8px}
+.callout h3{color:var(--warn)}
+footer{border-top:1px solid var(--line);padding-block:20px 40px;color:var(--muted);font-size:13px}
+@media (max-width:820px){
+  .sheet .cols{grid-template-columns:minmax(0,1fr)}
+  .notes{grid-template-columns:minmax(0,1fr)}
+  .timeline button{font-size:0;height:40px}.timeline button b{font-size:11px}
+  .script .blk{grid-template-columns:minmax(0,1fr);gap:4px}
+  .frame.tall{height:min(64vh,560px)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <img src="shots/logo.webp" alt="شعار متاجر أُحد" width="46" height="46">
+      <div>
+        <h1>فيلم متاجر أُحد</h1>
+        <p>«الدفتر الذي لا ينسى» · ستوري بورد تفاعلي وملف إنتاج</p>
+      </div>
+    </div>
+    <div class="versions" role="group" aria-label="نسخة الفيلم">
+      <button type="button" id="vFilm" aria-pressed="true">الفيلم السينمائي<small class="num">3:40 · 16:9</small></button>
+      <button type="button" id="vSales" aria-pressed="false">النسخة البيعية<small class="num">1:15 · 9:16 واتساب</small></button>
+    </div>
+  </div>
+
+  <div class="room">
+    <div class="stagebox">
+      <div class="frame-holder"><div class="frame" id="frame" aria-live="off"></div></div>
+      <div class="transport">
+        <button type="button" class="play" id="play">▶ شغّل</button>
+        <button type="button" id="prev" aria-label="المشهد السابق">السابق</button>
+        <button type="button" id="next" aria-label="المشهد التالي">التالي</button>
+        <span class="time num" id="clock">0:00 / 3:40</span>
+      </div>
+      <div class="timeline" id="timeline" aria-label="الخط الزمني للمشاهد"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="sheet" id="sheet"></div>
+  </div>
+
+  <div class="doc">
+    <nav class="toc" aria-label="أقسام ملف الإنتاج">
+      <a href="#read">قراءة المشروع</a><a href="#audience">الجمهور والرسالة</a><a href="#idea">الفكرة الإبداعية</a><a href="#scripts">نص التعليق الصوتي</a><a href="#ui">عرض الواجهات</a><a href="#sound">الموسيقى والمونتاج</a><a href="#shots">قائمة اللقطات</a><a href="#assets">الأصول</a><a href="#ending">النهاية والدعوة</a><a href="#honest">قبل التصوير</a><a href="#screens">لقطات النظام</a>
+    </nav>
+
+    <section id="read">
+      <div class="eyebrow">١ · قراءة المشروع</div>
+      <h2>ما الذي يملكه متاجر أُحد فعلًا</h2>
+      <p class="lead">فحصنا الواجهة (<span class="num">index.html</span>)، الخادم (<span class="num">server/worker.js</span>)، الاختبارات وملفات التشغيل. المشروع ليس صفحة منتجات: هو خط تشغيل كامل لبقالة ومخبز في حي الرمال بالرياض، من لحظة الطلب إلى حساب آخر اليوم، وفي كتالوجه اليوم <span class="num">4,902</span> صنفًا في <span class="num">11</span> قسمًا.</p>
+      <div class="grid2">
+        <div class="card"><h3>نقاط القوة التجارية</h3><ul>
+          <li><b>سلسلة واحدة متصلة:</b> زبون ← مجهّز ← كاشير ← مندوب ← صاحب المتجر، كلٌّ بشاشته وصلاحيته.</li>
+          <li><b>طلب بلا تسجيل:</b> لا حساب ولا كلمة سر، والدفع عند الاستلام نقدًا أو بالشبكة.</li>
+          <li><b>ربح حقيقي:</b> سعر الشراء محفوظ سرًّا، والتحليل يحسب الربح لكل صنف وطلب.</li>
+          <li><b>مستشار عروض يحمي الهامش:</b> يحكم على العرض قبل إطلاقه: آمن، مكلف، أو خسارة.</li>
+          <li><b>ضبط النقد:</b> ما مع كل مندوب، طلب التسوية، وتأكيد الاستلام وإقفال اليوم.</li>
+          <li><b>يديره صاحبه:</b> لوحة عربية، واستيراد الأصناف من ملف الكاشير (Excel).</li>
+          <li><b>استرجاع الزبائن:</b> قائمة من توقف عن الطلب مع رسالة واتساب جاهزة.</li>
+        </ul></div>
+        <div class="card"><h3>نقاط القوة الفنية</h3><ul>
+          <li><b>التسعير على الخادم دائمًا:</b> لا يُعتمد سعر يرسله الجوال.</li>
+          <li><b>الطلب ذرّي:</b> الطلب وسطوره والمخزون والتحليل تُكتب معًا أو لا يُكتب شيء.</li>
+          <li><b>أرقام تُراجع نفسها:</b> التحليل يُعاد حسابه من الطلبات ويُقارن. محاكاة خمسة أشهر (<span class="num">6,500</span> طلب) انتهت بلا فروقات.</li>
+          <li><b>طلب لا يتكرر:</b> انقطاع الرد لا يُنشئ طلبًا ثانيًا عند إعادة الإرسال.</li>
+          <li><b>صلاحيات تُفرض في الخادم</b> وسجل عمليات باسم المنفّذ.</li>
+          <li><b>عدة مناديب بلا تضارب:</b> من يمسك الطلب أولًا يأخذه وحده.</li>
+          <li><b>يتحمّل آلاف الأصناف:</b> بحث يتسامح مع الهمزات والتاء ويقبل الباركود.</li>
+        </ul></div>
+      </div>
+      <h3>المنفَّذ والمخطَّط: ما يحق للفيلم أن يعرضه</h3>
+      <div class="tablebox"><table>
+        <thead><tr><th>الميزة</th><th>الحالة</th><th>في الفيلم</th></tr></thead>
+        <tbody>
+          <tr><td>متجر الزبون، البحث، السلة، العروض والباقات، تحديد البيت على الخريطة</td><td><span class="pill ok">منفّذ ومختبر محليًا</span></td><td>يُعرض</td></tr>
+          <tr><td>تتبّع الطلب وموقع المندوب ووقت الوصول، إلغاء الطلب، البديل بموافقة الزبون</td><td><span class="pill ok">منفّذ ومختبر محليًا</span></td><td>يُعرض (التتبّع)</td></tr>
+          <tr><td>شاشة المجهّز بالصور ومواقع الأصناف، بلا أسعار ولا عناوين</td><td><span class="pill ok">منفّذ ومختبر محليًا</span></td><td>يُعرض</td></tr>
+          <tr><td>كاشير طلبات التوصيل: مراجعة واعتماد إيصال تشغيلي مرقّم</td><td><span class="pill ok">منفّذ ومختبر محليًا</span></td><td>يُعرض، ويسمّى «إيصالًا» لا «فاتورة ضريبية»</td></tr>
+          <tr><td>صفحة المندوب: الطلبات الجاهزة، التوصيل، حساب الباقي، كاش اليوم</td><td><span class="pill ok">منفّذ ومختبر محليًا</span></td><td>يُعرض من المتصفح</td></tr>
+          <tr><td>لوحة المالك: اليوم، الطلبات، التحليل، الربح، حساب المناديب، مستشار العروض، الموظفون، سجل العمليات</td><td><span class="pill ok">منفّذ ومختبر محليًا</span></td><td>يُعرض</td></tr>
+          <tr><td>استيراد الأصناف من ملف الكاشير</td><td><span class="pill ok">منفّذ ومختبر محليًا</span></td><td>يُذكر في النسخة البيعية</td></tr>
+          <tr><td>تطبيق المندوب على أندرويد (إشعارات وموقع بالخلفية)</td><td><span class="pill wait">مبني، لم يُجرَّب على جوال حقيقي</span></td><td>لا يُدّعى. تظهر صفحة المندوب فقط</td></tr>
+          <tr><td>طابعة الإيصالات وقارئ الباركود الفعليان، الحمل الحقيقي</td><td><span class="pill wait">لم يُجرَّب ميدانيًا</span></td><td>لقطة الطباعة بعد تجربة حقيقية فقط</td></tr>
+          <tr><td>دفع إلكتروني (مدى / Apple Pay)، رسائل واتساب تلقائية، فاتورة إلكترونية</td><td><span class="pill no">مخطّط، غير منفّذ</span></td><td>لا يظهر ولا يُلمَّح له</td></tr>
+          <tr><td>نقاط بيع داخل المحل</td><td><span class="pill no">أُزيلت من الواجهة</span></td><td>لا تظهر</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="audience">
+      <div class="eyebrow">٢ · الجمهور والرسالة</div>
+      <h2>لمن نتكلم، وماذا نقول له</h2>
+      <div class="grid2">
+        <div class="card"><h3>الجمهور الأول</h3><p>صاحب بقالة أو ميني ماركت أو مخبز، من فرع إلى ثلاثة فروع. يستقبل طلبات بالاتصال والواتساب، عنده مندوب أو أكثر، ويحسب آخر اليوم بالورقة والآلة الحاسبة. لا يثق بكلام التقنية، ويثق بمتجر مثله يشتغل.</p></div>
+        <div class="card"><h3>الجمهور الثاني</h3><p>مشغّلو السلاسل الصغيرة، والمستثمرون والشركاء الذين يقيّمون المشروع كمنتج يُباع لمتاجر أخرى. يهمهم أن النموذج قائم في متجر حقيقي وأن أرقامه قابلة للتحقق.</p></div>
+        <div class="card"><h3>الرسالة البيعية</h3><p class="lead">«متجرك كله في نظام واحد: من طلب الزبون إلى ربح آخر اليوم. وتديره أنت.»</p><p class="muted">الدليل: متجر حقيقي في حي الرمال يعمل به. لا وعود بنسب نمو ولا أرباح.</p></div>
+        <div class="card"><h3>الألم الذي نلمسه</h3><ul><li>طلب ضاع بين اتصال ورسالة.</li><li>لا أحد يعرف من جهّز ومن خرج بالطلب.</li><li>نقد المندوب يُحسب بالتقريب.</li><li>عرضٌ جلب زبائن وأكل الهامش.</li><li>«كم ربحنا فعلًا؟» بلا جواب.</li></ul></div>
+      </div>
+    </section>
+
+    <section id="idea">
+      <div class="eyebrow">٣ · الفكرة الإبداعية</div>
+      <h2>الدفتر الذي لا ينسى</h2>
+      <p class="lead">بطل الفيلم ليس الشاشة. بطله دفتر. دكّان الحارة القديم كان يعرف زبائنه بالاسم لأن عنده دفترًا وذاكرة. حين كبرت المتاجر ربحت السرعة وخسرت تلك المعرفة. ثم جاء الهاتف فزاد الطلبات وزاد التشتّت. متاجر أُحد يعيد لصاحب المتجر دفتره، بدقّة لم تكن ممكنة.</p>
+      <div class="grid2">
+        <div class="card"><h3>ثلاثة أزمنة، ثلاث صور</h3><ul>
+          <li><b>الماضي:</b> إطار سينمائي عريض (<span class="num">2.39:1</span>)، ضوء تنغستن دافئ، حبيبات فيلم، عودٌ منفرد.</li>
+          <li><b>الحاضر المتشتّت:</b> كاميرا محمولة، فلورسنت بارد، قطعات قصيرة، رنين متداخل.</li>
+          <li><b>متاجر أُحد:</b> ينفتح الإطار إلى <span class="num">16:9</span>. ألوان العلامة نظيفة، وحركة هادئة واثقة.</li>
+        </ul></div>
+        <div class="card"><h3>خيوط تربط الفيلم</h3><ul>
+          <li><b>الدفتر:</b> يُفتح في المشهد الأول، يُحبس في درج في الثاني، يعود في لوحة الإدارة، ويُغلق باليد في الختام.</li>
+          <li><b>الطاولة نفسها:</b> صاحب المتجر غارق في الأوراق (مشهد ٤)، ثم على الطاولة ذاتها بلا أوراق (مشهد ٨).</li>
+          <li><b>القلم ← الإصبع:</b> قطع مطابق من الكتابة في الدفتر إلى الضغط على «أرسل الطلب».</li>
+          <li><b>الباب:</b> صوت باب الدكان القديم يتكرر عند فتح متاجر أُحد فجرًا.</li>
+        </ul></div>
+      </div>
+      <p>النسخة البيعية لا تحكي التاريخ. تبدأ بسؤال يوجع صاحب المتجر، وتعرض النظام في ثلاث لقطات: زبونك، فريقك، أنت. طولية للواتساب، وتُفهم بلا صوت.</p>
+    </section>
+
+    <section id="scripts">
+      <div class="eyebrow">٤ · التعليق الصوتي</div>
+      <h2>النص كاملًا، جاهز للتسجيل</h2>
+      <p>كل سطر يُقرأ في نَفَس واحد. الثلاث نقاط وقفة قصيرة داخل الجملة، و<i class="muted">[صمت]</i> وقفة تُترك للصورة والموسيقى. الأداء: صوت رجل عميق في الأربعينات أو الخمسينات، فصحى سهلة بلا خطابة، كمن يحكي لصديق يعرف السوق.</p>
+      <div class="script" id="scriptFilm"></div>
+      <div class="script" id="scriptSales"></div>
+    </section>
+
+    <section id="ui">
+      <div class="eyebrow">٥ · الواجهات الحقيقية</div>
+      <h2>كيف نعرض النظام بلا تشويه</h2>
+      <ol>
+        <li><b>تسجيل شاشة حقيقي لا إعادة رسم.</b> كل ما يظهر يُسجَّل من النظام نفسه بدقة <span class="num">60</span> إطارًا، وببيانات عرض وهمية. لا واجهات مصمَّمة للفيلم.</li>
+        <li><b>النسبة الأصلية.</b> الجوال بنسبته الطولية والإدارة بنسبة المكتب. لا مطّ ولا قص يخفي جزءًا من الشاشة.</li>
+        <li><b>بلا تلوين فوق الشاشة.</b> تدرّج الألوان السينمائي يقف عند حدود الجهاز. البرتقالي والأخضر كما هما في النظام.</li>
+        <li><b>ميل محدود.</b> لا إمالة منظورية تتجاوز <span class="num">8°</span>، ولا شاشات طائرة في الفراغ. الجهاز في يد صاحبه أو نظيف على خلفية العلامة.</li>
+        <li><b>تكبير على رقم واحد.</b> عند ذكر «نقد المندوب» تكبّر الكاميرا على ذلك الرقم وتعتم ما حوله قليلًا. لا أسهم ولا دوائر حمراء.</li>
+        <li><b>زمن قراءة.</b> أي نص مقصود يبقى ثانيتين على الأقل. لا تمرير أسرع من العين.</li>
+        <li><b>خط الموقع نفسه.</b> كل نص يُضاف في الموشن بخط Readex Pro حتى يبدو امتدادًا للواجهة.</li>
+        <li><b>منتجات بصور واضحة فقط.</b> بعض الأصناف بلا صورة أو بصورة ضعيفة. سلة التصوير وقوائم البحث تُختار من أصناف صورها جيدة (قائمة السلة في <span class="num">film/tools/capture.cjs</span>).</li>
+        <li><b>لا بيانات حقيقية.</b> الأسماء والأرقام والطلبات في اللقطات مولّدة، ويُكتب في الختام «اللقطات من النظام الفعلي ببيانات تجريبية».</li>
+      </ol>
+    </section>
+
+    <section id="sound">
+      <div class="eyebrow">٦ · الصوت والمونتاج</div>
+      <h2>الموسيقى، المؤثرات، وإيقاع القطع</h2>
+      <div class="grid2">
+        <div class="card"><h3>الموسيقى: ثلاث حركات</h3><ul>
+          <li><b>الدفتر (<span class="num">0:00–0:50</span>):</b> عود منفرد بلحن من خمس نغمات، فراغ واسع، بلا إيقاع.</li>
+          <li><b>التشتّت (<span class="num">0:50–1:34</span>):</b> إيقاع يتسارع، وتريات قصيرة متوترة، ثم قطعٌ إلى صمت تام.</li>
+          <li><b>أُحد (<span class="num">1:36–3:40</span>):</b> نغمة عود واحدة، ثم نبض حديث هادئ (نحو <span class="num">96</span> نبضة) تتسع فوقه الوتريات. في الختام يعود لحن العود الأول فوق النبض الجديد.</li>
+        </ul><p class="muted">موسيقى مؤلفة أو مرخّصة. لا قوالب إعلانات جاهزة.</p></div>
+        <div class="card"><h3>المؤثرات الصوتية</h3><ul>
+          <li>مفتاح وباب خشبي، خربشة قلم على ورق، تقليب صفحة.</li>
+          <li>صفير قارئ باركود، درج آلة الحساب.</li>
+          <li>رنين هاتف متداخل ونغمات تنبيه محايدة لا تخص أي تطبيق.</li>
+          <li>أزيز ثلاجات، نقر آلة حاسبة، ثم صمت الغرفة.</li>
+          <li>نقرات واجهة خافتة، طابعة إيصال، خشخشة أكياس، طرق باب.</li>
+          <li>إغلاق الدفتر: آخر صوت في الفيلم.</li>
+        </ul></div>
+        <div class="card"><h3>المونتاج</h3><ul>
+          <li>الماضي: لقطات طويلة من <span class="num">4</span> إلى <span class="num">6</span> ثوانٍ. الحاضر: قطعات من ثانية إلى ثانيتين.</li>
+          <li>عند «كم ربحنا فعلًا؟» تثبت الصورة ويُسحب الصوت. ثانيتان من السواد قبل الاسم.</li>
+          <li>انفتاح الإطار من العريض إلى <span class="num">16:9</span> هو لحظة التحوّل، ويحدث مرة واحدة.</li>
+          <li>في استعراض النظام يُقطع على الحركة: الكيس من يد إلى يد، والرقم من الدفتر إلى اللوحة.</li>
+          <li>الموشن جرافيك: خطوط رفيعة وأرقام تنتقل. لا أيقونات كرتونية ولا انتقالات جاهزة.</li>
+        </ul></div>
+        <div class="card"><h3>اللون</h3><ul>
+          <li>الماضي: كهرماني وبني، سواد عميق.</li>
+          <li>الحاضر المتشتّت: أخضر فلورسنت بارد، تشبّع منخفض.</li>
+          <li>أُحد: بنّي العلامة الداكن مع البرتقالي والأخضر المزرقّ، كما في شاشة «وصلنا طلبك» في النظام.</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="shots">
+      <div class="eyebrow">٧ · قائمة اللقطات</div>
+      <h2>ما يُصوَّر، وما يُسجَّل، وما يُحرَّك</h2>
+      <div class="tablebox"><table>
+        <thead><tr><th>رقم</th><th>المشهد</th><th>اللقطة</th><th>النوع</th><th>المدة</th><th>الحالة</th></tr></thead>
+        <tbody id="shotRows"></tbody>
+      </table></div>
+      <p class="muted">النسخة البيعية تُقصّ من المواد نفسها: اللقطات <span class="num">L08</span> و<span class="num">L10</span> للمشكلة، وتسجيلات الشاشة الطولية، وبطاقة الختام. لا تحتاج يوم تصوير إضافيًا.</p>
+    </section>
+
+    <section id="assets">
+      <div class="eyebrow">٨ · الأصول المطلوبة</div>
+      <h2>ما يلزم قبل يوم التصوير</h2>
+      <div class="grid2">
+        <div class="card"><h3>موجود في المستودع</h3><ul>
+          <li>الشعار (<span class="num">design/src/emblem.svg</span>) وألوان العلامة وخط Readex Pro.</li>
+          <li>خادم عرض محلي ببيانات وهمية (<span class="num">film/tools/demo-server.mjs</span>): <span class="num">616</span> طلبًا على <span class="num">35</span> يومًا.</li>
+          <li>سكربت التقاط الشاشات (<span class="num">film/tools/capture.cjs</span>) و<span class="num">39</span> لقطة مرجعية في <span class="num">film/shots</span>.</li>
+          <li>مطبوعات المحل: بنر المدخل والستاند وكرت المندوب (<span class="num">design/print</span>).</li>
+        </ul></div>
+        <div class="card"><h3>يُجهَّز</h3><ul>
+          <li><b>المواقع:</b> متاجر أُحد نفسه (داخلي وواجهة عند الفجر)، وركن يُجهَّز كدكّان قديم.</li>
+          <li><b>الأشخاص:</b> صاحب الدكان القديم، طفل، صاحب المتجر اليوم، مجهّز، كاشير، مندوب، زبون عند الباب. موافقات تصوير مكتوبة.</li>
+          <li><b>الأغراض:</b> دفتر مسطّر قديم، قلم، ميزان بكفّتين، آلة حساب قديمة، أوراق طلبات، آلة حاسبة.</li>
+          <li><b>الصوت:</b> معلّق، موسيقى مؤلفة أو مرخّصة، مكتبة مؤثرات.</li>
+          <li><b>تسجيلات الشاشة النهائية:</b> فيديو <span class="num">60</span> إطارًا من جوال ومتصفح حقيقيين على خادم العرض.</li>
+          <li><b>اللقطة الجوية:</b> تصريح درون، أو لقطة مرخّصة، أو خريطة موشن.</li>
+        </ul></div>
+        <div class="card"><h3>ثلاثة مستويات إنتاج</h3><ul>
+          <li><b>كامل:</b> يوما تصوير (الدكّان القديم + المتجر)، ممثلون، درون.</li>
+          <li><b>هجين:</b> يوم واحد في المتجر، والمشهدان الأول والثاني بلقطات أرشيفية مرخّصة أو مولّدة تُراجع بعناية.</li>
+          <li><b>موشن فقط:</b> اللوحات المرسومة في هذه الصفحة مع تسجيلات الشاشة. يصلح للنسخة البيعية فورًا.</li>
+        </ul></div>
+        <div class="card"><h3>التسليمات</h3><ul>
+          <li>الفيلم: <span class="num">1920×1080</span> و<span class="num">4K</span>، مع نسخة مترجمة.</li>
+          <li>البيعية: <span class="num">1080×1920</span>، ونسخة واتساب <span class="num">720×1280</span> أقل من <span class="num">16</span> ميجابايت، بترجمة محروقة.</li>
+          <li>مقاطع <span class="num">15</span> ثانية لكل دور: الزبون، الفريق، المالك.</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <section id="ending">
+      <div class="eyebrow">٩ · النهاية والدعوة</div>
+      <h2>ماذا نطلب من المشاهد</h2>
+      <p class="lead">الختام لا يعد بربح. يقول إن ما رآه يعمل في متجر حقيقي، وإن الخطوة التالية صغيرة: عرض توضيحي.</p>
+      <div class="grid2">
+        <div class="card"><h3>بطاقة الختام</h3><ul>
+          <li>السطر الرئيسي: «المتجر كلّه في نظام واحد».</li>
+          <li>الزر: «اطلب عرضًا توضيحيًا».</li>
+          <li>وسيلة تواصل واحدة: رقم واتساب المبيعات أو رابط قصير. <b>يحدّده صاحب المشروع.</b></li>
+          <li>سطر صغير: «اللقطات من النظام الفعلي ببيانات تجريبية».</li>
+        </ul></div>
+        <div class="card"><h3>ما يحصل عليه من يتواصل</h3><ul>
+          <li>عرض حيّ للأدوار الخمسة في ربع ساعة.</li>
+          <li>تجربة الطلب من جواله هو.</li>
+          <li>نقاش صريح: ما الجاهز اليوم وما يحتاج تجهيزًا لمتجره.</li>
+        </ul><p class="muted">النسخة البيعية تُرسل قبل الاتصال، والفيلم الكامل يُعرض في اللقاء أو يُرسل بعده.</p></div>
+      </div>
+    </section>
+
+    <section id="honest">
+      <div class="eyebrow">١٠ · قبل التصوير</div>
+      <h2>ما يجب حسمه حتى يبقى الفيلم صادقًا</h2>
+      <div class="callout">
+        <h3>لا يقول الفيلم</h3>
+        <ul>
+          <li>لا نسب نمو ولا أرقام أرباح. الأرقام في اللقطات بيانات عرض وهمية وليست مبيعات المتجر.</li>
+          <li>لا دفع إلكتروني، ولا فاتورة ضريبية، ولا رسائل تلقائية. هذه غير منفّذة.</li>
+          <li>لا «تطبيق مجرَّب» للمندوب قبل تجربته على جوال حقيقي.</li>
+          <li>لا «يعمل في كل متجر». الصياغة: تجربة يمكن تطبيق مثلها.</li>
+        </ul>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>يُحسم قبل التسجيل النهائي</h3><ul>
+          <li>تحديث الخادم المنشور إلى آخر نسخة، ثم تجربة الرحلة كاملة على الموقع الحي.</li>
+          <li>إعادة التقاط لقطات الخريطة من شبكة مفتوحة. خلفية الخريطة في اللقطات المرجعية هنا محايدة مؤقتة لأن بيئة التجهيز لا تصل إلى خرائط OpenStreetMap.</li>
+          <li>تجربة طابعة الإيصال الحقيقية قبل تصوير لقطة الطباعة.</li>
+          <li>اعتماد رقم التواصل وصيغة العرض التجاري ممن يملك القرار.</li>
+        </ul></div>
+        <div class="card"><h3>كيف أُعيد توليد اللقطات</h3><ul>
+          <li class="num" style="direction:ltr;text-align:left">node film/tools/demo-server.mjs</li>
+          <li class="num" style="direction:ltr;text-align:left">node film/tools/capture.cjs</li>
+          <li class="num" style="direction:ltr;text-align:left">python3 film/tools/pack-shots.py</li>
+        </ul><p class="muted">الخادم محلي بقاعدة في الذاكرة. لا يلمس الموقع الحي ولا بيانات الزبائن.</p></div>
+      </div>
+    </section>
+
+    <section id="screens">
+      <div class="eyebrow">١١ · لقطات النظام</div>
+      <h2>اللقطات المرجعية من الواجهة الحقيقية</h2>
+      <p>التُقطت من <span class="num">index.html</span> كما هو، على خادم العرض المحلي. تصلح مرجعًا للمخرج ومسودة للمونتاج، وتُستبدل بتسجيلات فيديو عند التنفيذ.</p>
+      <h3>الجوال: الزبون والمجهّز والكاشير والمندوب</h3>
+      <div class="gallery" id="galPhone"></div>
+      <h3>لوحة صاحب المتجر</h3>
+      <div class="gallery wide" id="galDesk"></div>
+    </section>
+  </div>
+</div>
+<footer><div class="wrap">ملف إنتاج داخلي لمشروع متاجر أُحد. الصفحة مستقلة في مجلد <span class="num">film/</span> ولا تغيّر شيئًا في المتجر.</div></footer>
+
+<script>
+(function(){
+"use strict";
+var CH = { past:["الماضي","var(--past)"], now:["الحاضر المتشتّت","var(--muted)"], turn:["التحوّل","var(--fg)"], ohod:["متاجر أُحد","var(--accent)"], next:["الفكرة الأكبر","var(--teal)"] };
+var S = function(src, cap, kind){ return { src:"shots/" + src + ".webp", cap:cap, kind:kind || "ph" }; };
+
+var FILM = [
+ { id:"f1", ch:"past", title:"الدفتر", dur:28, slug:"داخلي · دكّان في حارة قديمة · قبيل الفجر", bars:true, art:"ledger",
+   vo:[[2.5,"كان يعرفهم بالاسم."],[7,"يعرف من يأخذ الخبز قبل الفجر،"],[11,"ومن يؤجّل الحساب إلى آخر الشهر."],[16,null,"القلم على الورق"],[19.5,"لم يكن عنده نظام."],[23,"كان عنده دفتر… وذاكرةٌ لا تخطئ."]],
+   visual:"يد مسنّة تفتح باب الدكّان الخشبي. أرفف قليلة: أكياس أرز وسكر، علب شاي، ميزان بكفّتين. طفل يمدّ ريالات ويأخذ خبزًا. صاحب الدكّان يفتح دفترًا مسطّرًا ويكتب اسمًا ورقمًا. لقطة قريبة جدًا للقلم على الورق.",
+   camera:"دوللي بطيء للداخل بعدسة 35مم، ثم ماكرو 100مم على الدفتر. إطار عريض 2.39:1 مع حبيبات فيلم.",
+   trans:"فتح من السواد على صوت المفتاح. الخروج: صفحة الدفتر تُقلب فتصير رفًّا يمتد.",
+   light:"مصباح تنغستن واحد، ظلال عميقة، غبار في الضوء. كهرماني وبني.",
+   sound:"سكون الحي قبل الفجر، مفتاح وباب خشبي، خربشة القلم. العود يدخل عند الثانية 10.", sup:"بلا نص على الشاشة" },
+ { id:"f2", ch:"past", title:"الرفوف تطول", dur:22, slug:"داخلي · سوق يكبر عبر العقود · نهار", bars:true, art:"shelves",
+   vo:[[1,"ثم كبرت الأحياء."],[4,"طالت الرفوف، وتضاعفت الأصناف،"],[8,"وصار الزبائن أكثر من أن يحفظهم دفتر."],[12.5,"دخل الباركود، ودخلت آلة الحساب."],[16,"صار البيع أسرع…"],[18.5,"لكنّ صاحب المتجر صار يعرف زبائنه أقل."]],
+   visual:"الرف نفسه يطول ويمتلئ عبر ثلاثة أزمنة: من عشرة أصناف إلى مئات. يد تمرّر علبة على قارئ باركود. درج آلة الحساب يُفتح. الدفتر القديم يُغلق ويوضع في درج.",
+   camera:"تراكنغ جانبي طويل بمحاذاة الرف بعدسة 24مم، وسرعته تزيد مع كل زمن.",
+   trans:"مسح بحركة الكاميرا بين الأزمنة. الخروج: الدرج يُغلق على الدفتر.",
+   light:"من التنغستن إلى فلورسنت أبيض. الألوان تبرد تدريجيًا.",
+   sound:"همهمة سوق، صفير قارئ الباركود، رنين آلة الحساب. إيقاع خفيف يدخل تحت العود.", sup:"بلا نص على الشاشة" },
+ { id:"f3", ch:"now", title:"الهاتف في كل جيب", dur:22, slug:"داخلي · بقالة حيّ اليوم · مساء مزدحم", bars:true, art:"phones",
+   vo:[[1,"ثم صار الهاتف في كل جيب."],[4.5,"وصار الزبون يطلب وهو في بيته."],[8.5,"والمتجر؟"],[10.5,"ما زال يردّ على اتصال…"],[13.5,"ويكتب الطلب على ورقة…"],[16.5,"ويبحث عن رسالةٍ ضاعت بين الرسائل."]],
+   visual:"هاتف المحل يرنّ على الطاولة. موظف يكتب طلبًا على ورقة والسماعة بين كتفه وأذنه. شاشة جوال تمتلئ برسائل طلبات. أوراق تتراكم قرب الكاشير. مندوب ينتظر عند الباب.",
+   camera:"محمولة باليد، قطعات من ثانية إلى ثانيتين، لقطات قريبة: الهاتف، القلم، الورقة، الوجه.",
+   trans:"قطع حاد على الإيقاع. شاشة مقسومة ثلاثًا للحظة: زبون يطلب، هاتف يرنّ، ورقة تُكتب.",
+   light:"فلورسنت بارد مائل للأخضر، وضوء الجوال على الوجه.",
+   sound:"رنين هاتف يتداخل مع نغمات تنبيه محايدة وأصوات زبائن. الإيقاع يتسارع.", sup:"بلا نص على الشاشة" },
+ { id:"f4", ch:"now", title:"السؤال", dur:24, slug:"داخلي · البقالة نفسها · آخر الليل", bars:true, art:"question",
+   vo:[[1,"الطلبات تزيد. والمتابعة تصعب."],[5.5,"من طلب؟ من جهّز؟"],[9,"من خرج بالطلب… وكم معه من النقد؟"],[14,"وفي آخر اليوم، سؤالٌ واحد لا يجيب عنه أحد:"],[18.5,null,"صمت تام"],[20.5,"كم ربحنا فعلًا؟"]],
+   visual:"صاحب المتجر وحده بعد الإغلاق. أمامه أوراق الطلبات، آلة حاسبة، رزمة نقد من المندوب، وجواله. يحاول المطابقة. الأسئلة تظهر مكتوبة فوق الأغراض ملتصقةً بها. ثم يرفع رأسه.",
+   camera:"لقطة علوية ثابتة للطاولة، ثم دفع بطيء جدًا نحو وجهه بعدسة 50مم.",
+   trans:"كل شيء يتوقف: الصوت يُسحب والصورة تثبت لحظة قبل السواد.",
+   light:"مصباح مكتب واحد وباقي المحل مظلم. بارد مع بقعة دافئة على الأوراق.",
+   sound:"أزيز الثلاجات ونقر الآلة الحاسبة. الموسيقى تتصاعد ثم تنقطع تمامًا قبل الجملة الأخيرة.", sup:"«من طلب؟» «من جهّز؟» «كم مع المندوب؟»" },
+ { id:"f5", ch:"turn", title:"التحوّل", dur:14, slug:"خارجي · حي الرمال، الرياض · فجر", bars:true, open:true, art:"title",
+   vo:[[0.3,null,"سواد وصمت"],[2.5,"في حي الرمال بالرياض،"],[5,"بقالةٌ ومخبز قرّرا أن يجيبا."],[9.5,"متاجر أُحد."]],
+   visual:"سواد. نقطة برتقالية تكبر: الدائرة نفسها التي في شاشة «وصلنا طلبك». واجهة المتجر الحقيقية عند الفجر والمخبز يعمل. الشريطان الأسودان ينفتحان إلى 16:9. يظهر الشعار ثم الاسم.",
+   camera:"لقطة واسعة ثابتة للواجهة، ثم الشعار على بنّي العلامة الداكن.",
+   trans:"انفتاح الإطار هو لحظة التحوّل، ولا يتكرر في الفيلم.",
+   light:"أول ضوء الفجر ودفء المخبز من الداخل. من هنا ألوان العلامة نظيفة.",
+   sound:"ثانيتان من الصمت، ثم نغمة عود واحدة منخفضة مع وتريات دافئة. باب المحل يُفتح: صدى باب المشهد الأول.", sup:"متاجر أُحد · حي الرمال، الرياض" },
+ { id:"f6", ch:"ohod", title:"الزبون", dur:24, slug:"داخلي · بيت الزبون · مساء",
+   screens:[S("c1-home","الرئيسية"),S("c3-search","البحث"),S("c5-cart","السلة"),S("c6-checkout","تحديد البيت"),S("c8-track","التتبّع")],
+   vo:[[1,"يفتح الزبون المتجر من هاتفه."],[4,"بلا حساب، وبلا كلمة سر."],[7.5,"يبحث، يختار، ويحدّد بيته على الخريطة."],[12.5,"يدفع عند الاستلام."],[15.5,"ثم يرى طلبه يتحرّك نحوه…"],[19.5,"خطوةً خطوة."]],
+   visual:"يد تمسك الجوال على كنبة. تسجيل شاشة حقيقي: الصفحة الرئيسية، البحث عن «حليب المراعي»، السلة وشريط التوصيل المجاني، تحديد البيت على الخريطة، «أرسل الطلب»، ثم شاشة التتبّع والمندوب يقترب.",
+   camera:"من فوق الكتف، ثم الشاشة كاملة نظيفة بنسبتها الأصلية. تكبير هادئ على التفصيلة المقصودة.",
+   trans:"قطع مطابق: القلم على الدفتر (المشهد الأول) ثم الإصبع على «أرسل الطلب».",
+   light:"إضاءة منزلية دافئة. الشاشة بألوانها الأصلية بلا تلوين.",
+   sound:"نبض حديث هادئ. نقرات واجهة خافتة، ونغمة عند «وصلنا طلبك».", sup:"بلا تسجيل · الدفع عند الاستلام نقدًا أو بالشبكة · تتبّع مباشر" },
+ { id:"f7", ch:"ohod", title:"داخل المتجر", dur:24, slug:"داخلي ثم خارجي · متاجر أُحد · نهار",
+   screens:[S("p2-order","المجهّز"),S("k2-review","الكاشير"),S("d1-list","المندوب: جاهزة"),S("d2-deliver","المندوب: التحصيل")],
+   vo:[[1,"في المتجر، يصل الطلب إلى من يجهّزه:"],[4.5,"صورة كل صنف، وكميته، ومكانه."],[8.5,"الكاشير يراجع، ويعتمد الإيصال."],[12.5,"والمندوب يستلم، يوصّل، ويحصّل."],[17,"كلٌّ يرى ما يخصّه."],[20,"لا أكثر."]],
+   visual:"المجهّز بين الأرفف والجوال بيده: يضغط على صورة الصنف حين يأخذه. الكاشير يراجع الأصناف ويعتمد الإيصال. المندوب يستلم الأكياس وشاشته تقول «جاهزة»، ثم عند باب الزبون: المبلغ المطلوب وحساب الباقي.",
+   camera:"جيمبل يتبع الأكياس من يد إلى يد. كل شاشة تظهر فوق كتف صاحبها ثم نظيفة.",
+   trans:"قطع على الحركة: الكيس يُسلَّم فننتقل.",
+   light:"ضوء المحل النظيف، ثم ضوء الشارع الذهبي عند التوصيل.",
+   sound:"خشخشة الأكياس، طابعة الإيصال، محرّك المندوب، طرق الباب.", sup:"المجهّز · الكاشير · المندوب" },
+ { id:"f8", ch:"ohod", title:"دفترٌ لا ينسى", dur:28, slug:"داخلي · مكتب خلف المحل · مساء", deck:true,
+   screens:[S("a1-today","اليوم","dk"),S("a3-stats-days","المبيعات كل يوم","dk"),S("a3-stats-hours","أوقات الطلب","dk"),S("a3-stats-top","الأكثر مبيعًا والربح","dk"),S("a5-settlement","حساب المناديب","dk"),S("a4-advisor","مستشار العروض","dk")],
+   vo:[[1,"أما صاحب المتجر… فعاد إليه دفتره."],[5.5,"لكنه هذه المرة دفترٌ لا ينسى."],[9.5,"مبيعات اليوم. أكثر الأصناف طلبًا. ساعات الذروة."],[14.5,"وما مع كل مندوبٍ من نقد."],[17.5,"والربح… محسوبًا بسعر الشراء، لا بالتخمين."],[22,"وقبل أن يطلق عرضًا، يعرف: أيربح منه… أم يدفع ثمنه."]],
+   visual:"صاحب المتجر على طاولة المشهد الرابع نفسها، بلا أوراق. لوحة «اليوم»، ثم المبيعات كل يوم، أوقات الطلب، الأكثر مبيعًا مع ربحه، حساب المناديب، ثم مستشار العروض. موشن: أرقام تخرج من صفحة الدفتر القديم وتستقر في اللوحة.",
+   camera:"الزاوية العلوية نفسها للمشهد الرابع، ثم الشاشة نظيفة مع تكبير على كل رقم عند ذكره.",
+   trans:"تراكب: صفحة الدفتر تذوب في جدول الطلبات.",
+   light:"مصباح المشهد الرابع نفسه، لكنه دافئ هذه المرة.",
+   sound:"الوتريات تتسع. نقرة خفيفة مع كل رقم.", sup:"مبيعات اليوم · ساعات الذروة · نقد كل مندوب · الربح بسعر الشراء" },
+ { id:"f9", ch:"next", title:"الفكرة الأكبر", dur:19, slug:"خارجي · أحياء المدينة · غروب", art:"city",
+   vo:[[1,"بدأت هذه القصة في متجرٍ واحد."],[5,"لكنّ السؤال الذي أجابت عنه… تسأله متاجر كثيرة."],[10.5,"في كل حيٍّ بقالةٌ يعرف صاحبها زبائنه بالاسم،"],[15,"ويستحق أن يعرف أرقامه بالدقة نفسها."]],
+   visual:"الكاميرا ترتفع من واجهة متاجر أُحد إلى الحي ثم المدينة. في كل حي نقطة ضوء دافئة: بقالة أخرى. ثم وجوه ثلاثة أصحاب متاجر ينظرون إلى الكاميرا، كلٌّ أمام محله.",
+   camera:"درون صاعد أو خريطة موشن، ثم بورتريهات ثابتة لثلاث ثوانٍ.",
+   trans:"من لوحة الإدارة إلى نافذة المحل، ثم إلى الأعلى.",
+   light:"الساعة الذهبية.",
+   sound:"الوتريات في أوسع نقطة. لحن العود الأول يعود فوقها.", sup:"بلا نص على الشاشة" },
+ { id:"f10", ch:"next", title:"الدفتر القادم", dur:15, slug:"داخلي · الطاولة نفسها · ليل", art:"end",
+   vo:[[1,"ما رأيتَه ليس موقعًا يعرض بضاعة."],[4.5,"إنه المتجر كلّه… في نظامٍ واحد."],[8.5,null,"صمت"],[10,"متاجر أُحد."],[12,"والدفتر القادم… قد يكون دفترك."]],
+   visual:"الدفتر القديم على الطاولة وبجانبه الجوال يعرض لوحة «اليوم». يد صاحب المتجر تغلق الدفتر بهدوء. ثم بطاقة الختام: الشعار، السطر الرئيسي، الدعوة، ووسيلة التواصل.",
+   camera:"ماكرو ثابت بعمق ميدان ضحل، ثم بطاقة الختام.",
+   trans:"تلاشٍ إلى بنّي العلامة الداكن.",
+   light:"تنغستن المشهد الأول نفسه.",
+   sound:"آخر نغمة عود. صوت إغلاق الدفتر. صمت.", sup:"المتجر كلّه في نظام واحد · اطلب عرضًا توضيحيًا" }
+];
+
+var SALES = [
+ { id:"s1", ch:"now", title:"السؤال", dur:6, slug:"نص كبير من أول إطار", art:"hook",
+   vo:[[0.5,"كم طلبًا ضاع منك هذا الأسبوع… بين اتصالٍ ورسالة؟"]],
+   visual:"هاتف المحل يرنّ وأوراق الطلبات خلف النص. السؤال مكتوب بحجم كبير من الإطار الأول، لأن أغلب المشاهدين يبدأون بلا صوت.",
+   camera:"لقطة قريبة ثابتة، تركيز على الهاتف ثم على الأوراق.", trans:"بلا مقدمة ولا شعار. ندخل على السؤال مباشرة.", light:"فلورسنت بارد.", sound:"رنين هاتف واحد، ثم نبض خافت.", sup:"كم طلبًا ضاع منك هذا الأسبوع؟" },
+ { id:"s2", ch:"now", title:"اليوم كما هو", dur:10, slug:"ثلاث قطعات سريعة", art:"problem",
+   vo:[[0.5,"الطلب على ورقة."],[2.5,"العنوان في رسالة."],[4.5,"والنقد مع المندوب."],[6.5,"وفي آخر اليوم… تحسب بالتقريب."]],
+   visual:"ورقة طلب بخط اليد. شاشة رسائل مزدحمة. رزمة نقد تُعدّ. ثم آلة حاسبة وأوراق.",
+   camera:"لقطات قريبة جدًا، قطعة لكل جملة.", trans:"قطع حاد على كل جملة.", light:"بارد، تشبّع منخفض.", sound:"قلم، نغمة تنبيه محايدة، عدّ نقد، نقر آلة حاسبة.", sup:"ورقة · رسالة · نقد · تقريب" },
+ { id:"s3", ch:"turn", title:"الاسم", dur:6, slug:"واجهة المتجر ثم الشعار", art:"title",
+   vo:[[0.5,"متاجر أُحد، بقالةٌ ومخبزٌ في الرياض،"],[3.3,"جمعت ذلك كله في نظامٍ واحد."]],
+   visual:"واجهة المتجر الحقيقية، ثم الشعار والاسم على بنّي العلامة.",
+   camera:"لقطة واسعة ثابتة.", trans:"الألوان تدفأ فجأة.", light:"دافئ.", sound:"نغمة عود واحدة ثم نبض واثق.", sup:"متاجر أُحد · حي الرمال، الرياض" },
+ { id:"s4", ch:"ohod", title:"زبونك", dur:11, slug:"تسجيل شاشة جوال الزبون",
+   screens:[S("c1-home","يطلب من هاتفه"),S("c5-cart","السلة"),S("c8-track","يتابع المندوب")],
+   vo:[[0.5,"زبونك يطلب من هاتفه بلا تسجيل،"],[4,"يدفع عند الاستلام،"],[6.5,"ويتابع المندوب على الخريطة."]],
+   visual:"شاشة الجوال تملأ الإطار الطولي: الرئيسية، السلة، ثم التتبّع والمندوب يقترب.",
+   camera:"الشاشة كاملة بنسبتها. تكبير خفيف على شريط الحالة ثم الخريطة.", trans:"انزلاق عمودي بين الشاشات، كتمرير الإصبع.", light:"ألوان النظام كما هي.", sound:"نقرات خافتة ونغمة «وصلنا طلبك».", sup:"بلا تسجيل · الدفع عند الاستلام · تتبّع مباشر" },
+ { id:"s5", ch:"ohod", title:"فريقك", dur:11, slug:"ثلاث شاشات، ثلاثة أدوار",
+   screens:[S("p2-order","المجهّز"),S("k2-review","الكاشير"),S("d2-deliver","المندوب")],
+   vo:[[0.5,"وفريقك يعمل، كلٌّ من شاشته:"],[3.5,"مجهّزٌ يرى الأصناف بالصور،"],[6,"كاشيرٌ يعتمد الإيصال،"],[8.3,"ومندوبٌ يعرف ما معه من نقد."]],
+   visual:"شاشة المجهّز بصور الأصناف، مراجعة الكاشير، ثم شاشة المندوب بالمبلغ المطلوب وحساب الباقي.",
+   camera:"شاشة لكل جملة.", trans:"قطع على كل دور مع اسمه مكتوبًا.", light:"ألوان النظام كما هي.", sound:"خشخشة كيس، طابعة إيصال، طرق باب.", sup:"المجهّز · الكاشير · المندوب" },
+ { id:"s6", ch:"ohod", title:"أنت", dur:13, slug:"لوحة صاحب المتجر على الجوال",
+   screens:[S("m1-today","اليوم"),S("m2-days","المبيعات"),S("m4-top","الأكثر طلبًا"),S("m5-settlement","نقد المناديب"),S("m6-advisor","مستشار العروض")],
+   vo:[[0.5,"وأنت ترى يومك كاملًا:"],[3,"المبيعات، والأكثر طلبًا، ونقد كل مندوب،"],[7.5,"وربحك بسعر الشراء."],[10,"وقبل أي عرض… تعرف هل يحمي هامشك."]],
+   visual:"لوحة الإدارة على الجوال: اليوم، المبيعات كل يوم، الأكثر مبيعًا مع ربحه، حساب المناديب، ثم مستشار العروض.",
+   camera:"تكبير على رقم واحد في كل شاشة.", trans:"انزلاق عمودي.", light:"ألوان النظام كما هي.", sound:"النبض يتسع. نقرة مع كل رقم.", sup:"المبيعات · نقد المناديب · الربح بسعر الشراء" },
+ { id:"s7", ch:"ohod", title:"تشغيله", dur:7, slug:"لوحة واحدة",
+   screens:[S("a9-products","استيراد الأصناف من ملف الكاشير","dk")], deck:true,
+   vo:[[0.5,"أصنافك تدخل من ملف الكاشير."],[3.5,"وتديره أنت، من لوحةٍ واحدة."]],
+   visual:"تبويب المنتجات: زر استيراد ملف الأصناف، ثم قائمة المنتجات بأسعارها.",
+   camera:"تكبير على زر الاستيراد.", trans:"قطع.", light:"ألوان النظام كما هي.", sound:"نقرة واحدة.", sup:"من ملف الكاشير إلى المتجر" },
+ { id:"s8", ch:"next", title:"الدعوة", dur:11, slug:"بطاقة الختام", art:"end",
+   vo:[[0.5,"إن كان هذا ما ينقص متجرك،"],[3.5,"فاطلب عرضًا توضيحيًا…"],[6.5,"وشاهد النظام يعمل أمامك."]],
+   visual:"الشعار، السطر الرئيسي، زر الدعوة، ووسيلة التواصل. تبقى البطاقة ثلاث ثوانٍ بعد آخر كلمة.",
+   camera:"ثابتة.", trans:"تلاشٍ هادئ.", light:"بنّي العلامة الداكن.", sound:"نغمة العود الأخيرة.", sup:"اطلب عرضًا توضيحيًا" }
+];
+
+var SHOTS = [
+ ["L01","الدفتر","واسعة: باب الدكّان يُفتح قبيل الفجر","تصوير",5,"wait"],["L02","الدفتر","متوسطة: الطفل يأخذ الخبز","تصوير",5,"wait"],["L03","الدفتر","ماكرو: القلم يكتب في الدفتر","تصوير",7,"wait"],["L04","الدفتر","بورتريه: صاحب الدكّان","تصوير",5,"wait"],
+ ["L05","الرفوف تطول","تراكنغ الرف في ثلاثة أزمنة","تصوير",12,"wait"],["L06","الرفوف تطول","قارئ الباركود ودرج النقد","تصوير",5,"wait"],["L07","الرفوف تطول","الدفتر يدخل الدرج","تصوير",4,"wait"],
+ ["L08","الهاتف في كل جيب","هاتف يرنّ، ورقة تُكتب، مندوب ينتظر (خمس قطعات)","تصوير",14,"wait"],["L09","الهاتف في كل جيب","شاشة رسائل طلبات بتصميم محايد","موشن",5,"wait"],
+ ["L10","السؤال","علوية: الطاولة والأوراق والنقد","تصوير",12,"wait"],["L11","السؤال","دفع بطيء نحو وجه صاحب المتجر","تصوير",9,"wait"],
+ ["L12","التحوّل","واجهة متاجر أُحد عند الفجر","تصوير",5,"wait"],["L13","التحوّل","الدائرة البرتقالية والشعار والاسم","موشن",7,"wait"],
+ ["L14","الزبون","يد الزبون والجوال على الكنبة","تصوير",4,"wait"],["L15","الزبون","رحلة الطلب: رئيسية، بحث، سلة، خريطة، تتبّع","تسجيل شاشة",18,"ok"],
+ ["L16","داخل المتجر","المجهّز بين الأرفف مع شاشة التجهيز","تصوير + شاشة",7,"ok"],["L17","داخل المتجر","الكاشير يراجع ويعتمد الإيصال","تصوير + شاشة",6,"ok"],["L18","داخل المتجر","المندوب: استلام، طريق، باب، تحصيل","تصوير + شاشة",10,"ok"],
+ ["L19","دفترٌ لا ينسى","علوية: الطاولة نفسها بلا أوراق","تصوير",4,"wait"],["L20","دفترٌ لا ينسى","لوحة الإدارة: اليوم، التحليل، المناديب، المستشار","تسجيل شاشة",22,"ok"],
+ ["L21","الفكرة الأكبر","صعود جوي من المتجر إلى الحي","درون أو موشن",8,"wait"],["L22","الفكرة الأكبر","ثلاثة أصحاب متاجر أمام محلاتهم","تصوير",9,"wait"],
+ ["L23","الدفتر القادم","الدفتر والجوال، اليد تغلق الدفتر","تصوير",7,"wait"],["L24","الدفتر القادم","بطاقة الختام","موشن",8,"wait"]
+];
+
+var GAL_PHONE = [["c1-home","الرئيسية: بلا تسجيل"],["c2-cats","الأقسام والمنتجات"],["c3-search","البحث"],["c4-product","صفحة المنتج"],["c5-cart","السلة وشريط التوصيل المجاني"],["c6-checkout","تحديد البيت والدفع عند الاستلام"],["c7-sent","وصلنا طلبك"],["c8-track","المندوب في الطريق"],["p1-list","المجهّز: الطلبات"],["p2-order","المجهّز: الأصناف بالصور"],["k1-list","الكاشير: طلبات التوصيل"],["k2-review","الكاشير: مراجعة واعتماد"],["d1-list","المندوب: الطلبات الجاهزة"],["d2-deliver","المندوب: التحصيل وحساب الباقي"],["d3-cash","المندوب: كاش اليوم"],["m1-today","الإدارة على الجوال"],["m2-days","المبيعات كل يوم"],["m4-top","الأكثر مبيعًا"],["m5-settlement","حساب المناديب"],["m6-advisor","مستشار العروض"]];
+var GAL_DESK = [["a1-today","اليوم"],["a2-orders","الطلبات"],["a3-stats-tips","نصائح من أرقام المتجر"],["a3-stats-days","المبيعات كل يوم ورحلة الزبون"],["a3-stats-hours","أوقات الطلب والأقسام"],["a3-stats-top","الأكثر مبيعًا والربح"],["a3-stats-pairs","يشترونها مع بعض"],["a4-advisor","صحة المحل قبل العروض"],["a4-safe-offers","عروض آمنة مقترحة"],["a5-settlement","حساب المناديب"],["a6-winback","استرجاع الزبائن"],["a7-staff","الموظفون والصلاحيات"],["a8-zone","منطقة التوصيل على الخريطة"],["a9-products","المنتجات واستيراد ملف الكاشير"],["a10-log","سجل العمليات"]];
+
+var $ = function(id){ return document.getElementById(id); };
+var esc = function(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
+var mmss = function(t){ t = Math.max(0, Math.floor(t)); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
+var ver = "film", list = FILM, starts = [], total = 0, cur = 0, t = 0, playing = false, last = 0, raf = 0;
+
+function ART(sc){
+  var k = sc.art, logo = '<img src="shots/logo.webp" alt="">';
+  if (k === "ledger") return '<div class="art a-ledger"><div class="page"><span><b>أبو صالح</b><i class="num">خبز وسكر · ٣</i></span><span><b>أم فهد</b><i class="num">أرز وشاي · ٧</i></span><span><b>بيت العمدة</b><i class="num">آخر الشهر</i></span><span><b>ولد الجيران</b><i class="num">خبز · نصف</i></span><span><b>أبو ناصر</b><i class="num">سمن · ٥</i></span></div></div>';
+  if (k === "shelves"){ var rows = ""; [8, 19, 34].forEach(function(n, r){ var b = ""; for (var i = 0; i < n; i++) b += '<i style="height:' + (48 + ((i * 37 + r * 13) % 50)) + '%"></i>'; rows += '<div class="row">' + b + '</div>'; }); var bc = ""; for (var j = 0; j < 22; j++) bc += "<i></i>"; return '<div class="art a-shelves">' + rows + '<div class="code">' + bc + '</div></div>'; }
+  if (k === "phones") return '<div class="art a-phones"><span class="ring" style="top:14cqh;right:8cqw">رررن</span><span class="ring" style="bottom:22cqh;left:10cqw">رررن</span><div class="note" style="top:20cqh;right:9cqw;transform:rotate(-4deg)">خبز ٢ · حليب ١<br>بيت أبو خالد؟</div><div class="bub" style="top:16cqh;left:10cqw">عندكم لبن طازج؟</div><div class="bub me" style="top:36cqh;left:22cqw">أرسل الموقع لو سمحت</div><div class="note" style="bottom:22cqh;right:24cqw;transform:rotate(3deg)">طلب الواتساب<br>الرقم؟؟</div><div class="bub" style="bottom:30cqh;left:8cqw">وين الطلب؟ له ساعة</div></div>';
+  if (k === "question") return '<div class="art a-question"><div class="inner"><div class="qs"><span>من طلب؟</span><span>من جهّز؟</span><span>من خرج بالطلب؟</span><span>كم مع المندوب؟</span></div><div class="big">كم ربحنا فعلًا؟</div></div></div>';
+  if (k === "title") return '<div class="art a-title"><div class="inner">' + logo + '<div class="name">متاجر أُحد</div><div class="place">حي الرمال · الرياض</div></div></div>';
+  if (k === "city"){ var d = "", on = [3,9,14,22,27,35,38,46,51,57,60,66,73,78], us = 41; for (var q = 0; q < 80; q++) d += '<i class="' + (q === us ? "us" : on.indexOf(q) >= 0 ? "on" : "") + '"></i>'; return '<div class="art a-city"><div class="dots">' + d + '</div></div>'; }
+  if (k === "end") return '<div class="art a-end"><div class="inner">' + logo + '<div class="line">المتجر كلّه في نظامٍ واحد</div><div class="cta">اطلب عرضًا توضيحيًا</div><div class="contact">[ رقم واتساب المبيعات · يحدّده صاحب المشروع ]</div><div class="fine">اللقطات من النظام الفعلي ببيانات تجريبية</div></div></div>';
+  if (k === "hook") return '<div class="art a-hook"><div class="big">كم طلبًا <em>ضاع</em> منك هذا الأسبوع؟</div></div>';
+  if (k === "problem") return '<div class="art a-problem"><div>الطلب على ورقة</div><div>العنوان في رسالة</div><div>النقد مع المندوب</div><div class="q">وآخر اليوم… بالتقريب</div></div>';
+  return '<div class="art"></div>';
+}
+function SCREENS(sc){
+  var n = sc.screens.length;
+  return '<div class="art screens n' + n + (sc.deck ? " deck" : "") + '"><div class="tag">لقطات حقيقية من النظام · بيانات تجريبية</div>' + sc.screens.map(function(x, i){ return '<figure class="' + x.kind + (i === 0 ? " on" : "") + '" data-i="' + i + '"><img src="' + x.src + '" alt="' + esc(x.cap) + '" loading="lazy"><figcaption>' + esc(x.cap) + '</figcaption></figure>'; }).join("") + '</div>';
+}
+function lineAt(sc, local){ var a = null; for (var i = 0; i < sc.vo.length; i++) if (sc.vo[i][0] <= local) a = i; return a; }
+
+function renderFrame(){
+  var sc = list[cur], f = $("frame");
+  f.className = "frame" + (ver === "sales" ? " tall" : "");
+  f.innerHTML = (sc.screens ? SCREENS(sc) : ART(sc)) + (sc.bars && ver === "film" ? '<div class="bars' + (sc.open ? "" : "") + '" id="bars"></div>' : "") + '<div class="tc num" id="tc"></div><div class="slug">' + esc(sc.slug) + '</div><div class="sub" id="sub"></div>';
+  tick(true);
+}
+function renderSheet(){
+  var sc = list[cur], st = starts[cur];
+  var vo = sc.vo.map(function(l, i){ return '<div data-l="' + i + '" class="' + (l[1] == null ? "sil" : "") + '"><span class="num">' + mmss(st + l[0]) + '</span><p>' + (l[1] == null ? "[" + esc(l[2]) + "]" : esc(l[1])) + '</p></div>'; }).join("");
+  var note = function(t, v, w){ return '<div' + (w ? ' class="wide"' : "") + '><dt>' + t + '</dt><dd>' + esc(v) + '</dd></div>'; };
+  $("sheet").innerHTML = '<header><div><div class="eyebrow">المشهد ' + (cur + 1) + ' من ' + list.length + ' · ' + CH[sc.ch][0] + '</div><h2>' + esc(sc.title) + '</h2></div><div class="num muted">' + mmss(st) + " – " + mmss(st + sc.dur) + ' · ' + sc.dur + ' ث</div></header>' +
+    '<div class="cols"><div><h3 style="margin-bottom:8px">التعليق الصوتي</h3><div class="vo" id="voList">' + vo + '</div></div><dl class="notes">' + note("الصورة", sc.visual, true) + note("الكاميرا", sc.camera) + note("الانتقال", sc.trans) + note("الإضاءة واللون", sc.light) + note("الصوت", sc.sound) + note("نص على الشاشة", sc.sup, true) + '</dl></div>';
+}
+function renderTimeline(){
+  var tl = $("timeline");
+  tl.innerHTML = list.map(function(sc, i){ return '<button type="button" data-s="' + i + '" style="flex:' + sc.dur + ' 1 0;--ch:' + CH[sc.ch][1] + '" title="' + esc(sc.title) + '"><b>' + esc(sc.title) + '</b><span class="num">' + mmss(starts[i]) + '</span></button>'; }).join("") + '<i class="head" id="head"></i>';
+  var seen = {}; $("legend").innerHTML = list.map(function(sc){ if (seen[sc.ch]) return ""; seen[sc.ch] = 1; return '<span><i style="background:' + CH[sc.ch][1] + '"></i>' + CH[sc.ch][0] + '</span>'; }).join("") + '<span>عرض كل مشهد بنسبة مدته</span>';
+}
+function tick(force){
+  var sc = list[cur], local = t - starts[cur], li = lineAt(sc, local), sub = $("sub");
+  if (sub){ var l = li == null ? null : sc.vo[li]; var txt = l ? (l[1] == null ? "[" + l[2] + "]" : l[1]) : ""; if (force || sub.textContent !== txt){ sub.textContent = txt; sub.className = "sub" + (l && l[1] == null ? " silence" : ""); } }
+  var tc = $("tc"); if (tc) tc.textContent = mmss(t) + " · " + (cur + 1) + "/" + list.length;
+  $("clock").textContent = mmss(t) + " / " + mmss(total);
+  var head = $("head"); if (head) head.style.right = "calc(" + (t / total * 100) + "% - 1px)";
+  var vl = $("voList"); if (vl) Array.prototype.forEach.call(vl.children, function(el, i){ el.classList.toggle("now", i === li); });
+  if (sc.screens){ var n = sc.screens.length, idx = Math.min(n - 1, Math.floor(Math.max(0, local) / sc.dur * n)); Array.prototype.forEach.call($("frame").querySelectorAll("figure"), function(el, i){ el.classList.toggle("on", i === idx); }); }
+  var bars = $("bars"); if (bars && sc.open) bars.classList.toggle("open", local > 7.5);
+  Array.prototype.forEach.call($("timeline").querySelectorAll("button"), function(b, i){ b.setAttribute("aria-current", i === cur ? "true" : "false"); });
+}
+function goScene(i, keepT){ cur = Math.max(0, Math.min(list.length - 1, i)); if (!keepT) t = starts[cur]; renderFrame(); renderSheet(); tick(true); }
+function loop(now){
+  if (!playing) return;
+  t += (now - last) / 1000; last = now;
+  if (t >= total){ t = total - 0.01; setPlay(false); tick(); return; }
+  if (t >= starts[cur] + list[cur].dur) goScene(cur + 1, true); else tick();
+  raf = requestAnimationFrame(loop);
+}
+function setPlay(on){ playing = on; $("play").textContent = on ? "❚❚ أوقف" : "▶ شغّل"; if (on){ if (t >= total - 0.05){ t = 0; goScene(0); } last = performance.now(); raf = requestAnimationFrame(loop); } else cancelAnimationFrame(raf); }
+function setVersion(v, fromHash){
+  ver = v === "sales" ? "sales" : "film"; list = ver === "sales" ? SALES : FILM; starts = []; total = 0;
+  list.forEach(function(sc){ starts.push(total); total += sc.dur; });
+  $("vFilm").setAttribute("aria-pressed", ver === "film"); $("vSales").setAttribute("aria-pressed", ver === "sales");
+  setPlay(false); t = 0; renderTimeline(); goScene(0);
+  if (!fromHash){ try { history.replaceState(null, "", "#" + ver); } catch (e) { location.hash = ver; } }
+}
+function script(el, title, meta, arr){
+  var st = 0, full = [];
+  var html = arr.map(function(sc){ var from = st; st += sc.dur; var lines = sc.vo.map(function(l){ if (l[1] == null) return '<i>[' + esc(l[2]) + ']</i>'; full.push(l[1]); return esc(l[1]); }).join("<br>"); full.push(""); return '<div class="blk"><div><h4>' + esc(sc.title) + '</h4><small class="num">' + mmss(from) + " – " + mmss(st) + '</small></div><p>' + lines + '</p></div>'; }).join("");
+  var words = full.join(" ").split(/\s+/).filter(Boolean).length;
+  el.innerHTML = '<div class="hd"><div><h3>' + title + '</h3><p class="muted" style="font-size:13px">' + meta + ' · <span class="num">' + words + '</span> كلمة</p></div><button type="button">انسخ النص</button></div>' + html;
+  var btn = el.querySelector("button"), text = full.join("\n").replace(/\n{2,}/g, "\n\n").trim();
+  btn.addEventListener("click", function(){ var done = function(){ btn.textContent = "انتسخ"; setTimeout(function(){ btn.textContent = "انسخ النص"; }, 1600); };
+    try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+    function fallback(){ var r = document.createRange(); r.selectNodeContents(el); var s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "النص محدّد، انسخه"; } });
+}
+function gallery(el, arr){ el.innerHTML = arr.map(function(x){ return '<figure><img src="shots/' + x[0] + '.webp" alt="' + esc(x[1]) + '" loading="lazy"><figcaption>' + esc(x[1]) + '</figcaption></figure>'; }).join(""); }
+
+$("vFilm").addEventListener("click", function(){ setVersion("film"); });
+$("vSales").addEventListener("click", function(){ setVersion("sales"); });
+$("play").addEventListener("click", function(){ setPlay(!playing); });
+$("prev").addEventListener("click", function(){ goScene(cur - 1); });
+$("next").addEventListener("click", function(){ goScene(cur + 1); });
+$("timeline").addEventListener("click", function(e){ var b = e.target.closest("button"); if (b) goScene(Number(b.getAttribute("data-s"))); });
+window.addEventListener("hashchange", function(){ var h = location.hash.slice(1); if (h === "film" || h === "sales") { if (h !== ver) setVersion(h, true); } });
+
+$("shotRows").innerHTML = SHOTS.map(function(r){ return '<tr><td class="num">' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td><td>' + r[3] + '</td><td class="num">' + r[4] + ' ث</td><td><span class="pill ' + r[5] + '">' + (r[5] === "ok" ? "الشاشة جاهزة كمرجع" : "تحتاج تنفيذ") + '</span></td></tr>'; }).join("");
+script($("scriptFilm"), "الفيلم السينمائي: «الدفتر الذي لا ينسى»", "3:40 · عشرة مشاهد", FILM);
+script($("scriptSales"), "النسخة البيعية", "1:15 · ثمانية مقاطع · طولية للواتساب", SALES);
+gallery($("galPhone"), GAL_PHONE); gallery($("galDesk"), GAL_DESK);
+setVersion(location.hash === "#sales" ? "sales" : "film", true);
+})();
+</script>
+</body>
+</html>

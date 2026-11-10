@@ -1,3 +1,6 @@
 # نتائج اختبارات المحاكاة (تتولّد كل تشغيل)
 sim-result.json
 sim5-result.json
+
+# لقطات الفيلم الخام (PNG كبيرة): تتولّد بـ film/tools/capture.cjs، والمحفوظ هو نسخ webp
+film/shots/raw/
