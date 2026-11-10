@@ -114,6 +114,41 @@ final class Core {
         return Api.post(api, "/driver/loc-off", Api.pin(pin));
     }
 
+    static final class Upd {
+        boolean available;   // فيه إصدار أحدث من اللي مثبّت
+        boolean force;       // الإصدار المثبّت أقدم من الحد الأدنى: لازم يحدّث
+        int code;
+        String name = "";
+        String url = "";
+        String sha = "";
+        String note = "";
+    }
+
+    /** يقرأ ملف الإصدار (driver-app.json). الرابط لازم يكون من موقعنا نفسه (https)، وإلا نتجاهل التحديث. */
+    static Upd parseUpdate(String json, int installed, String site) {
+        Upd u = new Upd();
+        try {
+            JSONObject j = new JSONObject(json);
+            u.code = j.optInt("code");
+            u.name = j.optString("name", "");
+            u.sha = j.optString("sha256", "").toLowerCase(Locale.US);
+            u.note = j.optString("note", "");
+            String url = j.optString("url", "driver-app.apk");
+            if (!url.startsWith("https://")) url = site + url;
+            if (!url.startsWith(site)) return u;
+            u.url = url;
+            u.available = u.code > installed;
+            u.force = j.optInt("min") > installed;
+        } catch (Exception ignored) {
+        }
+        return u;
+    }
+
+    static Upd checkUpdate(String site, int installed) {
+        String s = Api.get(site + "driver-app.json?t=" + (System.currentTimeMillis() / 60000));
+        return s == null ? new Upd() : parseUpdate(s, installed, site);
+    }
+
     static long number(String no) {
         String d = no == null ? "" : no.replaceAll("\\D", "");
         if (d.length() == 0 || d.length() > 12) return 0;

@@ -51,6 +51,49 @@ final class Api {
         }
     }
 
+    /** نداء GET بسيط (ملف الإصدار). يرجع null لو فشل. */
+    static String get(String url) {
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(url).openConnection();
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(12000);
+            c.setUseCaches(false);
+            if (c.getResponseCode() != 200) return null;
+            return read(c.getInputStream());
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (c != null) c.disconnect();
+        }
+    }
+
+    /** تنزيل ملف (التحديث). يرجع null لو فشل أو كبر عن الحد. */
+    static byte[] download(String url, int max) {
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(url).openConnection();
+            c.setConnectTimeout(10000);
+            c.setReadTimeout(30000);
+            c.setUseCaches(false);
+            if (c.getResponseCode() != 200) return null;
+            InputStream is = c.getInputStream();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = is.read(buf)) > 0) {
+                out.write(buf, 0, n);
+                if (out.size() > max) return null;
+            }
+            is.close();
+            return out.toByteArray();
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (c != null) c.disconnect();
+        }
+    }
+
     static JSONObject fail(String code) {
         JSONObject j = new JSONObject();
         try {

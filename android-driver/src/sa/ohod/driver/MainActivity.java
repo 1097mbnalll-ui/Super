@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
         s.setBuiltInZoomControls(false);
         s.setSupportZoom(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " OhodDriverApp/1");
+        s.setUserAgentString(s.getUserAgentString() + " OhodDriverApp/3");
         WebView.setWebContentsDebuggingEnabled(false);
         wv.addJavascriptInterface(new Bridge(), "OhodApp");
 
@@ -109,6 +109,7 @@ public class MainActivity extends Activity {
         visible = true;
         wv.onResume();
         if (Prefs.pin(this).length() > 0 && !TrackService.running) TrackService.start(this);
+        Updater.check(this, false);   // فيه تحديث؟ تطلع رسالة «حدّث الآن»
     }
 
     @Override protected void onPause() {
@@ -217,7 +218,7 @@ public class MainActivity extends Activity {
 
     /** الجسر بين صفحة المندوب (جافاسكربت) والتطبيق. ما ينكشف إلا لصفحات موقعنا فقط (شوف shouldOverrideUrlLoading). */
     private final class Bridge {
-        @JavascriptInterface public String version() { return "1"; }
+        @JavascriptInterface public String version() { return "3"; }
 
         @JavascriptInterface public String savedPin() { return Prefs.pin(MainActivity.this); }
 

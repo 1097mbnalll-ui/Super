@@ -15,6 +15,9 @@ public class CoreTestMain {
             out.put("count", f.count).put("text", f.text);
         } else if (step.equals("loc")) {
             out = Core.loc(base, pin, Double.parseDouble(a[3]), Double.parseDouble(a[4]), Float.parseFloat(a[5]), Boolean.parseBoolean(a[6]));
+        } else if (step.equals("update")) {
+            Core.Upd u = Core.parseUpdate(a[3], Integer.parseInt(a[4]), base);
+            out.put("available", u.available).put("force", u.force).put("code", u.code).put("url", u.url);
         } else if (step.equals("locoff")) {
             out = Core.locOff(base, pin);
         }

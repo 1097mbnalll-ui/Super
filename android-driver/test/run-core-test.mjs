@@ -39,6 +39,15 @@ for (let i = 0; i < 30; i++) java(base1, 'pending', '1357');
 const after = Number(await (await fetch(base1 + '/__kvdeletes')).text());
 ok(after - before === 0, `٣٠ نداء ناجح = ${after - before} عملية حذف في KV`);
 await scenario(8798, 'خادم قديم بدون المسار الخفيف (تراجع تلقائي)', { OLD: '1' });
+// التحديث من داخل التطبيق: قراءة ملف الإصدار
+{
+  const S = O + '/Super/', up = (j, v) => java(S, 'update', '', JSON.stringify(j), String(v));
+  let r = up({ code: 3, name: '1.2', url: 'driver-app.apk' }, 2); ok(r.available && !r.force && r.url === S + 'driver-app.apk', 'إصدار أحدث = تطلع رسالة التحديث: ' + JSON.stringify(r));
+  r = up({ code: 3, url: 'driver-app.apk' }, 3); ok(!r.available, 'نفس الإصدار = ما تطلع رسالة');
+  r = up({ code: 3, url: 'driver-app.apk', min: 3 }, 2); ok(r.available && r.force, 'إصدار أقدم من الحد الأدنى = تحديث إجباري');
+  r = up({ code: 9, url: 'https://evil.example/app.apk' }, 2); ok(!r.available, 'رابط من خارج موقعنا يتجاهل');
+  r = up({ code: 9, url: S + 'driver-app.apk' }, 2); ok(r.available, 'رابط كامل من موقعنا مقبول');
+}
 // وضع «المندوب للتوصيل بس»: فيه مجهز مفعّل، والطلب يوصل المندوب بعد ما يجهز
 {
   const base = 'http://127.0.0.1:8797'; procs.push(await server(8797)); console.log('\n== المندوب للتوصيل بس (فيه مجهز)');
