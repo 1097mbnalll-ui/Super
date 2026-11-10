@@ -155,6 +155,7 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .topbar h1{font-weight:700;font-size:16.5px;flex:1;text-align:center}
 .aisle-head{border-radius:0 0 28px 28px;padding:12px 0 16px;position:relative;overflow:hidden}
 .aisle-head img{position:absolute;left:-14px;top:24px;width:118px;opacity:.95;transform:rotate(-14deg)}
+.aisle-head img[src^="cat/"]{width:104px;border-radius:28px;box-shadow:0 8px 20px rgba(0,0,0,.12);opacity:1}
 .aisle-head h1{position:relative;font-weight:700;font-size:25px;margin-top:12px}
 .aisle-head p{position:relative;font-size:11.5px;color:var(--ink-2)}
 .prod{min-height:100vh;position:relative;padding-bottom:0}
@@ -1288,6 +1289,7 @@ body[data-screen="driver"]{background:#F3F4F6}
 .kq-cat{display:grid;justify-items:center;gap:6px;background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:700;color:var(--ink);text-align:center;line-height:1.35;cursor:pointer}
 .kq-cat .tile{width:100%;aspect-ratio:1/1;max-width:100%;border-radius:18px;background:linear-gradient(180deg,#F6FAFC 0%,#F6FAFC 55%,var(--sky) 100%);border:1px solid #EEF2F5;display:grid;place-items:center;overflow:hidden}
 .kq-cat .tile img{width:76%;height:76%;object-fit:contain}
+.kq-cat .tile img[src^="cat/"]{width:100%;height:100%;object-fit:cover}
 .kq-recent{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .kq-rchip{flex:none;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px 0 6px;border-radius:12px;border:1px solid #E6EAEE;background:#fff;font:inherit;font-size:12.5px;color:var(--ink);cursor:pointer}
 .kq-rchip img{width:26px;height:26px;object-fit:contain;border-radius:7px;background:#F5F6F8}
@@ -1410,8 +1412,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var rial = function(n){ return num(n) + (LANG === "en" ? " SAR" : " ر.س"); };
   var src = function(k){ return D.imgs[k] || D.imgs.e1f6d2; };
   var isPhoto = function(k){ return /^u/.test(k); };
-  var imgTag = function(k, alt){ return isPhoto(k) && D.imgs[k] ? '<img src="' + D.imgs[k] + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy">' : '<span class="noimg" role="img" aria-label="' + esc(alt||"") + '"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>'; };
-  function catPhoto(c){ for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if (p.cat === c.id && avail(p) && isPhoto(p.img) && D.imgs[p.img]) return p.img; } return isPhoto(c.img) ? c.img : ""; }
+  // صور الأقسام ملفات منفصلة في مجلد cat/ (مو داخل data.json)، فما تثقّل الملف ولا تنحمّل إلا لما تنعرض
+  var isPath = function(k){ return /^cat\/[\w-]+\.(?:webp|png|jpg)$/.test(k || ""); };
+  var imgTag = function(k, alt){ if (isPath(k)) return '<img src="' + esc(k) + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy" decoding="async">'; return isPhoto(k) && D.imgs[k] ? '<img src="' + D.imgs[k] + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy">' : '<span class="noimg" role="img" aria-label="' + esc(alt||"") + '"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>'; };
+  function catPhoto(c){ if (isPath(c.img)) return c.img; for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if (p.cat === c.id && avail(p) && isPhoto(p.img) && D.imgs[p.img]) return p.img; } return isPhoto(c.img) ? c.img : ""; }
   function photosOf(list){ return list.map(function(p){ return p.img; }).filter(function(k){ return isPhoto(k) && D.imgs[k]; }); }
   var IC = {
     bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
