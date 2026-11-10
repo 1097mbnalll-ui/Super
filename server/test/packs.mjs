@@ -49,11 +49,11 @@ ok(rec(o2).lines[0].per === 6, 'التعديل يحافظ على عدد حبات
 await call('/admin/team-save', { ...A, name: 'سعيد', role: 'driver', newPin: '1111' });
 await call('/driver/status', { pin: '1111', no: o2, status: 'canceled' });
 ok(stock() === s0 + 12, 'الإلغاء يرجع ١٨ حبة (٣ شدّات): ' + (stock() - (s0 - 6)));
-// المندوب يبدل الكرتون بمنتج ثاني: نفس عدد الحبات
+// المجهز يبدل الكرتون بمنتج ثاني: نفس عدد الحبات
 const alt = data.products.find((p) => p.cat === prod().cat && p.id !== 'pantry0' && p.stock && !p.packs);
 const o3 = (await call('/order', { items: { 'pantry0~1': 1, pantry0: 1 }, phone: '0551000006', lat: 24.84, lng: 46.83, sub: 'swap' })).orderNo;
 await call('/driver/status', { pin: '1111', no: o3, status: 'accepted' });
-r = await call('/driver/sub-propose', { pin: '1111', no: o3, id: 'pantry0~1', to: alt.id });
+r = await call('/admin/prep-sub', { ...A, op: 'propose', no: o3, id: 'pantry0~1', to: alt.id });
 ok(r.ok && r.applied && rec(o3).lines.find((l) => l.id === alt.id).qty === 24, 'تبديل كرتون بمنتج بالحبة = ٢٤ حبة');
 // حفظ بيانات غلط للخيارات ينرفض
 prod().packs = [{ u: 'كرتون', n: 0, price: 5 }]; ok((await call('/save', { ...A, data })).code === 'bad_data', 'خيار بعدد حبات صفر ما ينحفظ');

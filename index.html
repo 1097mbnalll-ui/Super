@@ -1075,6 +1075,13 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .pp-tile .pmiss{width:100%;margin-top:6px;height:38px;border-radius:12px;border:1.5px solid #FCA5A5;background:#fff;color:#B91C1C;font:inherit;font-weight:700;font-size:13px;cursor:pointer}
 .pp-tile.miss .tp{box-shadow:inset 0 0 0 3px #DC2626}.pp-tile.miss .im{filter:grayscale(1);opacity:.4}.pp-tile.miss .pmiss{background:#FEE2E2}
 .pp-tile .nx{position:absolute;top:58px;left:50%;transform:translateX(-50%);background:#DC2626;color:#fff;font-weight:700;border-radius:10px;padding:6px 14px}
+.pp-miss{background:#fff;border-radius:18px;padding:14px;margin-top:16px;box-shadow:inset 0 0 0 2px #FCA5A5}.pp-miss h3{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:16px;color:#991B1B}.pp-miss h3 svg.i{width:18px;height:18px}
+.pp-pref{font-size:13px;color:#5B6474;line-height:1.7;margin:4px 0 8px}
+.pp-mi{border-top:1px solid #F1F2F4;padding:12px 0;display:grid;gap:8px}.pp-mi:first-of-type{border-top:0}.pp-mi .hd{display:flex;gap:10px;align-items:center}.pp-mi .hd .im{width:56px;height:56px;border-radius:12px;object-fit:contain;background:#F7F8FA;filter:grayscale(1)}.pp-mi .hd b{display:block}.pp-mi .hd span{font-size:12.5px;color:#5B6474}
+.pp-mi .lbl{font-size:13px}
+.pp-alt{display:flex;align-items:center;gap:10px;width:100%;text-align:start;background:#F7F8FA;border:0;border-radius:14px;padding:8px;font:inherit;color:#13213C;cursor:pointer}.pp-alt .im{width:52px;height:52px;border-radius:10px;object-fit:contain;background:#fff;flex:none}.pp-alt .t{flex:1;display:grid;gap:2px}.pp-alt .t span{font-size:12.5px;color:#5B6474}.pp-alt .t em{font-style:normal;font-size:12px;font-weight:700;color:#9A4A00}.pp-alt .go{background:#FF8A1F;color:#2B1300;font-weight:700;border-radius:10px;padding:8px 12px;font-size:13px}
+.pp-wait{background:#FFF7ED;color:#9A4A00;border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:600}.pp-no{background:#FEF2F2;color:#991B1B;border-radius:12px;padding:10px 12px;font-size:13.5px}
+.pp-mi .acts{display:flex;gap:8px;flex-wrap:wrap}.pp-mi .acts .btn{height:42px;font-size:13.5px}.pp-rm{background:#fff;color:#B91C1C;border:1.5px solid #FCA5A5}
 .pp-warn{background:#FEF2F2;color:#991B1B;border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.7;margin:14px 0 0}
 .pp-foot{position:sticky;bottom:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#F3F4F6;padding:12px 0;margin-top:14px}.pp-foot .btn{height:52px;font-size:16px}.pp-foot .btn-brand{flex:1}
 .dv-tile{position:relative}
@@ -2529,7 +2536,6 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (cur && !mine(cur) && ["pick", "prod", "deliver"].indexOf(drv.view) > -1) { drv.view = "list"; drv.miss = ""; }
     box.innerHTML = drv.view === "pick" ? dvPick() : drv.view === "prod" ? dvProd() : drv.view === "deliver" ? dvDeliver() : drv.view === "cash" ? dvCash() : dvList();
     geoBar();
-    if (drv.view === "pick" && drv.miss) box.insertAdjacentHTML("beforeend", dvMissing());
     var g = drvGroups(); document.title = (g["new"].length ? "(" + g["new"].length + ") " : "") + tr("طلبات التوصيل", "Delivery orders");
     if (drv.view === "list" || drv.view === "pick") window.scrollTo(0, y);
     if($('refreshDriverCash'))$('refreshDriverCash').onclick=loadDrvCash;
@@ -2610,7 +2616,6 @@ html.sp-on,html.sp-on body{overflow:hidden}
     return '<article class="dv-card' + (o.status === "new" ? ' hot' : '') + (drv.seen[o.no] === "fresh" ? ' fresh' : '') + '"><div class="h">' + (o._stop ? '<span class="dv-stop">' + num(o._stop) + '</span>' : '') + '<b dir="ltr">' + esc(o.no) + '</b>' + (o._km != null ? '<span class="dv-km">' + num(o._km) + tr(" كم", " km") + '</span>' : '') + (o.source ? '<span class="src ' + o.source + '">' + SRCL[o.source] + '</span>' : '') + '<span class="ago">' + ago(o.created) + '</span></div>' +
       '<div class="who"><b>' + esc(o.name || tr("زبون", "Customer")) + '</b><span>' + esc(o.details || "") + '</span></div><div class="ths">' + ph + '</div>' +
       '<div class="money"><b>' + num(o.total) + ' ' + tr("ر.س", "SAR") + '</b><span>· ' + num(o.count) + tr(" قطعة · ", " items · ") + collectionLabel(o) + '</span></div>' +
-      ((o.subs || []).some(function(x){ return x.state === "pending"; }) ? '<p class="dv-subw">' + tr("بديل بانتظار رد الزبون", "Replacement waiting for the customer") + '</p>' : '') +
       (drv.mode === "ready" && o.prepStage === "ready" && (o.status === "new" || o.status === "accepted") ? '<p class="dv-sent">' + ic("check") + tr("أرسله المجهز", "Sent by the preparer") + (o.prepBy ? ' (' + esc(String(o.prepBy).split(' · ').pop()) + ')' : '') + (o.prepAt ? ' · ' + ago(o.prepAt) : '') + '</p>' : '') + (o.prepStage && drv.mode !== "ready" ? '<p class="hint">التجهيز: '+({waiting:'بانتظار التجهيز',preparing:'جارٍ التجهيز',ready:'جاهز للمندوب'})[o.prepStage]+'</p>' : '') + (o.note ? '<div class="note">' + ic("tag") + esc(o.note) + '</div>' : '') + '<div class="acts">' + act +
       (drv.mode !== "ready" && o.status === "accepted" && teamOn() ? '<button type="button" class="dv-link" data-drelease="' + esc(o.no) + '">' + tr("رجّعه للجديدة", "Release") + '</button>' : '') +
       (drv.mode !== "ready" && (o.status === "new" || o.status === "accepted") ? '<button type="button" class="dv-link" data-dcancel="' + esc(o.no) + '">' + tr("إلغاء", "Cancel") + '</button>' : '') + '</div></article>';
@@ -2631,7 +2636,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     return dvBack("list", tr("تجهيز الطلب ", "Picking order ") + '<span dir="ltr">' + esc(o.no) + '</span>', esc(o.name || tr("زبون", "Customer")) + ' · ' + num(o.count) + tr(" قطعة · مرتبة حسب مكانها في المحل", " items · sorted by where they are in the store")) +
       '<div class="dv-prog"><div class="l"><b>' + tr("أخذت ", "Picked ") + num(done) + tr(" من ", " of ") + num(lines.length) + '</b><span>' + (all ? tr("كل شي جاهز", "All ready") : tr("باقي ", "") + num(lines.length - done) + tr("", " left")) + '</span></div><div class="bar"><i style="width:' + Math.round(done / Math.max(1, lines.length) * 100) + '%"></i></div>' +
       '<div class="chips">' + (o.note ? '<span class="c1">' + tr("ملاحظة: ", "Note: ") + esc(o.note) + '</span>' : '') + '<span class="c2">' + tr("لو ناقص: ", "If missing: ") + (SUBL[o.sub] || SUBL.call) + '</span></div></div>' +
-      '<p class="dv-ghint">' + tr("اضغط الصورة لما تاخذ المنتج. الرقم = الكمية. ضغطة طويلة = مو موجود. العدسة = التفاصيل.", "Tap a photo when you take it. Number = quantity. Long-press = not available. Magnifier = details.") + '</p>' +
+      '<p class="dv-ghint">' + tr("اضغط الصورة لما تاخذ المنتج. الرقم = الكمية. العدسة = التفاصيل. لو منتج ناقص بلّغ الإدارة.", "Tap a photo when you take it. Number = quantity. Magnifier = details. If something is missing, tell the store.") + '</p>' +
       '<main class="dv-pick">' + dvGroupsOf(o).map(function(g){ return '<h2>' + ic("pin") + esc(g.loc) + '</h2><div class="dv-grid">' + g.lines.map(tile).join("") + '</div>'; }).join("") + '</main>' +
       '<footer class="dv-foot"><button type="button" class="dv-btn ' + (all ? 'ok' : 'off') + ' wide" data-dpacked="' + esc(o.no) + '"' + (all ? '' : ' aria-disabled="true"') + '>' + (all ? tr("خلصت التجهيز، اطلع للتوصيل", "Done picking, go deliver") : tr("خلصت التجهيز (", "Done picking (") + num(done) + tr(" من ", "/") + num(lines.length) + ')') + '</button>' +
       (o.phone ? '<a class="dv-sq" href="tel:' + esc(o.phone) + '" aria-label="' + tr("اتصل بالزبون", "Call customer") + '">' + ic("phone") + '</a>' : '') + '</footer>';
@@ -2645,28 +2650,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="loc">' + ic("pin") + '<b>' + esc(dLoc(l.id)) + '</b></div>' +
       (checks.length ? '<section class="chk"><b>' + tr("تأكد قبل لا تاخذه", "Check before you take it") + '</b>' + checks.map(function(x){ return '<span>' + ic("check") + esc(x) + '</span>'; }).join("") + '</section>' : '') +
       '<div class="price"><span>' + tr("السعر في الفاتورة", "Price on the bill") + '</span><b>' + num(l.price) + ' × ' + num(l.qty) + ' = ' + num(Math.round(l.price * l.qty * 100) / 100) + ' ' + tr("ر.س", "SAR") + '</b></div></main>' +
-      '<footer class="dv-foot"><button type="button" class="dv-btn ok wide" data-dpickback="' + esc(l.id) + '">' + ic("check") + (got ? tr("أخذته (رجوع)", "Got it (back)") : tr("أخذت ", "Got ") + num(l.qty)) + '</button><button type="button" class="dv-btn miss" data-dmiss="' + esc(l.id) + '">' + tr("مو موجود", "Not available") + '</button></footer>';
+      '<footer class="dv-foot"><button type="button" class="dv-btn ok wide" data-dpickback="' + esc(l.id) + '">' + ic("check") + (got ? tr("أخذته (رجوع)", "Got it (back)") : tr("أخذت ", "Got ") + num(l.qty)) + '</button></footer>';
   }
   function dvSubs(o, id){
     var p = byId(id); if (!p) return [];
     var inOrder = {}; (o.lines || []).forEach(function(l){ inOrder[l.id] = 1; });
     return D.products.filter(function(x){ return x.cat === p.cat && x.id !== id && !inOrder[x.id] && avail(x); })
       .sort(function(a, b){ return (hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0) || Math.abs(a.price - p.price) - Math.abs(b.price - p.price); }).slice(0, 3);
-  }
-  function dvMissing(){
-    var o = dOrder(drv.no), l = o && (o.lines || []).filter(function(x){ return x.id === drv.miss; })[0]; if (!l) return '';
-    var subs = dvSubs(o, l.id), s0 = subs[0], wa = o.phone ? "966" + String(o.phone).replace(/^0/, "") : "";
-    var pend = (o.subs || []).filter(function(x){ return x.line === l.id && x.state === "pending"; })[0], pendP = pend && byId(pend.to), direct = o.sub === "swap";
-    var waText = tr("السلام عليكم، معك مندوب ", "Hello, this is the driver from ") + sv("name") + tr(". «", ". “") + l.name + tr("» مو متوفر الحين.", "” is not available right now.") + (s0 ? tr(" نقدر نبدّله بـ «", " We can replace it with “") + nm(s0) + tr("» بسعر ", "” for ") + num(s0.price) + tr(" ر.س؟", " SAR?") : tr(" تبغانا نشيله من الطلب؟", " Shall we remove it?"));
-    return '<div class="dv-sheet" id="dvSheet"><section class="pan" role="dialog" aria-modal="true" aria-labelledby="dvMT"><span class="grab"></span>' +
-      '<div class="hd">' + dImg(l.id, "im gray", l.name) + '<div><h2 id="dvMT">' + esc(l.name) + tr(" مو موجود", " is not available") + '</h2><span>' + tr("الطلب يبي ", "The order needs ") + num(l.qty) + tr(" · وش تسوي؟", " · what do you want to do?") + '</span></div></div>' +
-      '<div class="pref">' + ic("user") + '<span>' + tr("الزبون اختار وقت الطلب: ", "The customer chose: ") + '<b>' + (SUBL[o.sub] || SUBL.call) + '</b>' + (direct ? '' : '<br>' + tr("اختر بديل وينرسل للزبون يوافق عليه من جواله.", "Pick a replacement; the customer approves it on their phone.")) + '</span></div>' +
-      (pend ? '<div class="dv-subw">' + tr("بانتظار رد الزبون على «", "Waiting for the customer to answer on “") + esc(pendP ? nm(pendP) : "") + tr("» · ", "” · ") + ago(pend.at) + ' <button type="button" class="dv-link" data-dsubw="' + pend.id + '">' + tr("اسحب الاقتراح", "Withdraw") + '</button></div>' : '') +
-      (subs.length ? '<b class="lbl">' + tr("بدائل من نفس القسم", "Alternatives from the same section") + '</b>' + subs.map(function(x){ var d = Math.round((x.price - l.price) * l.qty * 100) / 100;
-        return '<button type="button" class="sub" data-dswap="' + esc(x.id) + '">' + dImg(x.id, "im", nm(x)) + '<span class="t"><b>' + esc(nm(x)) + '</b><span>' + esc(un(x)) + ' · ' + num(x.price) + ' ' + tr("ر.س", "SAR") + '</span><em>' + (d ? (d > 0 ? '+' : '') + num(d) + tr(" ر.س على الفاتورة", " SAR on the bill") : tr("نفس السعر", "Same price")) + '</em></span><span class="go">' + tr("خذه", "Use") + '</span></button>'; }).join("") : '<p class="hint">' + tr("ما فيه بديل متوفر من نفس القسم.", "No alternative in stock in this section.") + '</p>') +
-      '<div class="acts">' + (wa ? '<a class="dv-btn wa" target="_blank" rel="noopener" href="https://wa.me/' + esc(wa) + '?text=' + encodeURIComponent(waText) + '">' + tr("اسأل الزبون بالواتساب", "Ask on WhatsApp") + '</a><a class="dv-btn line" href="tel:' + esc(o.phone) + '">' + ic("phone") + tr("اتصل", "Call") + '</a>' : '') +
-      '<button type="button" class="dv-btn miss wide" data-dremove="' + esc(l.id) + '">' + tr("شيله من الطلب (−", "Remove from order (−") + num(Math.round(l.price * l.qty * 100) / 100) + tr(" ر.س)", " SAR)") + '</button><button type="button" class="dv-link" data-dclose>' + tr("رجوع", "Back") + '</button></div>' +
-      '<p class="hint">' + tr("أي اختيار يعدّل الطلب والفاتورة والمخزون، ويوصل الزبون والإدارة إشعار.", "Any choice updates the order, bill and stock, and notifies the customer and the store.") + '</p></section></div>';
   }
   function dvDeliver(){
     var o = dOrder(drv.no); if (!o) { drv.view = "list"; return dvList(); }
@@ -2695,24 +2685,6 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (confirmed?'<section class="ls"><b>الإدارة أكدت استلام '+moneyFromCents(request.actual)+'</b><p>'+ (balance>0?'باقي معك مبلغ؛ سلّمه للإدارة لتسجّله.':balance<0?'فيه مبلغ زائد مسجّل؛ راجع الإدارة.':'تمت التسوية، يعطيك العافية.')+'</p></section>':'<button class="dv-btn ok wide" type="button" id="requestDriverSettlement">'+(pending?'حدّث مبلغ طلب التسوية':'إنهاء وتسوية اليوم')+'</button>')+
       '<button class="dv-btn line wide" type="button" id="refreshDriverCash">تحديث الحساب</button><p id="driverSettlementMsg" class="hint" role="status"></p><details class="ls"><summary>تفاصيل الطلبات والتسليمات</summary><p>وصّلت اليوم '+num(t.done.length)+' طلب.</p>'+ (c.history||[]).slice(0,5).map(function(h){return '<p>'+oTime(h.at)+' · سلّمت '+rial(h.amount)+' · '+esc(h.who)+'</p>';}).join('')+'</details></main>';
   }
-  // بديل لمنتج ناقص: ينرسل للزبون يوافق (إلا لو اختار وقت الطلب «بدّلوه»، فينبدل على طول)
-  function dvPropose(no, id, to){
-    api("/driver/sub-propose", { pin: drv.pin, no: no, id: id, to: to }).then(function(j){
-      if (!j.ok) { dToast(j.code === "bad_swap" ? tr("البديل خلص، اختر غيره.", "That alternative is out, pick another.") : j.code === "not_yours" ? tr("الطلب مع زميلك.", "This order is with a colleague.") : tr("ما انرسل، جرّب مرة ثانية.", "Not sent, try again."), true); drvRender(); return; }
-      var o = dOrder(no);
-      if (j.applied) { if (o) ["lines", "subtotal", "fee", "total", "count", "edits"].forEach(function(k){ o[k] = j.order[k]; }); var pk = picked(no); delete pk[id]; pk[to] = 1; savePick(); drv.miss = ""; drv.view = "pick"; drvRender(); dToast(tr("انبدل (الزبون اختار نبدّل)، ووصله إشعار", "Replaced (customer pre-approved), notified")); return; }
-      if (o) { o.subs = (o.subs || []).filter(function(x){ return !(x.line === id && x.state === "pending"); }).concat([{ id: 0, line: id, to: to, state: "pending", at: Date.now() }]); }
-      drv.miss = ""; drv.view = "pick"; drvRender(); dToast(tr("انرسل للزبون، كمّل باقي الطلب لين يرد", "Sent to the customer; continue while they answer"));
-    });
-  }
-  function dvEdit(no, op, id, to){
-    api("/driver/order-edit", { pin: drv.pin, no: no, op: op, id: id, to: to }).then(function(j){
-      if (!j.ok) { dToast(j.code === "last_item" ? tr("هذا آخر منتج في الطلب. لو ما فيه شي، الغِ الطلب.", "This is the last item. Cancel the order instead.") : j.code === "bad_swap" ? tr("البديل خلص، اختر غيره.", "That alternative is out, pick another.") : tr("ما انحفظ، جرّب مرة ثانية", "Not saved, try again"), true); return; }
-      var o = dOrder(no); if (o) ["lines", "subtotal", "fee", "total", "count", "edits"].forEach(function(k){ o[k] = j.order[k]; });
-      var pk = picked(no); delete pk[id]; if (op === "swap") pk[to] = 1; savePick();
-      drv.miss = ""; drv.view = "pick"; drvRender(); dToast(op === "swap" ? tr("انبدل، والزبون وصله إشعار", "Replaced, the customer was notified") : tr("انشال من الطلب، والزبون وصله إشعار", "Removed, the customer was notified"));
-    });
-  }
   function drvPoll(){
     clearInterval(drv.timer);
     var tick = function(){
@@ -2737,12 +2709,6 @@ html.sp-on,html.sp-on body{overflow:hidden}
     tick(); drv.timer = setInterval(tick, 8000);
   }
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "driver" && drv.pin) drvPoll(); });
-  // ضغطة طويلة على صورة المنتج = مو موجود
-  var dvLong = { t: null, fired: false };
-  document.addEventListener("pointerdown", function(e){ if (mode !== "driver") return; var t = e.target.closest("[data-dtile]"); if (!t) return; dvLong.fired = false; clearTimeout(dvLong.t);
-    dvLong.t = setTimeout(function(){ dvLong.fired = true; try { navigator.vibrate && navigator.vibrate(60); } catch(x){} drv.miss = t.dataset.dtile; drvRender(); }, 550); });
-  ["pointerup", "pointercancel", "pointerleave"].forEach(function(ev){ document.addEventListener(ev, function(){ clearTimeout(dvLong.t); }, true); });
-  document.addEventListener("contextmenu", function(e){ if (mode === "driver" && e.target.closest("[data-dtile]")) e.preventDefault(); });
   document.addEventListener("click", function(e){
     if (mode !== "driver") return;
     var t, go2 = function(v){ drv.view = v; drv.given = 0; drvRender(); window.scrollTo(0, 0); };
@@ -2760,15 +2726,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ((t = e.target.closest("[data-dcancel]"))) { if (t.dataset.c !== "1") { t.dataset.c = "1"; t.textContent = tr("متأكد؟ اضغط ثاني", "Sure? Tap again"); return; } setSt(t.dataset.dcancel, "canceled", function(ok){ if (ok) drvRender(); }); return; }
     if ((t = e.target.closest("[data-dprod]"))) { drv.pid = t.dataset.dprod; go2("prod"); return; }
     if ((t = e.target.closest("[data-dpickback]"))) { picked(drv.no)[t.dataset.dpickback] = 1; savePick(); go2("pick"); return; }
-    if ((t = e.target.closest("[data-dtile]"))) { if (dvLong.fired) { dvLong.fired = false; return; } var pk2 = picked(drv.no), id2 = t.dataset.dtile; if (pk2[id2]) delete pk2[id2]; else { pk2[id2] = 1; try { navigator.vibrate && navigator.vibrate(30); } catch(x){} } savePick(); drvRender(); return; }
+    if ((t = e.target.closest("[data-dtile]"))) { var pk2 = picked(drv.no), id2 = t.dataset.dtile; if (pk2[id2]) delete pk2[id2]; else { pk2[id2] = 1; try { navigator.vibrate && navigator.vibrate(30); } catch(x){} } savePick(); drvRender(); return; }
     if ((t = e.target.closest("[data-dpick]"))) { var pk = picked(drv.no), id = t.dataset.dpick; if (pk[id]) delete pk[id]; else pk[id] = 1; savePick(); drvRender(); return; }
-    if ((t = e.target.closest("[data-dmiss]"))) { drv.miss = t.dataset.dmiss; if (drv.view === "prod") drv.view = "pick"; drvRender(); return; }
-    if (e.target.closest("[data-dclose]") || e.target.id === "dvSheet") { drv.miss = ""; drvRender(); return; }
-    if ((t = e.target.closest("[data-dswap]"))) { t.disabled = true; dvPropose(drv.no, drv.miss, t.dataset.dswap); return; }
-    if ((t = e.target.closest("[data-dsubw]"))) { t.disabled = true; api("/driver/sub-withdraw", { pin: drv.pin, no: drv.no, offer: Number(t.dataset.dsubw) }).then(function(j){ var o = dOrder(drv.no); if (j.ok && o) o.subs = (o.subs || []).filter(function(x){ return x.id !== Number(t.dataset.dsubw); }); drvRender(); }); return; }
     if ((t = e.target.closest("[data-dhere]"))) { if (!navigator.geolocation) return; t.disabled = true; navigator.geolocation.getCurrentPosition(function(p){ drv.here = { lat: p.coords.latitude, lng: p.coords.longitude }; drvRender(); }, function(){ t.disabled = false; dToast(tr("ما قدرنا نجيب موقعك. اسمح بالموقع للمتصفح.", "Could not get your location. Allow location access."), true); }, { enableHighAccuracy: true, timeout: 10000 }); return; }
     if ((t = e.target.closest("[data-dsort]"))) { drv.byTime = !drv.byTime; drvRender(); return; }
-    if ((t = e.target.closest("[data-dremove]"))) { if (t.dataset.c !== "1") { t.dataset.c = "1"; t.textContent = tr("متأكد؟ اضغط ثاني", "Sure? Tap again"); return; } t.disabled = true; dvEdit(drv.no, "remove", t.dataset.dremove); return; }
     if ((t = e.target.closest("[data-dpacked]"))) { var o = dOrder(t.dataset.dpacked); if (t.getAttribute("aria-disabled") === "true") { dToast(tr("علّم كل المنتجات أول، أو اختر «مو موجود» للناقص", "Mark every item first, or choose Not available"), true); return; }
       setSt(o.no, "onway", function(ok){ if (ok) go2("deliver"); }); return; }
     if ((t = e.target.closest("[data-dgive]"))) { drv.given = Number(t.dataset.dgive); drvRender(); return; }
@@ -4660,7 +4621,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // شاشة المجهز: الطلبات بصور المنتجات، مرتبة حسب مكانها بالمحل. ضغطة = أخذته، «ناقص» = مو موجود
   var prepOpen='', prepLocal={};
   function prepAgo(t){var m=Math.max(0,Math.round((Date.now()-t)/60000));return m<1?'الحين':m<60?'قبل '+num(m)+' د':'قبل '+num(Math.round(m/60))+' س';}
-  function prepState(o){if(!prepLocal[o.no]||prepLocal[o.no].v!==o.version)prepLocal[o.no]={v:o.version,c:Object.assign({},o.checks||{}),dirty:false};return prepLocal[o.no];}
+  function prepState(o){var S=prepLocal[o.no],tag=o.version+'|'+o.orderUpdated;if(S&&S.v===tag)return S;
+    // الطلب تغيّر (بديل، إزالة، تعديل الإدارة): نبدأ من المحفوظ، ونرجّع اللي علّمه المجهز ولسا ما حفظه حسب المنتج نفسه
+    var c=Object.assign({},o.checks||{});if(S&&S.dirty){var by={};Object.keys(S.c).forEach(function(k){if(S.ids[k])by[S.ids[k]]=S.c[k];});o.lines.forEach(function(l){if(by[l.id]!==undefined)c[l.key]=by[l.id];});}
+    var ids={};o.lines.forEach(function(l){ids[l.key]=l.id;});prepLocal[o.no]={v:tag,c:c,ids:ids,dirty:!!(S&&S.dirty)};return prepLocal[o.no];}
   function prepCounts(o){var c=prepState(o).c,p=0,m=0;o.lines.forEach(function(l){if(c[l.key]==='picked')p++;else if(c[l.key]==='missing')m++;});return {p:p,m:m,n:o.lines.length};}
   var PSUB={swap:'بدّله بمشابه',remove:'شيله من الطلب',call:'اتصلوا عليه'};
   function prepList(j){
@@ -4678,8 +4642,25 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="dv-prog"><div class="l"><b>أخذت '+num(k.p)+' من '+num(k.n)+'</b><span>'+(all?'كل شي جاهز':k.m?num(k.m)+' ناقص':'باقي '+num(k.n-k.p))+'</span></div><div class="bar"><i style="width:'+Math.round(k.p/Math.max(1,k.n)*100)+'%"></i></div><div class="chips">'+(o.note?'<span class="c1">ملاحظة: '+esc(o.note)+'</span>':'')+'<span class="c2">لو ناقص، الزبون اختار: '+(PSUB[o.sub]||PSUB.call)+'</span></div></div>'+
       '<p class="dv-ghint">اضغط على الصورة لما تاخذ المنتج. الرقم الكبير = الكمية. لو ما لقيته اضغط «مو موجود».</p>'+
       groups.map(function(g){return '<h3 class="pp-loc">'+ic('pin')+esc(g.loc)+'</h3><div class="dv-grid pp-grid">'+g.lines.map(tile).join('')+'</div>';}).join('')+
-      (k.m?'<p class="pp-warn">فيه '+num(k.m)+' منتج ناقص. بلّغ الإدارة تعدّل الطلب مع الزبون، وبعدها يرجع لك الطلب تكمله.</p>':'')+
+      prepMissing(o,S)+
       '<div class="pp-foot"><button type="button" class="btn btn-soft" data-psave="preparing"'+(S.dirty?'':' disabled')+'>حفظ</button><button type="button" class="btn btn-brand" data-psave="ready"'+(all?'':' disabled')+'>'+(all?'جاهز للمندوب':'جاهز للمندوب ('+num(k.p)+' من '+num(k.n)+')')+'</button><span class="status" id="prepMsg"></span></div>';
+  }
+  // المنتج الناقص: بدائل من نفس القسم. الاقتراح يوصل الزبون يوافق أو يرفض من جواله (إلا لو اختار «بدّلوه»، فينبدل على طول)
+  function prepMissing(o,S){
+    var miss=o.lines.filter(function(l){return S.c[l.key]==='missing';});if(!miss.length)return '';
+    var direct=o.sub==='swap';
+    return '<section class="pp-miss"><h3>'+ic('box')+'المنتجات الناقصة ('+num(miss.length)+')</h3><p class="pp-pref">الزبون اختار وقت الطلب: <b>'+(PSUB[o.sub]||PSUB.call)+'</b>'+(direct?' · البديل ينبدل على طول ويوصله إشعار':' · البديل يوصله ويوافق أو يرفض من جواله')+'</p>'+
+      miss.map(function(l){
+        var offs=(o.subs||[]).filter(function(x){return x.line===l.id;}),pend=offs.filter(function(x){return x.state==='pending';})[0],last=offs[offs.length-1],pp=pend&&byId(pend.to);
+        var subs=dvSubs({lines:o.lines},l.id),bp=byId(l.id),lp=bp?Number(bp.price)||0:0;
+        return '<div class="pp-mi"><div class="hd">'+dImg(l.id,'im',l.name)+'<div><b>'+esc(l.name)+'</b><span>الكمية '+num(l.qty)+'</span></div></div>'+
+          (pend?'<div class="pp-wait">⏳ بانتظار رد الزبون على «'+esc(pp?nm(pp):'')+'» · '+prepAgo(pend.at)+' <button type="button" class="dv-link" data-pwd="'+pend.id+'">اسحب الاقتراح</button></div>':
+            (last&&last.state==='rejected'?'<div class="pp-no">الزبون رفض البديل اللي قبل. اختر غيره أو شيله.</div>':'')+
+            (subs.length?'<b class="lbl">بدائل من نفس القسم</b>'+subs.map(function(x){var d=lp?Math.round((x.price-lp)*l.qty*100)/100:0;
+              return '<button type="button" class="pp-alt" data-psub="'+esc(x.id)+'" data-pid="'+esc(l.id)+'">'+dImg(x.id,'im',nm(x))+'<span class="t"><b>'+esc(nm(x))+'</b><span>'+esc(un(x))+' · '+num(x.price)+' ر.س</span><em>'+(d?(d>0?'+':'')+num(d)+' ر.س على الفاتورة':'نفس السعر')+'</em></span><span class="go">'+(direct?'بدّله':'اقترحه')+'</span></button>';}).join(''):'<p class="pp-pref">ما فيه بديل متوفر من نفس القسم.</p>'))+
+          '<div class="acts">'+
+          '<button type="button" class="btn pp-rm" data-prm="'+esc(l.id)+'">شيله من الطلب</button></div></div>';
+      }).join('')+'<p class="pp-pref">لما الزبون يوافق أو يرفض، الطلب يتعدل لحاله ويطلع لك هنا. كمّل باقي الطلب لين يرد.</p></section>';
   }
   function prepDraw(){var box=$('aPreparation');if(!box)return;var o=prepOpen&&prepSnapshot.find(function(x){return x.no===prepOpen;});if(prepOpen&&!o)prepOpen='';
     box.innerHTML='<div class="pp">'+(o?prepOrder(o):'<div class="pp-head"><div><b>الطلبات للتجهيز</b><span>تتحدث لحالها كل ٣٠ ثانية</span></div><button class="btn btn-soft" type="button" id="prepRefresh">تحديث</button></div><div class="pp-list">'+prepList({orders:prepSnapshot})+'</div>')+'</div>';
@@ -4694,6 +4675,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var o=prepOpen&&prepSnapshot.find(function(x){return x.no===prepOpen;});if(!o)return;var S=prepState(o);
     if((t=e.target.closest('[data-ptile]'))){var k=t.dataset.ptile;S.c[k]=S.c[k]==='picked'?'':'picked';S.dirty=true;try{navigator.vibrate&&navigator.vibrate(20);}catch(x){}var y=window.scrollY;prepDraw();window.scrollTo(0,y);return;}
     if((t=e.target.closest('[data-pmiss]'))){var k2=t.dataset.pmiss;S.c[k2]=S.c[k2]==='missing'?'':'missing';S.dirty=true;var y2=window.scrollY;prepDraw();window.scrollTo(0,y2);return;}
+    var after=function(r,msg){if(!r.ok){sToast(r.code==='bad_swap'?'البديل خلص، اختر غيره':r.code==='last_item'?'هذا آخر منتج في الطلب. كلّم الإدارة تلغي الطلب':r.code==='closed'?'الطلب ما عاد يتجهز':opError(r));renderPreparation(true);return;}sToast(msg(r));renderPreparation(true);};
+    if((t=e.target.closest('[data-psub]'))){t.disabled=true;var to=t.dataset.psub,lid=t.dataset.pid;api('/admin/prep-sub',{pin:adminPin,no:o.no,op:'propose',id:lid,to:to}).then(function(r){after(r,function(r){return r.applied?'انبدل، والزبون وصله إشعار':'انرسل للزبون، كمّل باقي الطلب لين يرد';});});return;}
+    if((t=e.target.closest('[data-pwd]'))){t.disabled=true;api('/admin/prep-sub',{pin:adminPin,no:o.no,op:'withdraw',offer:Number(t.dataset.pwd)}).then(function(r){after(r,function(){return 'انسحب الاقتراح';});});return;}
+    if((t=e.target.closest('[data-prm]'))){if(!confirm('تشيل المنتج من الطلب؟ الزبون يوصله إشعار والفاتورة تنقص.'))return;t.disabled=true;api('/admin/prep-sub',{pin:adminPin,no:o.no,op:'remove',id:t.dataset.prm}).then(function(r){after(r,function(){return 'انشال من الطلب، والزبون وصله إشعار';});});return;}
     if((t=e.target.closest('[data-psave]'))){var stage=t.dataset.psave;t.disabled=true;var checks={};o.lines.forEach(function(l){checks[l.key]=S.c[l.key]||'';});
       api('/admin/prep-save',{pin:adminPin,no:o.no,version:o.version,orderUpdated:o.orderUpdated,stage:stage,checks:checks}).then(function(r){if(!r.ok){t.disabled=false;if($('prepMsg'))$('prepMsg').textContent=r.code==='conflict'?'الطلب تغيّر (عدّلته الإدارة أو مجهز ثاني). ارجع وافتحه من جديد.':r.code==='missing_items'?'كل المنتجات لازم تكون مأخوذة قبل «جاهز».':opError(r);return;}
         S.dirty=false;delete prepLocal[o.no];if(stage==='ready'){sToast('تمام، الطلب جاهز وانرسل للمندوب');prepOpen='';}else sToast('انحفظ');renderPreparation(true);if(stage==='ready')window.scrollTo(0,0);});}

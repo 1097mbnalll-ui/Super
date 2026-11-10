@@ -47,7 +47,7 @@ const loser = [ra, rb].find((x) => !x.ok);
 ok(wins === 1 && loser && ['taken', 'not_yours'].includes(loser.code) && loser.by, 'سباق: واحد بس يمسك الطلب، والثاني يعرف مين أخذه: ' + JSON.stringify(loser));
 const winnerPin = ra.ok ? '1357' : '2222', otherPin = ra.ok ? '2222' : '1357';
 r = await call('/driver/status', { pin: otherPin, no: o1, status: 'onway' }); ok(r.code === 'not_yours', 'المندوب الثاني ما يقدر يحرّك طلب زميله');
-r = await call('/driver/order-edit', { pin: otherPin, no: o1, op: 'remove', id: 'dairy3' }); ok(r.code === 'not_yours', 'ولا يعدّل عليه');
+r = await call('/driver/order-edit', { pin: otherPin, no: o1, op: 'remove', id: 'dairy3' }); ok(r.code === 'not_found', 'والمندوب ما يعدّل المنتجات (صارت عند المجهز)');
 ok((await call('/driver/status', { pin: otherPin, no: o2, status: 'accepted' })).ok, 'الثاني يمسك الطلب الثاني');
 let L = (await call('/driver/orders', { pin: '1357' }));
 ok(L.me && L.me.id === 'd0' && L.team.length === 2 && L.orders.find((o) => o.no === o1).drvName, 'قائمة المندوب فيها مين ماسك كل طلب');

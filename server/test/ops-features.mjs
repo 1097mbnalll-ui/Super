@@ -55,13 +55,13 @@ ok((await call('/cancel', { no: o3, phone: ph })).code === 'too_late', 'بعد �
 data.store.custCancel = 'off'; await put(); const o4 = (await mk(ph, { pantry0: 1 })).orderNo; ok((await call('/cancel', { no: o4, phone: ph })).code === 'too_late' || true, 'تعطيل الإلغاء'); ok(status(o4).status === 'new', 'ومع التعطيل الطلب ما انلغى'); delete data.store.custCancel; await put();
 let lim; for (let i = 0; i < 10; i++) lim = await call('/cancel', { no: o4, phone: '0559999999' }, '6.6.6.6'); ok(lim.code === 'slow_down', 'محاولات إلغاء كثيرة ينحدّ منها');
 
-// ٣) المندوب يقترح بديل والزبون يوافق أو يرفض
+// ٣) المجهز يقترح بديل والزبون يوافق أو يرفض (انشال من المندوب)
 const ph2 = '0553330001'; data.products.find((p) => p.id === 'dairy3').stock = true;
 const s1 = (await mk(ph2, { pantry0: 1, dairy3: 2 }, { sub: 'call' })).orderNo; await call('/driver/status', { pin: '1111', no: s1, status: 'accepted' });
 const lineP = P('dairy3'), alt = data.products.find((p) => p.cat === lineP.cat && p.id !== 'dairy3' && p.stock);
-r = await call('/driver/sub-propose', { pin: '1111', no: s1, id: 'dairy3', to: alt.id }); ok(r.ok && r.pending, 'المندوب يقترح بديل وينتظر الزبون');
+r = await call('/admin/prep-sub', { ...A, op: 'propose', no: s1, id: 'dairy3', to: alt.id }); ok(r.ok && r.pending, 'المجهز يقترح بديل وينتظر الزبون');
 let t = await call('/track', { no: s1, phone: ph2 }); ok(t.subs && t.subs.length === 1 && t.subs[0].to.name === alt.name && typeof t.subs[0].diff === 'number', 'الزبون يشوف البديل المقترح بسعره والفرق');
-let dl = await call('/driver/orders', { pin: '1111' }); ok(dl.orders.find((o) => o.no === s1).subs[0].state === 'pending', 'المندوب يشوف إنه بانتظار الزبون');
+let dl = await call('/admin/prep', A); ok(dl.orders.find((o) => o.no === s1).subs[0].state === 'pending', 'المجهز يشوف إنه بانتظار الزبون');
 const totalBefore = JSON.parse(status(s1).data).total; ok(JSON.parse(status(s1).data).lines.some((l) => l.id === 'dairy3'), 'الطلب ما تغير قبل رد الزبون');
 r = await call('/sub-answer', { no: s1, phone: '0559999999', offer: t.subs[0].id, accept: true }); ok(r.code === 'not_found', 'غير صاحب الطلب ما يرد');
 r = await call('/sub-answer', { no: s1, phone: ph2, offer: t.subs[0].id, accept: true }); ok(r.ok, 'الزبون يوافق');
@@ -70,23 +70,29 @@ ok(Math.abs(rec.total - (totalBefore + (alt.price - lineP.price) * 2)) < 0.01, '
 ok((await call('/sub-answer', { no: s1, phone: ph2, offer: t.subs[0].id, accept: true })).code === 'stale', 'نفس العرض ما ينقبل مرتين');
 // رفض: ينشال المنتج
 const s2 = (await mk(ph2, { pantry0: 1, dairy3: 1 }, { sub: 'call' })).orderNo; await call('/driver/status', { pin: '1111', no: s2, status: 'accepted' });
-await call('/driver/sub-propose', { pin: '1111', no: s2, id: 'dairy3', to: alt.id }); t = await call('/track', { no: s2, phone: ph2 });
+await call('/admin/prep-sub', { ...A, op: 'propose', no: s2, id: 'dairy3', to: alt.id }); t = await call('/track', { no: s2, phone: ph2 });
 r = await call('/sub-answer', { no: s2, phone: ph2, offer: t.subs[0].id, accept: false }); ok(r.ok && !JSON.parse(status(s2).data).lines.some((l) => l.id === 'dairy3' || l.id === alt.id), 'الرفض ينشال المنتج من الطلب');
 // آخر منتج ما ينشال
 const s3 = (await mk(ph2, { dairy3: 1 }, { sub: 'call' })).orderNo; await call('/driver/status', { pin: '1111', no: s3, status: 'accepted' });
-await call('/driver/sub-propose', { pin: '1111', no: s3, id: 'dairy3', to: alt.id }); t = await call('/track', { no: s3, phone: ph2 });
+await call('/admin/prep-sub', { ...A, op: 'propose', no: s3, id: 'dairy3', to: alt.id }); t = await call('/track', { no: s3, phone: ph2 });
 ok((await call('/sub-answer', { no: s3, phone: ph2, offer: t.subs[0].id, accept: false })).code === 'last_item', 'رفض آخر منتج: ما ينشال (يلغي الطلب بدله)');
 // اقتراح جديد يلغي القديم لنفس المنتج، والمندوب يسحب
 const alt2 = data.products.find((p) => p.cat === lineP.cat && ![ 'dairy3', alt.id ].includes(p.id) && p.stock);
-await call('/driver/sub-propose', { pin: '1111', no: s3, id: 'dairy3', to: alt2.id }); t = await call('/track', { no: s3, phone: ph2 }); ok(t.subs.length === 1 && t.subs[0].to.id === alt2.id, 'اقتراح جديد يحل محل القديم');
-await call('/driver/sub-withdraw', { pin: '1111', no: s3, offer: t.subs[0].id }); t = await call('/track', { no: s3, phone: ph2 }); ok(!t.subs, 'المندوب يسحب اقتراحه');
-// مندوب ثاني ما يتدخل بطلب زميله
-await call('/admin/team-save', { ...A, name: 'فهد', role: 'driver', newPin: '2222' }); ok((await call('/driver/sub-propose', { pin: '2222', no: s3, id: 'dairy3', to: alt.id })).code === 'not_yours', 'مندوب ثاني ما يقترح على طلب زميله');
+await call('/admin/prep-sub', { ...A, op: 'propose', no: s3, id: 'dairy3', to: alt2.id }); t = await call('/track', { no: s3, phone: ph2 }); ok(t.subs.length === 1 && t.subs[0].to.id === alt2.id, 'اقتراح جديد يحل محل القديم');
+await call('/admin/prep-sub', { ...A, op: 'withdraw', no: s3, offer: t.subs[0].id }); t = await call('/track', { no: s3, phone: ph2 }); ok(!t.subs, 'المجهز يسحب اقتراحه');
+for (const pth of ['/driver/sub-propose', '/driver/sub-withdraw', '/driver/order-edit']) ok((await call(pth, { pin: '1111', no: s3, id: 'dairy3', to: alt.id, op: 'remove' })).code === 'not_found', 'المندوب ما عاد يعدّل المنتجات: ' + pth);
+// المجهز يشيل المنتج، وتعليمه على باقي المنتجات يبقى
+{ const s6 = (await mk('0553330011', { pantry0: 1, dairy3: 1 }, { sub: 'call' })).orderNo, pr = (await call('/admin/prep', A)).orders.find((o) => o.no === s6);
+  const k0 = pr.lines.find((l) => l.id === 'pantry0').key, k1 = pr.lines.find((l) => l.id === 'dairy3').key;
+  ok((await call('/admin/prep-save', { ...A, no: s6, version: pr.version, orderUpdated: pr.orderUpdated, stage: 'preparing', checks: { [k0]: 'picked', [k1]: 'missing' } })).ok, 'المجهز يعلّم واحد مأخوذ وواحد ناقص');
+  r = await call('/admin/prep-sub', { ...A, op: 'remove', no: s6, id: 'dairy3' }); const pr2 = (await call('/admin/prep', A)).orders.find((o) => o.no === s6);
+  ok(r.ok && pr2.lines.length === 1 && pr2.checks[pr2.lines[0].key] === 'picked' && pr2.stage === 'preparing', 'بعد ما شال الناقص: المأخوذ يبقى مأخوذ: ' + JSON.stringify(pr2.checks));
+  ok((await call('/admin/prep-save', { ...A, no: s6, version: pr2.version, orderUpdated: pr2.orderUpdated, stage: 'ready', checks: pr2.checks })).ok, 'ويقدر يرسله جاهز للمندوب'); }
 // الزبون اختار «بدّلوه»: ينبدل مباشرة
 const s4 = (await mk('0553330009', { pantry0: 1, dairy3: 1 }, { sub: 'swap' })).orderNo; await call('/driver/status', { pin: '1111', no: s4, status: 'accepted' });
-r = await call('/driver/sub-propose', { pin: '1111', no: s4, id: 'dairy3', to: alt.id }); ok(r.ok && r.applied && JSON.parse(status(s4).data).lines.some((l) => l.id === alt.id), 'اختيار الزبون «بدّلوه» وقت الطلب ينبدل مباشرة');
+r = await call('/admin/prep-sub', { ...A, op: 'propose', no: s4, id: 'dairy3', to: alt.id }); ok(r.ok && r.applied && JSON.parse(status(s4).data).lines.some((l) => l.id === alt.id), 'اختيار الزبون «بدّلوه» وقت الطلب ينبدل مباشرة');
 // إلغاء الطلب يسحب العروض المعلقة
-const s5 = (await mk('0553330010', { pantry0: 1, dairy3: 1 }, { sub: 'call' })).orderNo; await call('/driver/sub-propose', { pin: '1111', no: s5, id: 'dairy3', to: alt.id });
+const s5 = (await mk('0553330010', { pantry0: 1, dairy3: 1 }, { sub: 'call' })).orderNo; await call('/admin/prep-sub', { ...A, op: 'propose', no: s5, id: 'dairy3', to: alt.id });
 await call('/cancel', { no: s5, phone: '0553330010' }); ok(sq.prepare("SELECT COUNT(*) n FROM sub_offers WHERE no = ? AND state = 'pending'").get(N(s5)).n === 0, 'إلغاء الطلب يسحب العروض المعلقة');
 
 // ٤) التكاليف التشغيلية: لازم تكتمل قبل ما يشتغل المستشار

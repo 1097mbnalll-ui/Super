@@ -228,7 +228,7 @@ export default {
       try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, "الزبون"); } catch { return reply(502, { ok: false, code: "db" }); }
       if (r.error) return reply(409, { ok: false, code: r.error });
       await env.DB.prepare("UPDATE sub_offers SET state = ?, answered = ? WHERE id = ?").bind(done ? "accepted" : "rejected", Date.now(), oid).run();
-      later(notifyRole(env, "driver", null, { title: (done ? "الزبون وافق على البديل" : "الزبون رفض البديل") + " · #" + (1000 + n), body: done ? `«${line.name}» ← «${toP.name}»` : `«${line.name}» انشال من الطلب`, url: "./#driver", tag: "sub" + n }));
+      later(notifyRole(env, "admin", null, { title: (done ? "الزبون وافق على البديل" : "الزبون رفض البديل") + " · #" + (1000 + n), body: done ? `«${line.name}» ← «${toP.name}»` : `«${line.name}» انشال من الطلب`, url: "./", tag: "sub" + n }));
       return reply(200, { ok: true, order: { total: r.order.total } });
     }
 
@@ -358,77 +358,6 @@ export default {
         const subMap = {}; for (const o of offs) (subMap["#" + (1000 + o.no)] ||= []).push({ id: o.id, line: o.line_id, to: o.to_id, state: o.state, at: o.created });
         for (const o of orders) if (subMap[o.no]) o.subs = subMap[o.no];
         return reply(200, { ok: true, orders, mode: (await prepMode(env)) ? "ready" : "pick", now: Date.now(), me: { id: myId, name: actor ? actor.name : me.name, role: who }, team: team.filter((t) => t.active).map((t) => ({ id: t.id, name: t.name })) });
-      }
-      // المندوب: منتج ناقص (بدّله بمشابه أو شيله). الأسعار من المتجر، مو من الجوال.
-      if (path === "/driver/order-edit") {
-        const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
-        const row = n > 0 ? await env.DB.prepare("SELECT status, data, drv FROM orders WHERE no = ?").bind(n).first() : null;
-        if (!row) return reply(404, { ok: false, code: "not_found" });
-        if (!["new", "accepted", "onway"].includes(row.status)) return reply(400, { ok: false, code: "closed" });
-        if (actor && row.drv && row.drv !== actor.id) return reply(409, { ok: false, code: "not_yours", by: await staffName(env, row.drv) });
-        let data;
-        try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
-        const rec = safeJson(row.data), byId = {};
-        for (const p of data.products || []) byId[p.id] = p;
-        const id = String(body.id || ""), op = body.op === "swap" ? "swap" : "remove";
-        const line = (rec.lines || []).find((l) => l.id === id);
-        if (!line) return reply(400, { ok: false, code: "bad_line" });
-        let lines = (rec.lines || []).map((l) => ({ id: l.id, qty: l.qty, price: l.price }));
-        let toP = null;
-        if (op === "swap") {
-          toP = byId[String(body.to || "")];
-          if (!toP || !toP.stock || toP.id === id) return reply(400, { ok: false, code: "bad_swap" });
-          const ex = lines.find((l) => l.id === toP.id && l.price === Number(toP.price));
-          lines = lines.filter((l) => l.id !== id);
-          if (ex) ex.qty += line.qty * (Number(line.per) || 1); else lines.push({ id: toP.id, qty: line.qty * (Number(line.per) || 1), price: Number(toP.price) });
-        } else lines = lines.filter((l) => l.id !== id);
-        if (!lines.length) return reply(400, { ok: false, code: "last_item" });
-        let r;
-        try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, me.name); } catch { return reply(502, { ok: false, code: "db" }); }
-        if (r.error) return reply(400, { ok: false, code: r.error });
-        await env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND line_id = ? AND state = 'pending'").bind(Date.now(), n, id).run();
-        const msg = op === "swap" ? `«${line.name}» ما كان متوفر، وبدّلناه بـ «${toP.name}». الإجمالي الجديد ${money(r.order.total)}` : `«${line.name}» ما كان متوفر وشلناه من طلبك. الإجمالي الجديد ${money(r.order.total)}`;
-        later(notifyRole(env, "customer", String(n), { title: "تعديل على طلبك #" + (1000 + n), body: msg, url: "./", tag: "order" + n }));
-        return reply(200, { ok: true, order: r.order });
-      }
-      // المندوب يقترح بديل: الزبون يوافق من صفحة طلبه (إلا لو اختار وقت الطلب «بدّلوه»، فينبدل مباشرة)
-      if (path === "/driver/sub-propose" || path === "/driver/sub-withdraw") {
-        const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
-        const row = n > 0 ? await env.DB.prepare("SELECT status, data, drv FROM orders WHERE no = ?").bind(n).first() : null;
-        if (!row) return reply(404, { ok: false, code: "not_found" });
-        if (!["new", "accepted", "onway"].includes(row.status)) return reply(400, { ok: false, code: "closed" });
-        if (actor && row.drv && row.drv !== actor.id) return reply(409, { ok: false, code: "not_yours", by: await staffName(env, row.drv) });
-        if (path === "/driver/sub-withdraw") {
-          await env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND id = ? AND state = 'pending'").bind(Date.now(), n, Number(body.offer) || 0).run();
-          return reply(200, { ok: true });
-        }
-        let data;
-        try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
-        const rec = safeJson(row.data), id = String(body.id || ""), line = (rec.lines || []).find((l) => l.id === id);
-        const toP = (data.products || []).find((p) => p.id === String(body.to || ""));
-        if (!line) return reply(400, { ok: false, code: "bad_line" });
-        if (!toP || !toP.stock || toP.id === id) return reply(400, { ok: false, code: "bad_swap" });
-        if (rec.sub === "swap") {
-          let lines = (rec.lines || []).map((l) => ({ id: l.id, qty: l.qty, price: l.price }));
-          const ex = lines.find((l) => l.id === toP.id && l.price === Number(toP.price));
-          lines = lines.filter((l) => l.id !== id);
-          if (ex) ex.qty += line.qty * (Number(line.per) || 1); else lines.push({ id: toP.id, qty: line.qty * (Number(line.per) || 1), price: Number(toP.price) });
-          let r;
-          try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, me.name); } catch { return reply(502, { ok: false, code: "db" }); }
-          if (r.error) return reply(400, { ok: false, code: r.error });
-          await env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND line_id = ? AND state = 'pending'").bind(Date.now(), n, id).run();
-          later(notifyRole(env, "customer", String(n), { title: "تعديل على طلبك #" + (1000 + n), body: `«${line.name}» ما كان متوفر، وبدّلناه بـ «${toP.name}» (اخترت وقت الطلب نبدّل بمشابه). الإجمالي الجديد ${money(r.order.total)}`, url: "./", tag: "order" + n }));
-          return reply(200, { ok: true, applied: true, order: r.order });
-        }
-        const pending = (await env.DB.prepare("SELECT COUNT(*) c FROM sub_offers WHERE no = ? AND state = 'pending'").bind(n).first()).c;
-        if (pending >= 8) return reply(429, { ok: false, code: "too_many" });
-        const stmts = [env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND line_id = ? AND state = 'pending'").bind(Date.now(), n, id),
-          env.DB.prepare("INSERT INTO sub_offers (no, line_id, to_id, state, created, who) VALUES (?, ?, ?, 'pending', ?, ?)").bind(n, id, toP.id, Date.now(), me.name),
-          logStmt(env, me.name, "sub_propose", "#" + (1000 + n), { from: line.name, to: toP.name })];
-        await env.DB.batch(stmts);
-        const diff = round2((Number(toP.price) - Number(line.price)) * line.qty);
-        later(notifyRole(env, "customer", String(n), { title: "بديل مقترح لطلبك #" + (1000 + n), body: `«${line.name}» مو متوفر. المندوب يقترح «${toP.name}»${diff ? " (" + (diff > 0 ? "+" : "") + money(diff) + ")" : ""}. افتح طلبك ووافق أو ارفض.`, url: "./", tag: "sub" + n }));
-        return reply(200, { ok: true, pending: true });
       }
       const solo = await soleDriver(env);
       if (path === '/driver/settlement-request') {
@@ -660,7 +589,7 @@ export default {
       return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
     }
 
-    if (['/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
+    if (['/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
       if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
       await ensureSchema(env);
       const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner', later);
@@ -1122,6 +1051,57 @@ async function changeStatus(env, n, st, now = Date.now(), who = "", actor = null
   return { changed: true, drv };
 }
 // تعديل الطلب بعد اتصال الزبون: المبالغ والمخزون والتحليل تتعدل مع بعض
+// منتج ناقص وقت التجهيز (المجهز أو الإدارة): يقترح بديل والزبون يوافق من صفحة طلبه
+// (لو اختار الزبون «بدّلوه بمشابه» ينبدل مباشرة)، أو يشيله من الطلب، أو يسحب الاقتراح. الأسعار من المتجر، مو من الجوال
+async function prepSub(env, body, who, later) {
+  const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000, op = String(body.op || "");
+  if (!["propose", "withdraw", "remove"].includes(op)) return { code: "bad_request", status: 400 };
+  const row = n > 0 ? await env.DB.prepare("SELECT status, data FROM orders WHERE no = ?").bind(n).first() : null;
+  if (!row) return { code: "not_found", status: 404 };
+  if (!["new", "accepted"].includes(row.status)) return { code: "closed", status: 400 };
+  if (op === "withdraw") {
+    await env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND id = ? AND state = 'pending'").bind(Date.now(), n, Number(body.offer) || 0).run();
+    return { ok: true };
+  }
+  let data;
+  try { data = await loadData(env); } catch { return { code: "data", status: 502 }; }
+  const rec = safeJson(row.data), id = String(body.id || ""), line = (rec.lines || []).find((l) => l.id === id);
+  if (!line) return { code: "bad_line", status: 400 };
+  let lines = (rec.lines || []).map((l) => ({ id: l.id, qty: l.qty, price: l.price }));
+  const withdrawLine = () => env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND line_id = ? AND state = 'pending'").bind(Date.now(), n, id).run();
+  if (op === "remove") {
+    lines = lines.filter((l) => l.id !== id);
+    if (!lines.length) return { code: "last_item", status: 400 };
+    let r;
+    try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, who); } catch { return { code: "db", status: 502 }; }
+    if (r.error) return { code: r.error, status: 400 };
+    await withdrawLine();
+    later(notifyRole(env, "customer", String(n), { title: "تعديل على طلبك #" + (1000 + n), body: `«${line.name}» ما كان متوفر وشلناه من طلبك. الإجمالي الجديد ${money(r.order.total)}`, url: "./", tag: "order" + n }));
+    return { ok: true, removed: true, total: r.order.total };
+  }
+  const toP = (data.products || []).find((p) => p.id === String(body.to || ""));
+  if (!toP || !toP.stock || toP.id === id) return { code: "bad_swap", status: 400 };
+  if (rec.sub === "swap") {
+    const ex = lines.find((l) => l.id === toP.id && l.price === Number(toP.price));
+    lines = lines.filter((l) => l.id !== id);
+    if (ex) ex.qty += line.qty * (Number(line.per) || 1); else lines.push({ id: toP.id, qty: line.qty * (Number(line.per) || 1), price: Number(toP.price) });
+    let r;
+    try { r = await editOrder(env, data, { no: body.no, fee: rec.fee, lines }, who); } catch { return { code: "db", status: 502 }; }
+    if (r.error) return { code: r.error, status: 400 };
+    await withdrawLine();
+    later(notifyRole(env, "customer", String(n), { title: "تعديل على طلبك #" + (1000 + n), body: `«${line.name}» ما كان متوفر، وبدّلناه بـ «${toP.name}» (اخترت وقت الطلب نبدّل بمشابه). الإجمالي الجديد ${money(r.order.total)}`, url: "./", tag: "order" + n }));
+    return { ok: true, applied: true, total: r.order.total };
+  }
+  const pending = (await env.DB.prepare("SELECT COUNT(*) c FROM sub_offers WHERE no = ? AND state = 'pending'").bind(n).first()).c;
+  if (pending >= 8) return { code: "too_many", status: 429 };
+  await env.DB.batch([env.DB.prepare("UPDATE sub_offers SET state = 'withdrawn', answered = ? WHERE no = ? AND line_id = ? AND state = 'pending'").bind(Date.now(), n, id),
+    env.DB.prepare("INSERT INTO sub_offers (no, line_id, to_id, state, created, who) VALUES (?, ?, ?, 'pending', ?, ?)").bind(n, id, toP.id, Date.now(), who),
+    logStmt(env, who, "sub_propose", "#" + (1000 + n), { from: line.name, to: toP.name })]);
+  const diff = round2((Number(toP.price) - Number(line.price)) * line.qty);
+  later(notifyRole(env, "customer", String(n), { title: "بديل مقترح لطلبك #" + (1000 + n), body: `«${line.name}» مو متوفر. نقترح «${toP.name}»${diff ? " (" + (diff > 0 ? "+" : "") + money(diff) + ")" : ""}. افتح طلبك ووافق أو ارفض.`, url: "./", tag: "sub" + n }));
+  return { ok: true, pending: true };
+}
+
 async function editOrder(env, data, body, who) {
   await ensureSchema(env);
   const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
@@ -1149,8 +1129,17 @@ async function editOrder(env, data, body, who) {
   await withCost(env, nr, true);
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created);
+  // تجهيز الطلب: نحفظ اللي أخذه المجهز (نفس المنتج ونفس الكمية)، والمنتج الجديد أو المتغيّر يرجع «ما تجهّز». الطلب يرجع «يتجهز» عشان يأكده المجهز قبل المندوب
+  const prepRow = await env.DB.prepare("SELECT checks, version FROM prep_orders WHERE no = ?").bind(n).first().catch(() => null);
+  let prepKeep = null;
+  if (prepRow) {
+    const oc = safeJson(prepRow.checks || "{}"), was = {};
+    (rec.lines || []).forEach((l, i) => { if (oc[String(i)]) was[l.id] = { v: oc[String(i)], q: l.qty }; });
+    const nc = {}; lines.forEach((l, i) => { const w = was[l.id]; if (w && w.q === l.qty) nc[String(i)] = w.v; });
+    prepKeep = P("INSERT INTO prep_orders(no,stage,checks,updated,who,version) VALUES(?,?,?,?,?,?) ON CONFLICT(no) DO UPDATE SET stage=excluded.stage,checks=excluded.checks,updated=excluded.updated,who=excluded.who,version=excluded.version", n, "preparing", JSON.stringify(nc), Date.now(), String(who || "تعديل"), (prepRow.version || 0) + 1);
+  }
   const stmts = [P("SELECT CASE WHEN status != ? OR data != ? THEN json('order_conflict') ELSE 1 END FROM orders WHERE no=?",old.status,old.data,n), P("UPDATE orders SET data = ?, total = ?, fee = ?, items = ?, updated = ?, day = ?, hour = ?, cost = ? WHERE no = ?", JSON.stringify(nr), nr.total, fee, nr.count, Date.now(), day, hour, costOf(nr), n),
-    P("DELETE FROM oline WHERE no = ?", n), P("DELETE FROM prep_orders WHERE no = ?", n)];
+    P("DELETE FROM oline WHERE no = ?", n), prepKeep || P("DELETE FROM prep_orders WHERE no = ?", n)];
   if (split) {
     const nextWallet=Math.min(split.wallet,moneyCents(nr.total));
     stmts.unshift(P("SELECT CASE WHEN (SELECT revision FROM payment_splits WHERE no=?) != ? THEN json('payment_conflict') ELSE 1 END",n,split.revision));
@@ -2245,7 +2234,7 @@ function publicStaff(u) { return { id: u.id, username: u.username, name: u.name,
 function staffMay(role, path, body) {
   if (path === '/admin/staff' || path === '/admin/staff-save' || path === '/admin/team-save' || path === '/admin/opex' || path === '/admin/opex-save' || path === '/admin/offers-advice') return false;
   if(role==='cashier')return ['/pos/login','/pos/delivery-orders','/pos/delivery-receipt','/pos/delivery-issue','/login','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/settlement-requests','/admin/settlement-confirm','/admin/payment','/admin/day-report'].includes(path);
-  if (role === 'preparer') return ['/login','/admin/prep','/admin/prep-save'].includes(path);
+  if (role === 'preparer') return ['/login','/admin/prep','/admin/prep-save','/admin/prep-sub'].includes(path);
   if (role === 'manager') return !(path === '/save' && (body.newPin || body.newDriverPin));
   return role === 'orders' && ['/login', '/admin/orders', '/admin/alerts', '/driver/status', '/driver/pending', '/admin/assign', '/admin/team', '/pos/login', '/pos/sale', '/pos/shift', '/pos/close', '/pos/delivery-orders', '/pos/delivery-receipt', '/pos/delivery-issue'].includes(path);
 }
@@ -2403,8 +2392,10 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
   }
   if(path==='/admin/prep'){
     const rows=(await P("SELECT o.no,o.status,o.created,o.updated AS order_updated,o.data,p.stage,p.checks,p.updated,p.who,p.version FROM orders o LEFT JOIN prep_orders p ON p.no=o.no WHERE o.status IN ('new','accepted') ORDER BY o.created").all()).results||[];
-    return {ok:true,orders:rows.map(r=>{const d=safeJson(r.data);return {no:'#'+(1000+r.no),status:r.status,created:r.created,orderUpdated:r.order_updated,stage:r.stage||'waiting',checks:safeJson(r.checks||'{}'),version:r.version||0,who:r.who||'',updated:r.updated,lines:(d.lines||[]).map((l,i)=>({key:String(i),id:l.id,name:l.name,unit:l.unit,qty:l.qty})),note:d.note||'',sub:d.sub||'call'};})};
+    const nos=rows.map(r=>r.no),offs=nos.length?((await P('SELECT id,no,line_id,to_id,state,created,answered FROM sub_offers WHERE no IN ('+nos.map(()=>'?').join(',')+') ORDER BY id',...nos).all()).results||[]):[],om={};for(const x of offs)(om[x.no]||=[]).push({id:x.id,line:x.line_id,to:x.to_id,state:x.state,at:x.answered||x.created});
+    return {ok:true,orders:rows.map(r=>{const d=safeJson(r.data);return {no:'#'+(1000+r.no),status:r.status,created:r.created,orderUpdated:r.order_updated,stage:r.stage||'waiting',checks:safeJson(r.checks||'{}'),version:r.version||0,who:r.who||'',updated:r.updated,lines:(d.lines||[]).map((l,i)=>({key:String(i),id:l.id,name:l.name,unit:l.unit,qty:l.qty})),note:d.note||'',sub:d.sub||'call',subs:om[r.no]||[]};})};
   }
+  if(path==='/admin/prep-sub'){const r=await prepSub(env,body,who,later);return r.ok?r:fail(r.code,r.status||400);}
   if(path==='/admin/prep-save'){
     const no=Number(String(body.no||'').replace(/\D/g,''))-1000,row=await P('SELECT status,data,updated FROM orders WHERE no=?',no).first();
     if(!row)return fail('not_found',404);if(!['new','accepted'].includes(row.status))return fail('closed');if(Number(body.orderUpdated)!==row.updated)return fail('conflict',409);

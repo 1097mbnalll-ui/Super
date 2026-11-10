@@ -113,11 +113,11 @@ async function driverPick(o) {
   if (o.status !== 'accepted') return;
   for (const l of [...o.lines]) {
     if (rnd() > 0.03 || o.lines.length < 2) continue;
-    let op = o.sub === 'swap' ? 'swap' : o.sub === 'remove' ? 'remove' : (rnd() < 0.5 ? 'swap' : 'remove');
+    let op = o.sub === 'swap' ? 'swap' : 'remove';
     const p = byId[l.id], inO = new Set(o.lines.map(x => x.id));
     const alt = data.products.filter(x => x.cat === p.cat && x.id !== l.id && x.stock && !inO.has(x.id) && (L.stock[x.id] == null || L.stock[x.id] >= l.qty))[0];
     if (op === 'swap' && !alt) op = 'remove';
-    const j = await call('/driver/order-edit', { pin: '1357', no: o.no, op, id: l.id, to: alt && alt.id });
+    const j0 = await call('/admin/prep-sub', { pin: '2468', no: o.no, op: op === 'swap' ? 'propose' : 'remove', id: l.id, to: alt && alt.id }), j = j0.ok ? { ok: true, order: { total: j0.total } } : j0;
     if (!j.ok) { if (j.code !== 'db') log.unexpected.push('drv-edit ' + j.code); continue; }
     let lines = o.lines.filter(x => x.id !== l.id).map(x => ({ ...x }));
     if (op === 'swap') { const ex = lines.find(x => x.id === alt.id && x.price === alt.price); if (ex) ex.qty += l.qty; else lines.push({ id: alt.id, qty: l.qty, price: alt.price, cost: L.cost[alt.id] || 0 }); log.swaps++; } else log.removes++;
