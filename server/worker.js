@@ -2445,9 +2445,9 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
 async function enrichOperations(env,orders){
   if(!orders.length)return orders;
   const ids=orders.map(o=>Number(o.no.replace('#',''))-1000), marks=ids.map(()=>'?').join(',');
-  const prep=(await env.DB.prepare('SELECT no,stage FROM prep_orders WHERE no IN ('+marks+')').bind(...ids).all()).results||[],splits=(await env.DB.prepare('SELECT * FROM payment_splits WHERE no IN ('+marks+')').bind(...ids).all()).results||[];
-  const pm=new Map(prep.map(x=>[x.no,x.stage])),sm=new Map(splits.map(x=>[x.no,x]));
-  return orders.map(o=>{const n=Number(o.no.replace('#',''))-1000;return {...o,prepStage:pm.get(n)||'waiting',payment:sm.get(n)||null};});
+  const prep=(await env.DB.prepare('SELECT no,stage,checks,who,updated FROM prep_orders WHERE no IN ('+marks+')').bind(...ids).all()).results||[],splits=(await env.DB.prepare('SELECT * FROM payment_splits WHERE no IN ('+marks+')').bind(...ids).all()).results||[];
+  const pm=new Map(prep.map(x=>[x.no,x.stage])),pi=new Map(prep.map(x=>[x.no,x])),sm=new Map(splits.map(x=>[x.no,x]));
+  return orders.map(o=>{const n=Number(o.no.replace('#',''))-1000;const px=pi.get(n),ck=px?Object.values(safeJson(px.checks||'{}')):[];return {...o,prepStage:pm.get(n)||'waiting',prepBy:px?px.who:'',prepAt:px?px.updated:0,prepPicked:ck.filter(v=>v==='picked').length,prepMissing:ck.filter(v=>v==='missing').length,payment:sm.get(n)||null};});
 }
 
 async function walletOrderPhone(env,no,phone){
