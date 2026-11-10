@@ -117,4 +117,10 @@ ok(pl.pick.find((x) => x.name === 'فولكانو 50ج').catId === 'sweets', 'ا
 ok(pl.pick.find((x) => x.name === 'بلبلو 40جم').src === 'guess' && pl.pick.find((x) => x.name === 'بلبلو 40جم').catId === 'sweets', 'غرام بدون قاعدة = تخمين سناكس معلّم للمراجعة');
 ok(pl.pick.find((x) => x.name === 'درنفيس مفتاح').catId === 'misc' && pl.pick.find((x) => x.name === 'درنفيس مفتاح').src === 'default', 'اللي ما نعرفه يبقى منوعات ومعلّم «بدون قاعدة»');
 
+// ٧) الأقسام الثانوية تنضم للمنوعات في الموقع (قرار المالك): التصنيف الداخلي يبقى، والمنتج والقسم الجديد = misc
+pl = C.catalogPlan([mk('6281000007001', 'لعبة مسدس ماء', 9, 5), mk('6281000007002', 'فحم الطيب صغير', 9, 5), mk('6281000007003', 'اكل قطط ميو ماكس 1 كيلو', 9, 5), mk('6281000007004', 'دفتر رسم روكو', 9, 5), mk('6281000007005', 'صحن ملامين', 9, 5), mk('6281000007006', 'شيبس ليز 25جم', 9, 1)], [], { limit: 100, cats: [{ id: 'misc', name: 'المنزل والمنوعات' }, { id: 'sweets', name: 'الحلويات والسناكس' }] });
+const apM = C.catalogApply(pl, []);
+ok(apM.added.filter((p) => p.cat === 'misc').length === 5 && apM.added.find((p) => p.name.startsWith('شيبس')).cat === 'sweets', 'الثانوية كلها تنضاف للمنوعات، والأكل يبقى بقسمه');
+ok(!pl.needCats.length && Object.keys(pl.perCat).every((c) => ['misc', 'sweets'].includes(c)), 'ما ينطلب قسم جديد للثانوية: ' + JSON.stringify(pl.perCat));
+
 console.log(fails ? '\n' + fails + ' فحص فشل' : '\nكل الفحوص نجحت'); process.exit(fails ? 1 : 0);
