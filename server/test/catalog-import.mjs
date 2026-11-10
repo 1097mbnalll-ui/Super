@@ -67,4 +67,37 @@ const logs = sq.prepare("SELECT act, info FROM alog").all();
 ok(logs.length === 1 && logs[0].act === 'bulk_import' && JSON.parse(logs[0].info).added === ap.added.length, 'سجل العمليات: سطر ملخص واحد ' + JSON.stringify(logs.map((l) => l.act)));
 queries = 0; const s1 = await call('/stock', null, true); const s2 = await call('/stock', null, true);
 ok(s1.ok && Object.keys(s1.stock).length >= 2900 && queries <= 2, 'المخزون للزوار ينقرأ من الذاكرة المؤقتة: ' + queries + ' استعلام لطلبين');
+
+// ٥) تحسينات الاستيراد (ملف حقيقي: بيض وخبز بأرقام قصيرة، وتسالي وليز بمخزون قليل)
+ok(C.catalogCat('تسالي شرقية 225 جرام') === 'sweets' && C.catalogCat('فصفص البستان مالح 230ج') === 'sweets' && C.catalogCat('لب سوبر ابو ريال 50ج') === 'sweets', 'التسالي والفصفص واللب تروح للسناكس مو للمنوعات');
+const mk = (code, name, qty, price, extra) => ({ code, name, unit: 'حبة', qty, cost: null, price, cat: '', dateCode: false, sold: null, ...extra });
+const real = [mk('888', 'بيض هلا حقول حبه', 6838, 0.75), mk('1', 'خبز الندوة', 1076, 1), mk('555', 'مخبز', 39000, 1.15), mk('6281036004178', 'ليز تسالي كاتشب 90ج', 3, 5),
+  mk('6281036004185', 'كشاف ليزر ميداليه', 3, 5), mk('6281036004192', 'مزيل العرق اسينتاليز 73 جم', 3, 12), mk('6281000000100', 'منظف ارضيات 4 لتر', 500, 12), mk('6281000000117', 'ماء نوفا 330مل', 900, 0.5), mk('6281036004208', 'سلايس حلوى', 0, 1.15)];
+let pl = C.catalogPlan(real, [], { limit: 3000, cats: [] });
+ok(pl.pick.some((x) => x.name === 'بيض هلا حقول حبه') && pl.pick.some((x) => x.name === 'خبز الندوة'), 'البيض والخبز بأرقام قصيرة (١، ٨٨٨) ما عاد ينشالون');
+ok(!pl.pick.some((x) => x.name === 'مخبز') && pl.skipped['صنف عام في الكاشير مو منتج (مثل «مخبز»)'] === 1, 'الصنف العام «مخبز» لسا ينشال بالاسم');
+ok(pl.skipped['مخزونه صفر'] === 1, 'مخزون الصفر ينشال افتراضياً');
+// الحد صغير: الأقل مخزوناً يطلع برا، إلا لو ضفنا كلمته
+pl = C.catalogPlan(real, [], { limit: 3, cats: [] });
+ok(!pl.pick.some((x) => x.name.startsWith('ليز تسالي')), 'بدون كلمات: ليز بمخزون ٣ ما يدخل مع حد ٣');
+pl = C.catalogPlan(real, [], { limit: 3, cats: [], must: ['ليز', 'تسالي'] });
+ok(pl.pick.length === 3 && pl.pick.some((x) => x.name.startsWith('ليز تسالي')) && pl.must['ليز'] === 1 && pl.must['تسالي'] === 1 && pl.mustPicked === 1, 'كلمات «لازم تنضاف» تدخل الصنف أول: ' + JSON.stringify(pl.must));
+ok(!pl.pick.some((x) => /ليزر|اسينتاليز/.test(x.name)), '«ليز» ما تمسك «ليزر» ولا «اسينتاليز» (كلمة كاملة بس)');
+pl = C.catalogPlan(real, [], { limit: 100, cats: [], must: ['كلمةما_موجودة'] });
+ok(pl.must['كلمةما_موجودة'] === 0, 'كلمة ما لها نتيجة ترجع صفر عشان نبلّغ المالك');
+// مخزون صفر: لو سمح المالك يدخل بكمية صفر (يطلع نفد)، ولو الصنف موجود بالموقع ونفد يتحدّث لصفر حتى بدون السماح
+pl = C.catalogPlan(real, [], { limit: 3000, cats: [], zero: true });
+const apz = C.catalogApply(pl, []);
+ok(apz.added.some((p) => p.name === 'سلايس حلوى') && apz.stock['x6281036004208'] === 0, 'السماح بالمخزون صفر: يضاف بكمية صفر (يطلع نفد)');
+const onSite = [{ id: 'x6281000000117', bc: '6281000000117', name: 'ماء نوفا 330مل', price: 0.5, cat: 'drinks', stock: true }];
+const soldOut = real.map((r) => (r.code === '6281000000117' ? { ...r, qty: 0 } : r));
+pl = C.catalogPlan(soldOut, onSite, { limit: 3000, cats: [] });
+ok(C.catalogApply(pl, onSite).stock['x6281000000117'] === 0, 'صنف بالموقع نفد في الملف: مخزونه يتحدّث لصفر (قبل كان يبقى متوفر)');
+// عمود المبيعات (لو موجود) يرفع الأهمية فوق كمية المخزن
+const sales = [mk('6281000000201', 'منظف ضخم', 900, 5, { sold: 0 }), mk('6281000000218', 'شيبس سريع البيع', 12, 2, { sold: 400 })];
+pl = C.catalogPlan(sales, [], { limit: 1, cats: [] });
+ok(pl.pick.length === 1 && pl.pick[0].name === 'شيبس سريع البيع', 'المبيعات تغلب على كمية المخزن لو الملف فيه عمود المبيعات');
+const aoaS = [['رقم الصنف', 'اسم الصنف', 'الكمية', 'الكمية المباعة', 'سعر البيع'], ['6281000000300', 'ليز', 5, 70, 2]];
+ok(C.catalogRows(aoaS).rows[0].sold === 70, 'قراءة عمود «الكمية المباعة»');
+
 console.log(fails ? '\n' + fails + ' فحص فشل' : '\nكل الفحوص نجحت'); process.exit(fails ? 1 : 0);

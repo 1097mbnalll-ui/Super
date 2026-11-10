@@ -3129,15 +3129,18 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function loadScript(src){ return new Promise(function(ok, no){ var x = document.createElement("script"); x.src = src; x.onload = ok; x.onerror = no; document.head.appendChild(x); }); }
   function importLibs(){
     var a = window.XLSX ? Promise.resolve() : loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js").catch(function(){ return loadScript("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"); });
-    var b = window.catalogPlan ? Promise.resolve() : loadScript("tools/catalog.js?v=2");
+    var b = window.catalogPlan ? Promise.resolve() : loadScript("tools/catalog.js?v=3");
     return Promise.all([a, b]);
   }
   function impCatName(id){ var c = draft.cats.filter(function(x){ return x.id === id; })[0]; if (c) return c.name; var r = (window.CATALOG_RULES || []).filter(function(x){ return x[0] === id; })[0]; return r ? r[1] : "المنزل والمنوعات"; }
+  function impOpts(){ var st = draft.store || S; return { limit: Number(S.importLimit) || 3000, cats: draft.cats, must: Array.isArray(st.importMust) ? st.importMust : [], zero: !!st.importZero }; }
   function renderImport(){
     var box = $("aImport"); if (!box) return;
     var P = imp.plan, lim = Number(S.importLimit) || 3000;
     var h = '<h2>استيراد الأصناف من ملف الكاشير</h2><p class="hint">ارفع ملف الإكسل حق برنامج الكاشير (رقم الصنف، الاسم، الوحدة، الكمية، التكلفة، وسعر البيع). نختار الأهم على حسب الكمية وقيمة المخزون، ونوزعهم على الأقسام من أسمائهم. التكلفة والكمية تنحفظ سرية، ما يشوفها الزبون. رفع الملف مرة ثانية يحدّث المخزون والتكلفة والأسعار للأصناف الموجودة.</p>' +
-      '<div class="adm-tools"><label class="btn btn-ink" style="cursor:pointer;color:#fff;flex:0 0 auto">' + (imp.busy ? 'جاري القراءة…' : 'اختر ملف الإكسل') + '<input type="file" id="impFile" accept=".xlsx,.xls,.csv" hidden></label><label>عدد المنتجات في الموقع<input id="impLimit" type="number" min="50" max="5000" step="50" value="' + lim + '" style="width:110px"></label></div>' +
+      '<div class="adm-tools"><label class="btn btn-ink" style="cursor:pointer;color:#fff;flex:0 0 auto">' + (imp.busy ? 'جاري القراءة…' : 'اختر ملف الإكسل') + '<input type="file" id="impFile" accept=".xlsx,.xls,.csv" hidden></label><label>عدد المنتجات في الموقع<input id="impLimit" type="number" min="50" max="5000" step="50" value="' + lim + '" style="width:110px"></label>' +
+      '<label>كلمات لازم تنضاف (افصل بفاصلة)<input id="impMust" type="text" value="' + esc(impOpts().must.join("، ")) + '" placeholder="ليز، بطاطس، تسالي" style="min-width:230px"></label>' +
+      '<label style="display:flex;gap:8px;align-items:center"><input id="impZero" type="checkbox"' + (impOpts().zero ? ' checked' : '') + '> أضف حتى اللي مخزونه صفر (يطلع «نفد» للزبون)</label></div>' +
       (imp.msg ? '<p class="status' + (imp.err ? ' err' : '') + '">' + imp.msg + '</p>' : '');
     if (P) {
       var sk = Object.keys(P.skipped).map(function(k){ return '<li>' + esc(k) + ': <b>' + num(P.skipped[k]) + '</b></li>'; }).join("");
@@ -3146,13 +3149,17 @@ html.sp-on,html.sp-on body{overflow:hidden}
         '<p>الموقع فيه الحين ' + num(draft.products.length) + ' منتج، والحد ' + num(P.limit) + '، فاخترنا <b>' + num(P.pick.length) + '</b> صنف جديد (الأهم فالأهم):</p>' +
         '<div class="imp-cats">' + Object.keys(P.perCat).sort(function(a, b){ return P.perCat[b] - P.perCat[a]; }).map(function(id){ return '<span>' + esc(impCatName(id)) + ' <b>' + num(P.perCat[id]) + '</b></span>'; }).join("") + '</div>' +
         (P.needCats.length ? '<p class="hint">بينضاف قسم جديد: ' + P.needCats.map(function(c){ return esc(c.name); }).join("، ") + '.</p>' : '') +
+        (P.must && Object.keys(P.must).length ? '<p>الكلمات المطلوبة: ' + Object.keys(P.must).map(function(w){ return esc(w) + ' <b>' + num(P.must[w]) + '</b>' + (P.must[w] ? '' : ' (ما لقينا شي)'); }).join('، ') + '. دخلت أول بغض النظر عن ترتيبها.</p>' : '') +
         (P.update.length ? '<p>و<b>' + num(P.update.length) + '</b> منتج موجود من قبل بيتحدّث مخزونه وتكلفته' + ' (وسعره لو تغيّر).</p>' : '') +
         (P.noPrice ? '<p class="status err">' + num(P.noPrice) + ' صنف من المختارة ما لها سعر بيع في الملف، فما راح تنضاف. نزّل القائمة تحت، عبّ عمود «سعر البيع» (وتقدر تغيّر «القسم»)، وارفعها هنا.</p>' : '') +
         '<div class="actions"><button type="button" class="btn btn-brand" id="impApply"' + (withPrice || P.update.length ? '' : ' disabled') + '>اعتمد: أضف ' + num(withPrice) + (P.update.length ? ' وحدّث ' + num(P.update.length) : '') + '</button><button type="button" class="btn btn-soft" id="impSheet">نزّل قائمة المختارة (Excel)</button><button type="button" class="btn btn-ghost" id="impCancel">إلغاء</button></div></div>';
     }
     box.innerHTML = h;
     $("impFile").onchange = function(){ var f = this.files && this.files[0]; if (f) importRead(f); };
-    $("impLimit").onchange = function(){ var v = Math.max(50, Math.min(5000, Math.round(Number(this.value) || 3000))); S.importLimit = v; if (draft.store) draft.store.importLimit = v; if (imp.rows) { imp.plan = catalogPlan(imp.rows, draft.products, { limit: v, cats: draft.cats }); renderImport(); } };
+    var impReplan = function(){ if (imp.rows) { imp.plan = catalogPlan(imp.rows, draft.products, impOpts()); renderImport(); } };
+    $("impMust").onchange = function(){ var w = this.value.split(/[,،\n]+/).map(function(x){ return x.trim(); }).filter(Boolean).slice(0, 30); S.importMust = w; if (draft.store) draft.store.importMust = w; impReplan(); };
+    $("impZero").onchange = function(){ S.importZero = this.checked; if (draft.store) draft.store.importZero = this.checked; impReplan(); };
+    $("impLimit").onchange = function(){ var v = Math.max(50, Math.min(5000, Math.round(Number(this.value) || 3000))); S.importLimit = v; if (draft.store) draft.store.importLimit = v; impReplan(); };
     if (!P) return;
     $("impCancel").onclick = function(){ imp.plan = null; imp.rows = null; imp.msg = ""; renderImport(); };
     $("impSheet").onclick = function(){
@@ -3179,7 +3186,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       var r = catalogRows(aoa); imp.busy = false;
       if (r.error) { imp.err = true; imp.msg = "ما لقينا سطر العناوين في الملف. لازم يكون فيه عمود «اسم الصنف» وعمود «رقم الصنف» أو «الكمية»."; renderImport(); return; }
       imp.rows = r.rows; imp.file = f.name;
-      imp.plan = catalogPlan(r.rows, draft.products, { limit: Number(S.importLimit) || 3000, cats: draft.cats });
+      imp.plan = catalogPlan(r.rows, draft.products, impOpts());
       if (r.cols.indexOf("price") < 0) imp.msg = "الملف ما فيه عمود «سعر البيع»: تقدر تشوف وش بينضاف، بس الإضافة تحتاج السعر.";
       renderImport();
     }).catch(function(){ imp.busy = false; imp.err = true; imp.msg = "ما قدرنا نقرأ الملف (تأكد إنه ملف Excel، وإن النت شغال)."; renderImport(); });

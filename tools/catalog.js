@@ -8,7 +8,7 @@ var CATALOG_RULES = [
   // [القسم, اسمه, كلمات النوع, أسماء شركات (أضعف)]
   ["care", "العناية الشخصية", "شامبو|بلسم|معجون (?:ال)?اسنان|فرش(?:اة|اه) (?:ال)?اسنان|اسنان|" + W + "كريم\\s|كريم (?:يد|وجه|جسم|مرطب|اساس|حلاقة|شعر)|لوشن|غسول|جل (?:استحمام|شعر)|عطر|مزيل (?:ال)?عرق|مناديل|محارم|حفاض|حفائض|حفايض|حفايظ|بامبرز|بيبي جوي|كلينكس|شفرات|حلاق(?:ة|ه)|امواس|" + W + "فوط|" + W + "قطن|فازلين|صبغ(?:ة|ه)|مشط|سواك|مسواك|ماسك|واقي شمس|مولفيكس|زيت شعر|مناكير|ريكسونا|بانتين|سنسوداين|سيجنال|كولجيت|جونسون|نيفيا|نيفياء|غارنية|لوريال|شولدر|هيد اند", "دوف|لوكس|فاين|سندريلا|الويز"],
   ["clean", "المنظفات", "منظف|صابون|كلوركس|كلور|مطهر|معطر|مسحوق|مزيل (?:ال)?بقع|ملمع|ليف(?:ة|ه)|اسفنج|مساح(?:ة|ه)|مكنس(?:ة|ه)|ممسح(?:ة|ه)|مبيد|منعم|تعقيم|معقم|كفوف|قفاز|زبال(?:ة|ه)|نفايات|مناشف مطبخ|رول مطبخ|نشاف|سائل (?:صحون|غسيل|ملابس|ايدي|اليدين)|غسيل|بخور|عود\\s|مبخر(?:ة|ه)", "تايد|اريال|فيري|ديتول|داوني|هاربيك|جونت|برسيل|فنش|فينيل|كمفورت|داك|العجيب|اومو|جف|بريل|لايف|سنوفا|العملاق|كلوركس|يور"],
-  ["sweets", "الحلويات والسناكس", "ايسكريم|ايس كريم|آيس كريم|شوكولا|شكولا|شوكلا|شوكو|بسكويت|بسكوت|ويفر|" + W + "علك|حلاو|حلو(?:ى|ي)|شيبس|" + W + "بطاطس|فشار|سناك|كاندي|مصاص|" + W + "جيلي|مارشميلو|مارشملو|مارش ميلو|كيت ?كات|سنيكرز|سنكرز|ميلكا|تويكس|كوكيز|كرانشي|تاكس|دوريتوس|" + W + "ليز\\s|بفك|" + W + "بف\\s|نوتيلا|توفي|مكسرات|" + W + "لوز|فستق|كاجو|فول سوداني|بزر|كراميل|سكيتلز|سكتلز|باونتي|بونتي|" + W + "مارس\\s|كرسبي|كندر|برينجلز|تشيتوس|ام اند امز|كورن ?فليكس|سويس رول|" + W + "رول\\s|كاسترد|بودين|مهلبي|كريم كراميل|حلا\\s|لوليتا|مرامي", "اولكر|امريكانا|تيشوب|رينجو|ديري ميلك|سينو|فش فاش|بريك|سكليتز|كتكات|تيفاني|ديمه|ديمة|البطل|غندور|جالكسي|جلكسي|ريجالو|جوديفا|سويتز|دايز|كاكو|مكفيتز|مكفتيز|ماكفيتيز|ميموري|جولن|لوكير|لواكر|فوشية|لتين|بسكريم|كواليتي"],
+  ["sweets", "الحلويات والسناكس", "ايسكريم|ايس كريم|آيس كريم|شوكولا|شكولا|شوكلا|شوكو|بسكويت|بسكوت|ويفر|" + W + "علك|حلاو|حلو(?:ى|ي)|شيبس|" + W + "بطاطس|فشار|تسالي|فصفص|" + W + "لب\\s|سناك|كاندي|مصاص|" + W + "جيلي|مارشميلو|مارشملو|مارش ميلو|كيت ?كات|سنيكرز|سنكرز|ميلكا|تويكس|كوكيز|كرانشي|تاكس|دوريتوس|" + W + "ليز\\s|بفك|" + W + "بف\\s|نوتيلا|توفي|مكسرات|" + W + "لوز|فستق|كاجو|فول سوداني|بزر|كراميل|سكيتلز|سكتلز|باونتي|بونتي|" + W + "مارس\\s|كرسبي|كندر|برينجلز|تشيتوس|ام اند امز|كورن ?فليكس|سويس رول|" + W + "رول\\s|كاسترد|بودين|مهلبي|كريم كراميل|حلا\\s|لوليتا|مرامي", "اولكر|امريكانا|تيشوب|رينجو|ديري ميلك|سينو|فش فاش|بريك|سكليتز|كتكات|تيفاني|ديمه|ديمة|البطل|غندور|جالكسي|جلكسي|ريجالو|جوديفا|سويتز|دايز|كاكو|مكفيتز|مكفتيز|ماكفيتيز|ميموري|جولن|لوكير|لواكر|فوشية|لتين|بسكريم|كواليتي"],
   ["bakery", "المخبز", "" + W + "خبز|صامولي|توست|كرواسون|كروسان|" + W + "كعك|بقسماط|تميس|شابور(?:ة|ه)|فطائر|فطير(?:ة|ه)|باتون|بريوش|" + W + "كيك|معمول|كليجا|تورتيلا|سمبوس(?:ة|ه)|بيتزا|عجين(?:ة|ه)|رقاق|مخبز|مافن|دونات", "لوزين|الطازج"],
   ["meat", "اللحوم والدواجن", "دجاج|" + W + "لحم|كبد(?:ة|ه)|نقانق|برجر|مرتديلا|سجق|ناجتس|شاورما|" + W + "سمك|روبيان|مجمد|مفرزن|دواجن|" + W + "فخذ|صدور|اجنح(?:ة|ه)|مفروم|كباب|استربس|بانيه", "ساديا|الوطنية|اليوم|دوراديو|سيارا|تنمية"],
   ["veg", "الخضار والفواكه", "خضار طازج|فواكه طازج|فواكة طازج|خضار وفواك|" + W + "خس\\s|بقدونس|كزبر(?:ة|ه) (?:خضراء|طازج)|نعناع طازج|باذنجان|فلفل رومي|بطيخ|شمام", ""],
@@ -37,7 +37,8 @@ var CATALOG_COLS = {
   qty: /الكمية|المخزون|الرصيد/,
   cost: /التكلفة|تكلفة|سعر الشراء|الشراء/,
   price: /سعر البيع|^السعر|سعر الموقع|البيع/,
-  cat: /القسم|التصنيف|الفئة/
+  cat: /القسم|التصنيف|الفئة/,
+  sold: /المباع|مبيعات|حركة البيع|الأكثر مبيع/
 };
 function catalogRows(aoa){
   var head = -1, map = {}, i, j;
@@ -62,7 +63,7 @@ function catalogRows(aoa){
     var num = function(v){ if (v == null || v === "") return null; var n = Number(String(v).replace(/[٠-٩]/g, function(d){ return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }).replace(/[,،\s]/g, "")); return isFinite(n) ? n : null; };
     out.push({ code: catalogCode(r[map.code]), name: name, unit: map.unit == null ? "" : String(r[map.unit] == null ? "" : r[map.unit]).trim(),
       qty: num(r[map.qty]), cost: map.cost == null ? null : num(r[map.cost]), price: map.price == null ? null : num(r[map.price]),
-      cat: map.cat == null ? "" : String(r[map.cat] == null ? "" : r[map.cat]).trim(), dateCode: r[map.code] instanceof Date });
+      cat: map.cat == null ? "" : String(r[map.cat] == null ? "" : r[map.cat]).trim(), sold: map.sold == null ? null : num(r[map.sold]), dateCode: r[map.code] instanceof Date });
   }
   return { rows: out, cols: Object.keys(map) };
 }
@@ -86,16 +87,17 @@ function catalogPlan(rows, products, opts){
   opts = opts || {};
   var limit = Math.max(1, Number(opts.limit) || 3000), skip = {}, i;
   var note = function(k){ skip[k] = (skip[k] || 0) + 1; };
-  var byCode = {}, byName = {};
+  var byCode = {}, byName = {}, onSite = {};
+  products.forEach(function(p){ if (p.bc) onSite[p.bc] = 1; });
   for (i = 0; i < rows.length; i++) {
     var r = rows[i];
     if (r.dateCode) { note("رقم الصنف خربه الإكسل (صار تاريخ)"); continue; }
     if (!r.code) { note("بدون رقم صنف"); continue; }
-    if (/^[0-9]{1,4}$/.test(r.code) || /^(?:مخبز|خضار|فواكه|فواكة|خضار و ?فواك.|لحوم|عام|متفرقات|منوعات|بقالة|بقاله)$/.test(r.name)) { note("صنف عام في الكاشير مو منتج (مثل «مخبز»)"); continue; }
-    if (!(r.qty > 0)) { note("مخزونه صفر"); continue; }
+    if (/^(?:مخبز|خضار|فواكه|فواكة|خضار و ?فواك.|لحوم|عام|متفرقات|منوعات|بقالة|بقاله)$/.test(r.name)) { note("صنف عام في الكاشير مو منتج (مثل «مخبز»)"); continue; }
+    if (!(r.qty > 0) && !opts.zero && !onSite[r.code]) { note("مخزونه صفر"); continue; }
     var o = byCode[r.code];
     if (o) { note("رقم صنف مكرر"); if (r.qty <= o.qty) continue; }
-    byCode[r.code] = r;
+    byCode[r.code] = r.qty > 0 ? r : Object.assign({}, r, { qty: 0 });
   }
   var uniq = [];
   for (var c in byCode) {
@@ -110,24 +112,31 @@ function catalogPlan(rows, products, opts){
   catByName[catalogNorm(CATALOG_GENERAL.name)] = CATALOG_GENERAL.id;
   uniq.forEach(function(x){ x.catId = (x.cat && catByName[catalogNorm(x.cat)]) || catalogCat(x.name); });
   // الأهمية: الكمية في المخزن وقيمتها (المحل يكدّس اللي ينباع أكثر)، والباركود الحقيقي يزيد
-  uniq.forEach(function(x){ x.score = Math.log(1 + x.qty) + 0.5 * Math.log(1 + x.qty * Math.max(0, x.cost || 0)) + (/^[0-9]{8}$|^[0-9]{12,14}$/.test(x.code) ? 1 : 0); });
+  uniq.forEach(function(x){ x.score = Math.log(1 + x.qty) + 0.5 * Math.log(1 + x.qty * Math.max(0, x.cost || 0)) + (/^[0-9]{8}$|^[0-9]{12,14}$/.test(x.code) ? 1 : 0) + (x.sold > 0 ? 2 * Math.log(1 + x.sold) : 0); });
+  // كلمات «لازم تنضاف» (يحددها المالك): كل صنف يحتويها كلمة كاملة (مو داخل كلمة ثانية: «ليز» ما تمسك «ليزر») يدخل أول بغض النظر عن ترتيبه
+  var mustHit = {}, mustRx = (opts.must || []).map(function(w){ return String(w).trim(); }).filter(Boolean).map(function(w0){ var w = catalogNorm(w0); mustHit[w0] = 0; return { w: w0, rx: new RegExp("(?:^|[\\s.\\-/(])(?:ال)?" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?=$|[\\s.\\-/)0-9])") }; });
+  uniq.forEach(function(x){ var n = catalogNorm(x.name); x.must = false; mustRx.forEach(function(m){ if (m.rx.test(n)) { x.must = true; mustHit[m.w]++; } }); });
   // المنتجات الموجودة بالموقع من استيراد قبل: نحدّثها (المخزون، التكلفة، السعر لو موجود) ونحسبها من العدد
   var have = {}; products.forEach(function(p){ if (p.bc) have[p.bc] = p; });
   var update = [], fresh = [];
   uniq.forEach(function(x){ (have[x.code] ? update : fresh).push(x); });
   var room = Math.max(0, limit - products.length);
   // حصة كل قسم بنسبة حجمه، والقسم العام (المنوعات) ما يتعدى ١٠٪
-  var groups = {}; fresh.forEach(function(x){ (groups[x.catId] = groups[x.catId] || []).push(x); });
+  var forced = fresh.filter(function(x){ return x.must; }).sort(function(a, b){ return b.score - a.score; }).slice(0, room);
+  var isForced = {}; forced.forEach(function(x){ isForced[x.code] = 1; });
+  var rest = fresh.filter(function(x){ return !isForced[x.code]; }), room2 = room - forced.length;
+  var groups = {}; rest.forEach(function(x){ (groups[x.catId] = groups[x.catId] || []).push(x); });
   Object.keys(groups).forEach(function(g){ groups[g].sort(function(a, b){ return b.score - a.score; }); });
-  var pick = [], taken = {}, total = fresh.length || 1, miscCap = Math.round(limit * 0.10);
+  var pick = forced.slice(), taken = {}, total = rest.length || 1, miscCap = Math.round(limit * 0.10);
+  forced.forEach(function(x){ taken[x.code] = 1; });
   Object.keys(groups).forEach(function(g){
-    var share = Math.floor(room * groups[g].length / total);
+    var share = Math.floor(room2 * groups[g].length / total);
     if (g === CATALOG_GENERAL.id) share = Math.min(share, miscCap);
     groups[g].slice(0, share).forEach(function(x){ pick.push(x); taken[x.code] = 1; });
   });
   // الباقي من الحصص يروح للأعلى أهمية من كل الأقسام (بدون ما المنوعات تتعدى حدها)
-  var miscN = pick.filter(function(x){ return x.catId === CATALOG_GENERAL.id; }).length;
-  fresh.slice().sort(function(a, b){ return b.score - a.score; }).forEach(function(x){
+  var miscN = pick.filter(function(x){ return !x.must && x.catId === CATALOG_GENERAL.id; }).length;
+  rest.slice().sort(function(a, b){ return b.score - a.score; }).forEach(function(x){
     if (pick.length >= room || taken[x.code]) return;
     if (x.catId === CATALOG_GENERAL.id) { if (miscN >= miscCap) return; miscN++; }
     pick.push(x); taken[x.code] = 1;
@@ -137,7 +146,7 @@ function catalogPlan(rows, products, opts){
   var perCat = {}; pick.forEach(function(x){ perCat[x.catId] = (perCat[x.catId] || 0) + 1; });
   var needCats = [];
   Object.keys(perCat).forEach(function(id){ if (!cats.some(function(ct){ return ct.id === id; })) { var rr = CATALOG_RULES.filter(function(q){ return q[0] === id; })[0]; needCats.push({ id: id, name: rr ? rr[1] : CATALOG_GENERAL.name }); } });
-  return { rows: rows.length, eligible: uniq.length, skipped: skip, pick: pick, noPrice: noPrice.length, update: update, perCat: perCat, needCats: needCats, room: room, limit: limit };
+  return { must: mustHit, mustPicked: forced.length, rows: rows.length, eligible: uniq.length, skipped: skip, pick: pick, noPrice: noPrice.length, update: update, perCat: perCat, needCats: needCats, room: room, limit: limit };
 }
 // يطبّق الخطة على نسخة المنتجات: يرجع المنتجات الجديدة، وتغييرات المخزون والتكلفة (تنحفظ بالقاعدة السرية مو بالملف العام)
 function catalogApply(plan, products){
