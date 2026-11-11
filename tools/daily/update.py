@@ -1,0 +1,92 @@
+"""تحديث المنتجات من ملف الكاشير اليومي (Excel: رقم الصنف، اسم الصنف، الوحدة، الكمية المتوفرة، السعر).
+
+الاستخدام:  python3 tools/daily/update.py data.json ملف.xlsx  [--dry]
+- المنتج الموجود (بالباركود): «متوفر» = الكمية > 0، والسعر من الملف. لو المنتج عليه عرض (له old) وسعر الملف
+  يساوي السعر قبل الخصم أو أعلى من سعر العرض، يبقى سعر العرض (عروض المالك ما تنمسح).
+- المنتج الجديد: ينضاف بقسمه حسب اسمه (classify.py)، واللي كميته صفر ينضاف «نفد».
+- ما يلمس: الصور، الأقسام، الخيارات (packs)، الإعدادات. التكلفة والكميات بالعدد مكانها الخادم (D1) مو هالملف.
+قرار المالك ١١ نوفمبر ٢٠٢٦: كل منتج بالملف ينضاف، واللي مخزونه صفر يطلع «نفد»، وتحديث يومي للمخزون والأسعار.
+"""
+import sys, json, re, hashlib, collections, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from classify import classify, norm
+import openpyxl
+
+UNIT = {'حبه': 'حبة', 'حبة': 'حبة', 'شده': 'شدّة', 'شدة': 'شدّة', 'علبه': 'علبة', 'علبة': 'علبة', 'ربطه': 'ربطة', 'ربطة': 'ربطة',
+        'كيس': 'كيس', 'كرتون': 'كرتون', 'باكت': 'باكت', 'طبق': 'طبق', 'درزن': 'درزن', 'كيلو': 'كيلو'}
+SKIP = re.compile(r'صنف ضريبي|^مخبز$|^منزلية$|ايجار|كرت نظافة')
+
+def key(name): return re.sub(r'\s', '', norm(name))
+
+def code_of(v):
+    if isinstance(v, float) and v.is_integer(): return str(int(v))
+    return str(v).strip().strip('*')
+
+def read_rows(path):
+    ws = openpyxl.load_workbook(path, read_only=True, data_only=True).worksheets[0]
+    head = None
+    for r in ws.iter_rows(values_only=True):
+        if head is None:
+            if r and any(str(c or '').strip() == 'اسم الصنف' for c in r):
+                head = {str(c).strip(): i for i, c in enumerate(r) if c}
+            continue
+        if not r or not r[head['اسم الصنف']]: continue
+        g = lambda k: r[head[k]] if k in head and head[k] < len(r) else None
+        price = g('السعر') if g('السعر') is not None else g('سعر البيع')
+        try: price = float(price)
+        except (TypeError, ValueError): price = 0
+        try: qty = float(g('الكمية المتوفرة') or 0)
+        except (TypeError, ValueError): qty = 0
+        yield code_of(g('رقم الصنف')), re.sub(r'\s+', ' ', str(g('اسم الصنف'))).strip(), str(g('الوحدة') or '').strip(), qty, round(price, 2)
+
+def main(data_path, xlsx, dry=False):
+    d = json.load(open(data_path))
+    ps = d['products']
+    by_bc = {p['bc']: p for p in ps if p.get('bc')}
+    by_id = {p['id']: p for p in ps}
+    names = {key(p['name']) for p in ps}
+    by_name = {}
+    for p in ps: by_name.setdefault(key(p['name']), p)
+    rep = collections.Counter(); changed = []; seen = set()
+    # الملف فيه أحياناً نفس الباركود (أو نفس الاسم) أكثر من سطر: نأخذ السطر اللي كميته أكبر
+    best = {}
+    for row in read_rows(xlsx):
+        code, name = row[0], row[1]
+        k = code if re.fullmatch(r'\d{6,14}', code) else 'n:' + key(name)
+        if k not in best or row[3] > best[k][3]: best[k] = row
+    for code, name, unit, qty, price in best.values():
+        if SKIP.search(name) or price <= 0: rep['skip'] += 1; continue
+        good = bool(re.fullmatch(r'\d{6,14}', code))
+        p = by_bc.get(code) if good else None
+        p = p or by_id.get('x' + code if good else 'xn' + hashlib.sha1(name.encode()).hexdigest()[:10])
+        if not p and key(name) in by_name and not (good and by_name[key(name)].get('bc') and by_name[key(name)]['bc'] != code):
+            p = by_name[key(name)]
+        if p and p['id'] in seen: rep['repeat'] += 1; continue
+        if p:
+            seen.add(p['id'])
+            avail = qty > 0
+            if bool(p.get('stock')) != avail: p['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
+            old = p.get('old')
+            keep_offer = old and (abs(price - float(old)) < 0.01 or price > float(p['price']))
+            if not keep_offer and abs(price - float(p['price'])) >= 0.01:
+                changed.append((p['name'], p['price'], price)); p['price'] = price; rep['price'] += 1
+            continue
+        if key(name) in names: rep['same_name_other_code'] += 1; continue
+        c, _ = classify(name)
+        cat, sub = (c.split(':') + [None])[:2] if c else (None, None)
+        if not cat:
+            n = norm(name)
+            cat = 'drinks' if re.search(r'\d\s?(مل|لتر)', n) else 'sweets' if re.search(r'\d\s?(جم|ج|جرام|غ)(?=\s)', n) else 'misc'
+        np = {'id': 'x' + code if good else 'xn' + hashlib.sha1(name.encode()).hexdigest()[:10], 'name': name,
+              'unit': UNIT.get(unit, 'حبة'), 'price': price, 'cat': cat, 'stock': qty > 0}
+        if good: np['bc'] = code
+        if cat == 'misc' and sub: np['sub'] = sub
+        ps.append(np); by_id[np['id']] = np; names.add(key(name)); rep['added'] += 1
+        if good: by_bc[code] = np
+    if not dry: json.dump(d, open(data_path, 'w'), ensure_ascii=False, separators=(',', ':'))
+    print(dict(rep))
+    for n, a, b in changed[:40]: print('  سعر:', n, a, '→', b)
+    return rep
+
+if __name__ == '__main__':
+    main(sys.argv[1], sys.argv[2], '--dry' in sys.argv)
