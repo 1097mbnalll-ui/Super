@@ -1978,7 +1978,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function normAr(s){ return String(s || "").toLowerCase().replace(/[إأآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/ؤ/g, "و").replace(/ئ/g, "ي").replace(/[\u064B-\u0652\u0640]/g, ""); }
   var searchIx = null, searchIxOf = null;
   function searchProducts(text){
-    if (searchIxOf !== D.products) { searchIxOf = D.products; searchIx = D.products.map(function(p){ var c = catOf(p.cat); return normAr([p.name, p.name_en, p.bc, c && c.name, c && c.name_en].join(" ")); }); }
+    if (searchIxOf !== D.products) { searchIxOf = D.products; searchIx = D.products.map(function(p){ var c = catOf(p.cat); var pk = p.packs || []; return normAr([p.name, p.name_en, p.bc, c && c.name, c && c.name_en, pk.map(function(x){ return x.u; }).join(" "), pk.length ? "كرتون كرتونه شده شد باكت علبه" : "", /(^|\s)(ماء|مياه)(\s|$)/.test(p.name) ? "موية مويه مويا مياه ماء" : ""].join(" ")); }); }
     var words = normAr(text).split(/\s+/).filter(Boolean); if (!words.length) return [];
     var out = [];
     for (var i = 0; i < D.products.length; i++) { var h = searchIx[i], ok = true; for (var w = 0; w < words.length; w++) if (h.indexOf(words[w]) < 0) { ok = false; break; } if (ok && !D.products[i].print) out.push(D.products[i]); }
