@@ -1282,6 +1282,10 @@ body[data-screen="driver"]{background:#F3F4F6}
 .kq-badge.deal{background:var(--teal);color:#fff}
 .kq-badge.out{background:var(--ink)}
 .kq-badge.multi{background:var(--teal);color:#fff}
+.kq-cnt{margin-inline-start:auto;background:#EE7417;color:#fff;border-radius:8px;padding:1px 7px;font-size:11px;font-weight:800;white-space:nowrap}.kq-cnt b{font-size:14px}
+.kq-save{display:inline-block;margin:4px 0 2px;background:#FFF1E4;color:#C4560A;border-radius:999px;padding:3px 9px;font-size:12px;font-weight:800;white-space:nowrap}
+.ofbox{margin:12px 0 4px;border:1.5px solid var(--orange,#EE7417);background:#FFF6EE;border-radius:14px;padding:12px;color:#C4560A}.ofbox b{display:block;font-size:15.5px}.ofbox p{margin:3px 0 8px;font-size:13px;font-weight:600}.ofbox .pb{height:8px;border-radius:4px;background:#F6D3B4;overflow:hidden}.ofbox .pb i{display:block;height:100%;background:var(--orange,#EE7417)}.ofbox .st{margin-top:7px;color:var(--ink,#111);font-size:13.5px;font-weight:700}
+.ltag.ok{background:#DDF1EA;color:#086650}.ltag.miss{background:#FFF1E4;color:#C4560A}
 .kq-multi{display:grid;gap:1px;width:100%;margin:4px 0 2px;padding:5px 8px;border:1.5px solid var(--teal);border-radius:10px;background:var(--mint);color:var(--teal-deep);font:inherit;text-align:start;cursor:pointer}.kq-multi b{font-size:13.5px;font-weight:800;white-space:normal;line-height:1.25}.kq-multi small{font-size:11px;font-weight:700;opacity:.85}
 .pd-pack.offer{border-color:var(--teal);border-style:dashed}.pd-pack.offer b{color:var(--teal-deep);font-size:14px}.pd-pack small{font-size:11px;color:var(--teal-deep);font-weight:700}
 .kq-card .ctl{left:8px;right:auto;bottom:8px}
@@ -1604,7 +1608,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     normalize();
     var n = 0, base = 0, dn = 0, dsum = 0;
     Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (!L || !avail(L.p)) { if (dataReady) delete cart[k]; return; }
-      if (L.kind === "d") { dn += cart[k]; dsum += cart[k] * L.price; } else { n += cart[k]; base += cart[k] * L.price; } });
+      if (L.kind === "d") { dn += cart[k]; dsum += cart[k] * L.price; } else { var ao = autoOffer(k); n += cart[k]; base += ao ? ao.total : cart[k] * L.price; } });
     var min = dealOn() ? Number(DEAL.min || 0) : 0, unlocked = dealOn() && base >= min;
     var s = base + (unlocked ? dsum : 0), cnt = n + (unlocked ? dn : 0);
     var fee = cnt ? ((S.freeOver && s >= S.freeOver) ? 0 : Number(S.fee || 0)) : 0;
@@ -1628,6 +1632,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
       if (n > 1 && pr > 0 && pr < n * Number(p.price || 0) - 0.001) return { i: i, n: n, price: pr }; }
     return null;
   }
+  // عرض الكمية ينطبق لحاله: كل مجموعة كاملة بسعر العرض والباقي بسعر الحبة (السطر العادي بالسلة بالحبات)
+  function autoOffer(k){
+    var L = lineOf(k); if (!L || L.kind !== "r" || String(k).indexOf("~") >= 0 || String(k).indexOf(":") >= 0) return null;
+    var mo = multiOf(L.p); if (!mo) return null;
+    var q = Number(cart[k]) || 0, b = Math.floor(q / mo.n), loose = q - b * mo.n;
+    return { mo: mo, b: b, loose: loose, total: Math.round((b * mo.price + loose * L.price) * 100) / 100, regular: Math.round(q * L.price * 100) / 100, miss: q && q % mo.n ? mo.n - q % mo.n : 0 };
+  }
   function pcs(n){ return n === 2 ? "حبتين" : n <= 10 ? num(n) + " حبات" : num(n) + " حبة"; }
   function multiTxt(m){ return tr(pcs(m.n) + " بـ " + num(m.price) + " ر.س", m.n + " pcs for " + num(m.price) + " SAR"); }
   function multiEach(m){ return tr("الحبة بـ " + num(Math.round(m.price / m.n * 100) / 100), num(Math.round(m.price / m.n * 100) / 100) + " each"); }
@@ -1640,15 +1651,15 @@ html.sp-on,html.sp-on body{overflow:hidden}
       isDeal ? '<span class="kq-badge deal">' + ic("lock") + tr("بـ ", "") + num(price) + tr(" ر.س", " SAR") + '</span>' :
       isDaily ? '<span class="kq-badge">' + ic("flame") + tr("عرض اليوم", "Deal of the day") + '</span>' :
       onSale(p) ? '<span class="kq-badge">' + tr("خصم ", "") + num(Math.max(1, Math.round((p.old - p.price) / p.old * 100))) + tr("٪", "% off") + '</span>' :
-      mo ? '<span class="kq-badge multi">' + tr("عرض كمية", "Bulk offer") + '</span>' :
+      mo ? '' :
       (p.badge ? '<span class="kq-badge fresh">' + esc(bd(p)) + '</span>' : '');
     var lf = left(p), low = avail(p) && lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '';
     // المنتج بدون صورة: بطاقة نصية بلون القسم بدل أيقونة الكيس، عشان الصفحة ما تبين فاضية
     var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
     return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + badge + low + control(p, kind || "") + '</div>' +
-      '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + (mo ? tr(" للحبة", " each") : '') + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '') + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
-      (mo ? '<button type="button" class="kq-multi" data-open="' + p.id + '" data-openpack="' + mo.i + '"><b>' + esc(multiTxt(mo)) + '</b><small>' + esc(multiEach(mo)) + tr(" · بدل ", " · was ") + '<s>' + num(Math.round(mo.n * Number(p.price) * 100) / 100) + '</s></small></button>' : '') +
-      '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + (function(){ var L = Array.isArray(p.packs) ? p.packs.filter(function(x){ return !/^عرض/.test(String(x.u || "")); }) : []; return L.length ? ' · ' + L.map(function(x){ return esc(String(x.u || "").split(" ")[0]); }).join(" · ") : ''; })() + '</span></article>';
+      (mo ? '<div class="kq-price"><span class="kq-now sale">' + num(mo.price) + ' <small>' + tr("ر.س", "SAR") + '</small></span><s>' + num(Math.round(mo.n * p.price * 100) / 100) + '</s><span class="kq-cnt">' + tr("العدد", "Qty") + ' <b>' + num(mo.n) + '</b></span>' : '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '')) + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
+      (mo ? '<span class="kq-save">🔥 ' + tr("وفّر ", "Save ") + num(Math.round((mo.n * p.price - mo.price) * 100) / 100) + tr(" ر.س بالعرض", " SAR with the offer") + '</span>' : '') +
+      '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + (function(){ var L = Array.isArray(p.packs) ? p.packs.filter(function(x, i){ return !/^عرض/.test(String(x.u || "")) && !(mo && mo.i === i); }) : []; return L.length ? ' · ' + L.map(function(x){ return esc(String(x.u || "").split(" ")[0]); }).join(" · ") : ''; })() + '</span></article>';
   }
 
   /* ---------- screens ---------- */
@@ -1962,8 +1973,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function productHTML(){
     var p = byId(openProd); if (!p) return catsHTML();
     var packBase = p, packs = Array.isArray(p.packs) && p.packs.length ? p.packs : null;
+    var moB = multiOf(packBase); if (moB && pdPack === moB.i) pdPack = -1;
     if (packs && pdPack >= 0 && byId(p.id + "~" + pdPack)) p = byId(p.id + "~" + pdPack); else pdPack = -1;
-    var packHTML = packs ? '<div class="pd-packs" role="group" aria-label="' + tr("طريقة الشراء", "Buy as") + '">' + [-1].concat(packs.map(function(x, i){ return i; })).map(function(i){ var q = i < 0 ? packBase : byId(packBase.id + "~" + i); if (!q) return ""; var mo2 = i >= 0 ? multiOf(packBase) : null; var isO = mo2 && mo2.i === i; return '<button type="button" class="pd-pack' + (isO ? ' offer' : '') + '" data-pdpack="' + i + '" aria-pressed="' + (pdPack === i) + '"><b>' + (isO ? esc(tr("عرض ", "Offer: ") + (tr(pcs(mo2.n), mo2.n + " pcs"))) : esc(un(q))) + '</b><span>' + num(q.price) + ' ' + tr("ر.س", "SAR") + '</span>' + (isO ? '<small>' + esc(multiEach(mo2)) + tr(" · بدل ", " · was ") + '<s>' + num(Math.round(mo2.n * Number(packBase.price) * 100) / 100) + '</s></small>' : '') + '</button>'; }).join("") + '</div>' : '';
+    if (packs && moB && packs.length === 1) packs = null;
+    var packHTML = packs ? '<div class="pd-packs" role="group" aria-label="' + tr("طريقة الشراء", "Buy as") + '">' + [-1].concat(packs.map(function(x, i){ return i; }).filter(function(i){ return !moB || i !== moB.i; })).map(function(i){ var q = i < 0 ? packBase : byId(packBase.id + "~" + i); if (!q) return ""; var mo2 = i >= 0 ? multiOf(packBase) : null; var isO = mo2 && mo2.i === i; return '<button type="button" class="pd-pack' + (isO ? ' offer' : '') + '" data-pdpack="' + i + '" aria-pressed="' + (pdPack === i) + '"><b>' + (isO ? esc(tr("عرض ", "Offer: ") + (tr(pcs(mo2.n), mo2.n + " pcs"))) : esc(un(q))) + '</b><span>' + num(q.price) + ' ' + tr("ر.س", "SAR") + '</span>' + (isO ? '<small>' + esc(multiEach(mo2)) + tr(" · بدل ", " · was ") + '<s>' + num(Math.round(mo2.n * Number(packBase.price) * 100) / 100) + '</s></small>' : '') + '</button>'; }).join("") + '</div>' : '';
     var dd = daily(), isDaily = dd && dd.p.id === p.id, price = isDaily ? dd.price : p.price, was = isDaily ? p.price : (onSale(p) ? p.old : 0);
     var c = catOf(p.cat);
     var pairs = idsToList(p.sugg).filter(function(x){ return x.id !== p.id; }).slice(0, 12);
@@ -1977,7 +1990,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="sheet-b"><div class="wrap">' +
       '<div class="ttl"><div style="display:grid;gap:4px"><span class="chipline">' + esc(bd(p) || (c ? nm(c) : "")) + (isDaily ? tr(' · عرض اليوم', ' · Deal of the day') : '') + '</span><h1>' + esc(nm(p)) + '</h1><span class="unit">' + esc(un(p)) + '</span></div>' +
       '<div style="display:grid;justify-items:end"><span class="price' + (was ? ' sale' : '') + '">' + num(price) + tr('<small> ر.س</small></span>', '<small> SAR</small></span>') + (was ? '<s class="was" style="font-size:13px">' + rial(was) + '</s>' : '') + '</div></div>' +
-      packHTML + (was ? '<div class="savebar">' + ic("flame") + tr('عليه عرض: كان ', 'On offer: was ') + rial(was) + tr(' وصار ', ', now ') + rial(price) + tr(' · وفّر ', ' · save ') + rial(was - price) + ' (' + num(Math.max(1, Math.round((was - price) / was * 100))) + '٪)' + (isDaily ? tr(' · العرض ينتهي الساعة ١٢ بالليل', ' · deal ends at midnight') + (lim ? tr(' · الحد ', ' · limit ') + lim + tr(' لكل طلب', ' per order') : '') : tr(' على كل ', ' per ') + esc(un(p))) + '</div>' : '') +
+      packHTML + (function(){ if (!moB || !avail(packBase)) return ''; var inC = Number(cart[packBase.id]) || 0, rest = inC % moB.n, appl = Math.floor(inC / moB.n), pct = rest === 0 && appl ? 100 : Math.round(rest / moB.n * 100);
+      return '<div class="ofbox"><b>🔥 ' + tr('عرض: أي ' + pcs(moB.n) + ' بـ ' + num(moB.price) + ' ر.س', 'Offer: any ' + moB.n + ' for ' + num(moB.price) + ' SAR') + '</b><p>' + tr('الحبة ' + num(Math.round(moB.price / moB.n * 100) / 100) + ' بدل ' + num(packBase.price) + ' · وفّر ' + num(Math.round((moB.n * packBase.price - moB.price) * 100) / 100) + ' ر.س على كل ' + num(moB.n), 'Each ' + num(Math.round(moB.price / moB.n * 100) / 100) + ' instead of ' + num(packBase.price)) + '</p><div class="pb"><i style="width:' + pct + '%"></i></div><div class="st">' +
+        (!inC ? tr('أضف ' + pcs(moB.n) + ' وينطبق العرض لحاله', 'Add ' + moB.n + ' and the offer applies') : appl ? tr('✓ العرض انطبق · عندك ' + num(inC) + ' بالسلة', '✓ Offer applied') : tr('عندك ' + num(inC) + ' بالسلة · زود ' + num(moB.n - rest) + ' وتحصل على العرض', 'Add ' + (moB.n - rest) + ' more for the offer')) + '</div></div>'; })() + (was ? '<div class="savebar">' + ic("flame") + tr('عليه عرض: كان ', 'On offer: was ') + rial(was) + tr(' وصار ', ', now ') + rial(price) + tr(' · وفّر ', ' · save ') + rial(was - price) + ' (' + num(Math.max(1, Math.round((was - price) / was * 100))) + '٪)' + (isDaily ? tr(' · العرض ينتهي الساعة ١٢ بالليل', ' · deal ends at midnight') + (lim ? tr(' · الحد ', ' · limit ') + lim + tr(' لكل طلب', ' per order') : '') : tr(' على كل ', ' per ') + esc(un(p))) + '</div>' : '') +
       (!avail(p) ? tr('<div class="alert">هذا المنتج نفد حاليًا.</div>', '<div class="alert">This item is sold out right now.</div>') : '') +
       (avail(p) && ((lf != null && lf <= lowAt()) || Number(p.max) > 0) ? '<div class="pd-lims">' + (lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '') + (Number(p.max) > 0 ? '<span>' + tr("الحد الأقصى ", "Max ") + Number(p.max) + tr(" لكل طلب", " per order") + '</span>' : '') + '</div>' : '') +
       (pairs.length ? '<div class="pd-sugg"><b>' + (p.sugg && p.sugg.length ? tr("يحلى معه", "Goes well with") : tr("ممكن يعجبك", "You may also like")) + '</b><div class="rail">' + pairs.map(function(x){ return card(x); }).join("") + '</div></div>' : '') +
@@ -2031,8 +2046,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
         return '<div class="line bund"><span class="plate bimgs">' + al.ids.slice(0, 3).map(function(id){ var bp = byId(id); return bp ? imgTag(bp.img, "") : ''; }).join("") + '</span><span class="nm"><b>' + esc((LANG === "en" && bb.title_en) || bb.title || tr("باقة", "Bundle")) + '<span class="ltag day">' + tr("باقة", "Bundle") + '</span></b><span>' + al.ids.map(function(id){ var bp = byId(id); return bp ? esc(nm(bp)) : ''; }).join(" + ") + '</span><span class="price sale" style="font-size:14px">' + rial(al.price * bq2) + ' <s style="color:var(--muted);font-weight:400;font-size:12px">' + rial(al.sum * bq2) + '</s></span></span>' +
           '<span class="stepper"><button type="button" data-bund="' + esc(L.ban) + '" data-bd="-1" aria-label="' + tr("نقص", "Decrease") + '">' + ic("minus") + '</button><b>' + bq2 + '</b><button type="button" data-bund="' + esc(L.ban) + '" data-bd="1" aria-label="' + tr("زيادة", "Increase") + '">' + ic("plus") + '</button></span></div>'; } var p = L.p, off = L.kind === "d" && !t.unlocked, full = L.limit && cart[k] >= L.limit;
       if (p.print) return printLineHTML(k, L, p, off);
-      var tag = L.kind === "d" ? tr('<span class="ltag deal">عرض ', '<span class="ltag deal">') + num(L.price) + '</span>' : L.kind === "t" ? tr('<span class="ltag day">عرض اليوم</span>', '<span class="ltag day">Deal of the day</span>') : '';
-      return '<div class="line' + (off ? ' off' : '') + '"><span class="plate" style="background:' + tint(p.cat) + '">' + imgTag(p.img, "") + '</span><span class="nm"><b>' + esc(nm(p)) + tag + '</b><span>' + esc(un(p)) + '</span><span class="price' + (L.kind !== "r" ? ' sale' : '') + '" style="font-size:14px">' + (off ? tr('مقفول', 'Locked') : rial(L.price * cart[k])) + '</span></span>' +
+      var aoL = autoOffer(k);
+      var tag = L.kind === "d" ? tr('<span class="ltag deal">عرض ', '<span class="ltag deal">') + num(L.price) + '</span>' : L.kind === "t" ? tr('<span class="ltag day">عرض اليوم</span>', '<span class="ltag day">Deal of the day</span>') :
+        aoL ? (aoL.miss && !aoL.b ? '<span class="ltag miss">' + tr('زود ' + num(aoL.miss) + ' وتحصل على عرض ' + num(aoL.mo.n) + ' بـ ' + num(aoL.mo.price), 'Add ' + aoL.miss + ' for ' + aoL.mo.n + ' at ' + num(aoL.mo.price)) + '</span>' : '<span class="ltag ok">' + tr('✓ عرض ' + num(aoL.mo.n) + ' بـ ' + num(aoL.mo.price) + ' انطبق', '✓ Offer applied') + '</span>') : '';
+      return '<div class="line' + (off ? ' off' : '') + '"><span class="plate" style="background:' + tint(p.cat) + '">' + imgTag(p.img, "") + '</span><span class="nm"><b>' + esc(nm(p)) + tag + '</b><span>' + esc(un(p)) + '</span><span class="price' + (L.kind !== "r" ? ' sale' : '') + '" style="font-size:14px">' + (off ? tr('مقفول', 'Locked') : aoL && aoL.b ? rial(aoL.total) + ' <s style="color:var(--muted);font-weight:400;font-size:12px">' + rial(aoL.regular) + '</s>' : rial(L.price * cart[k])) + '</span></span>' +
         '<span class="stepper"><button type="button" data-act="dec" data-id="' + k + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button><b>' + cart[k] + '</b><button type="button" data-act="inc" data-id="' + k + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full || off ? ' disabled' : '') + '>' + ic("plus") + '</button></span></div>'; }).join("") + '</div>';
     h += tr('<div class="box totals"><div><span>المنتجات</span><span>', '<div class="box totals"><div><span>Items</span><span>') + rial(t.s) + tr('</span></div><div><span>التوصيل</span><span>', '</span></div><div><span>Delivery</span><span>') + (t.fee ? rial(t.fee) : tr("مجاني", "Free")) + tr('</span></div><div class="grand"><b>الإجمالي</b><span class="price">', '</span></div><div class="grand"><b>Total</b><span class="price">') + num(t.all) + tr(' <small>ر.س</small></span></div></div></div></div>', ' <small>SAR</small></span></div></div></div></div>');
     var minO = minOrderNow(), short = minO && t.s < minO;
@@ -2256,13 +2273,15 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (zoneOut(form.lat, form.lng)) { sendErr(zoneMsg()); return; }
     var far0 = tooFar(form.lat, form.lng); if (far0) { sendErr(farMsg(far0)); return; }
     if (!S.api) { sendErr(tr("استقبال الطلبات الأوتوماتيكي لسا ما تفعّل.", "Automatic order receiving is not set up yet."), true); return; }
-    var items = {}; Object.keys(cart).forEach(function(k){ items[k] = cart[k]; });
+    var items = {}, sentCart = JSON.stringify(cart); Object.keys(cart).forEach(function(k){ var ao = autoOffer(k);
+      if (ao && ao.b) { var pk = lineOf(k).p.id + "~" + ao.mo.i; items[pk] = (items[pk] || 0) + ao.b; if (ao.loose) items[k] = (items[k] || 0) + ao.loose; }
+      else items[k] = (items[k] || 0) + cart[k]; });
     var pnote = printNote(), fullNote = pnote ? pnote + (form.note ? "\n" + form.note : "") : form.note;
     var payload={items:items,phone:phone,name:form.name,details:form.details,note:fullNote,pay:form.pay,sub:form.sub||'call',lat:form.lat,lng:form.lng,walletAmount:walletCustomer?walletUseAmount:0};
     var signature=JSON.stringify(payload);
     if(checkoutAttempt&&checkoutAttempt.signature!==signature){
       if(!confirm('عندك طلب سابق ما تأكدت نتيجته. بنعيد تأكيد نفس الطلب السابق أولًا قبل إرسال أي طلب جديد. تبي تكمل؟'))return;
-      payload=JSON.parse(JSON.stringify(checkoutAttempt.payload));items=payload.items;phone=payload.phone;
+      payload=JSON.parse(JSON.stringify(checkoutAttempt.payload));items=payload.items;phone=payload.phone;sentCart=null;
     }else if(!checkoutAttempt){var id=opId();payload.requestId=id;payload.walletRequestId=id;saveCheckoutAttempt({signature:signature,payload:payload});}
     else payload=JSON.parse(JSON.stringify(checkoutAttempt.payload));
     payload.walletToken=walletCustomer&&walletCustomer.phone===payload.phone?walletCustomer.token:'';
@@ -2276,7 +2295,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
           if (j.track && PUSH_PREF && pushOn()) orderPush(null);
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
-          if(JSON.stringify(cart)===JSON.stringify(items))cart={};saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; render(); loadStock(); window.scrollTo(0, 0); return;
+          if(sentCart&&JSON.stringify(cart)===sentCart)cart={};saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; render(); loadStock(); window.scrollTo(0, 0); return;
         }
         var c = j.code;
         if((c==='network'||c==='timeout'||j.status>=500)&&checkoutAttempt){checkoutAttempt.uncertain=true;saveCheckoutAttempt(checkoutAttempt);}
@@ -3032,8 +3051,47 @@ html.sp-on,html.sp-on body{overflow:hidden}
         return '<button type="button" class="theme' + (id === cur ? ' on' : '') + '" data-theme-pick="' + id + '" aria-pressed="' + (id === cur) + '"><span class="sw" style="background:' + th.v["--sky"] + '"><i style="background:' + th.v["--teal"] + '"></i><i style="background:' + th.v["--orange"] + '"></i><i style="background:' + th.v["--ink"] + '"></i></span><b>' + th.ar + '</b>' + (id === cur ? '<em>المختار</em>' : '') + '</button>'; }).join("") + '</div>' +
       '<h2 style="margin-top:8px">لغة المتجر الافتراضية</h2><p class="hint">اللغة اللي يفتح فيها المتجر أول مرة. الزبون يقدر يغيّرها من زر EN / ع فوق.</p>' +
       '<div class="pays" style="max-width:420px"><button type="button" data-lang-def="ar" aria-pressed="' + (lang === "ar") + '">العربية</button><button type="button" data-lang-def="en" aria-pressed="' + (lang === "en") + '">English</button></div>' +
-      '<p class="hint">الأسماء الإنجليزية للمنتجات والأقسام تكتبها في «المنتجات» و«الأقسام». المنتج اللي ما له اسم إنجليزي يطلع بالعربي.</p>';
+      '<p class="hint">الأسماء الإنجليزية للمنتجات والأقسام تكتبها في «المنتجات» و«الأقسام». المنتج اللي ما له اسم إنجليزي يطلع بالعربي.</p>' + appLookHTML();
+    box.oninput = box.onchange = appLookInput;
+    box.onclick = function(e){ var t = e.target.closest("[data-appset]"); if (!t) return; var A = appLook(); var k = t.dataset.appset, v = t.dataset.v;
+      if (v === "") delete A[k]; else A[k] = /^\d+$/.test(v) ? Number(v) : v; markDirty(); renderLook(); };
   }
+  // «شكل تطبيق الآيفون»: يتحفظ في store.app، والتطبيق يقراه أول ما ينفتح (بدون تحديث للتطبيق)
+  var APP_TABS = [["home","الرئيسية",["house.fill","house","storefront.fill","basket.fill"]],["categories","الأقسام",["square.grid.2x2.fill","list.bullet","circle.grid.3x3.fill","rectangle.grid.2x2.fill"]],
+    ["offers","العروض",["tag.fill","percent","flame.fill","gift.fill","star.fill"]],["cart","السلة",["bag.fill","cart.fill","basket.fill","handbag.fill"]],["account","حسابي",["person.fill","person.crop.circle.fill","person.circle","house.circle.fill"]]];
+  var APP_TAB_ICONS = { "house.fill":"🏠", "house":"⌂", "storefront.fill":"🏪", "basket.fill":"🧺", "square.grid.2x2.fill":"▦", "list.bullet":"☰", "circle.grid.3x3.fill":"⠿", "rectangle.grid.2x2.fill":"▤",
+    "tag.fill":"🏷️", "percent":"٪", "flame.fill":"🔥", "gift.fill":"🎁", "star.fill":"⭐", "bag.fill":"👜", "cart.fill":"🛒", "handbag.fill":"👛", "person.fill":"👤", "person.crop.circle.fill":"🧑", "person.circle":"◯", "house.circle.fill":"🏡" };
+  function appLook(){ draft.store.app = draft.store.app || {}; return draft.store.app; }
+  function appLookHTML(){
+    var A = draft.store.app || {}, pct = function(k){ return Math.round((Number(A[k]) || 1) * 100); };
+    var slider = function(k, label, lo, hi){ return '<label class="fld" style="display:grid;gap:4px;margin:10px 0"><span><b>' + label + '</b> <em data-applbl="' + k + '">' + pct(k) + '٪</em></span><input type="range" min="' + lo + '" max="' + hi + '" step="5" value="' + pct(k) + '" data-appk="' + k + '"></label>'; };
+    var color = function(k, label, def){ return '<label class="fld" style="display:flex;align-items:center;gap:10px;margin:8px 0"><input type="color" value="' + esc(A[k] || def) + '" data-appk="' + k + '" style="width:48px;height:36px;border:0;background:none"><b>' + label + '</b>' + (A[k] ? '<button type="button" class="btn btn-ghost" data-appset="' + k + '" data-v="">رجّع الافتراضي</button>' : '<span class="hint" style="margin:0">الافتراضي</span>') + '</label>'; };
+    var seg = function(k, opts, cur){ return '<div class="pays" style="max-width:420px;margin:6px 0 12px">' + opts.map(function(o){ return '<button type="button" data-appset="' + k + '" data-v="' + o[0] + '" aria-pressed="' + (String(cur) === String(o[0])) + '">' + o[1] + '</button>'; }).join("") + '</div>'; };
+    var check = function(k, label){ return '<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" data-appk="' + k + '"' + (A[k] === false ? '' : ' checked') + '>' + label + '</label>'; };
+    var icons = A.catIcons || {}, tabs = A.tabIcons || {};
+    return '<h2 style="margin-top:18px">شكل تطبيق الآيفون</h2><p class="hint">تغيّر هنا وتحفظ («حفظ تغييرات المتجر»)، والتطبيق يتغير عند الزبائن أول ما يفتحونه، بدون تحديث للتطبيق.</p>' +
+      '<h3>أحجام الخط</h3>' + slider("textScale", "كل الكتابة", 80, 130) + slider("priceScale", "الأسعار", 80, 140) + slider("bannerScale", "خط البنرات", 75, 140) +
+      '<h3>الألوان</h3>' + color("brand", "اللون الأساسي (الأزرار والرأس)", "#0E8A6A") + color("accent", "لون العروض والخصومات", "#EE7417") +
+      '<h3>رأس الصفحة الرئيسية</h3>' + seg("header", [["dark","أخضر غامق"],["light","فاتح"]], A.header || "dark") +
+      '<h3>المنتجات في الصف</h3>' + seg("columns", [[3,"٣ منتجات"],[2,"منتجين (أكبر)"]], A.columns || 3) +
+      '<h3>الرئيسية</h3>' + check("showChips", "أزرار الأقسام تحت البنرات") + check("showFeatured", "«مختارات لك» (لو قفلتها تطلع العروض بدالها)") +
+      '<h3>أيقونة كل قسم</h3><p class="hint">اكتب إيموجي (مثل 🥛 أو 🍫). فاضي = الأيقونة الافتراضية.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">' +
+        draft.cats.map(function(c){ return '<label style="display:flex;gap:6px;align-items:center"><input data-appcat="' + esc(c.id) + '" value="' + esc(icons[c.id] || "") + '" maxlength="4" style="width:52px;text-align:center;font-size:20px">' + esc(c.name) + '</label>'; }).join("") + '</div>' +
+      '<h3>أيقونات الشريط تحت</h3>' + APP_TABS.map(function(t){ var cur = tabs[t[0]] || t[2][0];
+        return '<div style="margin:6px 0"><b>' + t[1] + '</b><div class="pays" style="max-width:520px;margin-top:4px">' + t[2].map(function(n){ return '<button type="button" data-apptab="' + t[0] + '" data-v="' + n + '" aria-pressed="' + (cur === n) + '" style="font-size:20px">' + (APP_TAB_ICONS[n] || n) + '</button>'; }).join("") + '</div></div>'; }).join("");
+  }
+  function appLookInput(e){
+    var t = e.target, A = appLook();
+    if (t.dataset.appk) {
+      var k = t.dataset.appk;
+      if (t.type === "range") { A[k] = Number(t.value) / 100; var l = document.querySelector('[data-applbl="' + k + '"]'); if (l) l.textContent = t.value + "٪"; }
+      else if (t.type === "color") A[k] = t.value;
+      else if (t.type === "checkbox") A[k] = t.checked;
+      markDirty(); if (e.type === "change" && t.type === "color") renderLook(); return;
+    }
+    if (t.dataset.appcat != null) { A.catIcons = A.catIcons || {}; var v = t.value.trim(); if (v) A.catIcons[t.dataset.appcat] = v; else delete A.catIcons[t.dataset.appcat]; markDirty(); }
+  }
+  document.addEventListener("click", function(e){ var t = e.target.closest("[data-apptab]"); if (!t || !draft) return; var A = appLook(); A.tabIcons = A.tabIcons || {}; A.tabIcons[t.dataset.apptab] = t.dataset.v; markDirty(); renderLook(); });
   var overCache = null;
   function renderOver(){
     var box = $("aOver"); if (!box || !draft || ordersOnly()) return;
