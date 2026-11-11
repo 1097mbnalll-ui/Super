@@ -221,7 +221,7 @@ private struct CartRowView: View {
                 if row.available {
                     if let o = row.offer {
                         Group {
-                            if row.bundles > 0 && row.missingForOffer == nil {
+                            if row.bundles > 0 {
                                 Text("✓ عرض \(o.count) بـ \(Money.plain(o.price)) انطبق")
                                     .padding(.horizontal, 7).padding(.vertical, 2).foregroundStyle(Theme.brandDeep).background(Theme.mint, in: Capsule())
                             } else if let miss = row.missingForOffer {

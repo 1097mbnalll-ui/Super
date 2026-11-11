@@ -248,7 +248,7 @@ private struct QuantityOfferBox: View {
             Group {
                 if inCart == 0 {
                     Text("أضف \(Product.pieces(offer.count)) وينطبق العرض لحاله")
-                } else if rest == 0 {
+                } else if applied > 0 {
                     Text("✓ العرض انطبق\(applied > 1 ? " \(applied) مرات" : "") · عندك \(inCart) بالسلة")
                 } else {
                     Text("عندك \(inCart) بالسلة · زود \(offer.count - rest) وتحصل على العرض")
