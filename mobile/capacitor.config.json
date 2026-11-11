@@ -13,7 +13,8 @@
   "ios": {
     "contentInset": "never",
     "scrollEnabled": true,
-    "limitsNavigationsToAppBoundDomains": false
+    "limitsNavigationsToAppBoundDomains": false,
+    "allowsLinkPreview": false
   },
   "plugins": {
     "SplashScreen": {

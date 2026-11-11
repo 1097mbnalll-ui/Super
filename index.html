@@ -1464,6 +1464,23 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var hasPic = function(k){ return isPath(k) || (isPhoto(k) && !!D.imgs[k]); };
   // داخل تطبيق الآيفون/الأندرويد (Capacitor): صفحة المتجر تنحط داخل التطبيق، وصور المنتجات والبيانات تنزل من الموقع (فتتحدث بدون تحديث من المتجر)
   var NATIVE = !!window.__NATIVE_STORE__, SITEB = String(window.__SITE__ || "");
+  // إحساس التطبيق الأصلي (داخل التطبيق بس): بدون تحديد نص أو ظل لمس، وانتقال ينزلق بين الصفحات مثل آيفون (View Transitions)
+  if (NATIVE) { document.documentElement.classList.add("native"); var nst = document.createElement("style"); nst.textContent =
+    "html.native{-webkit-tap-highlight-color:transparent}html.native body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}" +
+    "html.native input,html.native textarea,html.native select{-webkit-user-select:text;user-select:text}" +
+    "html.native .kq-nav{view-transition-name:tabbar}html.native .cartbar{view-transition-name:cartbar}" +
+    "::view-transition-old(root),::view-transition-new(root){animation-duration:.34s;animation-timing-function:cubic-bezier(.2,.85,.25,1);mix-blend-mode:normal}" +
+    "html[data-vt=tab]::view-transition-old(root),html[data-vt=tab]::view-transition-new(root){animation-duration:.16s}" +
+    "html[data-vt=fwd][dir=rtl]::view-transition-new(root){animation-name:vtInL}html[data-vt=fwd][dir=rtl]::view-transition-old(root){animation-name:vtOutR}" +
+    "html[data-vt=back][dir=rtl]::view-transition-new(root){animation-name:vtInR}html[data-vt=back][dir=rtl]::view-transition-old(root){animation-name:vtOutL;z-index:2}" +
+    "html[data-vt=fwd][dir=ltr]::view-transition-new(root){animation-name:vtInR2}html[data-vt=fwd][dir=ltr]::view-transition-old(root){animation-name:vtOutL2}" +
+    "html[data-vt=back][dir=ltr]::view-transition-new(root){animation-name:vtInL2}html[data-vt=back][dir=ltr]::view-transition-old(root){animation-name:vtOutR2;z-index:2}" +
+    "@keyframes vtInL{from{transform:translateX(-100%)}}@keyframes vtOutR{to{transform:translateX(28%);filter:brightness(.92)}}" +
+    "@keyframes vtInR{from{transform:translateX(28%);filter:brightness(.92)}}@keyframes vtOutL{to{transform:translateX(-100%)}}" +
+    "@keyframes vtInR2{from{transform:translateX(100%)}}@keyframes vtOutL2{to{transform:translateX(-28%);filter:brightness(.92)}}" +
+    "@keyframes vtInL2{from{transform:translateX(-28%);filter:brightness(.92)}}@keyframes vtOutR2{to{transform:translateX(100%)}}" +
+    "@media (prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation:none}}";
+    document.head.appendChild(nst); }
   var assetUrl = function(k){ return NATIVE && /^p\//.test(k) ? SITEB + k : k; };
   var picSrc = function(k){ return isPath(k) ? assetUrl(k) : D.imgs[k]; };
   var imgTag = function(k, alt){ if (isPath(k)) return '<img src="' + esc(assetUrl(k)) + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy" decoding="async">'; return isPhoto(k) && D.imgs[k] ? '<img src="' + D.imgs[k] + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy">' : '<span class="noimg" role="img" aria-label="' + esc(alt||"") + '"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>'; };
@@ -2160,12 +2177,21 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var pad = function(x){ return (x < 10 ? "0" : "") + x; };
     return pad(Math.floor(s / 3600)) + ":" + pad(Math.floor(s % 3600 / 60)) + ":" + pad(s % 60);
   }
+  // ystack يحفظ مكان التمرير لكل صفحة في stack، فالرجوع (داخل التطبيق) يرجعك لنفس المكان مثل تطبيقات آيفون
+  var ystack = [];
   function show(s){
-    if (s === "back") { s = stack.pop() || "home"; if (s === screen) s = stack.pop() || "home"; }
-    else if (s !== screen) { if (s === "home") stack = []; else stack.push(screen); }
+    var from = screen, back = s === "back", y = 0;
+    if (back) { s = stack.pop() || "home"; y = ystack.pop() || 0; if (s === screen) { s = stack.pop() || "home"; y = ystack.pop() || 0; } }
+    else if (s !== screen) { if (s === "home") { stack = []; ystack = []; } else { stack.push(screen); ystack.push(window.scrollY); } }
+    if (stack.length !== ystack.length) ystack = stack.map(function(){ return 0; });
     if (s === "checkout" && !totals().n) s = "cart";
     if (s === "checkout") EV.co = 1;
-    screen = s; render(); window.scrollTo(0, 0);
+    var go3 = function(){ screen = s; render(); window.scrollTo(0, NATIVE && back ? y : 0); };
+    var tabs = { home: 1, cats: 1, cart: 1, more: 1 };
+    if (NATIVE && s !== from && document.startViewTransition) {
+      document.documentElement.setAttribute("data-vt", tabs[s] && tabs[from] ? "tab" : back ? "back" : "fwd");
+      try { document.startViewTransition(go3); } catch(e){ go3(); }
+    } else go3();
   }
   function refresh(){ var y = window.scrollY, rails = Array.prototype.map.call(document.querySelectorAll(".rail,.cats-row"), function(r){ return r.scrollLeft; }); render(); Array.prototype.forEach.call(document.querySelectorAll(".rail,.cats-row"), function(r, i){ if (rails[i] != null) r.scrollLeft = rails[i]; }); window.scrollTo(0, y); }
 
@@ -4968,7 +4994,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
       if (document.body.getAttribute("data-screen") !== "home") { var hm = document.querySelector('[data-nav="home"]'); if (hm) { hm.click(); return; } }
       if (AppP.exitApp) AppP.exitApp();
     });
-    if (HapP && HapP.impact) document.addEventListener("click", function(e){ if (e.target.closest && e.target.closest("[data-addprod]")) { try { HapP.impact({ style: "LIGHT" }); } catch(x){} } }, true);
+    if (HapP && HapP.impact) document.addEventListener("click", function(e){ if (e.target.closest && e.target.closest('[data-addprod],[data-act="inc"],[data-act="dec"]')) { try { HapP.impact({ style: "LIGHT" }); } catch(x){} } }, true);
+    // سحب من طرف الشاشة للرجوع (مثل آيفون): من اليمين بالعربي، ومن اليسار بالإنجليزي
+    var esx = null, esy = 0;
+    document.addEventListener("touchstart", function(e){ var t = e.touches[0], rtl = document.documentElement.dir !== "ltr";
+      esx = mode === "store" && screen !== "home" && e.touches.length === 1 && (rtl ? t.clientX > window.innerWidth - 26 : t.clientX < 26) ? t.clientX : null; esy = t.clientY; }, { passive: true });
+    document.addEventListener("touchend", function(e){ if (esx == null) return; var t = e.changedTouches[0], dx = t.clientX - esx, rtl = document.documentElement.dir !== "ltr"; esx = null;
+      if ((rtl ? -dx : dx) > 60 && Math.abs(t.clientY - esy) < 60) { var bk = document.querySelector('[data-nav="back"]'); if (bk) bk.click(); else if (stack.length) show("back"); } }, { passive: true });
   }
   // داخل تطبيق المندوب: التطبيق للمندوب بس، ما يقدر يرجع للمتجر
   if (APP) { appLock = true; appUpdateCheck(); document.addEventListener("visibilitychange", function(){ if (!document.hidden) appUpdateCheck(); });

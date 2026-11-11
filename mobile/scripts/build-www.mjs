@@ -12,6 +12,8 @@ if (!html.includes('<head>')) throw new Error('index.html ما فيه <head>');
 const FCM = fs.existsSync(path.join(here, '..', 'android', 'app', 'google-services.json'));
 html = html.replace('<head>', '<head><script>window.__NATIVE_STORE__=true;window.__SITE__=' + JSON.stringify(SITE) + ';window.__FCM__=' + FCM + ';</script>');
 html = html.replace(/<link rel="manifest"[^>]*>/g, '');
+// بدون تكبير بالأصابع ولا تكبير تلقائي عند الكتابة (يحس كأنه موقع)
+html = html.replace(/<meta name=viewport content="[^"]*">/g, '<meta name=viewport content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">');
 fs.writeFileSync(path.join(out, 'index.html'), html);
 for (const f of ['privacy.html', 'favicon-64.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png']) fs.copyFileSync(path.join(root, f), path.join(out, f));
 fs.cpSync(path.join(root, 'cat'), path.join(out, 'cat'), { recursive: true });
