@@ -128,20 +128,17 @@ struct AddressView: View {
                 .font(.system(size: 13.5, weight: .semibold))
                 .foregroundStyle(inside ? Theme.brandDeep : Theme.copperInk)
 
-            field("الجوال", text: $phone, prompt: "05XXXXXXXX", error: phoneError)
+            field("الجوال", text: $phone, prompt: "05XXXXXXXX", field: .phone, error: phoneError)
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
-                .focused($focus, equals: .phone)
                 .onChange(of: phone) { _, _ in phoneError = nil }
-            field("البيت", text: $details, prompt: "رقم البيت، لون الباب، علامة قريبة")
+            field("البيت", text: $details, prompt: "رقم البيت، لون الباب، علامة قريبة", field: .details)
                 .textContentType(.fullStreetAddress)
                 .submitLabel(.next)
-                .focused($focus, equals: .details)
                 .onSubmit { focus = .name }
-            field("الاسم", text: $name, prompt: "اختياري")
+            field("الاسم", text: $name, prompt: "اختياري", field: .name)
                 .textContentType(.name)
                 .submitLabel(.done)
-                .focused($focus, equals: .name)
 
             Button(action: save) {
                 Text(confirmTitle).frame(maxWidth: .infinity)
@@ -165,7 +162,7 @@ struct AddressView: View {
         }
     }
 
-    private func field(_ title: String, text: Binding<String>, prompt: String, error: String? = nil) -> some View {
+    private func field(_ title: String, text: Binding<String>, prompt: String, field: Field, error: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 12) {
                 Text(title)
@@ -173,6 +170,7 @@ struct AddressView: View {
                     .foregroundStyle(Theme.muted)
                     .frame(width: 52, alignment: .leading)
                 TextField(prompt, text: text)
+                    .focused($focus, equals: field)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(Theme.ink)
             }
