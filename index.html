@@ -1884,7 +1884,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function savePrintJobs(){ try { localStorage.setItem("ohod-print-jobs", JSON.stringify(printJobs)); } catch(e){} }
   function printProd(t){ return byId(PRID[t]); }
   function printSoon(){ return !!(S.print && S.print.soon); }
-  function soonTag(c){ return c && c.id === "print" && printSoon() ? '<span class="soon">' + tr("قريباً", "Soon") + '</span>' : ''; }
+  // قسم «قريباً»: يظهر للزبون بشارة، وصفحته تعتذر بدل ما تعرض قائمة فاضية (الإدارة تشيل العلامة لما تنضاف المنتجات)
+  function catSoon(c){ return !!c && (c.id === "print" ? printSoon() : !!c.soon); }
+  function soonTag(c){ return catSoon(c) ? '<span class="soon">' + tr("قريباً", "Soon") + '</span>' : ''; }
+  function catSoonBox(c){ return '<div class="wrap print-box" style="margin-top:16px"><div class="pr-soon"><b>' + tr("قريباً", "Coming soon") + '</b><p>' + tr("ستتم إضافة قسم «" + nm(c) + "» قريباً، نعتذر منكم.", "The “" + nm(c) + "” section is coming soon. We apologize for the wait.") + '</p><button type="button" class="btn btn-brand" data-nav="cats" style="justify-self:center">' + tr("تصفّح بقية الأقسام", "Browse other sections") + '</button></div></div>'; }
   function printOK(){ var a = printProd("bw"), b = printProd("color"); return !!(a && b && a.print && b.print); }
   function printQty(){ var pg = Math.floor(Number(asciiDigits(PR.pages))) || 0, cp = Math.max(1, Math.floor(Number(PR.copies)) || 1); return { pages: pg, copies: cp, qty: pg * cp }; }
   function printSumHTML(){ var q = printQty(), p = printProd(PR.type); if (!p || !q.qty) return tr("اكتب عدد صفحات الملف وبيطلع لك السعر", "Enter the number of pages to see the price");
@@ -1942,8 +1945,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
         (other ? chipB("_other", tr("أخرى", "Other"), other) : "") + '</div></div></div>';
     }
     return '<div class="aisle-head" style="background:' + tint(c.id) + '">' + imgTag(catPhoto(c), "") + tr('<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + tr('</button><button class="sq" type="button" data-nav="search" aria-label="بحث" style="background:rgba(255,255,255,.75)">', '</button><button class="sq" type="button" data-nav="search" aria-label="Search" style="background:rgba(255,255,255,.75)">') + ic("search") + '</button></div>' +
-      '<h1>' + esc(nm(c)) + '</h1><p>' + (isPrint ? tr("اطبع أوراقك وتوصلك", "Print your papers, delivered") : items.length + tr(' منتج · التوصيل ', ' products · delivery ') + esc(sv("eta") || "")) + '</p></div></div>' +
-      (isPrint ? printHTML() : subBar + '<div class="wrap" style="margin-top:' + (subBar ? 4 : 16) + 'px"><div class="grid">' + pagedCards(shown, "cat:" + c.id + (openSub ? "|" + openSub : "")).join("") + '</div></div>');
+      '<h1>' + esc(nm(c)) + '</h1><p>' + (isPrint ? tr("اطبع أوراقك وتوصلك", "Print your papers, delivered") : catSoon(c) && c.id !== "print" ? tr("قريباً", "Coming soon") : items.length + tr(' منتج · التوصيل ', ' products · delivery ') + esc(sv("eta") || "")) + '</p></div></div>' +
+      (isPrint ? printHTML() : catSoon(c) && !items.some(avail) ? catSoonBox(c) : subBar + '<div class="wrap" style="margin-top:' + (subBar ? 4 : 16) + 'px"><div class="grid">' + pagedCards(shown, "cat:" + c.id + (openSub ? "|" + openSub : "")).join("") + '</div></div>');
   }
   function productHTML(){
     var p = byId(openProd); if (!p) return catsHTML();
@@ -3132,7 +3135,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     $("aCats").innerHTML = draft.cats.map(function(c){
       var n = draft.products.filter(function(p){ return p.cat === c.id; }).length;
       return '<div class="catrow"><button class="imgbtn" type="button" data-pick="cat:' + c.id + '" aria-label="صورة القسم">' + imgTag(c.img, "") + '</button>' +
-        '<div class="cat-names"><label>اسم القسم (' + num(n) + ' منتج)<input data-cat-name="' + c.id + '" value="' + esc(c.name) + '"></label><label>بالإنجليزي<input data-cat-name-en="' + c.id + '" value="' + esc(c.name_en || "") + '" dir="ltr"></label><label>مكانه في المحل<input data-cat-loc="' + c.id + '" value="' + esc(c.loc || "") + '" placeholder="مثال: المخبز · جنب الكاشير"></label></div>' +
+        '<div class="cat-names"><label>اسم القسم (' + num(n) + ' منتج)<input data-cat-name="' + c.id + '" value="' + esc(c.name) + '"></label><label>بالإنجليزي<input data-cat-name-en="' + c.id + '" value="' + esc(c.name_en || "") + '" dir="ltr"></label><label>مكانه في المحل<input data-cat-loc="' + c.id + '" value="' + esc(c.loc || "") + '" placeholder="مثال: المخبز · جنب الكاشير"></label>' + (c.id === "print" ? '' : '<label class="chk"><input type="checkbox" data-cat-soon="' + c.id + '"' + (c.soon ? ' checked' : '') + '> «قريباً» (يظهر للزبون «ستتم إضافته قريباً» لين تنضاف المنتجات)</label>') + '</div>' +
         mvBtns('cat', c.id) + '<button class="del" type="button" data-del-cat="' + c.id + '"' + (n ? ' disabled title="انقل منتجاته أو احذفها أول"' : '') + '>حذف</button></div>';
     }).join("");
   }
@@ -3408,6 +3411,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (mode !== "admin" || !draft) return;
     var t = e.target;
     if (t.dataset.catName) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catName) c.name = t.value; }); markDirty(); return; }
+    if (t.dataset.catSoon) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catSoon) { if (t.checked) c.soon = true; else delete c.soon; } }); markDirty(); return; }
     if (t.dataset.catLoc) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catLoc) { if (t.value.trim()) c.loc = t.value; else delete c.loc; } }); markDirty(); return; }
     if (t.dataset.catNameEn) { draft.cats.forEach(function(c){ if (c.id === t.dataset.catNameEn) { if (t.value.trim()) c.name_en = t.value; else delete c.name_en; } }); markDirty(); return; }
     var row = t.closest("[data-row]"); if (!row || !(t.dataset.f || t.dataset.pf)) return;
