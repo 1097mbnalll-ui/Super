@@ -18,5 +18,5 @@ for i in range(0, len(items), 2500):
     part = dict(items[i:i + 2500])
     q("INSERT INTO stock (id, qty) SELECT key, value FROM json_each(?) WHERE true ON CONFLICT(id) DO UPDATE SET qty = excluded.qty", [json.dumps(part)])
 q("INSERT INTO alog (at, who, act, ref, info) VALUES (?, ?, ?, ?, ?)",
-  [int(time.time() * 1000), 'Claude (ملف الكاشير)', 'bulk_import', 'stock', json.dumps({'n': len(items)}, ensure_ascii=False)])
+  [int(time.time() * 1000), 'Claude (ملف التحديث اليومي)', 'bulk_import', 'stock', json.dumps({'n': len(items)}, ensure_ascii=False)])
 print('stock rows written', len(items), q("SELECT COUNT(*) n, SUM(qty=0) zero FROM stock")['results'])
