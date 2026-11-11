@@ -379,6 +379,7 @@ export default {
           : await env.DB.prepare("SELECT COUNT(*) AS c FROM orders WHERE status = 'onway' AND (drv IS NULL OR drv = 'admin')").first();
         const last = (a && a.last) || 0;
         if (await prepMode(env)) {
+          later(lateCheck(env));
           // الجاهز اللي ما مسكه أحد، أو محوّل لي أنا. readyAt يكبر مع كل طلب يصير جاهز، والتطبيق ينبّه عليه
           const mineQ = me.role === "driver" ? "(o.drv IS NULL OR o.drv = ?)" : "(o.drv IS NULL OR o.drv = 'admin')";
           const q = "SELECT COUNT(*) c, COALESCE(MAX(p.updated), 0) at, COALESCE(MAX(o.no), 0) mx FROM orders o JOIN prep_orders p ON p.no = o.no WHERE p.stage = 'ready' AND o.status IN ('new','accepted') AND " + mineQ;
@@ -589,7 +590,7 @@ export default {
       return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
     }
 
-    if (['/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
+    if (['/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
       if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
       await ensureSchema(env);
       const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner', later);
@@ -779,8 +780,9 @@ export default {
     }
     if (path === "/push/sub") {
       if (!env.DB || !env.LOCKS) return reply(404, { ok: false, code: "no_push" });
-      if (!(await saveSub(env, body.sub, "admin", ""))) return reply(400, { ok: false, code: "bad_sub" });
-      later(pushTo(env, [body.sub], { title: "تم تفعيل إشعارات الإدارة", body: "بيوصلك تنبيه مع كل طلب جديد، ولما منتج يقرب يخلص أو يخلص.", url: "./", tag: "test" }));
+      const prepRole = principal && principal.role === "preparer";
+      if (!(await saveSub(env, body.sub, prepRole ? "prep" : "admin", ""))) return reply(400, { ok: false, code: "bad_sub" });
+      later(pushTo(env, [body.sub], prepRole ? { title: "تم تفعيل إشعارات التجهيز", body: "بيوصلك تنبيه مع كل طلب جديد يحتاج تجهيز.", url: "./", tag: "test" } : { title: "تم تفعيل إشعارات الإدارة", body: "بيوصلك تنبيه مع كل طلب جديد، ولما منتج يقرب يخلص أو يخلص.", url: "./", tag: "test" }));
       return reply(200, { ok: true });
     }
     if (path === "/push/status") {
@@ -1489,9 +1491,34 @@ async function setStock(env, map) {
   if (st.length) await env.DB.batch(st);
 }
 
-// وضع «المندوب للتوصيل بس»: يشتغل تلقائي لما يكون فيه مجهز مفعّل. الطلب يوصل المندوب بعد ما يعلّمه المجهز «جاهز»
-async function prepMode(env) {
-  try { return !!(await env.DB.prepare("SELECT 1 x FROM staff_users WHERE role = 'preparer' AND active = 1 LIMIT 1").first()); } catch { return false; }
+// وضع «المندوب للتوصيل بس»: الطلب يوصل المندوب بعد ما يعلّمه المجهز «جاهز».
+// الإعداد: on = شغّال دايماً، off = متوقف، وبدونه (auto) يشتغل لما يكون فيه مجهز مفعّل
+async function prepSettings(env) {
+  try {
+    const r = await env.DB.prepare("SELECT (SELECT v FROM app_settings WHERE k = 'prep_mode') m, (SELECT v FROM app_settings WHERE k = 'prep_late_min') l, (SELECT COUNT(*) FROM staff_users WHERE role = 'preparer' AND active = 1) p").first();
+    const mode = r && (r.m === "on" || r.m === "off") ? r.m : "auto", preparers = (r && r.p) || 0, lateMin = Math.min(60, Math.max(3, Number(r && r.l) || 10));
+    return { mode, preparers, lateMin, on: mode === "on" || (mode === "auto" && preparers > 0) };
+  } catch { return { mode: "auto", preparers: 0, lateMin: 10, on: false }; }
+}
+async function prepMode(env) { return (await prepSettings(env)).on; }
+
+// طلب ينتظر المجهز أكثر من المهلة: تنبيه للإدارة والمجهز مرة وحدة لكل طلب (يُستدعى من استعلامات المندوب والمجهز، مو أكثر من مرة بالدقيقة)
+let lateCheckedAt = 0;
+async function lateCheck(env, force) {
+  const now = Date.now();
+  if (!force && now - lateCheckedAt < Number(env.LATE_CHECK_MS ?? 60000)) return 0;
+  lateCheckedAt = now;
+  const st = await prepSettings(env);
+  if (!st.on) return 0;
+  const rs = (await env.DB.prepare("SELECT o.no, o.created, o.data FROM orders o LEFT JOIN prep_orders p ON p.no = o.no LEFT JOIN late_alerts a ON a.no = o.no WHERE o.status IN ('new','accepted') AND o.src != 'pos' AND o.created < ? AND (p.stage IS NULL OR p.stage != 'ready') AND a.no IS NULL ORDER BY o.no LIMIT 10").bind(now - st.lateMin * 60000).all()).results || [];
+  for (const r of rs) {
+    const ins = await env.DB.prepare("INSERT OR IGNORE INTO late_alerts (no, at) VALUES (?, ?)").bind(r.no, now).run();
+    if (!(ins.meta && ins.meta.changes)) continue;
+    const mins = Math.round((now - r.created) / 60000), msg = { title: "طلب متأخر #" + (1000 + r.no), body: "ينتظر التجهيز من " + mins + " دقيقة" + (safeJson(r.data).name ? " · " + safeJson(r.data).name : ""), url: "./", tag: "late" + r.no };
+    await Promise.all([notifyRole(env, "admin", null, msg), notifyRole(env, "prep", null, msg)]);
+  }
+  if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM late_alerts WHERE at < ?").bind(now - 3 * 864e5).run().catch(() => {});
+  return rs.length;
 }
 
 // بعد الطلب: التحليل + إشعار الإدارة والمندوب + تنبيه المخزون
@@ -1500,7 +1527,8 @@ async function afterOrder(env, data, rec, orderNo, before, quiet) {
   const n = Number(String(orderNo).replace(/\D/g, ""));
   if (!quiet) {
   const msg = { title: "طلب جديد " + ({ phone: "(اتصال) ", whatsapp: "(واتساب) ", store: "(من المحل) " }[rec.source] || "") + orderNo, body: rec.count + " منتج · " + money(rec.total) + " · " + (rec.pay === "card" ? "شبكة" : "كاش") + (rec.name ? " · " + rec.name : ""), url: "./#driver", tag: "new" + n };
-  await Promise.all([notifyRole(env, "admin", null, msg), env.DB && (await prepMode(env)) ? null : notifyRole(env, "driver", null, msg)]);
+  const pm = env.DB ? await prepMode(env) : false;
+  await Promise.all([notifyRole(env, "admin", null, msg), pm ? notifyRole(env, "prep", null, { ...msg, title: "طلب جديد للتجهيز " + orderNo, tag: "prep" + orderNo }) : notifyRole(env, "driver", null, msg)]);
   }
   const lowAt = Math.max(0, Number((data.store || {}).lowAt ?? 3));
   const need = needOf(rec), names = {};
@@ -2234,7 +2262,7 @@ function publicStaff(u) { return { id: u.id, username: u.username, name: u.name,
 function staffMay(role, path, body) {
   if (path === '/admin/staff' || path === '/admin/staff-save' || path === '/admin/team-save' || path === '/admin/opex' || path === '/admin/opex-save' || path === '/admin/offers-advice') return false;
   if(role==='cashier')return ['/pos/login','/pos/delivery-orders','/pos/delivery-receipt','/pos/delivery-issue','/login','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/settlement-requests','/admin/settlement-confirm','/admin/payment','/admin/day-report'].includes(path);
-  if (role === 'preparer') return ['/login','/admin/prep','/admin/prep-save','/admin/prep-sub'].includes(path);
+  if (role === 'preparer') return ['/login','/admin/prep','/admin/prep-save','/admin/prep-sub','/push/sub'].includes(path);
   if (role === 'manager') return !(path === '/save' && (body.newPin || body.newDriverPin));
   return role === 'orders' && ['/login', '/admin/orders', '/admin/alerts', '/driver/status', '/driver/pending', '/admin/assign', '/admin/team', '/pos/login', '/pos/sale', '/pos/shift', '/pos/close', '/pos/delivery-orders', '/pos/delivery-receipt', '/pos/delivery-issue'].includes(path);
 }
@@ -2262,6 +2290,8 @@ async function ensureOperations(env) {
     "CREATE TABLE IF NOT EXISTS wallet_order_keys(request_id TEXT PRIMARY KEY,no INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS checkout_keys(request_id TEXT PRIMARY KEY,no INTEGER NOT NULL,fingerprint TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS delivery_times(no INTEGER PRIMARY KEY,at INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS app_settings(k TEXT PRIMARY KEY,v TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS late_alerts(no INTEGER PRIMARY KEY,at INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS collection_changes(id INTEGER PRIMARY KEY AUTOINCREMENT,request_id TEXT UNIQUE NOT NULL,no INTEGER NOT NULL,at INTEGER NOT NULL,who TEXT NOT NULL,note TEXT NOT NULL,before_json TEXT NOT NULL,after_json TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS day_closures(day TEXT PRIMARY KEY,at INTEGER NOT NULL,who TEXT NOT NULL,expected INTEGER NOT NULL,actual INTEGER NOT NULL,cash_total INTEGER NOT NULL,card_total INTEGER NOT NULL,wallet_total INTEGER NOT NULL,sales INTEGER NOT NULL,orders INTEGER NOT NULL,note TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS prep_orders(no INTEGER PRIMARY KEY,stage TEXT NOT NULL CHECK(stage IN ('preparing','ready')),checks TEXT NOT NULL,updated INTEGER NOT NULL,who TEXT NOT NULL,version INTEGER NOT NULL)",
@@ -2390,10 +2420,23 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     try{await env.DB.batch([snapshotGuard,P('INSERT INTO day_closures(day,at,who,expected,actual,cash_total,card_total,wallet_total,sales,orders,note) VALUES(?,?,?,?,?,?,?,?,?,?,?)',day,Date.now(),who,report.outstanding,actual,report.cash,report.card,report.wallet,report.sales,report.count,note),...receipts]);}catch{return fail('conflict',409);}
     return {ok:true,difference:actual-report.outstanding};
   }
+  if(path==='/admin/prep-mode'){
+    if(role==='preparer')return fail('forbidden',403);
+    if(body.mode!==undefined||body.lateMin!==undefined){
+      const st0=await prepSettings(env),ops=[];
+      if(body.mode!==undefined){if(!['on','off','auto'].includes(body.mode))return fail('bad_request');ops.push(body.mode==='auto'?P("DELETE FROM app_settings WHERE k='prep_mode'"):P("INSERT INTO app_settings(k,v) VALUES('prep_mode',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",body.mode));}
+      if(body.lateMin!==undefined){const m=Math.floor(Number(body.lateMin));if(!(m>=3&&m<=60))return fail('bad_request');ops.push(P("INSERT INTO app_settings(k,v) VALUES('prep_late_min',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",String(m)));}
+      ops.push(logStmt(env,who,'prep_mode','',{mode:body.mode??st0.mode,lateMin:body.lateMin??st0.lateMin}));
+      await env.DB.batch(ops);
+    }
+    const st=await prepSettings(env);return {ok:true,mode:st.mode,on:st.on,preparers:st.preparers,lateMin:st.lateMin};
+  }
   if(path==='/admin/prep'){
+    later(lateCheck(env));
     const rows=(await P("SELECT o.no,o.status,o.created,o.updated AS order_updated,o.data,p.stage,p.checks,p.updated,p.who,p.version FROM orders o LEFT JOIN prep_orders p ON p.no=o.no WHERE o.status IN ('new','accepted') ORDER BY o.created").all()).results||[];
     const nos=rows.map(r=>r.no),offs=nos.length?((await P('SELECT id,no,line_id,to_id,state,created,answered FROM sub_offers WHERE no IN ('+nos.map(()=>'?').join(',')+') ORDER BY id',...nos).all()).results||[]):[],om={};for(const x of offs)(om[x.no]||=[]).push({id:x.id,line:x.line_id,to:x.to_id,state:x.state,at:x.answered||x.created});
-    return {ok:true,orders:rows.map(r=>{const d=safeJson(r.data);return {no:'#'+(1000+r.no),status:r.status,created:r.created,orderUpdated:r.order_updated,stage:r.stage||'waiting',checks:safeJson(r.checks||'{}'),version:r.version||0,who:r.who||'',updated:r.updated,lines:(d.lines||[]).map((l,i)=>({key:String(i),id:l.id,name:l.name,unit:l.unit,qty:l.qty})),note:d.note||'',sub:d.sub||'call',subs:om[r.no]||[]};})};
+    const lm=(await prepSettings(env)).lateMin;
+    return {ok:true,lateMin:lm,orders:rows.map(r=>{const d=safeJson(r.data);return {no:'#'+(1000+r.no),status:r.status,created:r.created,orderUpdated:r.order_updated,stage:r.stage||'waiting',checks:safeJson(r.checks||'{}'),version:r.version||0,who:r.who||'',updated:r.updated,lines:(d.lines||[]).map((l,i)=>({key:String(i),id:l.id,name:l.name,unit:l.unit,qty:l.qty})),note:d.note||'',sub:d.sub||'call',subs:om[r.no]||[]};})};
   }
   if(path==='/admin/prep-sub'){const r=await prepSub(env,body,who,later);return r.ok?r:fail(r.code,r.status||400);}
   if(path==='/admin/prep-save'){

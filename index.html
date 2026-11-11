@@ -1082,6 +1082,8 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .pp-alt{display:flex;align-items:center;gap:10px;width:100%;text-align:start;background:#F7F8FA;border:0;border-radius:14px;padding:8px;font:inherit;color:#13213C;cursor:pointer}.pp-alt .im{width:52px;height:52px;border-radius:10px;object-fit:contain;background:#fff;flex:none}.pp-alt .t{flex:1;display:grid;gap:2px}.pp-alt .t span{font-size:12.5px;color:#5B6474}.pp-alt .t em{font-style:normal;font-size:12px;font-weight:700;color:#9A4A00}.pp-alt .go{background:#FF8A1F;color:#2B1300;font-weight:700;border-radius:10px;padding:8px 12px;font-size:13px}
 .pp-wait{background:#FFF7ED;color:#9A4A00;border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:600}.pp-no{background:#FEF2F2;color:#991B1B;border-radius:12px;padding:10px 12px;font-size:13.5px}
 .pp-mi .acts{display:flex;gap:8px;flex-wrap:wrap}.pp-mi .acts .btn{height:42px;font-size:13.5px}.pp-rm{background:#fff;color:#B91C1C;border:1.5px solid #FCA5A5}
+.pp-st.late{background:#FEE2E2;color:#991B1B}
+.pp-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}.pp-tools .btn{height:40px;font-size:13.5px}
 .pp-warn{background:#FEF2F2;color:#991B1B;border-radius:14px;padding:12px 14px;font-size:13.5px;line-height:1.7;margin:14px 0 0}
 .pp-foot{position:sticky;bottom:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#F3F4F6;padding:12px 0;margin-top:14px}.pp-foot .btn{height:52px;font-size:16px}.pp-foot .btn-brand{flex:1}
 .dv-tile{position:relative}
@@ -4550,6 +4552,20 @@ html.sp-on,html.sp-on body{overflow:hidden}
       if (aTab === 'olist' && !$('oSheet') && !document.activeElement?.closest('#aOList')) renderOList();
     });
   }
+  // وضع التجهيز (للمالك): هل المندوب يستلم الطلب بعد ما يجهزه المجهز؟ تلقائي = يشتغل لما يكون فيه مجهز مفعّل
+  function renderPrepMode(){
+    var box=$('prepModeCard');if(!box)return;box.innerHTML='<h2>وضع التجهيز</h2><p class="hint">جاري التحميل…</p>';
+    api('/admin/prep-mode',{pin:adminPin}).then(function(j){if(!box.isConnected)return;
+      if(!j.ok){box.innerHTML='<h2>وضع التجهيز</h2><p class="status err">يلزم تحديث الخادم لهالميزة.</p>';return;}
+      var mb=function(v,t){return '<button type="button" class="btn '+(j.mode===v?'btn-brand':'btn-soft')+'" data-pmode="'+v+'" aria-pressed="'+(j.mode===v)+'">'+t+'</button>';};
+      box.innerHTML='<h2>وضع التجهيز</h2><p class="hint">الطلب يروح للمجهز أول، ولما يعلّمه «جاهز» يوصل المندوب (والمندوب للتوصيل بس).</p><div class="actions">'+mb('on','شغّال')+mb('off','متوقف')+mb('auto','تلقائي')+'</div>'+
+        '<p class="status'+(j.on&&!j.preparers?' err':'')+'">'+(j.on?(j.preparers?'الحين: الطلب ما يوصل المندوب إلا بعد ما يجهزه المجهز.':'الحين: وضع التجهيز شغّال بس ما فيه مجهز مفعّل، فالطلبات بتعلق. أضف مجهز أو اضغط «متوقف».'):'الحين: المندوب يجهّز الطلب بنفسه ويوصّله.')+'</p>'+
+        '<p class="hint">تلقائي = يشتغل لما يكون فيه مجهز مفعّل ('+num(j.preparers)+' الحين). لو ما داوم المجهز اليوم اضغط «متوقف» ويرجع المندوب يجهز بنفسه.</p>'+
+        '<label>ينبّهك لو طلب انتظر التجهيز أكثر من <select data-plate>'+[5,10,15,20,30].map(function(m){return '<option value="'+m+'"'+(m===j.lateMin?' selected':'')+'>'+m+' دقيقة</option>';}).join('')+'</select></label>';
+      box.querySelectorAll('[data-pmode]').forEach(function(b){b.onclick=function(){b.disabled=true;api('/admin/prep-mode',{pin:adminPin,mode:b.dataset.pmode}).then(function(r){if(!r.ok){sToast(opError(r));}else sToast('انحفظ');renderPrepMode();});};});
+      var sel=box.querySelector('[data-plate]');if(sel)sel.onchange=function(){api('/admin/prep-mode',{pin:adminPin,lateMin:Number(sel.value)}).then(function(r){sToast(r.ok?'انحفظ':opError(r));});};
+    });
+  }
   function renderStaffAccounts(){
     var box = $('aStaff'); if (!box || staffAuth) return;
     box.innerHTML = '<div class="card"><p class="hint">جاري تحميل الحسابات…</p></div>';
@@ -4562,8 +4578,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function drawStaffAccounts(){
     var box = $('aStaff'); if (!box) return;
     var u = staffUsers.filter(function(u){ return u.id === editingStaffId; })[0] || {};
-    box.innerHTML = '<div class="card" id="staffCard"></div><details class="card admin-advanced-accounts" id="advancedAdminAccounts"><summary>حسابات إضافية للوحة الإدارة</summary><div class="card"><h2>حسابات لوحة الإدارة</h2><p class="hint">المدير يدير المتجر والتقارير، دون إدارة الحسابات أو تغيير أرقام الدخول. موظف الطلبات يتابع الطلبات ويغيّر حالاتها ويطبعها؛ لا يغيّر الأسعار ولا يرى التكاليف والأرباح. الكاشير يراجع ويطبع الإيصالات ويسجل التحصيل والتسوية، دون تعديل المنتجات أو إدارة المحافظ. عامل التجهيز يشاهد المنتجات وملاحظات التجهيز فقط. كل موظف يدخل برقمه السري من زر الدخول، ويفتح له قسمه على طول. تعديل الحساب ينهي جلساته الحالية.</p><div class="olist2">' + staffUsers.map(function(x){ return '<button type="button" class="orow2" data-editstaff="' + x.id + '"><b>' + esc(x.name) + '</b><span dir="ltr">' + esc(x.username) + '</span><span>' + (x.role === 'manager' ? 'مدير' : x.role === 'preparer' ? 'عامل تجهيز' : x.role==='cashier'?'كاشير التوصيل':'موظف طلبات') + '</span><span>' + (x.active ? (x.hasPin ? 'يدخل برقمه' : 'مفعّل') : 'موقوف') + '</span></button>'; }).join('') + '</div></div>' +
+    box.innerHTML = '<div class="card" id="prepModeCard"></div><div class="card" id="staffCard"></div><details class="card admin-advanced-accounts" id="advancedAdminAccounts"><summary>حسابات إضافية للوحة الإدارة</summary><div class="card"><h2>حسابات لوحة الإدارة</h2><p class="hint">المدير يدير المتجر والتقارير، دون إدارة الحسابات أو تغيير أرقام الدخول. موظف الطلبات يتابع الطلبات ويغيّر حالاتها ويطبعها؛ لا يغيّر الأسعار ولا يرى التكاليف والأرباح. الكاشير يراجع ويطبع الإيصالات ويسجل التحصيل والتسوية، دون تعديل المنتجات أو إدارة المحافظ. عامل التجهيز يشاهد المنتجات وملاحظات التجهيز فقط. كل موظف يدخل برقمه السري من زر الدخول، ويفتح له قسمه على طول. تعديل الحساب ينهي جلساته الحالية.</p><div class="olist2">' + staffUsers.map(function(x){ return '<button type="button" class="orow2" data-editstaff="' + x.id + '"><b>' + esc(x.name) + '</b><span dir="ltr">' + esc(x.username) + '</span><span>' + (x.role === 'manager' ? 'مدير' : x.role === 'preparer' ? 'عامل تجهيز' : x.role==='cashier'?'كاشير التوصيل':'موظف طلبات') + '</span><span>' + (x.active ? (x.hasPin ? 'يدخل برقمه' : 'مفعّل') : 'موقوف') + '</span></button>'; }).join('') + '</div></div>' +
       '<form class="card" id="staffAccountForm"><h2>' + (u.id ? 'تعديل حساب' : 'حساب جديد') + '</h2><div class="fields"><label>اسم الموظف<input id="suName" maxlength="30" required value="' + esc(u.name || '') + '"></label><label>الصلاحية<select id="suRole"><option value="cashier"' + (u.role === 'cashier' ? ' selected' : '') + '>كاشير التوصيل</option><option value="preparer"' + (u.role === 'preparer' ? ' selected' : '') + '>عامل تجهيز</option><option value="orders">موظف طلبات</option><option value="manager"' + (u.role === 'manager' ? ' selected' : '') + '>مدير</option></select></label><label>كلمة السر للدخول (أرقام، من ٤ إلى ١٢)' + (u.id ? (u.hasPin ? ' — اتركه فاضي إذا ما تبي تغيّره' : ' — حطه عشان يدخل برقمه') : '') + '<input id="suPin" class="pin" type="password" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12" autocomplete="new-password"' + (u.id ? '' : ' required') + '></label><label class="chk"><input id="suActive" type="checkbox"' + (u.active !== 0 ? ' checked' : '') + '>الحساب مفعّل</label></div><input id="suUsername" type="hidden" value=""><input id="suPassword" type="hidden" value=""><div class="actions"><button class="btn btn-brand" type="submit">حفظ الحساب</button><button class="btn btn-soft" id="staffNew" type="button">حساب جديد</button><span id="suMessage" class="status" aria-live="polite"></span></div></form></details>';
+    renderPrepMode();
     if(editingStaffId)$('advancedAdminAccounts').open=true;
     $('staffNew').onclick = function(){ editingStaffId = 0; drawStaffAccounts(); };
     $('staffAccountForm').onsubmit = function(e){
@@ -4634,10 +4651,21 @@ html.sp-on,html.sp-on body{overflow:hidden}
     });
   }
   function preparerShell(){draft=JSON.parse(JSON.stringify(D));dirty=false;aTab='prep';app.innerHTML='<div class="adm"><aside class="adm-side"><div class="adm-brand"><b>تجهيز الطلبات</b></div><nav class="adm-nav"><button type="button" data-atab="prep">الطلبات للتجهيز</button></nav></aside><div class="adm-main"><div class="adm-top"><h1>التجهيز</h1><span>'+esc(staffAuth.user.name)+'</span><button id="prepLogout" class="btn btn-soft" type="button">تسجيل الخروج</button></div><div class="adm-body"><section class="adm-panel" id="aPreparation" data-panel="prep"></section></div></div></div>';
-    $('prepLogout').onclick=function(){api('/staff/logout',{pin:adminPin}).then(function(j){if(j.ok||j.code==='session_expired')endAdminSession();else sToast(opError(j));});};clearInterval(prepTimer);renderPreparation();prepTimer=setInterval(function(){if(mode==='admin'&&aTab==='prep'&&!document.hidden)renderPreparation();},30000);
+    $('prepLogout').onclick=function(){api('/staff/logout',{pin:adminPin}).then(function(j){if(j.ok||j.code==='session_expired')endAdminSession();else sToast(opError(j));});};clearInterval(prepTimer);renderPreparation();prepTimer=setInterval(function(){if(mode==='admin'&&aTab==='prep'&&!document.hidden)renderPreparation();},10000);prepSeen=null;
   }
   // شاشة المجهز: الطلبات بصور المنتجات، مرتبة حسب مكانها بالمحل. ضغطة = أخذته، «ناقص» = مو موجود
-  var prepOpen='', prepLocal={};
+  var prepOpen='', prepLocal={}, prepSeen=null, prepLate=10, prepSoundOn=true;
+  try{prepSoundOn=localStorage.getItem('ohod-prep-sound')!=='0';}catch(e){}
+  function prepBeep(){if(!prepSoundOn)return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.resume)audioCtx.resume();
+    [0,0.25,0.5].forEach(function(t0){var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=t0===0.5?1040:880;g.gain.setValueAtTime(0.0001,audioCtx.currentTime+t0);g.gain.exponentialRampToValueAtTime(0.5,audioCtx.currentTime+t0+0.02);g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+t0+0.2);o.connect(g);g.connect(audioCtx.destination);o.start(audioCtx.currentTime+t0);o.stop(audioCtx.currentTime+t0+0.22);});}catch(e){}}
+  // طلب جديد وصل المجهز: صوت واهتزاز وتنبيه، والعنوان يبين كم طلب ينتظر
+  function prepNotice(orders){
+    var wait=orders.filter(function(o){return o.stage!=='ready';}).length,fresh=0;
+    if(prepSeen){orders.forEach(function(o){if(!prepSeen[o.no]&&o.stage!=='ready')fresh++;});}
+    prepSeen=prepSeen||{};orders.forEach(function(o){prepSeen[o.no]=1;});
+    try{document.title=(wait?'('+wait+') ':'')+'التجهيز';}catch(e){}
+    if(fresh){prepBeep();try{navigator.vibrate&&navigator.vibrate([250,120,250,120,250]);}catch(e){}sToast(fresh===1?'وصل طلب جديد للتجهيز':'وصل '+num(fresh)+' طلبات جديدة للتجهيز');}
+  }
   function prepAgo(t){var m=Math.max(0,Math.round((Date.now()-t)/60000));return m<1?'الحين':m<60?'قبل '+num(m)+' د':'قبل '+num(Math.round(m/60))+' س';}
   function prepState(o){var S=prepLocal[o.no],tag=o.version+'|'+o.orderUpdated;if(S&&S.v===tag)return S;
     // الطلب تغيّر (بديل، إزالة، تعديل الإدارة): نبدأ من المحفوظ، ونرجّع اللي علّمه المجهز ولسا ما حفظه حسب المنتج نفسه
@@ -4648,7 +4676,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function prepList(j){
     if(!j.orders.length)return '<div class="pp-empty">'+ic('box')+'<b>ما فيه طلبات للتجهيز</b><span>أول ما يجي طلب يطلع هنا لحاله</span></div>';
     return j.orders.map(function(o){var k=prepCounts(o),ths=o.lines.slice(0,5).map(function(l){return dImg(l.id,'th',l.name);}).join('')+(o.lines.length>5?'<span class="th more">+'+num(o.lines.length-5)+'</span>':'');
-      var st=o.stage==='ready'?'<span class="pp-st ok">جاهز للمندوب</span>':k.p||k.m?'<span class="pp-st go">يتجهز · '+num(k.p)+' من '+num(k.n)+'</span>':'<span class="pp-st new">جديد</span>';
+      var late=o.stage!=='ready'&&Date.now()-o.created>prepLate*60000,st=o.stage==='ready'?'<span class="pp-st ok">جاهز للمندوب</span>':k.p||k.m?'<span class="pp-st go">يتجهز · '+num(k.p)+' من '+num(k.n)+'</span>':'<span class="pp-st new">جديد</span>';
+      if(late)st+='<span class="pp-st late">متأخر</span>';
       return '<button type="button" class="pp-card'+(o.stage==='ready'?' done':'')+'" data-popen="'+esc(o.no)+'"><span class="h"><b dir="ltr">'+esc(o.no)+'</b>'+st+'<em>'+prepAgo(o.created)+'</em></span><span class="ths">'+ths+'</span><span class="f">'+num(k.n)+' صنف'+(k.m?' · <i>'+num(k.m)+' ناقص</i>':'')+(o.note?' · ملاحظة':'')+'</span></button>';}).join('');
   }
   function prepOrder(o){
@@ -4681,12 +4710,15 @@ html.sp-on,html.sp-on body{overflow:hidden}
       }).join('')+'<p class="pp-pref">لما الزبون يوافق أو يرفض، الطلب يتعدل لحاله ويطلع لك هنا. كمّل باقي الطلب لين يرد.</p></section>';
   }
   function prepDraw(){var box=$('aPreparation');if(!box)return;var o=prepOpen&&prepSnapshot.find(function(x){return x.no===prepOpen;});if(prepOpen&&!o)prepOpen='';
-    box.innerHTML='<div class="pp">'+(o?prepOrder(o):'<div class="pp-head"><div><b>الطلبات للتجهيز</b><span>تتحدث لحالها كل ٣٠ ثانية</span></div><button class="btn btn-soft" type="button" id="prepRefresh">تحديث</button></div><div class="pp-list">'+prepList({orders:prepSnapshot})+'</div>')+'</div>';
-    if($('prepRefresh'))$('prepRefresh').onclick=function(){renderPreparation(true);};}
+    box.innerHTML='<div class="pp">'+(o?prepOrder(o):'<div class="pp-head"><div><b>الطلبات للتجهيز</b><span>تتحدث لحالها كل ١٠ ثواني، ويصير صوت لما يجي طلب جديد</span></div><button class="btn btn-soft" type="button" id="prepRefresh">تحديث</button></div><div class="pp-tools"><button class="btn btn-soft" type="button" id="prepSound" aria-pressed="'+prepSoundOn+'">'+(prepSoundOn?'🔔 الصوت شغّال':'🔕 الصوت مقفل')+'</button>'+(pushCan()&&!prepPushOn()?'<button class="btn btn-soft" type="button" id="prepPush">فعّل الإشعارات</button>':'')+'<span class="status" id="prepToolMsg"></span></div><div class="pp-list">'+prepList({orders:prepSnapshot})+'</div>')+'</div>';
+    if($('prepRefresh'))$('prepRefresh').onclick=function(){renderPreparation(true);};
+    if($('prepSound'))$('prepSound').onclick=function(){prepSoundOn=!prepSoundOn;try{localStorage.setItem('ohod-prep-sound',prepSoundOn?'1':'0');}catch(e){}if(prepSoundOn)prepBeep();prepDraw();};
+    if($('prepPush'))$('prepPush').onclick=function(){var b=this;b.disabled=true;pushSub().then(function(sub){return api('/push/sub',{pin:adminPin,sub:sub});}).then(function(r){if(!r.ok)throw r;try{localStorage.setItem('ohod-prep-push','1');}catch(e){}prepDraw();}).catch(function(e){b.disabled=false;if($('prepToolMsg'))$('prepToolMsg').textContent=pushErrText(e);});};}
+  function prepPushOn(){try{return localStorage.getItem('ohod-prep-push')==='1'&&Notification.permission==='granted';}catch(e){return false;}}
   function renderPreparation(force){var box=$('aPreparation');if(!box)return;var cur=prepOpen&&prepSnapshot.find(function(x){return x.no===prepOpen;});if(!force&&cur&&prepState(cur).dirty)return;
     api('/admin/prep',{pin:adminPin}).then(function(j){if(!box.isConnected)return;if(!j.ok){box.innerHTML='<p class="status err">'+opError(j)+'</p>';return;}
       var c2=prepOpen&&prepSnapshot.find(function(x){return x.no===prepOpen;});if(!force&&c2&&prepState(c2).dirty)return;
-      var y=window.scrollY;prepSnapshot=j.orders;prepDraw();window.scrollTo(0,y);});}
+      var y=window.scrollY;prepSnapshot=j.orders;prepLate=j.lateMin||10;prepNotice(j.orders);prepDraw();window.scrollTo(0,y);});}
   document.addEventListener('click',function(e){if(mode!=='admin'||!$('aPreparation'))return;var t;
     if((t=e.target.closest('[data-popen]'))){prepOpen=t.dataset.popen;prepDraw();window.scrollTo(0,0);return;}
     if(e.target.closest('[data-pback]')){var o0=prepSnapshot.find(function(x){return x.no===prepOpen;});if(o0&&prepState(o0).dirty&&!confirm('ما حفظت التجهيز. ترجع بدون حفظ؟'))return;if(o0)delete prepLocal[o0.no];prepOpen='';renderPreparation(true);window.scrollTo(0,0);return;}
