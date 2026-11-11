@@ -1517,6 +1517,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function catOf(id){ for (var i=0;i<D.cats.length;i++) if (D.cats[i].id === id) return D.cats[i]; return null; }
   function tint(catId){ for (var i=0;i<D.cats.length;i++) if (D.cats[i].id === catId) return D.cats[i].tint || TINTS[i % TINTS.length]; return TINTS[TINTS.length-1]; }
   function onSale(p){ return p.old && p.old > p.price; }
+  // ترتيب العرض: المتوفر أول، وبعده اللي له صورة (عشان أول ما يشوفه الزبون يكون بصور)
+  function shelfSort(a, b){ return (avail(b) - avail(a)) || ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)); }
   function isOffer(p){ return onSale(p) || !!multiOf(p); }
   /* ---------- live stock ---------- */
   var LIVE = {};
@@ -1737,13 +1739,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function moreBtn(key, rest){ return '<button type="button" class="btn btn-soft kq-more" data-more="' + esc(key) + '">' + tr("عرض المزيد", "Show more") + ' <small>(' + num(rest) + ')</small></button>'; }
   function pagedCards(list, key, kind){ var n = MORE[key] || PAGE, out = list.slice(0, n).map(function(p){ return card(p, kind); }); if (list.length > n) out.push(moreBtn(key, list.length - n)); return out; }
   function chipItems(){
-    if (chip === "offers") return pagedCards(D.products.filter(function(p){ return avail(p) && isOffer(p); }), "chip:offers");
+    if (chip === "offers") return pagedCards(D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), "chip:offers");
     if (chip === "deals") return pagedCards(dealsList(), "chip:deals", "d");
     if (chip.indexOf("b:") === 0) { var bb = banOf(chip.slice(2)); return bb ? pagedCards((bb.ids || []).map(byId).filter(Boolean).sort(function(a,b){ return avail(b) - avail(a); }), "chip:" + chip) : []; }
-    if (chip.indexOf("c:") === 0) { var cid = chip.slice(2); return pagedCards(D.products.filter(function(p){ return p.cat === cid; }).sort(function(a,b){ return avail(b) - avail(a); }), "chip:" + chip); }
+    if (chip.indexOf("c:") === 0) { var cid = chip.slice(2); return pagedCards(D.products.filter(function(p){ return p.cat === cid; }).sort(shelfSort), "chip:" + chip); }
     var dd = daily(), fy = idsToList(S.forYou), fyId = {}; fy.forEach(function(p){ fyId[p.id] = 1; });
-    var list = S.forOnly && fy.length ? [] : D.products.filter(function(p){ return avail(p) && !fyId[p.id]; }).slice().sort(function(a,b){ return (onSale(b) ? 1 : 0) - (onSale(a) ? 1 : 0); });
-    return (dd && !fyId[dd.p.id] ? [card(dd.p, "t")] : []).concat(pagedCards(fy.concat(list), "chip:for"));
+    var list = S.forOnly && fy.length ? [] : D.products.filter(function(p){ return avail(p) && !fyId[p.id]; }).slice().sort(function(a,b){ return ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)) || ((onSale(b) ? 1 : 0) - (onSale(a) ? 1 : 0)); });
+    return (dd && !fyId[dd.p.id] ? [card(dd.p, "t")] : []).concat(pagedCards(fy.concat(list).sort(function(a,b){ return (hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0); }), "chip:for"));
   }
   /* ---------- banners: 6 designs + product cut-outs ---------- */
   var BAN_STYLES = ["night", "shelf", "calm", "split", "bundle", "glass"];
@@ -1821,7 +1823,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     return 'data-chip="b:' + esc(b.id) + '"';
   }
   function banners(){
-    var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }), bakery = catOf("bakery") || D.cats[0];
+    var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), bakery = catOf("bakery") || D.cats[0];
     var maxOff = offers.reduce(function(m, p){ var mo = multiOf(p), r = onSale(p) ? 1 - p.price / p.old : mo ? 1 - mo.price / (mo.n * p.price) : 0; return Math.max(m, Math.round(r * 100)); }, 0);
     var E = S.banEdit || {}, B = {}, pk = function(id, def){ var ids = S.banPicks && S.banPicks[id]; return ids && ids.length ? ids.filter(function(x){ return byId(x); }) : def; };
     var idsOf = function(list){ return list.map(function(p){ return p.id; }); };
@@ -1851,7 +1853,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="kq-meta"><span class="kq-sched">' + ic("truck") + esc(sv("eta")) + '</span><span class="kq-loc">' + ic("pin") + esc(sv("area")) + ic("down") + '</span></div>' +
       '<button class="langbtn" type="button" data-lang="' + (LANG === "en" ? "ar" : "en") + '" aria-label="' + tr("English", "العربية") + '">' + (LANG === "en" ? "ع" : "EN") + '</button></div>' +
       '<button class="kq-search" type="button" data-nav="search">' + ic("search") + '<span id="ph">' + tr("قهوتك ناقصها حلا؟ ابحث عن الشوكولاتة…", "Your coffee needs something sweet? Search…") + '</span></button></div></div>';
-    var SEC = {}, offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }), deals = dealsList(), tt = totals();
+    var SEC = {}, offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), deals = dealsList(), tt = totals();
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
     SEC.free = S.freeOver ? '<div class="wrap kq-sec-wrap"><button type="button" class="kq-free" data-chip="for"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("احصل على توصيلك المجاني!", "Get free delivery!") + ' <em>' + tr("مجاني", "Free") + '</em></b><span>' + tr("لطلباتك فوق ", "On orders over ") + rial(S.freeOver) + '</span></span>' + ic("fwd") + '</button></div>' : '';
     SEC.catgrid = '<div class="wrap"><div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-nav="cats">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div></div>';
@@ -1871,7 +1873,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (deals.length ? '<button type="button" class="kq-recipe" data-chip="deals"><span class="ic">' + ic("tag") + '</span><span class="t"><b>' + tr("كل منتج بـ ", "Everything for ") + num(DEAL.price) + ' ' + tr("ر.س", "SAR") + '</b><span>' + (t.unlocked ? tr("انفتحت لك، ضيف اللي تبغاه", "Unlocked, add what you like") : tr("لطلبات فوق ", "For orders over ") + rial(DEAL.min)) + '</span></span>' + ic("fwd") + '</button>' : '') +
       '<div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-chip="for">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div>' +
       '<div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div>' +
-      (D.products.some(function(p){ return avail(p) && isOffer(p); }) ? '<div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + D.products.filter(function(p){ return avail(p) && isOffer(p); }).map(function(p){ return card(p); }).join("") + '</div>' : '') + '</div>';
+      (D.products.some(function(p){ return avail(p) && isOffer(p); }) ? '<div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort).map(function(p){ return card(p); }).join("") + '</div>' : '') + '</div>';
   }
 
   /* ---------- قسم الطباعة: حاسبة (نوع، صفحات، نسخ) تضيف للسلة، والملف يوصل واتساب برقم الطلب ---------- */
@@ -1924,7 +1926,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<span class="pr-acts"><button type="button" class="btn btn-ghost" data-opencat="print">' + tr("تعديل", "Edit") + '</button><button type="button" class="sq" data-pdel="' + esc(k) + '" aria-label="' + tr("حذف", "Remove") + '">' + ic("trash") + '</button></span></div>';
   }
   function catHTML(){
-    var c = catOf(openCat) || D.cats[0], items = D.products.filter(function(p){ return p.cat === c.id; }).sort(function(a,b){ return avail(b) - avail(a); }), isPrint = c.id === "print" && printOK();
+    var c = catOf(openCat) || D.cats[0], items = D.products.filter(function(p){ return p.cat === c.id; }).sort(shelfSort), isPrint = c.id === "print" && printOK();
     // أقسام فرعية (اختيارية): القسم فيه subs، وكل منتج فيه sub. اللي بدون sub (أو sub مو معروف) يروح «أخرى»
     var subs = Array.isArray(c.subs) ? c.subs : [], known = {}, subBar = "", shown = items;
     if (subs.length) {
@@ -1992,7 +1994,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     }
     var findP = function(term){ var tl = term.toLowerCase(); for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if ([p.name, p.name_en].some(function(s){ return s && String(s).toLowerCase().indexOf(tl) > -1; })) return p; } return null; };
     var sug = D.products.filter(function(p){ return avail(p); }).slice(0, 8).map(function(p){ return nm(p); });
-    var offers = D.products.filter(function(p){ return avail(p) && isOffer(p); });
+    var offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort);
     box.innerHTML = (recent.length ? '<div class="kq-sec"><h2>' + tr("عمليات البحث الأخيرة", "Recent searches") + '</h2><button type="button" id="clrR" class="clr">' + tr("مسح الكل", "Clear all") + '</button></div><div class="kq-recent">' +
         recent.map(function(r){ var p = findP(r); return '<button class="kq-rchip" type="button" data-term="' + esc(r) + '">' + (p ? imgTag(p.img, "") : '') + esc(r) + '</button>'; }).join("") + '</div>' : '') +
       '<div class="kq-sec"><h2>' + tr("مقترحات ذكية", "Smart suggestions") + '</h2></div><div class="kq-sugs">' + sug.map(function(s){ return '<button class="kq-sug" type="button" data-term="' + esc(s) + '">' + ic("search") + esc(s) + '</button>'; }).join("") + '</div>' +
