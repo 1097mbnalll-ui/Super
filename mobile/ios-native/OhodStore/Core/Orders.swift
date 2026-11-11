@@ -51,7 +51,7 @@ enum OrderStatus {
     }
 }
 
-enum OrderError: Equatable {
+enum OrderError: Error, Equatable {
     case phone(String)
     case message(String)
     case address(String)
