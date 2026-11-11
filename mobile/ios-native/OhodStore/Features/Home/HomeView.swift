@@ -176,7 +176,8 @@ private struct HomeHeader: View {
 
 /// بنر في الرئيسية: من العروض الحقيقية (أقوى خصم، عرض كمية، كل العروض) + بنرات المالك
 private struct HomeBanner: Identifiable {
-    enum Style { case hot, deep, light, custom(Color) }
+    /// نفس أسماء تصاميم الموقع (لوحة الإدارة): night ليلي، shelf رف، calm هادي، split نص ونص، glass ناعم
+    enum Style { case hot, deep, light, night, calm, glass, custom(Color) }
     let id: String
     let kicker: String
     let title: String
@@ -227,49 +228,95 @@ private struct BannerCarousel: View {
         }
     }
 
+    /// البنرات من إعدادات لوحة الإدارة (نفس الموقع): الترتيب والإخفاء والنصوص واللون والتصميم والصور.
+    /// أي تعديل من الإدارة يطلع هنا أول ما ينفتح التطبيق، بدون تحديث للتطبيق.
     private func makeBanners() -> [HomeBanner] {
         guard let index = catalog.index else { return [] }
+        let store = catalog.store
         let offers = index.offers.filter { catalog.isAvailable($0) }
-        var out: [HomeBanner] = []
-        // ١) أقوى خصم
+        var built: [String: HomeBanner] = [:]
+
+        func images(_ id: String, _ fallback: [Product], max n: Int = 3) -> [URL] {
+            let limit = store.banEdit[id]?.picsN ?? n
+            let picked = (store.banPicks[id] ?? []).compactMap { catalog.product($0) }
+            let list = picked.isEmpty ? fallback : picked
+            return Array(list.filter(\.hasPhoto).prefix(Swift.max(0, limit)).compactMap(\.imageURL))
+        }
+        func style(_ name: String?, color: String?, fallback: HomeBanner.Style) -> HomeBanner.Style {
+            if let c = Color(hexString: color) { return .custom(c) }
+            switch name {
+            case "night": return .night
+            case "shelf": return .light
+            case "calm": return .calm
+            case "glass": return .glass
+            case "split": return .custom(Color(hex: 0x17407A))
+            default: return fallback
+            }
+        }
+        func make(_ id: String, kicker: String, title: String, subtitle: String, button: String, style def: HomeBanner.Style,
+                  products: [Product], route: Route?) -> HomeBanner {
+            let o = store.banEdit[id]
+            return HomeBanner(id: id, kicker: o?.kicker ?? kicker, title: o?.title ?? title, subtitle: o?.sub ?? subtitle,
+                              button: o?.noGo == true ? "" : (o?.go ?? button), style: style(o?.style, color: o?.color, fallback: def),
+                              images: images(id, products), route: route)
+        }
+
+        // أقوى خصم
         if let top = offers.filter({ $0.discountPercent != nil }).max(by: { ($0.discountPercent ?? 0, $0.hasPhoto ? 1 : 0) < ($1.discountPercent ?? 0, $1.hasPhoto ? 1 : 0) }),
            let pct = top.discountPercent, let old = top.old {
-            out.append(HomeBanner(id: "top", kicker: "أقوى خصم اليوم", title: "خصم \(pct)٪", subtitle: "\(top.name)\nكان \(Money.plain(old)) وصار \(Money.plain(top.price)) ر.س",
-                                  button: "اطلبه الحين", style: .hot, images: top.imageURL.map { [$0] } ?? [], route: .product(top.id)))
+            built["top"] = make("top", kicker: "أقوى خصم اليوم · خصم \(pct)٪", title: top.name,
+                                subtitle: "كان \(Money.plain(old)) وصار \(Money.plain(top.price)) ر.س", button: "اطلبه الحين",
+                                style: .calm, products: [top], route: .product(top.id))
         }
-        // ٢) عرض كمية
+        // عرض كمية
         if let q = offers.first(where: { $0.quantityOffer != nil && $0.hasPhoto }) ?? offers.first(where: { $0.quantityOffer != nil }),
            let qo = q.quantityOffer {
-            out.append(HomeBanner(id: "multi", kicker: "عرض \(Product.pieces(qo.count))", title: "\(Product.pieces(qo.count)) بـ \(Money.plain(qo.price)) ر.س",
+            built["multi"] = make("multi", kicker: "عرض كمية", title: "\(Product.pieces(qo.count)) بـ \(Money.plain(qo.price)) ر.س",
                                   subtitle: "\(q.name)\nبدل \(Money.plain(qo.before)) · وفّر \(Money.plain(qo.before - qo.price))",
-                                  button: "شوف العرض", style: .deep, images: q.imageURL.map { [$0] } ?? [], route: .product(q.id)))
+                                  button: "شوف العرض", style: .custom(Color(hex: 0x17407A)), products: [q], route: .product(q.id))
         }
-        // ٣) كل العروض
+        // كل العروض
         if offers.count > 1 {
-            let pics = offers.filter(\.hasPhoto).prefix(3).compactMap(\.imageURL)
             let maxPct = offers.compactMap(\.discountPercent).max() ?? 0
-            out.append(HomeBanner(id: "all", kicker: "عروض الأسبوع", title: "\(offers.count) عرض في المحل",
-                                  subtitle: maxPct > 0 ? "خصومات توصل \(maxPct)٪ وعروض كميات" : "أسعار أقل على منتجات مختارة",
-                                  button: "كل العروض", style: .light, images: Array(pics), route: .offers))
+            built["offers"] = make("offers", kicker: "عروض الأسبوع", title: "خصومات على \(offers.count) منتج",
+                                   subtitle: maxPct > 0 ? "خصم لين \(maxPct)٪" : "أسعار أقل على منتجات مختارة",
+                                   button: "تسوّق العروض", style: .glass, products: offers, route: .offers)
         }
-        // ٤) بنرات المالك (بلونها)
-        for b in catalog.store.banners {
+        // المخبز: بس لو القسم مفتوح (مو «قريباً»)
+        if let bakery = catalog.category("bakery"), !bakery.soon {
+            let items = catalog.products(in: "bakery").filter { catalog.isAvailable($0) }
+            if !items.isEmpty {
+                built["bakery"] = make("bakery", kicker: "من فرن \(store.name)", title: "الخبز طالع\nمن الفرن", subtitle: "",
+                                       button: "اطلبه حار", style: .light, products: items, route: .category("bakery"))
+            }
+        }
+        // بنرات المالك الخاصة
+        for b in store.banners {
             var route: Route? = nil
+            var catID: String? = nil
             if let t = b.target {
                 if t.hasPrefix("cat:") {
                     let id = String(t.dropFirst(4))
                     if catalog.category(id)?.soon == true { continue }
-                    route = .category(id)
+                    route = .category(id); catID = id
                 } else if t.hasPrefix("prod:") { route = .product(String(t.dropFirst(5))) }
                 else if t == "offers" { route = .offers }
             }
-            let tint = Color(hexString: b.color) ?? Theme.brand
-            let cat = b.target.flatMap { $0.hasPrefix("cat:") ? catalog.category(String($0.dropFirst(4))) : nil }
-            let pics = cat.map { catalog.products(in: $0.id).filter { $0.hasPhoto && catalog.isAvailable($0) }.prefix(2).compactMap(\.imageURL) } ?? []
-            out.append(HomeBanner(id: b.id, kicker: cat?.name ?? "", title: b.title, subtitle: b.subtitle, button: "تسوّق الحين",
-                                  style: .custom(tint), images: Array(pics), route: route))
+            var products = b.ids.compactMap { catalog.product($0) }
+            if products.isEmpty, let catID { products = catalog.products(in: catID).filter { $0.hasPhoto && catalog.isAvailable($0) } }
+            if route == nil, products.count == 1 { route = .product(products[0].id) }
+            let from = products.map(\.price).min()
+            built[b.id] = HomeBanner(id: b.id, kicker: b.kicker ?? (catID.flatMap { catalog.category($0)?.name } ?? ""), title: b.title,
+                                     subtitle: b.subtitle.isEmpty ? (from.map { "تبدأ من \(Money.plain($0)) ر.س" } ?? "") : b.subtitle,
+                                     button: b.go ?? "تسوّق الحين", style: style(b.style, color: b.color, fallback: .light),
+                                     images: Array(products.prefix(3).compactMap(\.imageURL)), route: route)
         }
-        return out
+
+        // الترتيب والإخفاء من «ترتيب الواجهة» في الإدارة؛ الجديد اللي ما له ترتيب ينضاف آخر شي
+        let defaults = ["top", "multi", "daily", "offers", "deals", "bakery"] + store.banners.map(\.id)
+        var order = store.promos.filter { defaults.contains($0.id) }
+        for id in defaults where !order.contains(where: { $0.id == id }) { order.append(PromoSlot(id: id, on: true)) }
+        return order.filter(\.on).compactMap { built[$0.id] }
     }
 }
 
@@ -291,7 +338,7 @@ private struct BannerCard: View {
                     Text(banner.title)
                         .font(.kufi(18, .bold, relativeTo: .title3))
                         .foregroundStyle(textColor)
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .minimumScaleFactor(0.75)
                     if !banner.subtitle.isEmpty {
                         Text(banner.subtitle)
@@ -300,11 +347,13 @@ private struct BannerCard: View {
                             .lineLimit(2)
                     }
                     Spacer(minLength: 0)
+                    if !banner.button.isEmpty {
                     Text(banner.button)
                         .font(.kufi(12, .bold))
                         .foregroundStyle(buttonText)
                         .padding(.horizontal, 13).padding(.vertical, 6)
                         .background(buttonBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
                 }
                 .padding(.vertical, 14).padding(.leading, 16)
                 Spacer(minLength: 0)
@@ -322,6 +371,12 @@ private struct BannerCard: View {
         case .light:
             LinearGradient(colors: [Theme.mint, Color(hex: 0xF4FBF8)], startPoint: .topTrailing, endPoint: .bottomLeading)
                 .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Theme.brand.opacity(0.18)))
+        case .night:
+            LinearGradient(colors: [Color(hex: 0x1B1F3B), Color(hex: 0x0D1020)], startPoint: .topTrailing, endPoint: .bottomLeading)
+        case .calm:
+            Color(hex: 0xF4EFE6)
+        case .glass:
+            LinearGradient(colors: [Color(hex: 0xFCE4EF), Color(hex: 0xFFF6E0), Color(hex: 0xDDEEFF)], startPoint: .topTrailing, endPoint: .bottomLeading)
         case .custom(let c):
             LinearGradient(colors: [c, c.opacity(0.78)], startPoint: .topTrailing, endPoint: .bottomLeading)
         }
@@ -350,7 +405,12 @@ private struct BannerCard: View {
         }
     }
 
-    private var isLight: Bool { if case .light = banner.style { return true }; return false }
+    private var isLight: Bool {
+        switch banner.style {
+        case .light, .calm, .glass: return true
+        default: return false
+        }
+    }
     private var textColor: Color { isLight ? Theme.ink : .white }
     private var kickerColor: Color { isLight ? Theme.brandDeep : .white }
     private var kickerBackground: Color { isLight ? Theme.brand.opacity(0.12) : .white.opacity(0.2) }
@@ -358,11 +418,18 @@ private struct BannerCard: View {
         switch banner.style {
         case .hot: return Theme.copperInk
         case .deep: return Theme.brandDeep
-        case .light: return .white
+        case .night: return Color(hex: 0x1B1F3B)
+        case .light, .calm, .glass: return .white
         case .custom(let c): return c
         }
     }
-    private var buttonBackground: Color { isLight ? Theme.brand : .white }
+    private var buttonBackground: Color {
+        switch banner.style {
+        case .calm, .glass: return Theme.ink
+        case .light: return Theme.brand
+        default: return .white
+        }
+    }
 }
 
 private struct QuickChips: View {

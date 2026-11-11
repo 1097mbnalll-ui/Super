@@ -102,6 +102,27 @@ struct Banner: Hashable, Sendable, Identifiable {
     let target: String?   // cat:<id> أو prod:<id> أو offers
     let image: String?
     var color: String? = nil
+    var style: String? = nil
+    var kicker: String? = nil
+    var go: String? = nil
+    var ids: [String] = []
+}
+
+/// تعديلات المالك على بنر جاهز من لوحة الإدارة (store.banEdit): نفس اللي يقرأها الموقع، فالتعديل يطلع بالتطبيق بدون تحديث
+struct BannerSettings: Hashable, Sendable {
+    var title: String?
+    var sub: String?
+    var kicker: String?
+    var go: String?
+    var color: String?
+    var style: String?
+    var noGo = false
+    var picsN: Int?
+}
+
+struct PromoSlot: Hashable, Sendable {
+    let id: String
+    let on: Bool
 }
 
 struct StoreInfo: Sendable {
@@ -121,6 +142,10 @@ struct StoreInfo: Sendable {
     /// إلغاء الزبون: new (قبل التجهيز) / accepted (قبل خروج المندوب) / off
     var custCancel = "new"
     var banners: [Banner] = []
+    /// ترتيب البنرات وإخفاؤها (store.promos) وتعديلاتها (banEdit) وصورها المختارة (banPicks)
+    var promos: [PromoSlot] = []
+    var banEdit: [String: BannerSettings] = [:]
+    var banPicks: [String: [String]] = [:]
 }
 
 struct Catalog: Sendable {
@@ -159,8 +184,23 @@ enum CatalogParser {
         // بنرات المالك من لوحة الإدارة. بنرات العروض تنبني في الرئيسية من العروض الحقيقية
         var banners: [Banner] = []
         for b in (s["bans"] as? [[String: Any]]) ?? [] {
-            guard let id = str(b["id"]), let title = str(b["title"]) else { continue }
-            banners.append(Banner(id: id, title: title, subtitle: str(b["sub"]) ?? "", target: str(b["target"]), image: nil, color: str(b["color"])))
+            guard let id = str(b["id"]), let title = text(b["title"]) else { continue }
+            banners.append(Banner(id: id, title: title, subtitle: text(b["sub"]) ?? "", target: str(b["target"]), image: nil,
+                                  color: str(b["color"]), style: str(b["style"]), kicker: text(b["k"]), go: text(b["go"]),
+                                  ids: (b["ids"] as? [Any])?.compactMap { str($0) } ?? []))
+        }
+        store.promos = ((s["promos"] as? [[String: Any]]) ?? []).compactMap { x in
+            str(x["id"]).map { PromoSlot(id: $0, on: (x["on"] as? Bool) ?? true) }
+        }
+        for (k, v) in (s["banEdit"] as? [String: Any]) ?? [:] {
+            guard let o = v as? [String: Any] else { continue }
+            store.banEdit[k] = BannerSettings(title: text(o["title"]), sub: text(o["sub"]), kicker: text(o["k"]), go: text(o["go"]),
+                                              color: str(o["color"]), style: str(o["style"]), noGo: (o["noGo"] as? Bool) ?? false,
+                                              picsN: num(o["picsN"]).map { Int($0) })
+        }
+        for (k, v) in (s["banPicks"] as? [String: Any]) ?? [:] {
+            let ids = (v as? [Any])?.compactMap { str($0) } ?? []
+            if !ids.isEmpty { store.banPicks[k] = ids }
         }
         store.banners = banners
 
@@ -194,6 +234,15 @@ enum CatalogParser {
         if let n = any as? NSNumber { return n.doubleValue }
         if let s = any as? String { return Double(latinDigits(s)) }
         return nil
+    }
+
+    /// نص من الإدارة: <br> سطر جديد، وبدون وسوم HTML
+    static func text(_ any: Any?) -> String? {
+        guard var t = str(any) else { return nil }
+        t = t.replacingOccurrences(of: "<br>", with: "\n").replacingOccurrences(of: "<br/>", with: "\n")
+        t = t.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        let out = t.trimmingCharacters(in: .whitespacesAndNewlines)
+        return out.isEmpty ? nil : out
     }
 
     static func str(_ any: Any?) -> String? {
