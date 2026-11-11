@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">متاجر أحد</string>
+    <string name="title_activity_main">متاجر أحد</string>
+    <string name="package_name">sa.ohod.store</string>
+    <string name="custom_url_scheme">sa.ohod.store</string>
+</resources>

@@ -1462,8 +1462,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var isPath = function(k){ return /^(?:cat|p)\/[\w-]+\.(?:webp|png|jpg)$/.test(k || ""); };
   // صورة المنتج: ملف منفصل في p/ (الجديد، ما يثقّل data.json) أو صورة مدمجة قديمة في D.imgs
   var hasPic = function(k){ return isPath(k) || (isPhoto(k) && !!D.imgs[k]); };
-  var picSrc = function(k){ return isPath(k) ? k : D.imgs[k]; };
-  var imgTag = function(k, alt){ if (isPath(k)) return '<img src="' + esc(k) + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy" decoding="async">'; return isPhoto(k) && D.imgs[k] ? '<img src="' + D.imgs[k] + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy">' : '<span class="noimg" role="img" aria-label="' + esc(alt||"") + '"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>'; };
+  // داخل تطبيق الآيفون/الأندرويد (Capacitor): صفحة المتجر تنحط داخل التطبيق، وصور المنتجات والبيانات تنزل من الموقع (فتتحدث بدون تحديث من المتجر)
+  var NATIVE = !!window.__NATIVE_STORE__, SITEB = String(window.__SITE__ || "");
+  var assetUrl = function(k){ return NATIVE && /^p\//.test(k) ? SITEB + k : k; };
+  var picSrc = function(k){ return isPath(k) ? assetUrl(k) : D.imgs[k]; };
+  var imgTag = function(k, alt){ if (isPath(k)) return '<img src="' + esc(assetUrl(k)) + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy" decoding="async">'; return isPhoto(k) && D.imgs[k] ? '<img src="' + D.imgs[k] + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy">' : '<span class="noimg" role="img" aria-label="' + esc(alt||"") + '"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>'; };
   function catPhoto(c){ if (isPath(c.img)) return c.img; for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if (p.cat === c.id && avail(p) && hasPic(p.img)) return p.img; } return isPhoto(c.img) ? c.img : ""; }
   function photosOf(list){ return list.map(function(p){ return p.img; }).filter(function(k){ return hasPic(k); }); }
   var IC = {
@@ -2093,9 +2096,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (S.freeOver ? tr('<div><dt>توصيل مجاني</dt><dd>فوق ', '<div><dt>Free delivery</dt><dd>Over ') + rial(S.freeOver) + '</dd></div>' : '') +
       tr('<div><dt>أوقات العمل</dt><dd>', '<div><dt>Opening hours</dt><dd>') + esc(sv("hours")) + tr('</dd></div><div><dt>الدفع</dt><dd>كاش أو شبكة عند الاستلام</dd></div><div><dt>رقم المحل</dt><dd dir="ltr" style="user-select:all">', '</dd></div><div><dt>Payment</dt><dd>Cash or card on delivery</dd></div><div><dt>Store number</dt><dd dir="ltr" style="user-select:all">') + esc(S.phone) + '</dd></div></dl>' +
       '<div class="actions"><a class="btn btn-teal" href="tel:' + esc(S.phone) + '">' + ic("phone") + tr('اتصل</a>', 'Call</a>') + (waNumber() ? '<a class="btn btn-soft" href="https://wa.me/' + waNumber() + tr('" target="_blank" rel="noopener">واتساب</a>', '" target="_blank" rel="noopener">WhatsApp</a>') : '') + '</div></div>' +
-      (apiUrl() ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("الإشعارات", "Notifications") + '</b><span>' + (PUSH_PREF && pushOn() ? tr("مفعّلة. بيوصلك تنبيه مع كل تغيير في حالة طلباتك.", "On. You will be notified about every change to your orders.") : tr("فعّلها عشان يوصلك تنبيه لما طلبك ينقبل ولما المندوب يطلع لك.", "Turn them on to be alerted when your order is accepted and when the driver is on the way.")) + '</span><span class="pushmsg" id="pushPrefMsg"' + (isIOS() && !isApp() ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</span></span>' +
+      (apiUrl() && !NATIVE ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("الإشعارات", "Notifications") + '</b><span>' + (PUSH_PREF && pushOn() ? tr("مفعّلة. بيوصلك تنبيه مع كل تغيير في حالة طلباتك.", "On. You will be notified about every change to your orders.") : tr("فعّلها عشان يوصلك تنبيه لما طلبك ينقبل ولما المندوب يطلع لك.", "Turn them on to be alerted when your order is accepted and when the driver is on the way.")) + '</span><span class="pushmsg" id="pushPrefMsg"' + (isIOS() && !isApp() ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</span></span>' +
         (PUSH_PREF && pushOn() ? '<span class="on">' + ic("check") + '</span>' : '<button class="btn btn-teal" type="button" id="pushPref">' + tr("فعّل", "Turn on") + '</button>') + '</div>' : '') +
-      tr('<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">الدخول</b><p class="hint">للإدارة والموظفين والمناديب: كل واحد يدخل بكلمة السر حقته، ويفتح له قسمه.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">', '<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">Sign in</b><p class="hint">For the owner, staff and drivers: everyone signs in with their own password.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">') + ic("lock") + tr('الدخول</button></div>', 'Sign in</button></div>') +
+      (NATIVE ? "" : tr('<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">الدخول</b><p class="hint">للإدارة والموظفين والمناديب: كل واحد يدخل بكلمة السر حقته، ويفتح له قسمه.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">', '<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">Sign in</b><p class="hint">For the owner, staff and drivers: everyone signs in with their own password.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">') + ic("lock") + tr('الدخول</button></div>', 'Sign in</button></div>')) +
+      '<p class="hint" style="margin-top:14px;text-align:center"><a href="privacy.html" style="color:inherit;text-decoration:underline">' + tr("سياسة الخصوصية", "Privacy policy") + '</a></p>' +
       '<div class="box" style="margin-top:12px"><b>محفظتي والكاش باك</b><p class="hint">رصيدك وسجل حركاتك. تفعيل الدخول من الإدارة بعد التحقق من رقمك.</p><button class="btn btn-soft" type="button" data-walletcustomer>افتح المحفظة</button></div>' +
       tr('<p class="credit">صور بعض الخضار والفواكه من مجموعة Fruits-360 لـ Mihai Oltean (رخصة MIT). الخريطة © مساهمو OpenStreetMap.</p></div>', '<p class="credit">Some fruit and vegetable photos are from the Fruits-360 collection by Mihai Oltean (MIT license). Map © OpenStreetMap contributors.</p></div>');
   }
@@ -2338,7 +2342,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var PUSH_PREF = false; try { PUSH_PREF = localStorage.getItem("ohod-push") === "1"; } catch(e){}
   function isIOS(){ return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
   function isApp(){ return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
-  function pushCan(){ return !!apiUrl() && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+  function pushCan(){ return !NATIVE && !!apiUrl() && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
   function pushOn(){ return pushCan() && Notification.permission === "granted"; }
   function pushWhy(){
     if (!apiUrl()) return tr("الإشعارات تحتاج خادم الطلبات.", "Notifications need the order server.");
@@ -4935,14 +4939,14 @@ html.sp-on,html.sp-on body{overflow:hidden}
   go("store");
   loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "store") loadStock(); });
-  if (location.hash === "#driver" || /[?&]app=driver/.test(location.search) || APP) openDriver();
+  if (!NATIVE && (location.hash === "#driver" || /[?&]app=driver/.test(location.search) || APP)) openDriver();
   // داخل تطبيق المندوب: التطبيق للمندوب بس، ما يقدر يرجع للمتجر
   if (APP) { appLock = true; appUpdateCheck(); document.addEventListener("visibilitychange", function(){ if (!document.hidden) appUpdateCheck(); });
     window.addEventListener("popstate", function(){ if (mode !== "driver" || location.hash !== "#driver") openDriver(); }); }
-  window.addEventListener("hashchange", function(){ if ((location.hash === "#driver" || appLock) && mode !== "driver") openDriver(); });
+  window.addEventListener("hashchange", function(){ if (!NATIVE && (location.hash === "#driver" || appLock) && mode !== "driver") openDriver(); });
   // نقاط البيع في المحل انشالت (البيع في المحل على برنامج الكاشير حق المحل): الرابط القديم يفتح المتجر
   if (location.hash === "#pos") { try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
-  if (GH) fetch("data.json?v=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
+  if (GH || NATIVE) fetch((NATIVE ? SITEB : "") + "data.json?v=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
     dataReady = true;
     if (nd && nd.store && nd.products && nd.imgs) { var hadApi = !!apiUrl(); applyData(nd); if (!hadApi) loadStock(); if (mode === "store" && screen !== "checkout") refresh(); }
   }).catch(function(){ dataReady = true; });

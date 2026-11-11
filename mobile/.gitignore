@@ -1,0 +1,16 @@
+node_modules/
+www/
+ios/App/Pods/
+ios/App/build/
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+*.log
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/CapApp-SPM/.build/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/capacitor-cordova-android-plugins/
