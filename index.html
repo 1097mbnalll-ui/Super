@@ -2344,7 +2344,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function isApp(){ return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
   // إضافات Capacitor (الإشعارات الأصلية، زر الرجوع، الاهتزاز): موجودة بس داخل تطبيق الآيفون/الأندرويد
   function nativePlug(n){ try { return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins[n]) || null; } catch(e){ return null; } }
-  function pushCan(){ if (NATIVE) return !!apiUrl() && !!nativePlug("PushNotifications"); return !!apiUrl() && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+  // أندرويد بدون google-services.json (Firebase) يطيح لو طلبنا رمز الجهاز، فنخفي الإشعارات لين ينبني التطبيق بالملف (علامة __FCM__ من build-www)
+  function pushCan(){ if (NATIVE) return !!apiUrl() && !!nativePlug("PushNotifications") && (window.__FCM__ || !(window.Capacitor && Capacitor.getPlatform && Capacitor.getPlatform() === "android")); return !!apiUrl() && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
   function pushOn(){ if (NATIVE) return pushCan() && PUSH_PREF; return pushCan() && Notification.permission === "granted"; }
   function pushWhy(){
     if (NATIVE) return tr("اسمح بالإشعارات للتطبيق من إعدادات الجوال، وجرّب مرة ثانية.", "Allow notifications for the app in your phone settings and try again.");

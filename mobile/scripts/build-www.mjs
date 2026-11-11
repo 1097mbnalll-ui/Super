@@ -8,7 +8,9 @@ fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive:
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 if (!html.includes('<head>')) throw new Error('index.html ما فيه <head>');
 // علامة التطبيق: الصفحة تقرأها وتخفي الإدارة والمندوب والمجهز، وتنزّل الصور والبيانات من الموقع
-html = html.replace('<head>', '<head><script>window.__NATIVE_STORE__=true;window.__SITE__=' + JSON.stringify(SITE) + ';</script>');
+// __FCM__: إشعارات أندرويد تشتغل بس لو ملف Firebase موجود وقت البناء (بدونه الإضافة تطيّح التطبيق)
+const FCM = fs.existsSync(path.join(here, '..', 'android', 'app', 'google-services.json'));
+html = html.replace('<head>', '<head><script>window.__NATIVE_STORE__=true;window.__SITE__=' + JSON.stringify(SITE) + ';window.__FCM__=' + FCM + ';</script>');
 html = html.replace(/<link rel="manifest"[^>]*>/g, '');
 fs.writeFileSync(path.join(out, 'index.html'), html);
 for (const f of ['privacy.html', 'favicon-64.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png']) fs.copyFileSync(path.join(root, f), path.join(out, f));
