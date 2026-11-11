@@ -1659,7 +1659,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var badge = !avail(p) ? '<span class="kq-badge out">' + tr("نفد", "Sold out") + '</span>' :
       isDeal ? '<span class="kq-badge deal">' + ic("lock") + tr("بـ ", "") + num(price) + tr(" ر.س", " SAR") + '</span>' :
       isDaily ? '<span class="kq-badge">' + ic("flame") + tr("عرض اليوم", "Deal of the day") + '</span>' :
-      onSale(p) ? '<span class="kq-badge">' + tr("وفّر ", "Save ") + num(Math.round((p.old - p.price) * 100) / 100) + '</span>' :
+      onSale(p) ? '<span class="kq-badge">' + tr("خصم ", "") + num(Math.max(1, Math.round((p.old - p.price) / p.old * 100))) + tr("٪", "% off") + '</span>' :
       mo ? '<span class="kq-badge multi">' + tr("عرض " + pcs(mo.n), mo.n + " pcs offer") + '</span>' :
       (p.badge ? '<span class="kq-badge fresh">' + esc(bd(p)) + '</span>' : '');
     var lf = left(p), low = avail(p) && lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '';
@@ -1667,7 +1667,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
     return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + badge + low + control(p, kind || "") + '</div>' +
       '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '') + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
-      (mo ? '<button type="button" class="kq-multi" data-open="' + p.id + '" data-openpack="' + mo.i + '"><b>' + esc(multiTxt(mo)) + '</b><small>' + esc(multiEach(mo)) + '</small></button>' : '') +
+      (mo ? '<button type="button" class="kq-multi" data-open="' + p.id + '" data-openpack="' + mo.i + '"><b>' + esc(multiTxt(mo)) + '</b><small>' + esc(multiEach(mo)) + tr(" · بدل ", " · was ") + '<s>' + num(Math.round(mo.n * Number(p.price) * 100) / 100) + '</s></small></button>' : '') +
       '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + (function(){ var L = Array.isArray(p.packs) ? p.packs.filter(function(x){ return !/^عرض/.test(String(x.u || "")); }) : []; return L.length ? ' · ' + L.map(function(x){ return esc(String(x.u || "").split(" ")[0]); }).join(" · ") : ''; })() + '</span></article>';
   }
 
@@ -1972,7 +1972,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var p = byId(openProd); if (!p) return catsHTML();
     var packBase = p, packs = Array.isArray(p.packs) && p.packs.length ? p.packs : null;
     if (packs && pdPack >= 0 && byId(p.id + "~" + pdPack)) p = byId(p.id + "~" + pdPack); else pdPack = -1;
-    var packHTML = packs ? '<div class="pd-packs" role="group" aria-label="' + tr("طريقة الشراء", "Buy as") + '">' + [-1].concat(packs.map(function(x, i){ return i; })).map(function(i){ var q = i < 0 ? packBase : byId(packBase.id + "~" + i); if (!q) return ""; var mo2 = i >= 0 ? multiOf(packBase) : null; var isO = mo2 && mo2.i === i; return '<button type="button" class="pd-pack' + (isO ? ' offer' : '') + '" data-pdpack="' + i + '" aria-pressed="' + (pdPack === i) + '"><b>' + (isO ? esc(tr("عرض ", "Offer: ") + (tr(pcs(mo2.n), mo2.n + " pcs"))) : esc(un(q))) + '</b><span>' + num(q.price) + ' ' + tr("ر.س", "SAR") + '</span>' + (isO ? '<small>' + esc(multiEach(mo2)) + '</small>' : '') + '</button>'; }).join("") + '</div>' : '';
+    var packHTML = packs ? '<div class="pd-packs" role="group" aria-label="' + tr("طريقة الشراء", "Buy as") + '">' + [-1].concat(packs.map(function(x, i){ return i; })).map(function(i){ var q = i < 0 ? packBase : byId(packBase.id + "~" + i); if (!q) return ""; var mo2 = i >= 0 ? multiOf(packBase) : null; var isO = mo2 && mo2.i === i; return '<button type="button" class="pd-pack' + (isO ? ' offer' : '') + '" data-pdpack="' + i + '" aria-pressed="' + (pdPack === i) + '"><b>' + (isO ? esc(tr("عرض ", "Offer: ") + (tr(pcs(mo2.n), mo2.n + " pcs"))) : esc(un(q))) + '</b><span>' + num(q.price) + ' ' + tr("ر.س", "SAR") + '</span>' + (isO ? '<small>' + esc(multiEach(mo2)) + tr(" · بدل ", " · was ") + '<s>' + num(Math.round(mo2.n * Number(packBase.price) * 100) / 100) + '</s></small>' : '') + '</button>'; }).join("") + '</div>' : '';
     var dd = daily(), isDaily = dd && dd.p.id === p.id, price = isDaily ? dd.price : p.price, was = isDaily ? p.price : (onSale(p) ? p.old : 0);
     var c = catOf(p.cat);
     var pairs = idsToList(p.sugg).filter(function(x){ return x.id !== p.id; }).slice(0, 12);
@@ -1986,7 +1986,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="sheet-b"><div class="wrap">' +
       '<div class="ttl"><div style="display:grid;gap:4px"><span class="chipline">' + esc(bd(p) || (c ? nm(c) : "")) + (isDaily ? tr(' · عرض اليوم', ' · Deal of the day') : '') + '</span><h1>' + esc(nm(p)) + '</h1><span class="unit">' + esc(un(p)) + '</span></div>' +
       '<div style="display:grid;justify-items:end"><span class="price' + (was ? ' sale' : '') + '">' + num(price) + tr('<small> ر.س</small></span>', '<small> SAR</small></span>') + (was ? '<s class="was" style="font-size:13px">' + rial(was) + '</s>' : '') + '</div></div>' +
-      packHTML + (was ? '<div class="savebar">' + ic("flame") + tr('وفّر ', 'Save ') + rial(was - price) + (isDaily ? tr(' · العرض ينتهي الساعة ١٢ بالليل', ' · deal ends at midnight') + (lim ? tr(' · الحد ', ' · limit ') + lim + tr(' لكل طلب', ' per order') : '') : tr(' على كل ', ' per ') + esc(un(p))) + '</div>' : '') +
+      packHTML + (was ? '<div class="savebar">' + ic("flame") + tr('عليه عرض: كان ', 'On offer: was ') + rial(was) + tr(' وصار ', ', now ') + rial(price) + tr(' · وفّر ', ' · save ') + rial(was - price) + ' (' + num(Math.max(1, Math.round((was - price) / was * 100))) + '٪)' + (isDaily ? tr(' · العرض ينتهي الساعة ١٢ بالليل', ' · deal ends at midnight') + (lim ? tr(' · الحد ', ' · limit ') + lim + tr(' لكل طلب', ' per order') : '') : tr(' على كل ', ' per ') + esc(un(p))) + '</div>' : '') +
       (!avail(p) ? tr('<div class="alert">هذا المنتج نفد حاليًا.</div>', '<div class="alert">This item is sold out right now.</div>') : '') +
       (avail(p) && ((lf != null && lf <= lowAt()) || Number(p.max) > 0) ? '<div class="pd-lims">' + (lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '') + (Number(p.max) > 0 ? '<span>' + tr("الحد الأقصى ", "Max ") + Number(p.max) + tr(" لكل طلب", " per order") + '</span>' : '') + '</div>' : '') +
       (pairs.length ? '<div class="pd-sugg"><b>' + (p.sugg && p.sugg.length ? tr("يحلى معه", "Goes well with") : tr("ممكن يعجبك", "You may also like")) + '</b><div class="rail">' + pairs.map(function(x){ return card(x); }).join("") + '</div></div>' : '') +

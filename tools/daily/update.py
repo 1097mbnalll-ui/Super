@@ -1,8 +1,8 @@
 """تحديث المنتجات من ملف الكاشير اليومي (Excel: رقم الصنف، اسم الصنف، الوحدة، الكمية المتوفرة، السعر).
 
 الاستخدام:  python3 tools/daily/update.py data.json ملف.xlsx  [--dry]
-- المنتج الموجود (بالباركود): «متوفر» = الكمية > 0، والسعر من الملف. لو المنتج عليه عرض (له old) وسعر الملف
-  يساوي السعر قبل الخصم أو أعلى من سعر العرض، يبقى سعر العرض (عروض المالك ما تنمسح).
+- المنتج الموجود (بالباركود): «متوفر» = الكمية > 0، والسعر الأساسي من الملف (آخر ملف هو المعتمد). المنتج اللي عليه عرض
+  (له old): سعر العرض يبقى و old = سعر الملف (الزبون يشوف «قبل» و«بعد» ونسبة الخصم). عروض الكمية (packs) ما تتغير.
 - المنتج الجديد: ينضاف بقسمه حسب اسمه (classify.py)، واللي كميته صفر ينضاف «نفد».
 - ما يلمس: الصور، الأقسام، الخيارات (packs)، الإعدادات. التكلفة والكميات بالعدد مكانها الخادم (D1) مو هالملف.
 قرار المالك ١١ نوفمبر ٢٠٢٦: كل منتج بالملف ينضاف، واللي مخزونه صفر يطلع «نفد»، وتحديث يومي للمخزون والأسعار.
@@ -66,9 +66,14 @@ def main(data_path, xlsx, dry=False):
             seen.add(p['id'])
             avail = qty > 0
             if bool(p.get('stock')) != avail: p['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
-            old = p.get('old')
-            keep_offer = old and (abs(price - float(old)) < 0.01 or price > float(p['price']))
-            if not keep_offer and abs(price - float(p['price'])) >= 0.01:
+            # سعر الملف = السعر الأساسي. المنتج اللي عليه عرض (old): العرض يبقى، و«السعر قبل» يصير سعر الملف.
+            # لو سعر الملف صار أقل من سعر العرض أو يساويه، العرض ما له معنى فينشال ويصير السعر سعر الملف.
+            if p.get('old') is not None:
+                if price > float(p['price']) + 0.009:
+                    if abs(float(p['old']) - price) >= 0.01: p['old'] = price; rep['offer_before'] += 1
+                    continue
+                p.pop('old', None); rep['offer_ended'] += 1
+            if abs(price - float(p['price'])) >= 0.01:
                 changed.append((p['name'], p['price'], price)); p['price'] = price; rep['price'] += 1
             continue
         if key(name) in names: rep['same_name_other_code'] += 1; continue
