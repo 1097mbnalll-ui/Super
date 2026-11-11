@@ -32,6 +32,27 @@ workflows:
     name: iOS TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
+    # تلقائي: أي دفعة على mobile-app تغيّر كود التطبيق تبني وترفع لـ TestFlight (المجموعة «المحل» توصلها النسخة لحالها).
+    # المنتجات والأسعار والصور ما تحتاج بناء (تنزل من الموقع)، فتعديل data.json أو p/ ما يشغّله.
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: mobile-app
+          include: true
+          source: true
+      cancel_previous_builds: true
+    when:
+      changeset:
+        includes:
+          - 'index.html'
+          - 'privacy.html'
+          - 'cat/'
+          - 'mobile/'
+          - 'codemagic.yaml'
+        excludes:
+          - 'mobile/store/'
+          - '**/*.md'
     integrations:
       app_store_connect: ohod
     environment:
