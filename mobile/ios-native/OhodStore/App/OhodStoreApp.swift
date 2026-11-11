@@ -69,7 +69,7 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task {
-                    await catalog.refreshStock()
+                    await catalog.refreshIfStale()
                     await orders.refresh(catalog: catalog)
                 }
             }

@@ -119,7 +119,16 @@ final class CatalogStore {
         await refresh()
     }
 
+    @ObservationIgnored private var lastRefresh = Date.distantPast
+
+    /// لما يرجع الزبون للتطبيق: نجيب آخر نسخة من المتجر (بنرات، أسعار، عروض) لو مر عليها أكثر من دقيقة
+    func refreshIfStale() async {
+        guard Date().timeIntervalSince(lastRefresh) > 60 else { await refreshStock(); return }
+        await refresh()
+    }
+
     func refresh() async {
+        lastRefresh = Date()
         do {
             var comps = URLComponents(url: AppConfig.site.appendingPathComponent("data.json"), resolvingAgainstBaseURL: false)!
             comps.queryItems = [URLQueryItem(name: "v", value: String(Int(Date().timeIntervalSince1970)))]
