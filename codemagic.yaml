@@ -49,9 +49,9 @@ workflows:
           - 'privacy.html'
           - 'cat/'
           - 'mobile/'
-          - 'codemagic.yaml'
         excludes:
           - 'mobile/store/'
+          - 'mobile/ios-native/'
           - '**/*.md'
     integrations:
       app_store_connect: ohod
