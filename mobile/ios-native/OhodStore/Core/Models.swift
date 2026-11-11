@@ -76,7 +76,7 @@ struct Product: Hashable, Sendable, Identifiable {
     }
     var discountPercent: Int? {
         guard let old, old > price else { return nil }
-        return max(1, Int(((old - price) / old * 100).rounded()))
+        return Swift.max(1, Int(((old - price) / old * 100).rounded()))
     }
     /// أول عرض كمية: N حبات بسعر أقل من N × سعر الحبة (مثل ٣ بـ ١٠)
     var quantityOffer: (index: Int, count: Int, price: Double, before: Double)? {
