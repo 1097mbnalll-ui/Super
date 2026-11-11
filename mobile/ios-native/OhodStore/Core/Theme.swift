@@ -39,6 +39,8 @@ enum Theme {
                                                startPoint: .topTrailing, endPoint: .bottomLeading)
     static let headerGradient = LinearGradient(colors: [Color(hex: 0x12A07C), Color(hex: 0x0B7A5E), Color(hex: 0x07604A)],
                                                startPoint: .topTrailing, endPoint: .bottomLeading)
+    /// خلفية فاتحة لأعلى الصفحات (الأقسام وصفحة المنتج)
+    static let softGradient = LinearGradient(colors: [mint, mintSoft, .white], startPoint: .top, endPoint: .bottom)
     static let tileGradient = LinearGradient(colors: [mint, Color(hex: 0xF5FBF9)], startPoint: .top, endPoint: .bottom)
 }
 

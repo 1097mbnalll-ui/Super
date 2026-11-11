@@ -34,7 +34,7 @@ struct ProductView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .bottomLeading) {
-                    Theme.headerGradient
+                    Theme.softGradient
                     RemoteImage(url: product.imageURL, maxPixel: 900)
                         .padding(36)
                         .opacity(available ? 1 : 0.5)

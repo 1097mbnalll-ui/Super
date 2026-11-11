@@ -51,7 +51,7 @@ struct CategoriesView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
-        .background(alignment: .top) { Theme.headerGradient.frame(height: 220).ignoresSafeArea(edges: .top) }
+        .background(alignment: .top) { Theme.softGradient.frame(height: 220).ignoresSafeArea(edges: .top) }
         .navigationTitle("الأقسام")
         .navigationBarTitleDisplayMode(.inline)
     }

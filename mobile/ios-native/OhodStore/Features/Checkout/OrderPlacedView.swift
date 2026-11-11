@@ -162,7 +162,9 @@ struct CurrentOrderCard: View {
                     VStack(alignment: .trailing, spacing: 0) {
                         Text(verbatim: "\(order.count) أغراض").font(.system(size: 12)).foregroundStyle(Theme.muted)
                         Text(Money.sar(order.total)).font(.kufi(18, .bold)).foregroundStyle(Theme.ink)
+                            .lineLimit(1).fixedSize()
                     }
+                    .layoutPriority(1)
                 }
                 HStack(spacing: 8) {
                     Button {

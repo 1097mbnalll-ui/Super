@@ -94,6 +94,9 @@ struct RootView: View {
         if args.contains("-seed-cart"), cart.isEmpty, let index = catalog.index {
             for (i, p) in index.featured.prefix(4).enumerated() { cart.set(p.id, i == 0 ? 2 : 1) }
         }
+        if args.contains("-seed-driver"), let first = orders.orders.first {
+            orders.seedPreview(first, driver: DriverInfo(lat: 24.8418, lng: 46.8102, eta: 8, before: 1, near: false))
+        }
         if args.contains("-seed-order"), orders.orders.isEmpty, let index = catalog.index {
             let picks = index.featured.prefix(5)
             var o = SavedOrder(no: "#1042", total: 46.85, phone: "0550000000", pay: "cash", at: Date(),

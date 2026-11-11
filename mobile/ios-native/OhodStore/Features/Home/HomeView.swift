@@ -200,7 +200,7 @@ private struct BannerCarousel: View {
             .scrollTargetBehavior(.viewAligned)
             .scrollIndicators(.hidden)
             .scrollPosition(id: $current)
-            .frame(height: 150)
+            .frame(height: 160)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
             if banners.count > 1 {
@@ -233,10 +233,11 @@ private struct BannerCard: View {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(banner.title)
-                        .font(.kufi(22, .bold, relativeTo: .title2))
+                        .font(.kufi(21, .bold, relativeTo: .title2))
                         .foregroundStyle(.white)
                         .lineLimit(2)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.7)
+                        .fixedSize(horizontal: false, vertical: true)
                     if !banner.subtitle.isEmpty {
                         Text(banner.subtitle).font(.system(size: 14)).foregroundStyle(.white.opacity(0.95))
                     }
@@ -257,7 +258,7 @@ private struct BannerCard: View {
                 }
             }
         }
-        .frame(height: 150)
+        .frame(height: 160)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }

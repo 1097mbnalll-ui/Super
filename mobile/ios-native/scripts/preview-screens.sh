@@ -56,7 +56,7 @@ shot 06-offers -screen offers
 shot 07-account -screen account
 WAIT=12 shot 08-address -screen address
 shot 09-placed -seed-order -screen placed
-shot 10-account-order -screen account
-shot 11-order-details -screen orderdetails
-shot 12-home-order -screen home
+shot 10-account-order -seed-driver -screen account
+shot 11-order-details -seed-driver -screen orderdetails
+shot 12-home-order -seed-driver -screen home
 ls -la "$OUT"
