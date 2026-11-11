@@ -102,7 +102,7 @@ struct RemoteImage: View {
                     .transition(.opacity)
             } else if url == nil {
                 Image(systemName: "basket")
-                    .font(.system(size: 26, weight: .light))
+                    .font(.ui(size: 26, weight: .light))
                     .foregroundStyle(Theme.muted.opacity(0.45))
             }
         }
@@ -125,7 +125,7 @@ struct SectionHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             HStack(spacing: 6) {
-                if let emoji { Text(emoji).font(.system(size: 22)) }
+                if let emoji { Text(emoji).font(.ui(size: 22)) }
                 Text(title).font(.kufi(18, .bold, relativeTo: .title3)).foregroundStyle(Theme.ink)
             }
             Spacer()
@@ -133,9 +133,9 @@ struct SectionHeader: View {
                 Button(action: action) {
                     HStack(spacing: 2) {
                         Text(actionTitle)
-                        Image(systemName: "chevron.forward").font(.system(size: 11, weight: .semibold))
+                        Image(systemName: "chevron.forward").font(.ui(size: 11, weight: .semibold))
                     }
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.ui(size: 14, weight: .medium))
                     .foregroundStyle(Theme.brandDeep)
                     .frame(minHeight: 44)
                 }
@@ -150,7 +150,7 @@ struct Chip: View {
     var selected = false
     var body: some View {
         Text(title)
-            .font(.system(size: 15, weight: .semibold))
+            .font(.ui(size: 15, weight: .semibold))
             .foregroundStyle(selected ? .white : Theme.ink)
             .padding(.horizontal, 15)
             .frame(height: 42)
@@ -166,15 +166,16 @@ struct PriceLabel: View {
     var old: Double? = nil
     var size: CGFloat = 15
     var body: some View {
+        let size = self.size * AppLook.current.priceScale
         HStack(alignment: .firstTextBaseline, spacing: 4) {
             Text(Money.plain(price))
                 .font(.kufi(size, .bold, relativeTo: .headline))
                 .foregroundStyle(old == nil ? Theme.ink : Theme.copperInk)
                 .contentTransition(.numericText(value: price))
-            Text("ر.س").font(.system(size: size * 0.72, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text("ر.س").font(.ui(size: size * 0.72, weight: .semibold)).foregroundStyle(Theme.ink)
             if let old {
                 Text(Money.plain(old))
-                    .font(.system(size: size * 0.68))
+                    .font(.ui(size: size * 0.68))
                     .strikethrough()
                     .foregroundStyle(Theme.muted)
             }

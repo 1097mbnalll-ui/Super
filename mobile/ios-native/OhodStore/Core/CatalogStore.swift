@@ -161,8 +161,15 @@ final class CatalogStore {
         liveStock = live
     }
 
+    /// يزيد لما يتغير «شكل التطبيق» من الإدارة، والواجهة تنرسم من جديد
+    private(set) var lookVersion = 0
+
     private func apply(_ data: Data) async throws {
         let built = try await Task.detached(priority: .userInitiated) { try CatalogIndex.build(from: data) }.value
+        if built.catalog.store.look != AppLook.current {
+            AppLook.current = built.catalog.store.look
+            lookVersion += 1
+        }
         index = built
     }
 

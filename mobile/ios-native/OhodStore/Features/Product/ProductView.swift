@@ -52,7 +52,7 @@ struct ProductView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     if let category {
                         Text(category.name)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.ui(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.oliveInk)
                             .padding(.horizontal, 9).padding(.vertical, 3)
                             .background(Theme.oliveSoft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -64,51 +64,33 @@ struct ProductView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         PriceLabel(price: unitPrice, old: pack == nil ? product.old : nil, size: 24)
                         Text(pack.map { "/ \($0.unit)" } ?? (product.packs.isEmpty ? "/ \(product.unit)" : "/ الحبة"))
-                            .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.muted)
+                            .font(.ui(size: 14, weight: .semibold)).foregroundStyle(Theme.muted)
                     }
                     if let pack, pack.count > 1 {
                         Text("يعني الحبة بـ \(Money.sar((pack.price / Double(pack.count) * 100).rounded() / 100))")
-                            .font(.system(size: 13)).foregroundStyle(Theme.muted)
+                            .font(.ui(size: 13)).foregroundStyle(Theme.muted)
                     }
                     if available, let old = product.old, let pct = product.discountPercent {
                         Label("عليه عرض: كان \(Money.sar(old)) وصار \(Money.sar(product.price)) · وفّر \(Money.sar(old - product.price)) (\(pct)٪)",
                               systemImage: "flame.fill")
-                            .font(.system(size: 13.5, weight: .bold))
+                            .font(.ui(size: 13.5, weight: .bold))
                             .foregroundStyle(Theme.copperInk)
                             .padding(10)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     } else if available, let q = product.quantityOffer {
-                        Button {
-                            Haptics.selected()
-                            withAnimation(.snappy) { packIndex = q.index }
-                        } label: {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Label("عرض كمية: \(Product.pieces(q.count)) بـ \(Money.sar(q.price))", systemImage: "flame.fill")
-                                    .font(.system(size: 15, weight: .bold))
-                                (Text("بدل ") + Text(Money.sar(q.before)).strikethrough() + Text(" (الحبة بـ \(Money.plain(product.price))) · وفّر \(Money.sar(q.before - q.price))"))
-                                    .font(.system(size: 13, weight: .semibold))
-                                if packIndex != q.index {
-                                    Text("اضغط هنا تختار العرض").font(.system(size: 12.5, weight: .bold)).underline()
-                                }
-                            }
-                            .foregroundStyle(Theme.copperInk)
-                            .padding(10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                        .buttonStyle(PressableStyle(scale: 0.98))
+                        QuantityOfferBox(product: product, offer: (q.count, q.price, q.before))
                     }
                     if !available {
                         Label("نفد من المحل حالياً", systemImage: "exclamationmark.circle")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.ui(size: 14, weight: .semibold))
                             .foregroundStyle(Theme.copperInk)
                     }
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 16)
 
-                if !product.packs.isEmpty {
+                if product.packs.indices.contains(where: { $0 != product.quantityOffer?.index }) {
                     Text("طريقة الشراء")
                         .font(.kufi(15, .bold))
                         .padding(.horizontal, 18).padding(.top, 20).padding(.bottom, 10)
@@ -192,7 +174,8 @@ struct PackPicker: View {
         let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
         LazyVGrid(columns: columns, spacing: 10) {
             option(title: product.unit.isEmpty ? "حبة" : product.unit, price: product.price, index: nil, best: false, before: nil)
-            ForEach(Array(product.packs.enumerated()), id: \.offset) { i, pack in
+            // عرض الكمية ما يطلع هنا: ينطبق لحاله في السلة
+            ForEach(Array(product.packs.enumerated()).filter { $0.offset != product.quantityOffer?.index }, id: \.offset) { i, pack in
                 let before = (product.price * Double(pack.count) * 100).rounded() / 100
                 option(title: "\(pack.unit)", price: pack.price, index: i,
                        best: before - pack.price > 0.009, before: before - pack.price > 0.009 ? before : nil)
@@ -210,10 +193,10 @@ struct PackPicker: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.kufi(14, .bold)).foregroundStyle(Theme.ink).lineLimit(1)
                 HStack(spacing: 4) {
-                    Text(Money.sar(price)).font(.system(size: 13, weight: before == nil ? .regular : .bold))
+                    Text(Money.sar(price)).font(.ui(size: 13, weight: before == nil ? .regular : .bold))
                         .foregroundStyle(before == nil ? Theme.muted : Theme.copperInk)
                     if let before {
-                        Text(Money.plain(before)).font(.system(size: 11.5)).strikethrough().foregroundStyle(Theme.muted)
+                        Text(Money.plain(before)).font(.ui(size: 11.5)).strikethrough().foregroundStyle(Theme.muted)
                     }
                 }
             }
@@ -235,5 +218,49 @@ struct PackPicker: View {
         }
         .buttonStyle(PressableStyle(scale: 0.98))
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// «🔥 عرض: أي ٤ حبات بـ ٧ ر.س» مع شريط تقدّم: «عندك ٢ بالسلة · أضف ٢ وتحصل على العرض»
+private struct QuantityOfferBox: View {
+    let product: Product
+    let offer: (count: Int, price: Double, before: Double)
+    @Environment(Cart.self) private var cart
+
+    var body: some View {
+        let inCart = cart.line(product.id).qty
+        let rest = inCart % offer.count
+        let applied = inCart / offer.count
+        VStack(alignment: .leading, spacing: 8) {
+            Label("عرض: أي \(Product.pieces(offer.count)) بـ \(Money.sar(offer.price))", systemImage: "flame.fill")
+                .font(.ui(size: 15.5, weight: .bold))
+            (Text("الحبة \(Money.plain(offer.price / Double(offer.count))) بدل \(Money.plain(product.price)) · وفّر \(Money.sar(offer.before - offer.price)) على كل \(offer.count)"))
+                .font(.ui(size: 13, weight: .semibold))
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.copper.opacity(0.22))
+                    Capsule().fill(Theme.copper)
+                        .frame(width: geo.size.width * CGFloat(rest == 0 && applied > 0 ? 1 : Double(rest) / Double(offer.count)))
+                }
+            }
+            .frame(height: 8)
+            .animation(.smooth, value: inCart)
+            Group {
+                if inCart == 0 {
+                    Text("أضف \(Product.pieces(offer.count)) وينطبق العرض لحاله")
+                } else if rest == 0 {
+                    Text("✓ العرض انطبق\(applied > 1 ? " \(applied) مرات" : "") · عندك \(inCart) بالسلة")
+                } else {
+                    Text("عندك \(inCart) بالسلة · زود \(offer.count - rest) وتحصل على العرض")
+                }
+            }
+            .font(.ui(size: 13.5, weight: .bold))
+            .foregroundStyle(Theme.ink)
+        }
+        .foregroundStyle(Theme.copperInk)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.copper, lineWidth: 1.5))
     }
 }

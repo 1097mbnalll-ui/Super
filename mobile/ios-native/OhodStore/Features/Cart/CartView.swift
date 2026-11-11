@@ -52,7 +52,7 @@ struct CartView: View {
                                 Spacer()
                                 Text(Money.sar(totals.savings)).font(.kufi(14, .bold))
                             }
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.ui(size: 14, weight: .semibold))
                             .foregroundStyle(Theme.copperInk)
                             .padding(14)
                             .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -143,15 +143,15 @@ private struct DeliveryCard: View {
         Button(action: action) {
         HStack(spacing: 12) {
             Image(systemName: "mappin.and.ellipse")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.ui(size: 18, weight: .semibold))
                 .foregroundStyle(Theme.brandDeep)
                 .frame(width: 40, height: 40)
                 .background(Theme.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 Text(address == nil ? "التوصيل إلى \(area)" : "التوصيل إلى البيت")
-                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
+                    .font(.ui(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
                 Text(address.map { $0.details.isEmpty ? "على الموقع المحدد في الخريطة" : $0.details } ?? "حدد بيتك على الخريطة")
-                    .font(.system(size: 13)).foregroundStyle(address == nil ? Theme.copperInk : Theme.muted)
+                    .font(.ui(size: 13)).foregroundStyle(address == nil ? Theme.copperInk : Theme.muted)
                     .lineLimit(1)
             }
             Spacer(minLength: 4)
@@ -161,7 +161,7 @@ private struct DeliveryCard: View {
                     .foregroundStyle(Theme.oliveInk)
                     .lineLimit(1)
                 Text(address == nil ? "حدّد" : "غيّر")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.ui(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.brandDeep)
             }
         }
@@ -182,9 +182,9 @@ private struct FreeDeliveryBar: View {
         VStack(alignment: .leading, spacing: 8) {
             if remaining > 0 {
                 (Text("🚚 باقي ") + Text(Money.sar(remaining)).font(.kufi(13, .bold)).foregroundColor(Theme.copperInk) + Text(" وتوصيلك مجاني"))
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.ui(size: 14, weight: .semibold))
             } else {
-                Text("🎉 توصيلك مجاني").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.brandDeep)
+                Text("🎉 توصيلك مجاني").font(.ui(size: 14, weight: .semibold)).foregroundStyle(Theme.brandDeep)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -216,12 +216,28 @@ private struct CartRowView: View {
                 .frame(width: 62, height: 62)
                 .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(row.product.name).font(.system(size: 14)).foregroundStyle(Theme.ink).lineLimit(2)
-                Text(row.unitLabel).font(.system(size: 12)).foregroundStyle(Theme.muted)
+                Text(row.product.name).font(.ui(size: 14)).foregroundStyle(Theme.ink).lineLimit(2)
+                Text(row.unitLabel).font(.ui(size: 12)).foregroundStyle(Theme.muted)
                 if row.available {
-                    PriceLabel(price: row.lineTotal, old: row.pack == nil && row.product.old != nil ? (row.product.old ?? 0) * Double(row.qty) : nil, size: 14)
+                    if let o = row.offer {
+                        Group {
+                            if row.bundles > 0 && row.missingForOffer == nil {
+                                Text("✓ عرض \(o.count) بـ \(Money.plain(o.price)) انطبق")
+                                    .padding(.horizontal, 7).padding(.vertical, 2).foregroundStyle(Theme.brandDeep).background(Theme.mint, in: Capsule())
+                            } else if let miss = row.missingForOffer {
+                                Text("زود \(miss) وتحصل على عرض \(o.count) بـ \(Money.plain(o.price))")
+                                    .padding(.horizontal, 7).padding(.vertical, 2).foregroundStyle(Theme.copperInk).background(Theme.copperSoft, in: Capsule())
+                            }
+                        }
+                        .font(.ui(size: 11.5, weight: .bold))
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                        .padding(.vertical, 1)
+                    }
+                    PriceLabel(price: row.lineTotal,
+                               old: row.offerSaving > 0.009 ? row.regularTotal : (row.pack == nil && row.product.old != nil ? (row.product.old ?? 0) * Double(row.qty) : nil),
+                               size: 14)
                 } else {
-                    Text("نفد، ما ينحسب").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.copperInk)
+                    Text("نفد، ما ينحسب").font(.ui(size: 12, weight: .semibold)).foregroundStyle(Theme.copperInk)
                 }
             }
             Spacer(minLength: 4)
@@ -258,7 +274,7 @@ private struct SubstitutionPicker: View {
             .onChange(of: cart.substitution) { _, _ in Haptics.selected() }
             if cart.substitution == "swap" {
                 Text("نرسل لك البديل وتوافق عليه من جوالك قبل لا نضيفه.")
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.muted)
+                    .font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
             }
         }
     }
@@ -279,7 +295,7 @@ private struct SummaryCard: View {
             }
             if let short = totals.belowMinimum {
                 Label("أقل مبلغ للطلب \(Money.short(totals.minOrder))، باقي لك \(Money.sar(short))", systemImage: "info.circle")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.ui(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.copperInk)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -296,7 +312,7 @@ private struct SummaryCard: View {
             Spacer()
             Text(value).fontWeight(.semibold).foregroundStyle(highlight ? Theme.brandDeep : Theme.ink)
         }
-        .font(.system(size: 15))
+        .font(.ui(size: 15))
     }
 }
 
@@ -313,7 +329,7 @@ private struct CheckoutBar: View {
             HStack {
                 Text(totals.fee == 0 ? "المنتجات \(Money.plain(totals.subtotal)) + توصيل مجاني"
                           : "المنتجات \(Money.plain(totals.subtotal)) + التوصيل \(Money.plain(totals.fee))")
-                    .font(.system(size: 13)).foregroundStyle(Theme.muted)
+                    .font(.ui(size: 13)).foregroundStyle(Theme.muted)
                 Spacer()
                 Menu {
                     Picker("الدفع", selection: $cart.payment) {
@@ -324,9 +340,9 @@ private struct CheckoutBar: View {
                     HStack(spacing: 4) {
                         Image(systemName: cart.payment == "card" ? "creditcard" : "banknote")
                         Text(cart.payment == "card" ? "شبكة عند الاستلام" : "كاش عند الاستلام")
-                        Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
+                        Image(systemName: "chevron.down").font(.ui(size: 10, weight: .bold))
                     }
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.ui(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                     .frame(minHeight: 44)
                 }

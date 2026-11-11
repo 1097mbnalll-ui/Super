@@ -19,7 +19,7 @@ struct OrderPlacedView: View {
                         Circle().fill(Theme.brand.opacity(0.16)).frame(width: 122, height: 122)
                         Circle().fill(Theme.brand).frame(width: 96, height: 96)
                         Image(systemName: "checkmark")
-                            .font(.system(size: 40, weight: .bold))
+                            .font(.ui(size: 40, weight: .bold))
                             .foregroundStyle(.white)
                             .symbolEffect(.bounce, value: appeared)
                     }
@@ -30,7 +30,7 @@ struct OrderPlacedView: View {
                     VStack(spacing: 6) {
                         Text("وصلنا طلبك! 🎉").font(.kufi(24, .bold, relativeTo: .title))
                         Text(verbatim: "طلب \(order.no) · بنبدأ نجهّزه الحين")
-                            .font(.system(size: 15)).foregroundStyle(Theme.muted)
+                            .font(.ui(size: 15)).foregroundStyle(Theme.muted)
                     }
 
                     Label("يوصلك خلال \(catalog.store.eta)", systemImage: "bolt")
@@ -47,7 +47,7 @@ struct OrderPlacedView: View {
                                 .fontWeight(.semibold).lineLimit(1)
                         }
                     }
-                    .font(.system(size: 15))
+                    .font(.ui(size: 15))
                     .padding(16)
                     .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
@@ -61,7 +61,7 @@ struct OrderPlacedView: View {
                     .buttonStyle(PrimaryButtonStyle())
                 Button(action: onShop) {
                     Text("رجوع للتسوّق")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.ui(size: 16, weight: .semibold))
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Theme.line))
@@ -110,7 +110,7 @@ struct CurrentOrderCard: View {
                             VStack(spacing: 0) {
                                 Text(verbatim: "\(max(1, eta))").font(.kufi(26, .bold)).foregroundStyle(Theme.brandDeep)
                                     .contentTransition(.numericText(value: Double(eta)))
-                                Text("دقايق").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
+                                Text("دقايق").font(.ui(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
                             }
                             .padding(.horizontal, 14).padding(.vertical, 6)
                             .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -122,11 +122,11 @@ struct CurrentOrderCard: View {
             }
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(verbatim: "طلبك الحالي · \(order.no)").font(.system(size: 13)).foregroundStyle(Theme.muted)
+                    Text(verbatim: "طلبك الحالي · \(order.no)").font(.ui(size: 13)).foregroundStyle(Theme.muted)
                     Text(driver?.near == true ? "المندوب قريب منك 🛵" : OrderStatus.title(order.status))
                         .font(.kufi(19, .bold, relativeTo: .title3))
                         .contentTransition(.opacity)
-                    Text(detailLine(driver)).font(.system(size: 13.5)).foregroundStyle(Theme.muted)
+                    Text(detailLine(driver)).font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
                 }
                 VStack(spacing: 5) {
                     HStack(spacing: 6) {
@@ -136,7 +136,7 @@ struct CurrentOrderCard: View {
                     }
                     HStack(spacing: 6) {
                         ForEach(Array(["وصلنا", "نجهّزه", "في الطريق", "وصلك"].enumerated()), id: \.offset) { i, t in
-                            Text(t).font(.system(size: 11.5, weight: .semibold))
+                            Text(t).font(.ui(size: 11.5, weight: .semibold))
                                 .foregroundStyle(i + 1 == step ? Theme.copperInk : Theme.muted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -154,13 +154,13 @@ struct CurrentOrderCard: View {
                     }
                     if order.keys.count > 4 {
                         Text(verbatim: "+\(order.keys.count - 4)")
-                            .font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.muted)
+                            .font(.ui(size: 14, weight: .bold)).foregroundStyle(Theme.muted)
                             .frame(width: 44, height: 44)
                             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     Spacer(minLength: 0)
                     VStack(alignment: .trailing, spacing: 0) {
-                        Text(verbatim: "\(order.count) أغراض").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                        Text(verbatim: "\(order.count) أغراض").font(.ui(size: 12)).foregroundStyle(Theme.muted)
                         Text(Money.sar(order.total)).font(.kufi(18, .bold)).foregroundStyle(Theme.ink)
                             .lineLimit(1).fixedSize()
                     }
@@ -172,7 +172,7 @@ struct CurrentOrderCard: View {
                         if let url = URL(string: "tel:\(digits)") { openURL(url) }
                     } label: {
                         Label("اتصل بالمحل", systemImage: "phone.fill")
-                            .font(.system(size: 14.5, weight: .bold))
+                            .font(.ui(size: 14.5, weight: .bold))
                             .foregroundStyle(Theme.ink)
                             .frame(maxWidth: .infinity, minHeight: 46)
                             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -192,7 +192,7 @@ struct CurrentOrderCard: View {
                             if cancelling { ProgressView().controlSize(.small) }
                             Text("إلغاء الطلب")
                         }
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.ui(size: 14, weight: .semibold))
                         .foregroundStyle(Theme.copperInk)
                         .frame(maxWidth: .infinity, minHeight: 40)
                     }
@@ -245,7 +245,7 @@ private struct DriverMap: View {
     var body: some View {
         Map(position: $position, interactionModes: []) {
             Annotation("المندوب", coordinate: driver.coordinate) {
-                Text("🛵").font(.system(size: 20))
+                Text("🛵").font(.ui(size: 20))
                     .frame(width: 40, height: 40)
                     .background(Theme.copper, in: Circle())
                     .overlay(Circle().strokeBorder(.white, lineWidth: 3))
@@ -253,7 +253,7 @@ private struct DriverMap: View {
             }
             if let home {
                 Annotation("البيت", coordinate: home) {
-                    Image(systemName: "house.fill").font(.system(size: 15)).foregroundStyle(.white)
+                    Image(systemName: "house.fill").font(.ui(size: 15)).foregroundStyle(.white)
                         .frame(width: 34, height: 34)
                         .background(Theme.brand, in: Circle())
                         .overlay(Circle().strokeBorder(.white, lineWidth: 3))
@@ -291,7 +291,7 @@ struct OrderDetailView: View {
                         let eta = orders.drivers[order.no]?.eta
                         Label(order.status == "onway" && eta != nil ? "في الطريق · يوصلك خلال \(max(1, eta!)) دقايق" : OrderStatus.title(order.status),
                               systemImage: order.status == "onway" ? "scooter" : "clock")
-                            .font(.system(size: 14.5, weight: .bold))
+                            .font(.ui(size: 14.5, weight: .bold))
                             .foregroundStyle(Theme.copperInk)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(12)
@@ -305,15 +305,15 @@ struct OrderDetailView: View {
                                     .frame(width: 50, height: 50)
                                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(line.name).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(Theme.ink).lineLimit(2)
+                                    Text(line.name).font(.ui(size: 14.5, weight: .semibold)).foregroundStyle(Theme.ink).lineLimit(2)
                                     Text(verbatim: "\(line.unit) · \(line.qty) × \(Money.plain(line.price))")
-                                        .font(.system(size: 12.5)).foregroundStyle(Theme.muted)
+                                        .font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
                                 }
                                 Spacer(minLength: 6)
                                 VStack(alignment: .trailing, spacing: 0) {
                                     Text(Money.plain(line.total)).font(.kufi(15.5, .bold)).foregroundStyle(Theme.ink)
                                     if let old = line.old, old > line.price {
-                                        Text(Money.plain(old * Double(line.qty))).font(.system(size: 11.5)).strikethrough().foregroundStyle(Theme.muted)
+                                        Text(Money.plain(old * Double(line.qty))).font(.ui(size: 11.5)).strikethrough().foregroundStyle(Theme.muted)
                                     }
                                 }
                             }
@@ -351,7 +351,7 @@ struct OrderDetailView: View {
                     .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
 
                     Text("الأسعار وقت الطلب. لو المندوب بدّل أو شال منتج، الإجمالي النهائي يوصلك مع الفاتورة.")
-                        .font(.system(size: 12)).foregroundStyle(Theme.muted)
+                        .font(.ui(size: 12)).foregroundStyle(Theme.muted)
                 }
                 .padding(16)
             }
@@ -363,7 +363,7 @@ struct OrderDetailView: View {
                     VStack(spacing: 0) {
                         Text("تفاصيل الطلب").font(.kufi(16, .bold))
                         Text(verbatim: "\(order.no) · \(order.at.formatted(.dateTime.weekday(.wide).hour().minute().locale(Locale(identifier: "ar_SA@numbers=latn"))))")
-                            .font(.system(size: 11.5)).foregroundStyle(Theme.muted)
+                            .font(.ui(size: 11.5)).foregroundStyle(Theme.muted)
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) { Button("تم") { dismiss() } }
@@ -389,6 +389,6 @@ struct OrderDetailView: View {
             Spacer(minLength: 12)
             Text(value).fontWeight(.semibold).foregroundStyle(color).multilineTextAlignment(.trailing)
         }
-        .font(.system(size: 14.5))
+        .font(.ui(size: 14.5))
     }
 }

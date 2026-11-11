@@ -19,7 +19,7 @@ struct SearchView: View {
                         .padding(.top, 40)
                 } else {
                     Text("\(results.count) نتيجة")
-                        .font(.system(size: 13)).foregroundStyle(Theme.muted)
+                        .font(.ui(size: 13)).foregroundStyle(Theme.muted)
                         .padding(.horizontal, 16).padding(.vertical, 10)
                     ProductGrid(products: results, showCategory: true)
                 }
@@ -70,7 +70,7 @@ struct OffersView: View {
                             .padding(.top, 60)
                     } else {
                         Text("\(index.offers.count) عرض")
-                            .font(.system(size: 13)).foregroundStyle(Theme.muted)
+                            .font(.ui(size: 13)).foregroundStyle(Theme.muted)
                             .padding(.horizontal, 16).padding(.vertical, 10)
                         ProductGrid(products: index.offers, showCategory: true)
                     }

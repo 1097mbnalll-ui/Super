@@ -44,23 +44,25 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $tab) {
             TabStack(path: $homePath) { HomeView(tab: $tab, path: $homePath) }
-                .tabItem { Label("الرئيسية", systemImage: "house.fill") }
+                .tabItem { Label("الرئيسية", systemImage: icon("home", "house.fill")) }
                 .tag(AppTab.home)
             TabStack(path: $categoriesPath) { CategoriesView(path: $categoriesPath) }
-                .tabItem { Label("الأقسام", systemImage: "square.grid.2x2.fill") }
+                .tabItem { Label("الأقسام", systemImage: icon("categories", "square.grid.2x2.fill")) }
                 .tag(AppTab.categories)
             TabStack(path: $offersPath) { OffersView() }
-                .tabItem { Label("العروض", systemImage: "tag.fill") }
+                .tabItem { Label("العروض", systemImage: icon("offers", "tag.fill")) }
                 .tag(AppTab.offers)
             TabStack(path: $cartPath) { CartView(tab: $tab) }
-                .tabItem { Label("السلة", systemImage: "bag.fill") }
+                .tabItem { Label("السلة", systemImage: icon("cart", "bag.fill")) }
                 .badge(cart.count)
                 .tag(AppTab.cart)
             TabStack(path: $accountPath) { AccountView(tab: $tab) }
-                .tabItem { Label("حسابي", systemImage: "person.fill") }
+                .tabItem { Label("حسابي", systemImage: icon("account", "person.fill")) }
                 .tag(AppTab.account)
         }
         .modifier(TabBarMinimize())
+        // لما يتغير «شكل التطبيق» من الإدارة نعيد رسم الواجهة بالإعدادات الجديدة
+        .id(catalog.lookVersion)
         .environment(\.zoomNamespace, zoom)
         .task {
             await catalog.load()
@@ -86,6 +88,12 @@ struct RootView: View {
         .fullScreenCover(item: $previewPlaced) { order in
             OrderPlacedView(order: order, onTrack: { previewPlaced = nil }, onShop: { previewPlaced = nil })
         }
+    }
+
+    /// أيقونة التبويب من «شكل التطبيق» في الإدارة (أيقونات آبل)، وإلا الافتراضية
+    private func icon(_ tab: String, _ fallback: String) -> String {
+        guard let name = AppLook.current.tabIcons[tab], UIImage(systemName: name) != nil else { return fallback }
+        return name
     }
 
     /// للتصوير الآلي على المحاكي (Codemagic): -screen home|categories|category:<id>|product:<id>|cart|offers|account|address|placed و -seed-cart و -seed-order

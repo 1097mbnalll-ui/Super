@@ -87,7 +87,7 @@ struct AddressView: View {
                     if locating { ProgressView().controlSize(.small) } else { Image(systemName: "location.fill") }
                     Text("موقعي الحالي")
                 }
-                .font(.system(size: 14, weight: .semibold))
+                .font(.ui(size: 14, weight: .semibold))
                 .foregroundStyle(Theme.brandDeep)
                 .padding(.horizontal, 14).frame(height: 40)
                 .background(.white, in: Capsule())
@@ -103,13 +103,13 @@ struct AddressView: View {
     private var pin: some View {
         VStack(spacing: 6) {
             Text(inside ? "يوصلك هنا ✓" : "برا منطقة التوصيل")
-                .font(.system(size: 13, weight: .bold))
+                .font(.ui(size: 13, weight: .bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 12).padding(.vertical, 7)
                 .background(inside ? Theme.ink : Theme.copperInk, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .opacity(moving ? 0 : 1)
             Image(systemName: "mappin")
-                .font(.system(size: 40, weight: .semibold))
+                .font(.ui(size: 40, weight: .semibold))
                 .foregroundStyle(inside ? Theme.brand : Theme.copper)
                 .shadow(color: .black.opacity(0.2), radius: moving ? 8 : 3, y: moving ? 8 : 2)
                 .offset(y: moving ? -10 : 0)
@@ -125,7 +125,7 @@ struct AddressView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(inside ? "داخل منطقة التوصيل · \(catalog.store.area)" : "حرّك الخريطة لين يصير الدبوس على بيتك داخل المنطقة",
                   systemImage: inside ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                .font(.system(size: 13.5, weight: .semibold))
+                .font(.ui(size: 13.5, weight: .semibold))
                 .foregroundStyle(inside ? Theme.brandDeep : Theme.copperInk)
 
             field("الجوال", text: $phone, prompt: "05XXXXXXXX", field: .phone, error: phoneError)
@@ -166,12 +166,12 @@ struct AddressView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 12) {
                 Text(title)
-                    .font(.system(size: 14))
+                    .font(.ui(size: 14))
                     .foregroundStyle(Theme.muted)
                     .frame(width: 52, alignment: .leading)
                 TextField(prompt, text: text)
                     .focused($focus, equals: field)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.ui(size: 16, weight: .medium))
                     .foregroundStyle(Theme.ink)
             }
             .padding(.horizontal, 14)
@@ -180,7 +180,7 @@ struct AddressView: View {
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(error == nil ? Theme.line : Theme.copper, lineWidth: error == nil ? 1 : 1.5))
             if let error {
-                Text(error).font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.copperInk)
+                Text(error).font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Theme.copperInk)
             }
         }
     }

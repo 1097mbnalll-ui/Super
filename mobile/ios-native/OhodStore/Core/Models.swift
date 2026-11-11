@@ -35,6 +35,7 @@ struct Category: Hashable, Sendable, Identifiable {
     let subs: [SubCategory]
 
     var emoji: String {
+        if let custom = AppLook.current.catIcons[id] { return custom }
         switch id {
         case "bakery": return "🥐"
         case "dairy": return "🥛"
@@ -89,7 +90,6 @@ struct Product: Hashable, Sendable, Identifiable {
     /// شارة العرض على البطاقة: «خصم ٢٠٪» أو «عرض ٣ حبات»
     var offerBadge: String? {
         if let d = discountPercent { return "خصم \(d)٪" }
-        if quantityOffer != nil { return "عرض كمية" }
         return nil
     }
     static func pieces(_ n: Int) -> String { n == 2 ? "حبتين" : n <= 10 ? "\(n) حبات" : "\(n) حبة" }
@@ -120,6 +120,43 @@ struct BannerSettings: Hashable, Sendable {
     var picsN: Int?
 }
 
+/// «شكل التطبيق» من لوحة الإدارة (store.app): أحجام الخط والألوان والأيقونات وترتيب الرئيسية.
+/// يتغير في التطبيق أول ما ينفتح، بدون تحديث.
+struct AppLook: Equatable, Sendable {
+    var textScale: Double = 1
+    var priceScale: Double = 1
+    var bannerScale: Double = 1
+    var brand: String? = nil
+    var accent: String? = nil
+    var header = "dark"
+    var columns = 3
+    var showFeatured = true
+    var showChips = true
+    var catIcons: [String: String] = [:]
+    var tabIcons: [String: String] = [:]
+
+    /// النسخة المطبّقة الحين (تتغير لما تنحمّل بيانات المتجر)
+    nonisolated(unsafe) static var current = AppLook()
+
+    static func parse(_ any: Any?) -> AppLook {
+        var l = AppLook()
+        guard let o = any as? [String: Any] else { return l }
+        func scale(_ v: Any?, _ lo: Double, _ hi: Double) -> Double? { CatalogParser.num(v).map { Swift.min(hi, Swift.max(lo, $0)) } }
+        l.textScale = scale(o["textScale"], 0.8, 1.35) ?? 1
+        l.priceScale = scale(o["priceScale"], 0.8, 1.4) ?? 1
+        l.bannerScale = scale(o["bannerScale"], 0.75, 1.4) ?? 1
+        l.brand = CatalogParser.str(o["brand"])
+        l.accent = CatalogParser.str(o["accent"])
+        l.header = CatalogParser.str(o["header"]) == "light" ? "light" : "dark"
+        l.columns = CatalogParser.num(o["columns"]) == 2 ? 2 : 3
+        l.showFeatured = (o["showFeatured"] as? Bool) ?? true
+        l.showChips = (o["showChips"] as? Bool) ?? true
+        for (k, v) in (o["catIcons"] as? [String: Any]) ?? [:] { if let e = CatalogParser.str(v) { l.catIcons[k] = String(e.prefix(4)) } }
+        for (k, v) in (o["tabIcons"] as? [String: Any]) ?? [:] { if let e = CatalogParser.str(v) { l.tabIcons[k] = e } }
+        return l
+    }
+}
+
 struct PromoSlot: Hashable, Sendable {
     let id: String
     let on: Bool
@@ -146,6 +183,7 @@ struct StoreInfo: Sendable {
     var promos: [PromoSlot] = []
     var banEdit: [String: BannerSettings] = [:]
     var banPicks: [String: [String]] = [:]
+    var look = AppLook()
 }
 
 struct Catalog: Sendable {
@@ -189,6 +227,7 @@ enum CatalogParser {
                                   color: str(b["color"]), style: str(b["style"]), kicker: text(b["k"]), go: text(b["go"]),
                                   ids: (b["ids"] as? [Any])?.compactMap { str($0) } ?? []))
         }
+        store.look = AppLook.parse(s["app"])
         store.promos = ((s["promos"] as? [[String: Any]]) ?? []).compactMap { x in
             str(x["id"]).map { PromoSlot(id: $0, on: (x["on"] as? Bool) ?? true) }
         }

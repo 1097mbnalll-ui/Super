@@ -33,10 +33,10 @@ struct AccountView: View {
 
                 if orders.orders.isEmpty {
                 VStack(spacing: 10) {
-                    Text("🛒").font(.system(size: 40))
+                    Text("🛒").font(.ui(size: 40))
                     Text("ما طلبت شي للحين").font(.kufi(16, .bold))
                     Text(introLine)
-                        .font(.system(size: 14)).foregroundStyle(Theme.muted)
+                        .font(.ui(size: 14)).foregroundStyle(Theme.muted)
                         .multilineTextAlignment(.center)
                     Button("ابدأ التسوّق") { tab = .home }
                         .buttonStyle(PrimaryButtonStyle())
@@ -48,7 +48,7 @@ struct AccountView: View {
                 .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color(hex: 0xD7EEE6)))
                 }
 
-                Text("الإعدادات").font(.system(size: 14)).foregroundStyle(Theme.muted).padding(.top, 8)
+                Text("الإعدادات").font(.ui(size: 14)).foregroundStyle(Theme.muted).padding(.top, 8)
                 VStack(spacing: 0) {
                     Button { showAddress = true } label: {
                         row("عنوانك", systemImage: "mappin.and.ellipse",
@@ -70,7 +70,7 @@ struct AccountView: View {
                 .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
 
-                Text("تحتاج شي؟").font(.system(size: 14)).foregroundStyle(Theme.muted).padding(.top, 8)
+                Text("تحتاج شي؟").font(.ui(size: 14)).foregroundStyle(Theme.muted).padding(.top, 8)
                 HStack(spacing: 10) {
                     if let call = phoneURL {
                         Link(destination: call) { contact("اتصال", "phone.fill", bg: Theme.mint, fg: Theme.brandDeep) }
@@ -82,11 +82,11 @@ struct AccountView: View {
 
                 if !catalog.store.hours.isEmpty {
                     Label("أوقات العمل: \(catalog.store.hours)", systemImage: "clock")
-                        .font(.system(size: 13)).foregroundStyle(Theme.muted)
+                        .font(.ui(size: 13)).foregroundStyle(Theme.muted)
                         .padding(.top, 4)
                 }
                 Text("الإصدار \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""))")
-                    .font(.system(size: 11)).foregroundStyle(Theme.muted.opacity(0.7))
+                    .font(.ui(size: 11)).foregroundStyle(Theme.muted.opacity(0.7))
                     .frame(maxWidth: .infinity)
                     .padding(.top, 12)
             }
@@ -120,7 +120,7 @@ struct AccountView: View {
                         .foregroundStyle(Theme.brandDeep)
                 } else {
                     Image(systemName: "person")
-                        .font(.system(size: 26, weight: .regular))
+                        .font(.ui(size: 26, weight: .regular))
                         .foregroundStyle(Theme.oliveInk)
                 }
             }
@@ -131,7 +131,7 @@ struct AccountView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(hasName ? orders.name : "حيّاك في \(catalog.store.name) 👋").font(.kufi(18, .bold, relativeTo: .title3))
                 Text(orders.phone.isEmpty ? "تسوّق على راحتك، بدون تسجيل" : orders.phone)
-                    .font(.system(size: 14)).foregroundStyle(Theme.muted)
+                    .font(.ui(size: 14)).foregroundStyle(Theme.muted)
             }
             Spacer(minLength: 0)
         }
@@ -156,9 +156,9 @@ struct AccountView: View {
             Label(title, systemImage: systemImage)
             Spacer()
             if let value {
-                Text(value).font(.system(size: 14)).foregroundStyle(Theme.muted).lineLimit(1)
+                Text(value).font(.ui(size: 14)).foregroundStyle(Theme.muted).lineLimit(1)
             }
-            Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
+            Image(systemName: "chevron.forward").font(.ui(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
         }
         .padding(.horizontal, 16).frame(minHeight: 56)
         .contentShape(Rectangle())
@@ -170,7 +170,7 @@ struct AccountView: View {
                 .foregroundStyle(fg)
                 .frame(width: 38, height: 38)
                 .background(bg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text(title).font(.ui(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
             Spacer(minLength: 0)
         }
         .padding(12)
@@ -204,7 +204,7 @@ private struct ReorderCard: View {
                 .lineLimit(1)
             Button(action: action) {
                 Label("أضفه للسلة", systemImage: "arrow.counterclockwise")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.ui(size: 14, weight: .semibold))
                     .foregroundStyle(Theme.brandDeep)
                     .frame(maxWidth: .infinity, minHeight: 40)
                     .background(Theme.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))

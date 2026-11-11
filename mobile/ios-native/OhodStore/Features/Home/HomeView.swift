@@ -17,12 +17,20 @@ struct HomeView: View {
                     ClosedNotice(message: catalog.store.closedMessage)
                         .padding(.horizontal, 16).padding(.top, 12)
                 }
-                QuickChips(tab: $tab, path: $path)
-                    .padding(.top, 14)
+                if AppLook.current.showChips {
+                    QuickChips(tab: $tab, path: $path)
+                        .padding(.top, 14)
+                }
                 if let index = catalog.index {
-                    SectionHeader(title: "مختارات لك", emoji: "✨", actionTitle: "كل العروض") { tab = .offers }
-                        .padding(.top, 18).padding(.bottom, 8)
-                    ProductGrid(products: index.featured, showCategory: true)
+                    if AppLook.current.showFeatured {
+                        SectionHeader(title: "مختارات لك", emoji: "✨", actionTitle: "كل العروض") { tab = .offers }
+                            .padding(.top, 18).padding(.bottom, 8)
+                        ProductGrid(products: index.featured, showCategory: true)
+                    } else {
+                        SectionHeader(title: "العروض", emoji: "🔥", actionTitle: "الكل") { tab = .offers }
+                            .padding(.top, 18).padding(.bottom, 8)
+                        ProductGrid(products: Array(index.offers.prefix(30)), showCategory: true)
+                    }
                 } else if catalog.failed {
                     LoadFailedView { Task { await catalog.refresh() } }
                         .padding(.top, 40)
@@ -70,7 +78,7 @@ private struct OrderBubble: View {
                         .overlay(Circle().strokeBorder(.white, lineWidth: 3))
                         .shadow(color: Theme.brandDeep.opacity(0.45), radius: 10, y: 5)
                     VStack(spacing: 0) {
-                        Text(icon).font(.system(size: eta == nil ? 28 : 22))
+                        Text(icon).font(.ui(size: eta == nil ? 28 : 22))
                         if let eta, order.status == "onway" {
                             Text(verbatim: "\(max(1, eta)) د").font(.kufi(13, .bold)).foregroundStyle(.white)
                         }
@@ -87,7 +95,7 @@ private struct OrderBubble: View {
 
             if showTip {
                 Text(order.status == "onway" ? "طلبك في الطريق · اضغط تتابعه" : "تابع طلبك من هنا")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.ui(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .background(Theme.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -116,6 +124,13 @@ private struct HomeHeader: View {
     @Binding var path: NavigationPath
     @Environment(CatalogStore.self) private var catalog
 
+    /// شكل الرأس من «شكل التطبيق» في الإدارة: أخضر غامق (الافتراضي) أو فاتح
+    private var lightHeader: Bool { AppLook.current.header == "light" }
+    private var headerText: Color { lightHeader ? Theme.ink : .white }
+    @ViewBuilder private var headerBackground: some View {
+        if lightHeader { Theme.softGradient } else { Theme.headerGradient }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
@@ -127,31 +142,33 @@ private struct HomeHeader: View {
                         .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
                     Text(catalog.store.name)
                         .font(.kufi(24, .bold, relativeTo: .title))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(lightHeader ? Theme.brandDeep : .white)
+                        .lineLimit(1).minimumScaleFactor(0.7)
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 6) {
-                    Label("توصيل خلال \(catalog.store.eta)", systemImage: "bolt.fill")
+                    Label(catalog.store.eta, systemImage: "bolt.fill")
                         .font(.kufi(12.5, .semibold, relativeTo: .caption))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(headerText)
                         .lineLimit(1)
+                        .fixedSize()
                         .padding(.horizontal, 11).padding(.vertical, 7)
-                        .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.white.opacity(0.3)))
+                        .background(lightHeader ? Theme.brand.opacity(0.1) : .white.opacity(0.16), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(lightHeader ? Theme.brand.opacity(0.25) : .white.opacity(0.3)))
                     HStack(spacing: 4) {
                         Image(systemName: "mappin.and.ellipse")
                         Text("التوصيل في \(catalog.store.area)")
                     }
-                    .font(.system(size: 14.5, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.95))
+                    .font(.ui(size: 14.5, weight: .medium))
+                    .foregroundStyle(headerText.opacity(0.95))
                 }
             }
             Button {
                 path.append(Route.search)
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass").font(.system(size: 18, weight: .semibold))
-                    Text("وش ناقص بيتك اليوم؟").font(.system(size: 16))
+                    Image(systemName: "magnifyingglass").font(.ui(size: 18, weight: .semibold))
+                    Text("وش ناقص بيتك اليوم؟").font(.ui(size: 16))
                     Spacer()
                 }
                 .foregroundStyle(Theme.muted)
@@ -167,9 +184,10 @@ private struct HomeHeader: View {
         .padding(.top, 6)
         .padding(.bottom, 18)
         .background(alignment: .top) {
-            Theme.headerGradient
+            // الأخضر يمتد لفوق خلف الساعة (بدون شريط أبيض)، وحتى لو سحب الزبون الصفحة لتحت
+            headerBackground
                 .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 28, bottomTrailingRadius: 28, style: .continuous))
-                .ignoresSafeArea(edges: .top)
+                .padding(.top, -600)
         }
     }
 }
@@ -330,26 +348,26 @@ private struct BannerCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     if !banner.kicker.isEmpty {
                         Text(banner.kicker)
-                            .font(.system(size: 11.5, weight: .bold))
+                            .font(.ui(size: 11.5 * AppLook.current.bannerScale, weight: .bold))
                             .foregroundStyle(kickerColor)
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(kickerBackground, in: Capsule())
                     }
                     Text(banner.title)
-                        .font(.kufi(18, .bold, relativeTo: .title3))
+                        .font(.kufi(18 * AppLook.current.bannerScale, .bold, relativeTo: .title3))
                         .foregroundStyle(textColor)
                         .lineLimit(2)
                         .minimumScaleFactor(0.75)
                     if !banner.subtitle.isEmpty {
                         Text(banner.subtitle)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.ui(size: 12 * AppLook.current.bannerScale, weight: .medium))
                             .foregroundStyle(textColor.opacity(0.9))
                             .lineLimit(2)
                     }
                     Spacer(minLength: 0)
                     if !banner.button.isEmpty {
                     Text(banner.button)
-                        .font(.kufi(12, .bold))
+                        .font(.kufi(12 * AppLook.current.bannerScale, .bold))
                         .foregroundStyle(buttonText)
                         .padding(.horizontal, 13).padding(.vertical, 6)
                         .background(buttonBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -461,7 +479,7 @@ struct ClosedNotice: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("المتجر مقفل الحين").font(.kufi(13, .bold))
                 Text(message.isEmpty ? "تقدر تتصفح وتجهّز سلتك، ونستقبل الطلبات وقت الفتح." : message)
-                    .font(.system(size: 13)).foregroundStyle(Theme.muted)
+                    .font(.ui(size: 13)).foregroundStyle(Theme.muted)
             }
             Spacer(minLength: 0)
         }

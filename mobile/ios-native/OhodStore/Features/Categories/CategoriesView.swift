@@ -17,8 +17,8 @@ struct CategoriesView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Button { path.append(Route.search) } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass").font(.system(size: 17, weight: .medium))
-                        Text("ابحث في كل الأقسام").font(.system(size: 15))
+                        Image(systemName: "magnifyingglass").font(.ui(size: 17, weight: .medium))
+                        Text("ابحث في كل الأقسام").font(.ui(size: 15))
                         Spacer()
                     }
                     .foregroundStyle(Theme.muted)
@@ -103,7 +103,7 @@ struct CategoryTile: View {
             }
             .aspectRatio(1, contentMode: .fit)
             Text(category.name)
-                .font(.system(size: 12.5, weight: .medium))
+                .font(.ui(size: 12.5, weight: .medium))
                 .foregroundStyle(Theme.ink)
                 .multilineTextAlignment(.center)
                 .lineLimit(2, reservesSpace: true)
@@ -144,7 +144,7 @@ struct CategoryView: View {
                         .padding(.top, 8)
                     }
                     Text("\(products.count) منتج")
-                        .font(.system(size: 13))
+                        .font(.ui(size: 13))
                         .foregroundStyle(Theme.muted)
                         .padding(.horizontal, 16)
                         .padding(.top, 12).padding(.bottom, 10)

@@ -26,7 +26,7 @@ struct ProductCard: View {
                             .background(Theme.copper, in: UnevenRoundedRectangle(bottomTrailingRadius: 10, topTrailingRadius: 0, style: .continuous))
                     } else if !available {
                         Text("نفد")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.ui(size: 11, weight: .bold))
                             .foregroundStyle(Theme.muted)
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(.white, in: Capsule())
@@ -39,7 +39,7 @@ struct ProductCard: View {
 
                 if showCategory, let cat = catalog.category(product.cat) {
                     Text(cat.name)
-                        .font(.system(size: 10.5, weight: .semibold))
+                        .font(.ui(size: 10.5, weight: .semibold))
                         .foregroundStyle(Theme.oliveInk)
                         .lineLimit(1)
                         .padding(.horizontal, 7).padding(.vertical, 2)
@@ -47,23 +47,37 @@ struct ProductCard: View {
                         .padding(.top, 4)
                 }
                 Text(product.name)
-                    .font(.system(size: 14.5, weight: .semibold))
+                    .font(.ui(size: 14.5, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)
                     .padding(.top, showCategory ? 0 : 4)
-                Text(product.packs.isEmpty ? product.unit : "سعر الحبة")
-                    .font(.system(size: 12.5))
+                Text(product.unit)
+                    .font(.ui(size: 12.5))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
-                PriceLabel(price: product.price, old: available ? product.old : nil, size: 17)
                 if available, let q = product.quantityOffer {
-                    (Text(verbatim: "\(Product.pieces(q.count)) بـ \(Money.plain(q.price)) ر.س ") + Text(Money.plain(q.before)).strikethrough().font(.system(size: 10)))
-                        .font(.system(size: 11.5, weight: .bold))
+                    // عرض الكمية مثل: ٥٫٨٠ ر.س  ~٦٫٠٠~  [العدد ٣]  ثم «🔥 وفّر ٠٫٢٠ ر.س بالعرض»
+                    HStack(alignment: .center, spacing: 4) {
+                        PriceLabel(price: q.price, old: q.before, size: 16)
+                        Spacer(minLength: 0)
+                        HStack(spacing: 3) {
+                            Text("العدد").font(.ui(size: 9.5, weight: .bold))
+                            Text(verbatim: "\(q.count)").font(.kufi(13, .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6).padding(.vertical, 1)
+                        .background(Theme.copper, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .fixedSize()
+                    }
+                    Text("🔥 وفّر \(Money.plain(q.before - q.price)) ر.س بالعرض")
+                        .font(.ui(size: 11, weight: .bold))
                         .foregroundStyle(Theme.copperInk)
-                        .lineLimit(1).minimumScaleFactor(0.8)
+                        .lineLimit(1).minimumScaleFactor(0.75)
                         .padding(.horizontal, 6).padding(.vertical, 3)
-                        .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .background(Theme.copperSoft, in: Capsule())
+                } else {
+                    PriceLabel(price: product.price, old: available ? product.old : nil, size: 17)
                 }
             }
             .padding(6)
@@ -108,7 +122,7 @@ struct CardQuantityControl: View {
                         cart.increment(key, limit: cap)
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 19, weight: .bold))
+                            .font(.ui(size: 19, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(width: 38, height: 38)
                             .background(Theme.brand, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -161,7 +175,7 @@ struct StepperCapsule: View {
             }
             .accessibilityLabel(qty == 1 ? "شيل من السلة" : "نقص")
         }
-        .font(.system(size: compact ? 13 : 15, weight: .semibold))
+        .font(.ui(size: compact ? 13 : 15, weight: .semibold))
         .foregroundStyle(.white)
         .frame(height: compact ? 40 : 38)
         .frame(minWidth: compact ? 96 : nil)
@@ -179,7 +193,7 @@ struct ProductGrid: View {
 
     var body: some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top),
-                            count: typeSize >= .accessibility1 ? 2 : 3)
+                            count: typeSize >= .accessibility1 ? 2 : AppLook.current.columns)
         LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
             ForEach(products) { p in
                 ProductCard(product: p, showCategory: showCategory)

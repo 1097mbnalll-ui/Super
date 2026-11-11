@@ -19,11 +19,11 @@ extension Color {
 }
 
 enum Theme {
-    // نسخة ٢ (اعتمدها المالك ١١ نوفمبر): ألوان أعمق وأوضح، والخلفية بيضاء
-    static let brand = Color(hex: 0x0E8A6A)
-    static let brandDeep = Color(hex: 0x086650)
-    static let copper = Color(hex: 0xEE7417)
-    static let copperInk = Color(hex: 0xC4560A)
+    // نسخة ٢ (اعتمدها المالك ١١ نوفمبر). الأساسي ولون العروض يتغيرون من «شكل التطبيق» في الإدارة
+    static var brand: Color { Color(hexString: AppLook.current.brand) ?? Color(hex: 0x0E8A6A) }
+    static var brandDeep: Color { AppLook.current.brand == nil ? Color(hex: 0x086650) : brand }
+    static var copper: Color { Color(hexString: AppLook.current.accent) ?? Color(hex: 0xEE7417) }
+    static var copperInk: Color { AppLook.current.accent == nil ? Color(hex: 0xC4560A) : copper }
     static let copperSoft = Color(hex: 0xFFF1E4)
     static let olive = Color(hex: 0xB5AC70)
     static let oliveInk = Color(hex: 0x6E6420)
@@ -35,10 +35,16 @@ enum Theme {
     static let line = Color(hex: 0xE3E8E6)
     static let surface = Color(hex: 0xF3F6F5)
 
-    static let bannerGradient = LinearGradient(colors: [Color(hex: 0xF08A2A), Color(hex: 0xE2661A), Color(hex: 0xC9501A)],
-                                               startPoint: .topTrailing, endPoint: .bottomLeading)
-    static let headerGradient = LinearGradient(colors: [Color(hex: 0x12A07C), Color(hex: 0x0B7A5E), Color(hex: 0x07604A)],
-                                               startPoint: .topTrailing, endPoint: .bottomLeading)
+    static var bannerGradient: LinearGradient {
+        AppLook.current.accent == nil
+            ? LinearGradient(colors: [Color(hex: 0xF08A2A), Color(hex: 0xE2661A), Color(hex: 0xC9501A)], startPoint: .topTrailing, endPoint: .bottomLeading)
+            : LinearGradient(colors: [copper, copper.opacity(0.8)], startPoint: .topTrailing, endPoint: .bottomLeading)
+    }
+    static var headerGradient: LinearGradient {
+        AppLook.current.brand == nil
+            ? LinearGradient(colors: [Color(hex: 0x12A07C), Color(hex: 0x0B7A5E), Color(hex: 0x07604A)], startPoint: .topTrailing, endPoint: .bottomLeading)
+            : LinearGradient(colors: [brand, brand.opacity(0.82)], startPoint: .topTrailing, endPoint: .bottomLeading)
+    }
     /// خلفية فاتحة لأعلى الصفحات (الأقسام وصفحة المنتج)
     static let softGradient = LinearGradient(colors: [mint, mintSoft, .white], startPoint: .top, endPoint: .bottom)
     static let tileGradient = LinearGradient(colors: [mint, Color(hex: 0xF5FBF9)], startPoint: .top, endPoint: .bottom)
@@ -53,7 +59,11 @@ enum Kufi: String {
 
 extension Font {
     static func kufi(_ size: CGFloat, _ weight: Kufi = .bold, relativeTo style: Font.TextStyle = .body) -> Font {
-        .custom(weight.rawValue, size: size, relativeTo: style)
+        .custom(weight.rawValue, size: size * AppLook.current.textScale, relativeTo: style)
+    }
+    /// خط آبل بحجم يتكبّر ويتصغّر من «شكل التطبيق» في الإدارة
+    static func ui(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size * AppLook.current.textScale, weight: weight)
     }
 }
 

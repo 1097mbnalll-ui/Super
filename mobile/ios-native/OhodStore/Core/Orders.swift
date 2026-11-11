@@ -180,9 +180,9 @@ final class OrderCenter {
                                    items: sent, keys: keyOrder.filter { sent[$0] != nil } + sent.keys.filter { !keyOrder.contains($0) }.sorted())
             var order2 = order
             if !resendingOld {
-                order2.lines = snapshot.rows.filter { sent[$0.key] != nil }.map {
-                    SavedLine(key: $0.key, name: $0.product.name, unit: $0.unitLabel, qty: sent[$0.key] ?? $0.qty, price: $0.unitPrice,
-                              old: $0.pack == nil ? $0.product.old : nil)
+                order2.lines = snapshot.rows.filter { $0.available }.map {
+                    SavedLine(key: $0.key, name: $0.product.name, unit: $0.unitLabel, qty: $0.qty, price: ($0.lineTotal / Double(Swift.max(1, $0.qty)) * 100).rounded() / 100,
+                              old: $0.offerSaving > 0.009 ? $0.unitPrice : ($0.pack == nil ? $0.product.old : nil))
                 }
                 order2.subtotal = snapshot.subtotal; order2.fee = snapshot.fee; order2.savings = snapshot.savings
                 order2.details = address.details; order2.sub = cart.substitution
@@ -190,7 +190,7 @@ final class OrderCenter {
             }
             if !orders.contains(where: { $0.no == no }) { orders.insert(order2, at: 0) }
             if orders.count > 30 { orders.removeLast(orders.count - 30) }
-            if !resendingOld { cart.remove(sent: sent) }
+            if !resendingOld { cart.remove(sent: sent, catalog: catalog) }
             Haptics.success()
             Task { await catalog.refreshStock(force: true) }
             return .success(order2)

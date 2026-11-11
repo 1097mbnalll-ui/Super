@@ -16,11 +16,26 @@ struct CartRow: Identifiable {
     let pack: Pack?
     let qty: Int
     let available: Bool
+    /// عرض الكمية (مثل ٤ بـ ٧): ينطبق لحاله على كل ٤ حبات بالسطر
+    var offer: (index: Int, count: Int, price: Double)? = nil
     var id: String { key }
     var unitPrice: Double { pack?.price ?? product.price }
     var unitLabel: String { pack?.unit ?? product.unit }
-    var lineTotal: Double { unitPrice * Double(qty) }
-    var saving: Double { pack == nil ? (product.discount ?? 0) * Double(qty) : 0 }
+    var bundles: Int { offer.map { qty / $0.count } ?? 0 }
+    var loose: Int { qty - bundles * (offer?.count ?? 1) }
+    var lineTotal: Double {
+        guard let o = offer else { return unitPrice * Double(qty) }
+        return Double(bundles) * o.price + Double(loose) * unitPrice
+    }
+    var regularTotal: Double { unitPrice * Double(qty) }
+    var offerSaving: Double { regularTotal - lineTotal }
+    /// كم حبة باقي عشان ينطبق العرض (للمرة الجاية)
+    var missingForOffer: Int? {
+        guard let o = offer, qty > 0 else { return nil }
+        let r = qty % o.count
+        return r == 0 ? nil : o.count - r
+    }
+    var saving: Double { (pack == nil ? (product.discount ?? 0) * Double(qty) : 0) + offerSaving }
 }
 
 struct CartTotals {
@@ -120,7 +135,8 @@ final class Cart {
         t.minOrder = store.minOrder
         for key in order {
             guard let qty = lines[key]?.qty, qty > 0, let r = catalog.resolve(key) else { continue }
-            let row = CartRow(key: key, product: r.product, pack: r.pack, qty: qty, available: catalog.isAvailable(r.product))
+            var row = CartRow(key: key, product: r.product, pack: r.pack, qty: qty, available: catalog.isAvailable(r.product))
+            if r.pack == nil, let q = r.product.quantityOffer { row.offer = (q.index, q.count, q.price) }
             t.rows.append(row)
             guard row.available else { continue }
             t.count += qty
@@ -135,7 +151,16 @@ final class Cart {
     /// اللي ينرسل للخادم: المتوفر بس، بنفس مفاتيح الموقع ("id" أو "id~رقم الخيار")
     func orderItems(_ catalog: CatalogStore) -> [String: Int] {
         var items: [String: Int] = [:]
-        for row in totals(catalog).rows where row.available { items[row.key] = row.qty }
+        // عرض الكمية: كل مجموعة كاملة تنرسل كخيار العرض (id~رقم) والباقي حبات، والخادم يسعّرها
+        for row in totals(catalog).rows where row.available {
+            if let o = row.offer, row.bundles > 0 {
+                let packKey = "\(row.product.id)~\(o.index)"
+                items[packKey, default: 0] += row.bundles
+                if row.loose > 0 { items[row.key, default: 0] += row.loose }
+            } else {
+                items[row.key, default: 0] += row.qty
+            }
+        }
         return items
     }
 
@@ -171,8 +196,14 @@ final class Cart {
     }
 
     /// بعد نجاح الطلب: نفضّي اللي انرسل بس (لو الزبون غيّر السلة أثناء الإرسال يبقى الفرق)
-    func remove(sent items: [String: Int]) {
-        for (key, q) in items { if let l = lines[key] { l.qty = max(0, l.qty - q) } }
+    func remove(sent items: [String: Int], catalog: CatalogStore) {
+        for (key, q) in items {
+            if let l = lines[key] { l.qty = max(0, l.qty - q); continue }
+            // عرض كمية انرسل كخيار (id~رقم) وهو بالسلة حبات: ننقص الحبات
+            if let r = catalog.resolve(key), let pack = r.pack, let base = lines[r.product.id] {
+                base.qty = max(0, base.qty - q * pack.count)
+            }
+        }
         order.removeAll { (lines[$0]?.qty ?? 0) == 0 }
         revision &+= 1
         save()
