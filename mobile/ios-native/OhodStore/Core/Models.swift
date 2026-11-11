@@ -89,7 +89,7 @@ struct Product: Hashable, Sendable, Identifiable {
     /// شارة العرض على البطاقة: «خصم ٢٠٪» أو «عرض ٣ حبات»
     var offerBadge: String? {
         if let d = discountPercent { return "خصم \(d)٪" }
-        if let q = quantityOffer { return "عرض \(Product.pieces(q.count))" }
+        if quantityOffer != nil { return "عرض كمية" }
         return nil
     }
     static func pieces(_ n: Int) -> String { n == 2 ? "حبتين" : n <= 10 ? "\(n) حبات" : "\(n) حبة" }

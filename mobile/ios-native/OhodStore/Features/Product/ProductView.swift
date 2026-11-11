@@ -62,8 +62,13 @@ struct ProductView: View {
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        PriceLabel(price: product.price, old: product.old, size: 24)
-                        Text("/ \(product.unit)").font(.system(size: 14)).foregroundStyle(Theme.muted)
+                        PriceLabel(price: unitPrice, old: pack == nil ? product.old : nil, size: 24)
+                        Text(pack.map { "/ \($0.unit)" } ?? (product.packs.isEmpty ? "/ \(product.unit)" : "/ الحبة"))
+                            .font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.muted)
+                    }
+                    if let pack, pack.count > 1 {
+                        Text("يعني الحبة بـ \(Money.sar((pack.price / Double(pack.count) * 100).rounded() / 100))")
+                            .font(.system(size: 13)).foregroundStyle(Theme.muted)
                     }
                     if available, let old = product.old, let pct = product.discountPercent {
                         Label("عليه عرض: كان \(Money.sar(old)) وصار \(Money.sar(product.price)) · وفّر \(Money.sar(old - product.price)) (\(pct)٪)",
@@ -74,13 +79,25 @@ struct ProductView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     } else if available, let q = product.quantityOffer {
-                        Label("عرض \(Product.pieces(q.count)): بـ \(Money.sar(q.price)) بدل \(Money.sar(q.before)) · وفّر \(Money.sar(q.before - q.price))",
-                              systemImage: "flame.fill")
-                            .font(.system(size: 13.5, weight: .bold))
+                        Button {
+                            Haptics.selected()
+                            withAnimation(.snappy) { packIndex = q.index }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Label("عرض كمية: \(Product.pieces(q.count)) بـ \(Money.sar(q.price))", systemImage: "flame.fill")
+                                    .font(.system(size: 15, weight: .bold))
+                                (Text("بدل ") + Text(Money.sar(q.before)).strikethrough() + Text(" (الحبة بـ \(Money.plain(product.price))) · وفّر \(Money.sar(q.before - q.price))"))
+                                    .font(.system(size: 13, weight: .semibold))
+                                if packIndex != q.index {
+                                    Text("اضغط هنا تختار العرض").font(.system(size: 12.5, weight: .bold)).underline()
+                                }
+                            }
                             .foregroundStyle(Theme.copperInk)
                             .padding(10)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                        .buttonStyle(PressableStyle(scale: 0.98))
                     }
                     if !available {
                         Label("نفد من المحل حالياً", systemImage: "exclamationmark.circle")
