@@ -987,7 +987,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-ban.kb::before,.kq-ban.kb::after{display:none}
 .kb .t{position:absolute;z-index:3;top:9%;inset-inline-start:5.5%;max-width:56%;display:grid;gap:5px;justify-items:start}
 .kb .t .k{font-size:12px;font-weight:700}
-.kb .t h2{margin:0;font-size:clamp(19px,calc(var(--banh,200px) / 7.6),34px);line-height:1.15;font-weight:700}
+.kb .t h2{margin:0;font-size:clamp(16px,calc(var(--banh,200px) / 9.2),27px);line-height:1.15;font-weight:700}
 .kb .t p{margin:0;font-size:12px;opacity:.9}
 .kb .t .go{margin-top:4px;border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:700}
 .kb-p{position:absolute;object-fit:contain;filter:drop-shadow(0 12px 14px rgba(0,0,0,.26));pointer-events:none;transition:opacity .2s}
@@ -1028,7 +1028,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kb.s-split .go{background:var(--bc,#123B7A);color:#fff}
 .kb.s-split .s1{inset-inline-end:28%;top:6%;width:24%;height:86%;transform:rotate(8deg);z-index:3}
 .kb-big{position:absolute;z-index:4;inset-inline-end:5%;bottom:9%;color:#fff;line-height:1;display:grid;gap:2px}
-.kb-big b{font-size:clamp(28px,calc(var(--banh,200px) / 5),46px);letter-spacing:-.02em}.kb-big b.sm{font-size:16px;max-width:110px;line-height:1.3}.kb-big small{font-size:12px;opacity:.85}.kb-big s{font-size:13px;opacity:.7}
+.kb-big b{font-size:clamp(24px,calc(var(--banh,200px) / 6),38px);letter-spacing:-.02em}.kb-big b.sm{font-size:16px;max-width:110px;line-height:1.3}.kb-big small{font-size:12px;opacity:.85}.kb-big s{font-size:13px;opacity:.7}
 /* 9 bundle */
 .kb.s-bundle{background:var(--bc,#F1ECFF);color:#2E1A6B}
 .kb.s-bundle .t.wide{max-width:none;inset-inline-end:5.5%}
@@ -1552,7 +1552,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function sToast(m){ var x = document.createElement("div"); x.className = "dv-toast"; x.setAttribute("role", "status"); x.textContent = m; document.body.appendChild(x); setTimeout(function(){ x.remove(); }, 2200); }
   function banOf(id){ var l = S.bans || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
   function idsToList(ids){ return (ids || []).map(byId).filter(function(p){ return avail(p); }); }
-  var LAYOUT_DEF = ["promos","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["daily","offers","deals","bakery"];
+  var LAYOUT_DEF = ["promos","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["top","multi","daily","offers","deals","bakery"];
   function promoDefs(){ return PROMO_DEF.concat((S.bans || []).map(function(b){ return b.id; })); }
   function orderOf(list, defs){
     var out = [], seen = {};
@@ -1640,13 +1640,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
       isDeal ? '<span class="kq-badge deal">' + ic("lock") + tr("بـ ", "") + num(price) + tr(" ر.س", " SAR") + '</span>' :
       isDaily ? '<span class="kq-badge">' + ic("flame") + tr("عرض اليوم", "Deal of the day") + '</span>' :
       onSale(p) ? '<span class="kq-badge">' + tr("خصم ", "") + num(Math.max(1, Math.round((p.old - p.price) / p.old * 100))) + tr("٪", "% off") + '</span>' :
-      mo ? '<span class="kq-badge multi">' + tr("عرض " + pcs(mo.n), mo.n + " pcs offer") + '</span>' :
+      mo ? '<span class="kq-badge multi">' + tr("عرض كمية", "Bulk offer") + '</span>' :
       (p.badge ? '<span class="kq-badge fresh">' + esc(bd(p)) + '</span>' : '');
     var lf = left(p), low = avail(p) && lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '';
     // المنتج بدون صورة: بطاقة نصية بلون القسم بدل أيقونة الكيس، عشان الصفحة ما تبين فاضية
     var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
     return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + badge + low + control(p, kind || "") + '</div>' +
-      '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '') + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
+      '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + (mo ? tr(" للحبة", " each") : '') + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '') + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
       (mo ? '<button type="button" class="kq-multi" data-open="' + p.id + '" data-openpack="' + mo.i + '"><b>' + esc(multiTxt(mo)) + '</b><small>' + esc(multiEach(mo)) + tr(" · بدل ", " · was ") + '<s>' + num(Math.round(mo.n * Number(p.price) * 100) / 100) + '</s></small></button>' : '') +
       '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + (function(){ var L = Array.isArray(p.packs) ? p.packs.filter(function(x){ return !/^عرض/.test(String(x.u || "")); }) : []; return L.length ? ' · ' + L.map(function(x){ return esc(String(x.u || "").split(" ")[0]); }).join(" · ") : ''; })() + '</span></article>';
   }
@@ -1830,7 +1830,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var E = S.banEdit || {}, B = {}, pk = function(id, def){ var ids = S.banPicks && S.banPicks[id]; return ids && ids.length ? ids.filter(function(x){ return byId(x); }) : def; };
     var idsOf = function(list){ return list.map(function(p){ return p.id; }); };
     (S.bans || []).forEach(function(b){
-      var ps = (b.ids || []).map(byId).filter(Boolean), one = ps.length === 1 ? ps[0] : null, bu = bundleAlloc(b);
+      var ps = (b.ids || []).map(byId).filter(Boolean), tgc = String(b.target || "").indexOf("cat:") === 0 ? String(b.target).slice(4) : "";
+      // بنر بدون منتجات مختارة وهدفه قسم: نعرض صور من القسم نفسه عشان ما يطلع فاضي
+      if (!ps.length && tgc) ps = D.products.filter(function(p){ return p.cat === tgc && avail(p) && hasPic(p.img); }).sort(shelfSort).slice(0, 3);
+      var one = ps.length === 1 ? ps[0] : null, bu = (b.ids || []).length ? bundleAlloc(b) : null;
       var minP = ps.length ? Math.min.apply(null, ps.map(function(p){ return p.price; })) : 0;
       B[b.id] = banHTML(b.id, { tag: "button", style: one ? "calm" : "shelf", act: bu ? 'data-addbund="' + esc(b.id) + '"' : banTarget(b), go: bu ? tr("أضف الباقة", "Add bundle") : tr("تسوّق الحين", "Shop now"), ids: idsOf(ps),
         price: one ? num(one.price) : 0, old: one && onSale(one) ? num(one.old) : 0, bundle: bu,
@@ -1839,7 +1842,15 @@ html.sp-on,html.sp-on body{overflow:hidden}
       ids: pk("daily", [dd.p.id]), price: num(dd.price), old: dd.p.price > dd.price ? num(dd.p.price) : 0 }, E.daily);
     if (deals.length) B.deals = banHTML("deals", { tag: "button", style: "split", act: 'data-chip="deals"', k: t.unlocked ? tr("انفتحت لك!", "Unlocked!") : tr("مكافأة السلة الكبيرة", "Big-basket reward"), title: tr("منتجات بسعر رمزي", "Items at a token price"),
       sub: t.unlocked ? tr("ضيف اللي تبغاه", "Add what you like") : tr("تنفتح لطلبك فوق ", "Unlocks over ") + rial(DEAL.min), go: tr("شوف المنتجات", "See items"), ids: pk("deals", idsOf(deals)), price: num(DEAL.price) }, E.deals);
-    if (bakery) B.bakery = banHTML("bakery", { tag: "button", style: "shelf", act: 'data-opencat="' + bakery.id + '"', k: tr("من فرن ", "From the oven of ") + esc(sv("name")), title: tr("الخبز طالع<br>من الفرن", "Fresh bread<br>from the oven"),
+    // من العروض الحقيقية (تتحدث لحالها): أقوى خصم، وعرض كمية
+    var topP = offers.filter(function(p){ return onSale(p); }).sort(function(a, b){ return (b.old - b.price) / b.old - (a.old - a.price) / a.old || (hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0); })[0];
+    if (topP) B.top = banHTML("top", { tag: "button", style: "calm", act: 'data-open="' + topP.id + '"', k: tr("أقوى خصم اليوم · خصم ", "Top discount · ") + num(Math.round((topP.old - topP.price) / topP.old * 100)) + tr("٪", "% off"),
+      title: esc(nm(topP)), go: tr("اطلبه الحين", "Order now"), ids: pk("top", [topP.id]), price: num(topP.price), old: num(topP.old) }, E.top);
+    var mulP = offers.filter(function(p){ return multiOf(p) && hasPic(p.img); })[0] || offers.filter(function(p){ return multiOf(p); })[0], mulO = mulP && multiOf(mulP);
+    if (mulO) B.multi = banHTML("multi", { tag: "button", style: "split", act: 'data-open="' + mulP.id + '" data-openpack="' + mulO.i + '"', k: tr("عرض كمية", "Bulk offer"),
+      title: tr(pcs(mulO.n) + " بـ " + num(mulO.price) + " ر.س", mulO.n + " for " + num(mulO.price) + " SAR"), sub: esc(nm(mulP)), go: tr("شوف العرض", "See offer"),
+      ids: pk("multi", [mulP.id]), price: num(mulO.price), old: num(Math.round(mulO.n * mulP.price * 100) / 100) }, E.multi);
+    if (bakery && !bakery.soon) B.bakery = banHTML("bakery", { tag: "button", style: "shelf", act: 'data-opencat="' + bakery.id + '"', k: tr("من فرن ", "From the oven of ") + esc(sv("name")), title: tr("الخبز طالع<br>من الفرن", "Fresh bread<br>from the oven"),
       go: tr("اطلبه حار", "Order it hot"), ids: pk("bakery", idsOf(D.products.filter(function(p){ return p.cat === bakery.id && avail(p) && hasPic(p.img); }))), chip: tr("يوصلك حار", "Arrives hot") }, E.bakery);
     if (offers.length) B.offers = banHTML("offers", { tag: "button", style: "glass", act: 'data-chip="offers"', k: tr("عروض الأسبوع", "Weekly offers"), title: tr("خصومات على<br>", "Discounts on<br>") + num(offers.length) + tr(" منتج", " items"),
       go: tr("تسوّق العروض", "Shop offers"), ids: pk("offers", idsOf(offers)), chip: '<small>' + tr("خصم لين", "Up to") + '</small><b>' + num(maxOff) + tr("٪", "% off") + '</b>' }, E.offers);
@@ -3090,7 +3101,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function catOptions(sel){ return draft.cats.map(function(c){ return '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join(""); }
   function renderAFilter(){ $("aCat").innerHTML = '<option value="all">كل الأقسام</option>' + catOptions(aFilter.cat); }
   var LAY_LABEL = { promos: "بنرات العروض", free: "بطاقة التوصيل المجاني", catgrid: "الأقسام (مربعات الصور)", offers: "أفضل العروض (صف يتحرك)", deals: "منتجات السعر الرمزي (صف يتحرك)", grid: "الفلاتر والمنتجات" };
-  var PROMO_LABEL = { daily: "عرض اليوم", offers: "عروض الأسبوع", deals: "منتجات السعر الرمزي", bakery: "بطاقة المخبز" };
+  var PROMO_LABEL = { top: "أقوى خصم (تلقائي)", multi: "عرض الكمية (تلقائي)", daily: "عرض اليوم", offers: "عروض الأسبوع", deals: "منتجات السعر الرمزي", bakery: "بطاقة المخبز" };
   function mvBtns(kind, id, ends){ return '<span class="mv">' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':-99" aria-label="لأول الصفحة">أول</button>' : '') + '<button type="button" data-mv="' + kind + ':' + id + ':-1" aria-label="فوق">' + ic("up") + '</button><button type="button" data-mv="' + kind + ':' + id + ':1" aria-label="تحت">' + ic("down") + '</button>' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':99" aria-label="لآخر الصفحة">آخر</button>' : '') + '</span>'; }
   function renderLayout(){
     var st = draft.store;
