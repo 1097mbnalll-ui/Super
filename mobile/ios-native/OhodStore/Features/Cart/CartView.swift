@@ -219,7 +219,7 @@ private struct SummaryCard: View {
                     .contentTransition(.numericText(value: totals.total))
             }
             if let short = totals.belowMinimum {
-                Label("أقل مبلغ للطلب \(Money.sar(totals.minOrder))، باقي لك \(Money.sar(short))", systemImage: "info.circle")
+                Label("أقل مبلغ للطلب \(Money.short(totals.minOrder))، باقي لك \(Money.sar(short))", systemImage: "info.circle")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.copperInk)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -250,7 +250,8 @@ private struct CheckoutBar: View {
         @Bindable var cart = cart
         VStack(spacing: 8) {
             HStack {
-                Text("المنتجات \(Money.plain(totals.subtotal)) + التوصيل \(Money.plain(totals.fee))")
+                Text(totals.fee == 0 ? "المنتجات \(Money.plain(totals.subtotal)) + توصيل مجاني"
+                          : "المنتجات \(Money.plain(totals.subtotal)) + التوصيل \(Money.plain(totals.fee))")
                     .font(.system(size: 13)).foregroundStyle(Theme.muted)
                 Spacer()
                 Menu {

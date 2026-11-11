@@ -86,7 +86,7 @@ struct AccountView: View {
     private var introLine: String {
         let s = catalog.store
         var line = "أول طلب يوصلك خلال \(s.eta)"
-        if s.freeOver > 0 { line += "، والتوصيل مجاني فوق \(Money.sar(s.freeOver))" }
+        if s.freeOver > 0 { line += "، والتوصيل مجاني فوق \(Money.short(s.freeOver))" }
         return line
     }
 
