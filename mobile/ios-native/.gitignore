@@ -1,0 +1,4 @@
+OhodStore.xcodeproj/
+build/
+*.xcuserstate
+DerivedData/

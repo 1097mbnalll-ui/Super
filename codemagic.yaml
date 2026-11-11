@@ -32,27 +32,7 @@ workflows:
     name: iOS TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
-    # تلقائي: أي دفعة على mobile-app تغيّر كود التطبيق تبني وترفع لـ TestFlight (المجموعة «المحل» توصلها النسخة لحالها).
-    # المنتجات والأسعار والصور ما تحتاج بناء (تنزل من الموقع)، فتعديل data.json أو p/ ما يشغّله.
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: mobile-app
-          include: true
-          source: true
-      cancel_previous_builds: true
-    when:
-      changeset:
-        includes:
-          - 'index.html'
-          - 'privacy.html'
-          - 'cat/'
-          - 'mobile/'
-        excludes:
-          - 'mobile/store/'
-          - 'mobile/ios-native/'
-          - '**/*.md'
+    # يدوي فقط (تطبيق غلاف الموقع القديم). التطبيق الأصلي له workflows تحت.
     integrations:
       app_store_connect: ohod
     environment:
@@ -83,3 +63,75 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: false   # التجربة الداخلية (المالك وفريقه) ما تحتاج مراجعة؛ النسخة تظهر في TestFlight بعد ما تعالجها آبل
+
+  # ٣) التطبيق الأصلي (SwiftUI): معاينة على المحاكي + صور الشاشات (بدون توقيع). يشتغل مع كل دفعة تلمس mobile/ios-native
+  ios-native-preview:
+    name: iOS Native Preview (simulator screenshots)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: mobile-app
+          include: true
+          source: true
+      cancel_previous_builds: true
+    when:
+      changeset:
+        includes:
+          - 'mobile/ios-native/'
+        excludes:
+          - 'mobile/ios-native/design/'
+          - 'mobile/ios-native/research/'
+          - '**/*.md'
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install XcodeGen
+        script: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Build for simulator + screenshots
+        script: OUT="$CM_BUILD_DIR/screenshots" mobile/ios-native/scripts/preview-screens.sh
+    artifacts:
+      - screenshots/*.png
+      - screenshots/build.log
+
+  # ٤) التطبيق الأصلي: بناء موقّع ورفع لـ TestFlight. يشتغل لما ينرفع tag يبدأ بـ ios-native-
+  ios-native-testflight:
+    name: iOS Native TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'ios-native-*'
+          include: true
+    integrations:
+      app_store_connect: ohod
+    environment:
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: sa.ohod.store
+    scripts:
+      - name: Install XcodeGen
+        script: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Generate project
+        script: |
+          cd mobile/ios-native
+          export OHOD_BUILD_NUMBER=$(date -u +%y%m%d%H%M)
+          echo "build number $OHOD_BUILD_NUMBER"
+          xcodegen generate
+      - name: Use signing profiles
+        script: xcode-project use-profiles --project mobile/ios-native/OhodStore.xcodeproj
+      - name: Build ipa
+        script: xcode-project build-ipa --project mobile/ios-native/OhodStore.xcodeproj --scheme OhodStore
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+
