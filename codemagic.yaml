@@ -1,0 +1,64 @@
+# بناء تطبيق متاجر أحد للآيفون على Codemagic (ماك سحابي، الخطة المجانية ٥٠٠ دقيقة بالشهر).
+# البدء يدوي من لوحة Codemagic: اختر الفرع mobile-app ثم الـ workflow.
+# ما فيه أي سر بهالملف: مفتاح App Store Connect يندخل في Codemagic نفسه
+# (Team settings ← Integrations ← Developer Portal ← Manage keys)، والتوقيع يُدار هناك.
+workflows:
+  # ١) فحص البناء بس (محاكي، بدون توقيع ولا حساب آبل)
+  ios-check:
+    name: iOS build check (simulator)
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      xcode: latest
+      node: 22
+    scripts:
+      - name: Xcode version
+        script: xcodebuild -version
+      - name: npm ci + cap sync
+        script: |
+          cd mobile
+          npm ci
+          npm run sync
+      - name: xcodebuild (simulator, unsigned)
+        script: |
+          set -o pipefail
+          cd mobile/ios/App
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tail -n 200
+
+  # ٢) بناء موقّع ورفع لـ TestFlight (يحتاج حساب آبل مفعّل + مفتاح App Store Connect مربوط في Codemagic باسم ohod)
+  ios-testflight:
+    name: iOS TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: ohod
+    environment:
+      xcode: latest
+      node: 22
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: sa.ohod.store
+    scripts:
+      - name: npm ci + cap sync
+        script: |
+          cd mobile
+          npm ci
+          npm run sync
+      - name: Use signing profiles
+        script: xcode-project use-profiles --project mobile/ios/App/App.xcodeproj
+      - name: Build number
+        script: |
+          cd mobile/ios/App
+          agvtool new-version -all $((BUILD_NUMBER + 1))
+      - name: Build ipa
+        script: |
+          xcode-project build-ipa --project mobile/ios/App/App.xcodeproj --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
