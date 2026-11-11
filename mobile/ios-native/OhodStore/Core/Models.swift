@@ -101,6 +101,7 @@ struct Banner: Hashable, Sendable, Identifiable {
     let subtitle: String
     let target: String?   // cat:<id> أو prod:<id> أو offers
     let image: String?
+    var color: String? = nil
 }
 
 struct StoreInfo: Sendable {
@@ -155,13 +156,11 @@ enum CatalogParser {
                 return [a, b]
             }
         }
-        var banners: [Banner] = [
-            Banner(id: "bakery", title: "خبز وكيك\nطازج كل يوم", subtitle: "من مخبز متاجر أحد 🥐", target: "cat:bakery", image: "cat/bakery.webp"),
-            Banner(id: "offers", title: "عروض\nالأسبوع", subtitle: "أسعار أقل على منتجات مختارة", target: "offers", image: nil),
-        ]
+        // بنرات المالك من لوحة الإدارة. بنرات العروض تنبني في الرئيسية من العروض الحقيقية
+        var banners: [Banner] = []
         for b in (s["bans"] as? [[String: Any]]) ?? [] {
             guard let id = str(b["id"]), let title = str(b["title"]) else { continue }
-            banners.append(Banner(id: id, title: title, subtitle: "", target: str(b["target"]), image: nil))
+            banners.append(Banner(id: id, title: title, subtitle: str(b["sub"]) ?? "", target: str(b["target"]), image: nil, color: str(b["color"])))
         }
         store.banners = banners
 

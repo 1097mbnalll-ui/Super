@@ -58,8 +58,8 @@ struct ProductCard: View {
                     .lineLimit(1)
                 PriceLabel(price: product.price, old: available ? product.old : nil, size: 17)
                 if available, let q = product.quantityOffer {
-                    (Text(verbatim: "\(Product.pieces(q.count)) بـ \(Money.plain(q.price)) · بدل ") + Text(Money.plain(q.before)).strikethrough())
-                        .font(.system(size: 11.5, weight: .bold))
+                    (Text(verbatim: "\(q.count) بـ \(Money.plain(q.price)) بدل ") + Text(Money.plain(q.before)).strikethrough())
+                        .font(.system(size: 10.5, weight: .bold))
                         .foregroundStyle(Theme.copperInk)
                         .lineLimit(1).minimumScaleFactor(0.8)
                         .padding(.horizontal, 6).padding(.vertical, 3)

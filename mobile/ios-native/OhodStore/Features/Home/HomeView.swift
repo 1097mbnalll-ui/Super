@@ -174,6 +174,19 @@ private struct HomeHeader: View {
     }
 }
 
+/// بنر في الرئيسية: من العروض الحقيقية (أقوى خصم، عرض كمية، كل العروض) + بنرات المالك
+private struct HomeBanner: Identifiable {
+    enum Style { case hot, deep, light, custom(Color) }
+    let id: String
+    let kicker: String
+    let title: String
+    let subtitle: String
+    let button: String
+    let style: Style
+    let images: [URL]
+    let route: Route?
+}
+
 /// بنرات تتصفحها بالسحب (بدون تقليب تلقائي: احترام «تقليل الحركة» والقراءة على راحتك)
 private struct BannerCarousel: View {
     @Binding var path: NavigationPath
@@ -181,15 +194,12 @@ private struct BannerCarousel: View {
     @State private var current: String?
 
     var body: some View {
-        let banners = catalog.store.banners.filter { b in
-            guard let t = b.target, t.hasPrefix("cat:") else { return true }
-            return catalog.category(String(t.dropFirst(4)))?.soon != true
-        }
+        let banners = makeBanners()
         VStack(spacing: 8) {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 10) {
                     ForEach(banners) { banner in
-                        Button { open(banner) } label: { BannerCard(banner: banner) }
+                        Button { if let r = banner.route { path.append(r) } } label: { BannerCard(banner: banner) }
                             .buttonStyle(PressableStyle(scale: 0.98))
                             .containerRelativeFrame(.horizontal)
                             .id(banner.id)
@@ -200,7 +210,7 @@ private struct BannerCarousel: View {
             .scrollTargetBehavior(.viewAligned)
             .scrollIndicators(.hidden)
             .scrollPosition(id: $current)
-            .frame(height: 160)
+            .frame(height: 150)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
             if banners.count > 1 {
@@ -217,50 +227,142 @@ private struct BannerCarousel: View {
         }
     }
 
-    private func open(_ banner: Banner) {
-        guard let target = banner.target else { return }
-        if target.hasPrefix("cat:") { path.append(Route.category(String(target.dropFirst(4)))) }
-        else if target.hasPrefix("prod:") { path.append(Route.product(String(target.dropFirst(5)))) }
-        else if target == "offers" { path.append(Route.offers) }
+    private func makeBanners() -> [HomeBanner] {
+        guard let index = catalog.index else { return [] }
+        let offers = index.offers.filter { catalog.isAvailable($0) }
+        var out: [HomeBanner] = []
+        // ١) أقوى خصم
+        if let top = offers.filter({ $0.discountPercent != nil }).max(by: { ($0.discountPercent ?? 0, $0.hasPhoto ? 1 : 0) < ($1.discountPercent ?? 0, $1.hasPhoto ? 1 : 0) }),
+           let pct = top.discountPercent, let old = top.old {
+            out.append(HomeBanner(id: "top", kicker: "أقوى خصم اليوم", title: "خصم \(pct)٪", subtitle: "\(top.name)\nكان \(Money.plain(old)) وصار \(Money.plain(top.price)) ر.س",
+                                  button: "اطلبه الحين", style: .hot, images: top.imageURL.map { [$0] } ?? [], route: .product(top.id)))
+        }
+        // ٢) عرض كمية
+        if let q = offers.first(where: { $0.quantityOffer != nil && $0.hasPhoto }) ?? offers.first(where: { $0.quantityOffer != nil }),
+           let qo = q.quantityOffer {
+            out.append(HomeBanner(id: "multi", kicker: "عرض \(Product.pieces(qo.count))", title: "\(Product.pieces(qo.count)) بـ \(Money.plain(qo.price)) ر.س",
+                                  subtitle: "\(q.name)\nبدل \(Money.plain(qo.before)) · وفّر \(Money.plain(qo.before - qo.price))",
+                                  button: "شوف العرض", style: .deep, images: q.imageURL.map { [$0] } ?? [], route: .product(q.id)))
+        }
+        // ٣) كل العروض
+        if offers.count > 1 {
+            let pics = offers.filter(\.hasPhoto).prefix(3).compactMap(\.imageURL)
+            let maxPct = offers.compactMap(\.discountPercent).max() ?? 0
+            out.append(HomeBanner(id: "all", kicker: "عروض الأسبوع", title: "\(offers.count) عرض في المحل",
+                                  subtitle: maxPct > 0 ? "خصومات توصل \(maxPct)٪ وعروض كميات" : "أسعار أقل على منتجات مختارة",
+                                  button: "كل العروض", style: .light, images: Array(pics), route: .offers))
+        }
+        // ٤) بنرات المالك (بلونها)
+        for b in catalog.store.banners {
+            var route: Route? = nil
+            if let t = b.target {
+                if t.hasPrefix("cat:") {
+                    let id = String(t.dropFirst(4))
+                    if catalog.category(id)?.soon == true { continue }
+                    route = .category(id)
+                } else if t.hasPrefix("prod:") { route = .product(String(t.dropFirst(5))) }
+                else if t == "offers" { route = .offers }
+            }
+            let tint = Color(hexString: b.color) ?? Theme.brand
+            let cat = b.target.flatMap { $0.hasPrefix("cat:") ? catalog.category(String($0.dropFirst(4))) : nil }
+            let pics = cat.map { catalog.products(in: $0.id).filter { $0.hasPhoto && catalog.isAvailable($0) }.prefix(2).compactMap(\.imageURL) } ?? []
+            out.append(HomeBanner(id: b.id, kicker: cat?.name ?? "", title: b.title, subtitle: b.subtitle, button: "تسوّق الحين",
+                                  style: .custom(tint), images: Array(pics), route: route))
+        }
+        return out
     }
 }
 
 private struct BannerCard: View {
-    let banner: Banner
+    let banner: HomeBanner
+
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            Theme.bannerGradient
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 4) {
+        ZStack {
+            background
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    if !banner.kicker.isEmpty {
+                        Text(banner.kicker)
+                            .font(.system(size: 11.5, weight: .bold))
+                            .foregroundStyle(kickerColor)
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(kickerBackground, in: Capsule())
+                    }
                     Text(banner.title)
-                        .font(.kufi(21, .bold, relativeTo: .title2))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.7)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .font(.kufi(18, .bold, relativeTo: .title3))
+                        .foregroundStyle(textColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                     if !banner.subtitle.isEmpty {
-                        Text(banner.subtitle).font(.system(size: 14)).foregroundStyle(.white.opacity(0.95))
+                        Text(banner.subtitle)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(textColor.opacity(0.9))
+                            .lineLimit(2)
                     }
                     Spacer(minLength: 0)
-                    Text("تسوّق الحين")
-                        .font(.kufi(13.5, .bold))
-                        .foregroundStyle(Theme.copperInk)
-                        .padding(.horizontal, 16).padding(.vertical, 8)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    Text(banner.button)
+                        .font(.kufi(12, .bold))
+                        .foregroundStyle(buttonText)
+                        .padding(.horizontal, 13).padding(.vertical, 6)
+                        .background(buttonBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
-                .padding(16)
+                .padding(.vertical, 14).padding(.leading, 16)
                 Spacer(minLength: 0)
-                if let url = AppConfig.asset(banner.image) {
-                    RemoteImage(url: url, maxPixel: 420, contentMode: .fill, blendWhite: false)
-                        .frame(width: 130, height: 126)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .padding(12)
-                }
+                pictures.padding(.trailing, 12)
             }
         }
-        .frame(height: 160)
+        .frame(height: 150)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
+
+    @ViewBuilder private var background: some View {
+        switch banner.style {
+        case .hot: Theme.bannerGradient
+        case .deep: Theme.headerGradient
+        case .light:
+            LinearGradient(colors: [Theme.mint, Color(hex: 0xF4FBF8)], startPoint: .topTrailing, endPoint: .bottomLeading)
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Theme.brand.opacity(0.18)))
+        case .custom(let c):
+            LinearGradient(colors: [c, c.opacity(0.78)], startPoint: .topTrailing, endPoint: .bottomLeading)
+        }
+    }
+
+    @ViewBuilder private var pictures: some View {
+        if banner.images.count >= 2 {
+            ZStack {
+                ForEach(Array(banner.images.prefix(3).enumerated()), id: \.offset) { i, url in
+                    RemoteImage(url: url, maxPixel: 260)
+                        .padding(6)
+                        .frame(width: 64, height: 64)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+                        .rotationEffect(.degrees(Double(i - 1) * 8))
+                        .offset(x: CGFloat(i - 1) * 30, y: CGFloat(abs(i - 1)) * 8)
+                }
+            }
+            .frame(width: 128, height: 120)
+        } else if let url = banner.images.first {
+            RemoteImage(url: url, maxPixel: 360)
+                .padding(10)
+                .frame(width: 112, height: 112)
+                .background(.white, in: Circle())
+                .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
+        }
+    }
+
+    private var isLight: Bool { if case .light = banner.style { return true }; return false }
+    private var textColor: Color { isLight ? Theme.ink : .white }
+    private var kickerColor: Color { isLight ? Theme.brandDeep : .white }
+    private var kickerBackground: Color { isLight ? Theme.brand.opacity(0.12) : .white.opacity(0.2) }
+    private var buttonText: Color {
+        switch banner.style {
+        case .hot: return Theme.copperInk
+        case .deep: return Theme.brandDeep
+        case .light: return .white
+        case .custom(let c): return c
+        }
+    }
+    private var buttonBackground: Color { isLight ? Theme.brand : .white }
 }
 
 private struct QuickChips: View {
