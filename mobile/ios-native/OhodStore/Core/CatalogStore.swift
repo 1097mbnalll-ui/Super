@@ -28,7 +28,14 @@ struct CatalogIndex: Sendable {
                 return ra == rb ? a.offset < b.offset : ra < rb
             }.map(\.element)
         }
-        let search = catalog.products.map { (id: $0.id, text: ArabicSearch.normalize($0.name), barcode: $0.barcode ?? "") }
+        // البحث يشمل أسماء الخيارات (شدّة/كرتون) وكلماتها العامة، و«موية» للماء
+        let water = try? NSRegularExpression(pattern: "(^|\\s)(ماء|مياه)(\\s|$)")
+        let search = catalog.products.map { p -> (id: String, text: String, barcode: String) in
+            var text = p.name
+            if !p.packs.isEmpty { text += " " + p.packs.map(\.unit).joined(separator: " ") + " كرتون كرتونه شده شد باكت علبه" }
+            if water?.firstMatch(in: p.name, range: NSRange(p.name.startIndex..., in: p.name)) != nil { text += " موية مويه مويا مياه ماء" }
+            return (id: p.id, text: ArabicSearch.normalize(text), barcode: p.barcode ?? "")
+        }
         let offers = catalog.products.filter { $0.inStock && ($0.discount != nil || !$0.packs.isEmpty) }
             .sorted { ($0.hasPhoto ? 0 : 1, -($0.discount ?? 0)) < ($1.hasPhoto ? 0 : 1, -($1.discount ?? 0)) }
         // مختارات الرئيسية: العروض اللي لها صور، ثم منتجات بصور من أهم الأقسام بالتناوب

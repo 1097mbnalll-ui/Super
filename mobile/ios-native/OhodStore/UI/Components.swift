@@ -150,12 +150,13 @@ struct Chip: View {
     var selected = false
     var body: some View {
         Text(title)
-            .font(.system(size: 14, weight: .semibold))
+            .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(selected ? .white : Theme.ink)
-            .padding(.horizontal, 14)
-            .frame(height: 38)
+            .padding(.horizontal, 15)
+            .frame(height: 42)
             .background(selected ? Theme.brand : .white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(selected ? .clear : Theme.line, lineWidth: 1.2))
+            .shadow(color: Theme.ink.opacity(selected ? 0 : 0.05), radius: 2, y: 1)
             .contentShape(Rectangle())
     }
 }
@@ -173,11 +174,13 @@ struct PriceLabel: View {
             Text("ر.س").font(.system(size: size * 0.72, weight: .semibold)).foregroundStyle(Theme.ink)
             if let old {
                 Text(Money.plain(old))
-                    .font(.system(size: size * 0.76))
+                    .font(.system(size: size * 0.68))
                     .strikethrough()
                     .foregroundStyle(Theme.muted)
             }
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
         .environment(\.layoutDirection, .rightToLeft)
     }
 }

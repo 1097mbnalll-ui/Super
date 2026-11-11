@@ -19,23 +19,26 @@ extension Color {
 }
 
 enum Theme {
-    static let brand = Color(hex: 0x3F9A82)       // أخ ٤
-    static let brandDeep = Color(hex: 0x2E7D69)
-    static let copper = Color(hex: 0xD8843C)      // نح ٤
-    static let copperInk = Color(hex: 0xC26A22)
-    static let copperSoft = Color(hex: 0xFCF1E6)
-    static let olive = Color(hex: 0xB5AC70)       // خل ٧
-    static let oliveInk = Color(hex: 0x7A7238)
-    static let oliveSoft = Color(hex: 0xF2F0E3)
-    static let mint = Color(hex: 0xE3F5EF)        // خف ١
-    static let mintSoft = Color(hex: 0xF3FAF7)
-    static let ink = Color(hex: 0x1A2233)
-    static let muted = Color(hex: 0x7C8290)
-    static let line = Color(hex: 0xE6E8EC)
-    static let surface = Color(hex: 0xF7F8FA)
+    // نسخة ٢ (اعتمدها المالك ١١ نوفمبر): ألوان أعمق وأوضح، والخلفية بيضاء
+    static let brand = Color(hex: 0x0E8A6A)
+    static let brandDeep = Color(hex: 0x086650)
+    static let copper = Color(hex: 0xEE7417)
+    static let copperInk = Color(hex: 0xC4560A)
+    static let copperSoft = Color(hex: 0xFFF1E4)
+    static let olive = Color(hex: 0xB5AC70)
+    static let oliveInk = Color(hex: 0x6E6420)
+    static let oliveSoft = Color(hex: 0xEFEACB)
+    static let mint = Color(hex: 0xDDF1EA)
+    static let mintSoft = Color(hex: 0xF0F8F5)
+    static let ink = Color(hex: 0x0D1420)
+    static let muted = Color(hex: 0x596171)
+    static let line = Color(hex: 0xE3E8E6)
+    static let surface = Color(hex: 0xF3F6F5)
 
-    static let bannerGradient = LinearGradient(colors: [brand, olive, copper], startPoint: .trailing, endPoint: .leading)
-    static let headerGradient = LinearGradient(colors: [mint, mintSoft, .white], startPoint: .top, endPoint: .bottom)
+    static let bannerGradient = LinearGradient(colors: [Color(hex: 0xF08A2A), Color(hex: 0xE2661A), Color(hex: 0xC9501A)],
+                                               startPoint: .topTrailing, endPoint: .bottomLeading)
+    static let headerGradient = LinearGradient(colors: [Color(hex: 0x12A07C), Color(hex: 0x0B7A5E), Color(hex: 0x07604A)],
+                                               startPoint: .topTrailing, endPoint: .bottomLeading)
     static let tileGradient = LinearGradient(colors: [mint, Color(hex: 0xF5FBF9)], startPoint: .top, endPoint: .bottom)
 }
 

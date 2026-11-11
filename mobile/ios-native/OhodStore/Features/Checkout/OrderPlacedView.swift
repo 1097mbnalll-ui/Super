@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 
 /// «وصلنا طلبك!» (design/10-order-placed.webp). إذن الإشعارات ينطلب هنا لما تجهز إشعارات آبل (المرحلة ٣)
 struct OrderPlacedView: View {
@@ -86,61 +87,124 @@ struct OrderPlacedView: View {
     }
 }
 
-/// بطاقة الطلب الحالي في «حسابي» (design/11-account-with-order.webp)
+/// بطاقة الطلب الحالي في «حسابي»: خريطة المندوب والدقايق، المراحل، الأغراض مصغرة والإجمالي
 struct CurrentOrderCard: View {
     let order: SavedOrder
     @Environment(CatalogStore.self) private var catalog
     @Environment(OrderCenter.self) private var orders
+    @Environment(\.openURL) private var openURL
     @State private var confirmCancel = false
     @State private var cancelling = false
     @State private var errorText: String?
+    @State private var showDetails = false
 
     var body: some View {
         let step = OrderStatus.step(order.status)
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(verbatim: "طلبك الحالي · \(order.no)").font(.system(size: 13)).foregroundStyle(Theme.muted)
-                Text(OrderStatus.title(order.status)).font(.kufi(18, .bold, relativeTo: .title3))
-                    .contentTransition(.opacity)
-                Text(OrderStatus.detail(order.status)).font(.system(size: 13.5)).foregroundStyle(Theme.muted)
-            }
-            HStack(spacing: 6) {
-                ForEach(1...4, id: \.self) { i in
-                    Capsule()
-                        .fill(i < step ? Theme.brand : i == step ? Theme.copper : Theme.line)
-                        .frame(height: 6)
-                }
-            }
-            .animation(.smooth, value: step)
-            HStack(spacing: 8) {
-                ForEach(order.keys.prefix(4), id: \.self) { key in
-                    if let p = catalog.resolve(key)?.product {
-                        RemoteImage(url: p.imageURL, maxPixel: 120)
-                            .padding(4)
-                            .frame(width: 44, height: 44)
-                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        let driver = orders.drivers[order.no]
+        VStack(alignment: .leading, spacing: 0) {
+            if let driver, order.status == "onway" {
+                DriverMap(driver: driver, home: order.lat.flatMap { la in order.lng.map { CLLocationCoordinate2D(latitude: la, longitude: $0) } })
+                    .frame(height: 190)
+                    .overlay(alignment: .topTrailing) {
+                        if let eta = driver.eta {
+                            VStack(spacing: 0) {
+                                Text(verbatim: "\(max(1, eta))").font(.kufi(26, .bold)).foregroundStyle(Theme.brandDeep)
+                                    .contentTransition(.numericText(value: Double(eta)))
+                                Text("دقايق").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
+                            }
+                            .padding(.horizontal, 14).padding(.vertical, 6)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
+                            .padding(12)
+                        }
                     }
-                }
-                Spacer(minLength: 0)
-                Text(Money.sar(order.total)).font(.kufi(15, .bold)).foregroundStyle(Theme.ink)
+                    .transition(.opacity)
             }
-            if orders.canCancel(order, policy: catalog.store.custCancel) {
-                Button(role: .destructive) { confirmCancel = true } label: {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(verbatim: "طلبك الحالي · \(order.no)").font(.system(size: 13)).foregroundStyle(Theme.muted)
+                    Text(driver?.near == true ? "المندوب قريب منك 🛵" : OrderStatus.title(order.status))
+                        .font(.kufi(19, .bold, relativeTo: .title3))
+                        .contentTransition(.opacity)
+                    Text(detailLine(driver)).font(.system(size: 13.5)).foregroundStyle(Theme.muted)
+                }
+                VStack(spacing: 5) {
                     HStack(spacing: 6) {
-                        if cancelling { ProgressView().controlSize(.small) }
-                        Text("إلغاء الطلب")
+                        ForEach(1...4, id: \.self) { i in
+                            Capsule().fill(i < step ? Theme.brand : i == step ? Theme.copper : Theme.line).frame(height: 7)
+                        }
                     }
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Theme.copperInk)
-                    .frame(maxWidth: .infinity, minHeight: 44)
+                    HStack(spacing: 6) {
+                        ForEach(Array(["وصلنا", "نجهّزه", "في الطريق", "وصلك"].enumerated()), id: \.offset) { i, t in
+                            Text(t).font(.system(size: 11.5, weight: .semibold))
+                                .foregroundStyle(i + 1 == step ? Theme.copperInk : Theme.muted)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
                 }
-                .disabled(cancelling)
+                .animation(.smooth, value: step)
+                HStack(spacing: 6) {
+                    ForEach(order.keys.prefix(4), id: \.self) { key in
+                        if let p = catalog.resolve(key)?.product {
+                            RemoteImage(url: p.imageURL, maxPixel: 120)
+                                .padding(4)
+                                .frame(width: 44, height: 44)
+                                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                    }
+                    if order.keys.count > 4 {
+                        Text(verbatim: "+\(order.keys.count - 4)")
+                            .font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.muted)
+                            .frame(width: 44, height: 44)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    Spacer(minLength: 0)
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text(verbatim: "\(order.count) أغراض").font(.system(size: 12)).foregroundStyle(Theme.muted)
+                        Text(Money.sar(order.total)).font(.kufi(18, .bold)).foregroundStyle(Theme.ink)
+                    }
+                }
+                HStack(spacing: 8) {
+                    Button {
+                        let digits = CatalogParser.latinDigits(catalog.store.phone).filter { $0.isNumber || $0 == "+" }
+                        if let url = URL(string: "tel:\(digits)") { openURL(url) }
+                    } label: {
+                        Label("اتصل بالمحل", systemImage: "phone.fill")
+                            .font(.system(size: 14.5, weight: .bold))
+                            .foregroundStyle(Theme.ink)
+                            .frame(maxWidth: .infinity, minHeight: 46)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    Button { showDetails = true } label: {
+                        Text("تفاصيل الطلب")
+                            .font(.kufi(14.5, .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 46)
+                            .background(Theme.brand, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                }
+                .buttonStyle(PressableStyle(scale: 0.97))
+                if orders.canCancel(order, policy: catalog.store.custCancel) {
+                    Button(role: .destructive) { confirmCancel = true } label: {
+                        HStack(spacing: 6) {
+                            if cancelling { ProgressView().controlSize(.small) }
+                            Text("إلغاء الطلب")
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.copperInk)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                    }
+                    .disabled(cancelling)
+                }
             }
+            .padding(16)
         }
-        .padding(16)
-        .background(.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color(hex: 0xF0D9C3)))
-        .shadow(color: Theme.copper.opacity(0.10), radius: 12, y: 4)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Theme.line))
+        .shadow(color: .black.opacity(0.08), radius: 14, y: 5)
+        .animation(.smooth, value: driver)
+        .sheet(isPresented: $showDetails) { OrderDetailView(order: order) }
         .confirmationDialog("تلغي طلب \(order.no)؟", isPresented: $confirmCancel, titleVisibility: .visible) {
             Button("إيه، ألغِ الطلب", role: .destructive) {
                 cancelling = true
@@ -156,5 +220,173 @@ struct CurrentOrderCard: View {
         } message: {
             Text(errorText ?? "")
         }
+    }
+
+    private func detailLine(_ driver: DriverInfo?) -> String {
+        guard order.status == "onway", let driver else { return OrderStatus.detail(order.status) }
+        var parts: [String] = []
+        if driver.before > 0 { parts.append(driver.before == 1 ? "قبلك توصيلة وحدة" : "قبلك \(driver.before) توصيلات") }
+        if let eta = driver.eta {
+            let at = Date().addingTimeInterval(Double(max(1, eta)) * 60)
+            parts.append("يوصلك تقريباً \(at.formatted(.dateTime.hour().minute().locale(Locale(identifier: "ar_SA@numbers=latn"))))")
+        }
+        return parts.isEmpty ? OrderStatus.detail(order.status) : parts.joined(separator: " · ")
+    }
+}
+
+/// خريطة صغيرة: المندوب والبيت (بدون تفاعل، تتحرك لحالها)
+private struct DriverMap: View {
+    let driver: DriverInfo
+    let home: CLLocationCoordinate2D?
+    @State private var position: MapCameraPosition = .automatic
+
+    var body: some View {
+        Map(position: $position, interactionModes: []) {
+            Annotation("المندوب", coordinate: driver.coordinate) {
+                Text("🛵").font(.system(size: 20))
+                    .frame(width: 40, height: 40)
+                    .background(Theme.copper, in: Circle())
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 3))
+                    .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
+            }
+            if let home {
+                Annotation("البيت", coordinate: home) {
+                    Image(systemName: "house.fill").font(.system(size: 15)).foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Theme.brand, in: Circle())
+                        .overlay(Circle().strokeBorder(.white, lineWidth: 3))
+                }
+            }
+        }
+        .mapStyle(.standard(emphasis: .muted, pointsOfInterest: .excludingAll))
+        .onAppear(perform: fit)
+        .onChange(of: driver) { _, _ in withAnimation(.smooth(duration: 0.8)) { fit() } }
+        .allowsHitTesting(false)
+    }
+
+    private func fit() {
+        guard let home else {
+            position = .region(MKCoordinateRegion(center: driver.coordinate, latitudinalMeters: 900, longitudinalMeters: 900)); return
+        }
+        let c = CLLocationCoordinate2D(latitude: (home.latitude + driver.lat) / 2, longitude: (home.longitude + driver.lng) / 2)
+        let dLat = max(abs(home.latitude - driver.lat) * 1.8, 0.004), dLng = max(abs(home.longitude - driver.lng) * 1.8, 0.004)
+        position = .region(MKCoordinateRegion(center: c, span: MKCoordinateSpan(latitudeDelta: dLat, longitudeDelta: dLng)))
+    }
+}
+
+/// تفاصيل الطلب: كل غرض وسعره، المجموع، الدفع والعنوان
+struct OrderDetailView: View {
+    let order: SavedOrder
+    @Environment(CatalogStore.self) private var catalog
+    @Environment(OrderCenter.self) private var orders
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if order.isActive {
+                        let eta = orders.drivers[order.no]?.eta
+                        Label(order.status == "onway" && eta != nil ? "في الطريق · يوصلك خلال \(max(1, eta!)) دقايق" : OrderStatus.title(order.status),
+                              systemImage: order.status == "onway" ? "scooter" : "clock")
+                            .font(.system(size: 14.5, weight: .bold))
+                            .foregroundStyle(Theme.copperInk)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    VStack(spacing: 0) {
+                        ForEach(rows) { line in
+                            HStack(spacing: 10) {
+                                RemoteImage(url: catalog.resolve(line.key)?.product.imageURL, maxPixel: 140)
+                                    .padding(4)
+                                    .frame(width: 50, height: 50)
+                                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(line.name).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(Theme.ink).lineLimit(2)
+                                    Text(verbatim: "\(line.unit) · \(line.qty) × \(Money.plain(line.price))")
+                                        .font(.system(size: 12.5)).foregroundStyle(Theme.muted)
+                                }
+                                Spacer(minLength: 6)
+                                VStack(alignment: .trailing, spacing: 0) {
+                                    Text(Money.plain(line.total)).font(.kufi(15.5, .bold)).foregroundStyle(Theme.ink)
+                                    if let old = line.old, old > line.price {
+                                        Text(Money.plain(old * Double(line.qty))).font(.system(size: 11.5)).strikethrough().foregroundStyle(Theme.muted)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 12).padding(.vertical, 9)
+                            if line.id != rows.last?.id { Divider().padding(.trailing, 72) }
+                        }
+                    }
+                    .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
+
+                    VStack(spacing: 10) {
+                        if let st = order.subtotal { row("المنتجات (\(order.count))", Money.sar(st)) }
+                        if let fee = order.fee { row("التوصيل", fee == 0 ? "مجاني" : Money.sar(fee), color: fee == 0 ? Theme.brandDeep : Theme.ink) }
+                        if let sv = order.savings, sv > 0.009 { row("وفّرت", Money.sar(sv), color: Theme.copperInk) }
+                        Divider()
+                        HStack {
+                            Text("الإجمالي").font(.kufi(16, .bold))
+                            Spacer()
+                            Text(Money.sar(order.total)).font(.kufi(18, .bold))
+                        }
+                    }
+                    .padding(14)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
+
+                    VStack(spacing: 10) {
+                        row("الدفع", order.pay == "card" ? "💳 شبكة عند الاستلام" : "💵 كاش عند الاستلام")
+                        if let d = order.details, !d.isEmpty { row("التوصيل إلى", d) }
+                        if let sub = order.sub {
+                            row("لو منتج ناقص", ["swap": "بدّلوه بمشابه", "remove": "شيلوه", "call": "اتصلوا علي"][sub] ?? "")
+                        }
+                    }
+                    .padding(14)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
+
+                    Text("الأسعار وقت الطلب. لو المندوب بدّل أو شال منتج، الإجمالي النهائي يوصلك مع الفاتورة.")
+                        .font(.system(size: 12)).foregroundStyle(Theme.muted)
+                }
+                .padding(16)
+            }
+            .background(Color.white)
+            .navigationTitle("تفاصيل الطلب")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 0) {
+                        Text("تفاصيل الطلب").font(.kufi(16, .bold))
+                        Text(verbatim: "\(order.no) · \(order.at.formatted(.dateTime.weekday(.wide).hour().minute().locale(Locale(identifier: "ar_SA@numbers=latn"))))")
+                            .font(.system(size: 11.5)).foregroundStyle(Theme.muted)
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) { Button("تم") { dismiss() } }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    /// الطلبات القديمة (قبل هالتحديث) ما فيها نسخة: نعرضها بأسعار المتجر الحالية
+    private var rows: [SavedLine] {
+        if let lines = order.lines, !lines.isEmpty { return lines }
+        return order.keys.compactMap { key in
+            guard let q = order.items[key], let r = catalog.resolve(key) else { return nil }
+            return SavedLine(key: key, name: r.product.name, unit: r.pack?.unit ?? r.product.unit, qty: q,
+                             price: r.pack?.price ?? r.product.price, old: nil)
+        }
+    }
+
+    private func row(_ title: String, _ value: String, color: Color = Theme.ink) -> some View {
+        HStack(alignment: .top) {
+            Text(title).foregroundStyle(Theme.muted)
+            Spacer(minLength: 12)
+            Text(value).fontWeight(.semibold).foregroundStyle(color).multilineTextAlignment(.trailing)
+        }
+        .font(.system(size: 14.5))
     }
 }

@@ -20,8 +20,40 @@ struct SavedOrder: Codable, Identifiable, Equatable {
     var status: String      // new / accepted / onway / delivered / canceled
     var items: [String: Int]
     var keys: [String]
+    /// نسخة من السلة وقت الطلب (للتفاصيل). اختيارية عشان الطلبات القديمة المحفوظة
+    var lines: [SavedLine]? = nil
+    var subtotal: Double? = nil
+    var fee: Double? = nil
+    var savings: Double? = nil
+    var details: String? = nil
+    var sub: String? = nil
+    var lat: Double? = nil
+    var lng: Double? = nil
     var id: String { no }
+    var count: Int { lines?.reduce(0) { $0 + $1.qty } ?? items.values.reduce(0, +) }
     var isActive: Bool { ["new", "accepted", "onway"].contains(status) }
+}
+
+struct SavedLine: Codable, Equatable, Identifiable {
+    var key: String
+    var name: String
+    var unit: String
+    var qty: Int
+    var price: Double
+    var old: Double?
+    var id: String { key }
+    var total: Double { price * Double(qty) }
+}
+
+/// موقع المندوب من /track (وقت ما يكون الطلب في الطريق)
+struct DriverInfo: Equatable {
+    var lat: Double
+    var lng: Double
+    var eta: Int?
+    var before: Int
+    var near: Bool
+    var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: lat, longitude: lng) }
+    static func == (a: DriverInfo, b: DriverInfo) -> Bool { a.lat == b.lat && a.lng == b.lng && a.eta == b.eta && a.before == b.before }
 }
 
 enum OrderStatus {
@@ -69,6 +101,8 @@ final class OrderCenter {
     }
     private(set) var orders: [SavedOrder] = [] { didSet { Self.store(orders, "order.history") } }
     private(set) var sending = false
+    /// موقع المندوب لكل طلب في الطريق (ما ينحفظ)
+    private(set) var drivers: [String: DriverInfo] = [:]
 
     /// محاولة إرسال ما تأكدت نتيجتها (النت انقطع). نعيد نفس المحتوى بنفس الرقم فما يتكرر الطلب
     private struct Attempt: Codable {
@@ -94,8 +128,9 @@ final class OrderCenter {
     }
 
     /// للتصوير على المحاكي بس (-seed-order)
-    func seedPreview(_ order: SavedOrder) {
+    func seedPreview(_ order: SavedOrder, driver: DriverInfo? = nil) {
         orders = [order]
+        drivers[order.no] = driver
         if address == nil { address = DeliveryAddress(lat: 24.845, lng: 46.815, details: "فيلا ١٢، الباب الأخضر") }
     }
 
@@ -109,7 +144,8 @@ final class OrderCenter {
             return .failure(.address("الموقع برا منطقة التوصيل. حرّك الدبوس على بيتك"))
         }
         let items = cart.orderItems(catalog)
-        let keyOrder = cart.totals(catalog).rows.map(\.key)
+        let snapshot = cart.totals(catalog)
+        let keyOrder = snapshot.rows.map(\.key)
         var body: [String: Any] = [
             "items": items, "phone": phone, "name": name, "details": address.details, "note": "",
             "pay": cart.payment == "card" ? "card" : "cash", "sub": cart.substitution,
@@ -142,12 +178,22 @@ final class OrderCenter {
             let order = SavedOrder(no: no, total: CatalogParser.num(json["total"]) ?? 0, phone: phone,
                                    pay: body["pay"] as? String ?? "cash", at: Date(), status: "new",
                                    items: sent, keys: keyOrder.filter { sent[$0] != nil } + sent.keys.filter { !keyOrder.contains($0) }.sorted())
-            if !orders.contains(where: { $0.no == no }) { orders.insert(order, at: 0) }
+            var order2 = order
+            if !resendingOld {
+                order2.lines = snapshot.rows.filter { sent[$0.key] != nil }.map {
+                    SavedLine(key: $0.key, name: $0.product.name, unit: $0.unitLabel, qty: sent[$0.key] ?? $0.qty, price: $0.unitPrice,
+                              old: $0.pack == nil ? $0.product.old : nil)
+                }
+                order2.subtotal = snapshot.subtotal; order2.fee = snapshot.fee; order2.savings = snapshot.savings
+                order2.details = address.details; order2.sub = cart.substitution
+                order2.lat = address.lat; order2.lng = address.lng
+            }
+            if !orders.contains(where: { $0.no == no }) { orders.insert(order2, at: 0) }
             if orders.count > 30 { orders.removeLast(orders.count - 30) }
             if !resendingOld { cart.remove(sent: sent) }
             Haptics.success()
             Task { await catalog.refreshStock(force: true) }
-            return .success(order)
+            return .success(order2)
         }
 
         let code = json["code"] as? String ?? (status == 0 ? "network" : "error")
@@ -196,6 +242,12 @@ final class OrderCenter {
     func refresh(catalog: CatalogStore) async {
         for order in orders where order.isActive {
             let (_, json) = await API.post(catalog.apiBase, "/track", ["no": order.no, "phone": order.phone])
+            if let d = json["driver"] as? [String: Any], let la = CatalogParser.num(d["lat"]), let ln = CatalogParser.num(d["lng"]) {
+                drivers[order.no] = DriverInfo(lat: la, lng: ln, eta: CatalogParser.num(d["eta"]).map { Int($0.rounded()) },
+                                               before: Int(CatalogParser.num(d["before"]) ?? 0), near: d["near"] as? Bool ?? false)
+            } else if json["ok"] as? Bool == true {
+                drivers[order.no] = nil
+            }
             guard json["ok"] as? Bool == true, let st = json["status"] as? String,
                   let i = orders.firstIndex(where: { $0.no == order.no }), orders[i].status != st else { continue }
             orders[i].status = st

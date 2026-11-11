@@ -32,6 +32,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var previewAddress = false
     @State private var previewPlaced: SavedOrder?
+    @State private var previewDetails: SavedOrder?
     @State private var tab: AppTab = .home
     @State private var homePath = NavigationPath()
     @State private var categoriesPath = NavigationPath()
@@ -73,7 +74,15 @@ struct RootView: View {
                 }
             }
         }
+        .task(id: orders.current?.no) {
+            // نتابع الطلب الشغّال: كل ١٠ ثواني وهو في الطريق، وإلا كل ٢٠
+            while !Task.isCancelled, orders.current != nil {
+                await orders.refresh(catalog: catalog)
+                try? await Task.sleep(for: .seconds(orders.current?.status == "onway" ? 10 : 20))
+            }
+        }
         .sheet(isPresented: $previewAddress) { AddressView() }
+        .sheet(item: $previewDetails) { OrderDetailView(order: $0) }
         .fullScreenCover(item: $previewPlaced) { order in
             OrderPlacedView(order: order, onTrack: { previewPlaced = nil }, onShop: { previewPlaced = nil })
         }
@@ -87,9 +96,13 @@ struct RootView: View {
         }
         if args.contains("-seed-order"), orders.orders.isEmpty, let index = catalog.index {
             let picks = index.featured.prefix(5)
-            orders.seedPreview(SavedOrder(no: "#1042", total: 46.85, phone: "0550000000", pay: "cash", at: Date(),
-                                          status: "accepted", items: Dictionary(uniqueKeysWithValues: picks.map { ($0.id, 1) }),
-                                          keys: picks.map(\.id)))
+            var o = SavedOrder(no: "#1042", total: 46.85, phone: "0550000000", pay: "cash", at: Date(),
+                               status: "onway", items: Dictionary(uniqueKeysWithValues: picks.map { ($0.id, 1) }),
+                               keys: picks.map(\.id))
+            o.lines = picks.map { SavedLine(key: $0.id, name: $0.name, unit: $0.unit, qty: 1, price: $0.price, old: $0.old) }
+            o.subtotal = picks.reduce(0) { $0 + $1.price }; o.fee = 0; o.savings = 3.5
+            o.details = "فيلا ١٢، الباب الأخضر"; o.sub = "swap"; o.lat = 24.8452; o.lng = 46.8148
+            orders.seedPreview(o, driver: DriverInfo(lat: 24.8418, lng: 46.8102, eta: 8, before: 1, near: false))
         }
         guard let i = args.firstIndex(of: "-screen"), i + 1 < args.count else { return }
         let value = args[i + 1]
@@ -99,6 +112,7 @@ struct RootView: View {
         else if value == "account" { tab = .account }
         else if value == "address" { tab = .cart; previewAddress = true }
         else if value == "placed" { tab = .cart; previewPlaced = orders.orders.first }
+        else if value == "orderdetails" { tab = .account; previewDetails = orders.orders.first }
         else if value.hasPrefix("category:") { tab = .categories; categoriesPath.append(Route.category(String(value.dropFirst(9)))) }
         else if value.hasPrefix("product:") {
             let id = String(value.dropFirst(8))

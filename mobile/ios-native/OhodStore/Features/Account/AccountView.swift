@@ -99,13 +99,6 @@ struct AccountView: View {
         .animation(.smooth, value: orders.current?.status)
         .sheet(isPresented: $showAddress) { AddressView() }
         .refreshable { await orders.refresh(catalog: catalog) }
-        .task(id: orders.current?.no) {
-            // نتابع حالة الطلب الحالي كل ٢٠ ثانية والصفحة مفتوحة
-            while !Task.isCancelled, orders.current != nil {
-                await orders.refresh(catalog: catalog)
-                try? await Task.sleep(for: .seconds(20))
-            }
-        }
     }
 
     private var pastOrders: [SavedOrder] {

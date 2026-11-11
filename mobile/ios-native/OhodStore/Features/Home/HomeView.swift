@@ -5,11 +5,14 @@ struct HomeView: View {
     @Binding var tab: AppTab
     @Binding var path: NavigationPath
     @Environment(CatalogStore.self) private var catalog
+    @Environment(OrderCenter.self) private var orders
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 HomeHeader(path: $path)
+                BannerCarousel(path: $path)
+                    .padding(.horizontal, 16).padding(.top, 16)
                 if catalog.store.closed {
                     ClosedNotice(message: catalog.store.closedMessage)
                         .padding(.horizontal, 16).padding(.top, 12)
@@ -33,6 +36,79 @@ struct HomeView: View {
         .background(Color.white)
         .refreshable { await catalog.refresh() }
         .toolbar(.hidden, for: .navigationBar)
+        .overlay(alignment: .bottomLeading) {
+            if let order = orders.current {
+                OrderBubble(order: order) { tab = .account }
+                    .padding(.leading, 16).padding(.bottom, 14)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: orders.current?.no)
+    }
+}
+
+/// دائرة الطلب الشغّال في الرئيسية: أيقونة الحالة والدقايق الباقية، تضغطها تروح لطلبك
+private struct OrderBubble: View {
+    let order: SavedOrder
+    let action: () -> Void
+    @Environment(OrderCenter.self) private var orders
+    @State private var pulse = false
+    @AppStorage("bubble.tipShown") private var tipShown = false
+    @State private var showTip = false
+
+    var body: some View {
+        let eta = orders.drivers[order.no]?.eta
+        HStack(spacing: 10) {
+            Button(action: { tipShown = true; showTip = false; action() }) {
+                ZStack {
+                    Circle().strokeBorder(Theme.brand.opacity(0.35), lineWidth: 3)
+                        .frame(width: 84, height: 84)
+                        .scaleEffect(pulse ? 1.08 : 0.96)
+                        .opacity(pulse ? 0.2 : 0.8)
+                    Circle().fill(Theme.headerGradient)
+                        .frame(width: 70, height: 70)
+                        .overlay(Circle().strokeBorder(.white, lineWidth: 3))
+                        .shadow(color: Theme.brandDeep.opacity(0.45), radius: 10, y: 5)
+                    VStack(spacing: 0) {
+                        Text(icon).font(.system(size: eta == nil ? 28 : 22))
+                        if let eta, order.status == "onway" {
+                            Text(verbatim: "\(max(1, eta)) د").font(.kufi(13, .bold)).foregroundStyle(.white)
+                        }
+                    }
+                    Circle().fill(Theme.copper).frame(width: 16, height: 16)
+                        .overlay(Circle().strokeBorder(.white, lineWidth: 3))
+                        .offset(x: 26, y: -26)
+                }
+                .frame(width: 86, height: 86)
+                .contentShape(Circle())
+            }
+            .buttonStyle(PressableStyle(scale: 0.92))
+            .accessibilityLabel("طلبك \(order.no): \(OrderStatus.title(order.status))")
+
+            if showTip {
+                Text(order.status == "onway" ? "طلبك في الطريق · اضغط تتابعه" : "تابع طلبك من هنا")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(Theme.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { pulse = true }
+            if !tipShown {
+                withAnimation(.snappy.delay(0.4)) { showTip = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { withAnimation(.snappy) { showTip = false }; tipShown = true }
+            }
+        }
+    }
+
+    private var icon: String {
+        switch order.status {
+        case "onway": return "🛵"
+        case "accepted": return "🧺"
+        default: return "🧾"
+        }
     }
 }
 
@@ -46,54 +122,54 @@ private struct HomeHeader: View {
                 HStack(spacing: 8) {
                     Image("Logo")
                         .resizable()
-                        .frame(width: 40, height: 40)
-                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                        .frame(width: 42, height: 42)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
                     Text(catalog.store.name)
-                        .font(.kufi(22, .bold, relativeTo: .title))
-                        .foregroundStyle(Theme.brandDeep)
+                        .font(.kufi(24, .bold, relativeTo: .title))
+                        .foregroundStyle(.white)
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 6) {
-                    Label("توصيل خلال \(catalog.store.eta)", systemImage: "bolt")
-                        .font(.kufi(11.5, .semibold, relativeTo: .caption))
-                        .foregroundStyle(Theme.oliveInk)
+                    Label("توصيل خلال \(catalog.store.eta)", systemImage: "bolt.fill")
+                        .font(.kufi(12.5, .semibold, relativeTo: .caption))
+                        .foregroundStyle(.white)
                         .lineLimit(1)
-                        .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .strokeBorder(Theme.olive, style: StrokeStyle(lineWidth: 1.3, dash: [4, 3])))
+                        .padding(.horizontal, 11).padding(.vertical, 7)
+                        .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.white.opacity(0.3)))
                     HStack(spacing: 4) {
                         Image(systemName: "mappin.and.ellipse")
                         Text("التوصيل في \(catalog.store.area)")
                     }
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.ink)
+                    .font(.system(size: 14.5, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.95))
                 }
             }
             Button {
                 path.append(Route.search)
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass").font(.system(size: 17, weight: .medium))
-                    Text("وش ناقص بيتك اليوم؟").font(.system(size: 15))
+                    Image(systemName: "magnifyingglass").font(.system(size: 18, weight: .semibold))
+                    Text("وش ناقص بيتك اليوم؟").font(.system(size: 16))
                     Spacer()
                 }
                 .foregroundStyle(Theme.muted)
                 .padding(.horizontal, 16)
-                .frame(height: 50)
-                .background(.white, in: Capsule())
-                .overlay(Capsule().strokeBorder(Color(hex: 0xD9DEE4), lineWidth: 1.3))
+                .frame(height: 52)
+                .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
             }
             .buttonStyle(PressableStyle(scale: 0.98))
             .accessibilityLabel("ابحث")
-
-            BannerCarousel(path: $path)
         }
         .padding(.horizontal, 16)
         .padding(.top, 6)
-        .padding(.bottom, 10)
+        .padding(.bottom, 18)
         .background(alignment: .top) {
-            Theme.headerGradient.ignoresSafeArea(edges: .top)
+            Theme.headerGradient
+                .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 28, bottomTrailingRadius: 28, style: .continuous))
+                .ignoresSafeArea(edges: .top)
         }
     }
 }
@@ -105,7 +181,10 @@ private struct BannerCarousel: View {
     @State private var current: String?
 
     var body: some View {
-        let banners = catalog.store.banners
+        let banners = catalog.store.banners.filter { b in
+            guard let t = b.target, t.hasPrefix("cat:") else { return true }
+            return catalog.category(String(t.dropFirst(4)))?.soon != true
+        }
         VStack(spacing: 8) {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 10) {
@@ -154,19 +233,19 @@ private struct BannerCard: View {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(banner.title)
-                        .font(.kufi(20, .bold, relativeTo: .title2))
+                        .font(.kufi(22, .bold, relativeTo: .title2))
                         .foregroundStyle(.white)
                         .lineLimit(2)
                         .minimumScaleFactor(0.8)
                     if !banner.subtitle.isEmpty {
-                        Text(banner.subtitle).font(.system(size: 13)).foregroundStyle(.white.opacity(0.9))
+                        Text(banner.subtitle).font(.system(size: 14)).foregroundStyle(.white.opacity(0.95))
                     }
                     Spacer(minLength: 0)
                     Text("تسوّق الحين")
-                        .font(.kufi(12.5, .bold))
-                        .foregroundStyle(Theme.brandDeep)
-                        .padding(.horizontal, 14).padding(.vertical, 7)
-                        .background(.white, in: Capsule())
+                        .font(.kufi(13.5, .bold))
+                        .foregroundStyle(Theme.copperInk)
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .padding(16)
                 Spacer(minLength: 0)
