@@ -54,4 +54,7 @@ shot 04-product -screen product:first
 shot 05-cart -screen cart
 shot 06-offers -screen offers
 shot 07-account -screen account
+WAIT=12 shot 08-address -screen address
+shot 09-placed -seed-order -screen placed
+shot 10-account-order -screen account
 ls -la "$OUT"

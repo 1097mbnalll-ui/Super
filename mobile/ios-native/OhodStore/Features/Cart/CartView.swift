@@ -1,12 +1,17 @@
 import SwiftUI
 
-/// السلة (design/mix-06-cart.webp). إرسال الطلب (العنوان والخريطة) في المرحلة ٢
+/// السلة (design/mix-06-cart.webp) + إرسال الطلب
 struct CartView: View {
     @Binding var tab: AppTab
     @Environment(CatalogStore.self) private var catalog
     @Environment(Cart.self) private var cart
+    @Environment(OrderCenter.self) private var orders
     @State private var confirmClear = false
-    @State private var showCheckoutSoon = false
+    @State private var showAddress = false
+    @State private var sendAfterAddress = false
+    @State private var errorText: String?
+    @State private var placed: SavedOrder?
+    @State private var fixAddress = false
 
     var body: some View {
         let totals = cart.totals(catalog)
@@ -23,7 +28,7 @@ struct CartView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        DeliveryCard(eta: catalog.store.eta, area: catalog.store.area)
+                        DeliveryCard(eta: catalog.store.eta, area: catalog.store.area, address: orders.address) { sendAfterAddress = false; showAddress = true }
                         if totals.freeOver > 0 {
                             FreeDeliveryBar(remaining: totals.freeRemaining, progress: totals.freeProgress)
                         }
@@ -63,7 +68,7 @@ struct CartView: View {
                 .scrollIndicators(.hidden)
                 .background(Color.white)
                 .safeAreaInset(edge: .bottom) {
-                    CheckoutBar(totals: totals) { showCheckoutSoon = true }
+                    CheckoutBar(totals: totals, sending: orders.sending, closed: catalog.store.closed) { checkout() }
                 }
             }
         }
@@ -82,10 +87,49 @@ struct CartView: View {
             Button("حذف الكل", role: .destructive) { withAnimation(.snappy) { cart.clear() } }
             Button("إلغاء", role: .cancel) {}
         }
-        .alert("قريب جداً", isPresented: $showCheckoutSoon) {
-            Button("تمام", role: .cancel) {}
+        .sheet(isPresented: $showAddress) {
+            AddressView(confirmTitle: sendAfterAddress ? "احفظ وأرسل الطلب" : "احفظ العنوان") {
+                if sendAfterAddress { sendAfterAddress = false; send() }
+            }
+            .interactiveDismissDisabled(orders.sending)
+        }
+        .alert("ما انرسل الطلب", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
+            if fixAddress {
+                Button("عدّل العنوان") { fixAddress = false; sendAfterAddress = true; showAddress = true }
+                Button("إلغاء", role: .cancel) { fixAddress = false }
+            } else {
+                Button("تمام", role: .cancel) {}
+            }
         } message: {
-            Text("تحديد العنوان على الخريطة وإرسال الطلب ينضافون في التحديث الجاي من التطبيق. تقدر الحين تجهّز سلتك.")
+            Text(errorText ?? "")
+        }
+        .fullScreenCover(item: $placed) { order in
+            OrderPlacedView(order: order,
+                            onTrack: { placed = nil; tab = .account },
+                            onShop: { placed = nil; tab = .home })
+        }
+    }
+
+    private func checkout() {
+        if orders.address == nil || OrderCenter.normalizedPhone(orders.phone) == nil {
+            sendAfterAddress = true
+            showAddress = true
+            return
+        }
+        send()
+    }
+
+    private func send() {
+        Task {
+            switch await orders.place(cart: cart, catalog: catalog) {
+            case .success(let order):
+                placed = order
+            case .failure(.address(let msg)), .failure(.phone(let msg)):
+                fixAddress = true
+                errorText = msg
+            case .failure(.message(let msg)):
+                errorText = msg
+            }
         }
     }
 }
@@ -93,7 +137,10 @@ struct CartView: View {
 private struct DeliveryCard: View {
     let eta: String
     let area: String
+    let address: DeliveryAddress?
+    let action: () -> Void
     var body: some View {
+        Button(action: action) {
         HStack(spacing: 12) {
             Image(systemName: "mappin.and.ellipse")
                 .font(.system(size: 18, weight: .semibold))
@@ -101,18 +148,30 @@ private struct DeliveryCard: View {
                 .frame(width: 40, height: 40)
                 .background(Theme.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text("التوصيل إلى \(area)").font(.system(size: 15, weight: .semibold))
-                Text("تحدد بيتك على الخريطة وقت الطلب").font(.system(size: 13)).foregroundStyle(Theme.muted)
+                Text(address == nil ? "التوصيل إلى \(area)" : "التوصيل إلى البيت")
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text(address.map { $0.details.isEmpty ? "على الموقع المحدد في الخريطة" : $0.details } ?? "حدد بيتك على الخريطة")
+                    .font(.system(size: 13)).foregroundStyle(address == nil ? Theme.copperInk : Theme.muted)
+                    .lineLimit(1)
             }
             Spacer(minLength: 4)
-            Label(eta, systemImage: "bolt")
-                .font(.kufi(11.5, .semibold))
-                .foregroundStyle(Theme.oliveInk)
-                .lineLimit(1)
+            VStack(alignment: .trailing, spacing: 4) {
+                Label(eta, systemImage: "bolt")
+                    .font(.kufi(11.5, .semibold))
+                    .foregroundStyle(Theme.oliveInk)
+                    .lineLimit(1)
+                Text(address == nil ? "حدّد" : "غيّر")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.brandDeep)
+            }
         }
         .padding(12)
         .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
+        .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle(scale: 0.98))
+        .accessibilityHint("يفتح الخريطة لتحديد عنوان التوصيل")
     }
 }
 
@@ -243,6 +302,8 @@ private struct SummaryCard: View {
 
 private struct CheckoutBar: View {
     let totals: CartTotals
+    let sending: Bool
+    let closed: Bool
     let action: () -> Void
     @Environment(Cart.self) private var cart
 
@@ -272,18 +333,25 @@ private struct CheckoutBar: View {
             }
             Button(action: action) {
                 HStack {
-                    Text("أرسل الطلب")
+                    if sending {
+                        ProgressView().tint(.white)
+                        Text("جاري الإرسال…")
+                    } else {
+                        Text(closed ? "المحل مقفل الحين" : "أرسل الطلب")
+                    }
                     Spacer()
                     Text(Money.sar(totals.total)).contentTransition(.numericText(value: totals.total))
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(totals.belowMinimum != nil || totals.count == 0)
-            .opacity(totals.belowMinimum != nil ? 0.5 : 1)
+            .disabled(blocked || sending)
+            .opacity(blocked ? 0.5 : 1)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 6)
         .background(.bar)
     }
+
+    private var blocked: Bool { totals.belowMinimum != nil || totals.count == 0 || closed }
 }

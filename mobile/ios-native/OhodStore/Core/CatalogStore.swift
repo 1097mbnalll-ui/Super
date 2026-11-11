@@ -98,6 +98,11 @@ final class CatalogStore {
         return Array(hits.sorted { (isAvailable($0) ? 0 : 1, $0.hasPhoto ? 0 : 1) < (isAvailable($1) ? 0 : 1, $1.hasPhoto ? 0 : 1) }.prefix(limit))
     }
 
+    /// الخادم قال إن المنتج باقي منه كذا (وقت إرسال الطلب)
+    func setLiveStock(_ id: String, _ left: Int) { liveStock[id] = left }
+
+    var apiBase: String { store.api.trimmingCharacters(in: CharacterSet(charactersIn: "/")) }
+
     // MARK: تحميل البيانات (من الجوال أول، وبعدها من الموقع)
 
     func load() async {

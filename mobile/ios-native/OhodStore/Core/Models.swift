@@ -98,6 +98,8 @@ struct StoreInfo: Sendable {
     var closedMessage = ""
     var api = AppConfig.defaultAPI
     var zone: [[Double]] = []
+    /// إلغاء الزبون: new (قبل التجهيز) / accepted (قبل خروج المندوب) / off
+    var custCancel = "new"
     var banners: [Banner] = []
 }
 
@@ -127,6 +129,7 @@ enum CatalogParser {
         store.closed = (s["closed"] as? Bool) ?? false
         store.closedMessage = str(s["closedMsg"]) ?? str(s["closedMessage"]) ?? ""
         store.api = str(s["api"]) ?? AppConfig.defaultAPI
+        store.custCancel = str(s["custCancel"]) ?? "new"
         if let zone = s["zone"] as? [[Any]] {
             store.zone = zone.compactMap { pair in
                 guard pair.count == 2, let a = num(pair[0]), let b = num(pair[1]) else { return nil }

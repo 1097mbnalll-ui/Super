@@ -132,6 +132,52 @@ final class Cart {
         return t
     }
 
+    /// اللي ينرسل للخادم: المتوفر بس، بنفس مفاتيح الموقع ("id" أو "id~رقم الخيار")
+    func orderItems(_ catalog: CatalogStore) -> [String: Int] {
+        var items: [String: Int] = [:]
+        for row in totals(catalog).rows where row.available { items[row.key] = row.qty }
+        return items
+    }
+
+    /// يحط سلة كاملة (اطلب مرة ثانية). المنتج اللي ما عاد موجود ينتجاهل
+    func add(_ items: [String: Int], order keys: [String], catalog: CatalogStore) {
+        for key in keys {
+            guard let q = items[key], q > 0, let r = catalog.resolve(key), catalog.isAvailable(r.product) else { continue }
+            let cap = limit(for: key, in: catalog) ?? 99
+            let l = line(key)
+            let newQty = min(l.qty + q, cap)
+            guard newQty > l.qty else { continue }
+            l.qty = newQty
+            if !order.contains(key) { order.append(key) }
+        }
+        revision &+= 1
+        save()
+        Haptics.added()
+    }
+
+    /// الخادم قال باقي `left` حبة من المنتج: نعدّل كل الأسطر اللي عليه (حبة وكرتون)
+    func applyStock(productID: String, left: Int, catalog: CatalogStore) {
+        var remaining = max(0, left)
+        for key in order {
+            guard let r = catalog.resolve(key), r.product.id == productID, let l = lines[key] else { continue }
+            let per = r.pack?.count ?? 1
+            let q = min(l.qty, remaining / per)
+            remaining -= q * per
+            l.qty = q
+        }
+        order.removeAll { (lines[$0]?.qty ?? 0) == 0 }
+        revision &+= 1
+        save()
+    }
+
+    /// بعد نجاح الطلب: نفضّي اللي انرسل بس (لو الزبون غيّر السلة أثناء الإرسال يبقى الفرق)
+    func remove(sent items: [String: Int]) {
+        for (key, q) in items { if let l = lines[key] { l.qty = max(0, l.qty - q) } }
+        order.removeAll { (lines[$0]?.qty ?? 0) == 0 }
+        revision &+= 1
+        save()
+    }
+
     private func save() {
         var dict: [String: Int] = [:]
         for k in order { if let q = lines[k]?.qty, q > 0 { dict[k] = q } }
