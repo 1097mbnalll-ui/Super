@@ -2096,7 +2096,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (S.freeOver ? tr('<div><dt>توصيل مجاني</dt><dd>فوق ', '<div><dt>Free delivery</dt><dd>Over ') + rial(S.freeOver) + '</dd></div>' : '') +
       tr('<div><dt>أوقات العمل</dt><dd>', '<div><dt>Opening hours</dt><dd>') + esc(sv("hours")) + tr('</dd></div><div><dt>الدفع</dt><dd>كاش أو شبكة عند الاستلام</dd></div><div><dt>رقم المحل</dt><dd dir="ltr" style="user-select:all">', '</dd></div><div><dt>Payment</dt><dd>Cash or card on delivery</dd></div><div><dt>Store number</dt><dd dir="ltr" style="user-select:all">') + esc(S.phone) + '</dd></div></dl>' +
       '<div class="actions"><a class="btn btn-teal" href="tel:' + esc(S.phone) + '">' + ic("phone") + tr('اتصل</a>', 'Call</a>') + (waNumber() ? '<a class="btn btn-soft" href="https://wa.me/' + waNumber() + tr('" target="_blank" rel="noopener">واتساب</a>', '" target="_blank" rel="noopener">WhatsApp</a>') : '') + '</div></div>' +
-      (apiUrl() && !NATIVE ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("الإشعارات", "Notifications") + '</b><span>' + (PUSH_PREF && pushOn() ? tr("مفعّلة. بيوصلك تنبيه مع كل تغيير في حالة طلباتك.", "On. You will be notified about every change to your orders.") : tr("فعّلها عشان يوصلك تنبيه لما طلبك ينقبل ولما المندوب يطلع لك.", "Turn them on to be alerted when your order is accepted and when the driver is on the way.")) + '</span><span class="pushmsg" id="pushPrefMsg"' + (isIOS() && !isApp() ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</span></span>' +
+      (apiUrl() && (!NATIVE || pushCan()) ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("الإشعارات", "Notifications") + '</b><span>' + (PUSH_PREF && pushOn() ? tr("مفعّلة. بيوصلك تنبيه مع كل تغيير في حالة طلباتك.", "On. You will be notified about every change to your orders.") : tr("فعّلها عشان يوصلك تنبيه لما طلبك ينقبل ولما المندوب يطلع لك.", "Turn them on to be alerted when your order is accepted and when the driver is on the way.")) + '</span><span class="pushmsg" id="pushPrefMsg"' + (isIOS() && !isApp() ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</span></span>' +
         (PUSH_PREF && pushOn() ? '<span class="on">' + ic("check") + '</span>' : '<button class="btn btn-teal" type="button" id="pushPref">' + tr("فعّل", "Turn on") + '</button>') + '</div>' : '') +
       (NATIVE ? "" : tr('<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">الدخول</b><p class="hint">للإدارة والموظفين والمناديب: كل واحد يدخل بكلمة السر حقته، ويفتح له قسمه.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">', '<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">Sign in</b><p class="hint">For the owner, staff and drivers: everyone signs in with their own password.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">') + ic("lock") + tr('الدخول</button></div>', 'Sign in</button></div>')) +
       '<p class="hint" style="margin-top:14px;text-align:center"><a href="privacy.html" style="color:inherit;text-decoration:underline">' + tr("سياسة الخصوصية", "Privacy policy") + '</a></p>' +
@@ -2342,9 +2342,12 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var PUSH_PREF = false; try { PUSH_PREF = localStorage.getItem("ohod-push") === "1"; } catch(e){}
   function isIOS(){ return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
   function isApp(){ return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
-  function pushCan(){ return !NATIVE && !!apiUrl() && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
-  function pushOn(){ return pushCan() && Notification.permission === "granted"; }
+  // إضافات Capacitor (الإشعارات الأصلية، زر الرجوع، الاهتزاز): موجودة بس داخل تطبيق الآيفون/الأندرويد
+  function nativePlug(n){ try { return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins[n]) || null; } catch(e){ return null; } }
+  function pushCan(){ if (NATIVE) return !!apiUrl() && !!nativePlug("PushNotifications"); return !!apiUrl() && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+  function pushOn(){ if (NATIVE) return pushCan() && PUSH_PREF; return pushCan() && Notification.permission === "granted"; }
   function pushWhy(){
+    if (NATIVE) return tr("اسمح بالإشعارات للتطبيق من إعدادات الجوال، وجرّب مرة ثانية.", "Allow notifications for the app in your phone settings and try again.");
     if (!apiUrl()) return tr("الإشعارات تحتاج خادم الطلبات.", "Notifications need the order server.");
     if (isIOS() && !isApp()) return tr("على الآيفون: اضغط زر المشاركة ثم «إضافة إلى الشاشة الرئيسية»، وافتح المتجر من الأيقونة وفعّل الإشعارات من هناك.", "On iPhone: tap Share, then Add to Home Screen, open the store from the icon and turn on notifications there.");
     if (!pushCan()) return tr("المتصفح هذا ما يدعم الإشعارات. جرّب Chrome أو Safari الجديد.", "This browser does not support notifications. Try a recent Chrome or Safari.");
@@ -2354,6 +2357,23 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function b64uBytes(s){ var b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), a = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
   function pushSub(){
     if (!pushCan()) return Promise.reject({ code: "unsupported" });
+    if (NATIVE) {   // تطبيق أصلي: نطلب الإذن ونجيب رمز الجهاز (آبل APNs أو قوقل FCM)، والخادم هو اللي يرسل
+      var PN = nativePlug("PushNotifications");
+      return PN.requestPermissions().then(function(r){
+        if (!r || r.receive !== "granted") throw { code: "denied" };
+        return new Promise(function(res, rej){
+          var t = setTimeout(function(){ rej({ code: "unsupported" }); }, 15000);
+          try { PN.removeAllListeners(); } catch(e){}
+          PN.addListener("registration", function(tok){ clearTimeout(t); res(tok && tok.value); });
+          PN.addListener("registrationError", function(){ clearTimeout(t); rej({ code: "unsupported" }); });
+          PN.register();
+        });
+      }).then(function(token){
+        if (!token) throw { code: "unsupported" };
+        PUSH_PREF = true; try { localStorage.setItem("ohod-push", "1"); } catch(e){}
+        return { native: (window.Capacitor && Capacitor.getPlatform && Capacitor.getPlatform()) === "ios" ? "ios" : "android", token: String(token) };
+      });
+    }
     var perm = Notification.permission === "granted" ? Promise.resolve("granted") : new Promise(function(res){ var r = Notification.requestPermission(res); if (r && r.then) r.then(res); });
     return perm.then(function(p){ if (p !== "granted") throw { code: "denied" }; return navigator.serviceWorker.register("sw.js"); })
       .then(function(){ return navigator.serviceWorker.ready; })
@@ -4940,6 +4960,15 @@ html.sp-on,html.sp-on body{overflow:hidden}
   loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "store") loadStock(); });
   if (!NATIVE && (location.hash === "#driver" || /[?&]app=driver/.test(location.search) || APP)) openDriver();
+  if (NATIVE) {   // لمسات التطبيق الأصلي: زر الرجوع في أندرويد، واهتزاز خفيف عند إضافة منتج للسلة
+    var AppP = nativePlug("App"), HapP = nativePlug("Haptics");
+    if (AppP && AppP.addListener) AppP.addListener("backButton", function(){
+      var bk = document.querySelector('[data-nav="back"]'); if (bk) { bk.click(); return; }
+      if (document.body.getAttribute("data-screen") !== "home") { var hm = document.querySelector('[data-nav="home"]'); if (hm) { hm.click(); return; } }
+      if (AppP.exitApp) AppP.exitApp();
+    });
+    if (HapP && HapP.impact) document.addEventListener("click", function(e){ if (e.target.closest && e.target.closest("[data-addprod]")) { try { HapP.impact({ style: "LIGHT" }); } catch(x){} } }, true);
+  }
   // داخل تطبيق المندوب: التطبيق للمندوب بس، ما يقدر يرجع للمتجر
   if (APP) { appLock = true; appUpdateCheck(); document.addEventListener("visibilitychange", function(){ if (!document.hidden) appUpdateCheck(); });
     window.addEventListener("popstate", function(){ if (mode !== "driver" || location.hash !== "#driver") openDriver(); }); }

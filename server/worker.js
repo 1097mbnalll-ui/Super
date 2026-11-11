@@ -250,7 +250,7 @@ export default {
       const row = await env.DB.prepare("SELECT status FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
       if (!row) return reply(404, { ok: false, code: "not_found" });
       if (!(await saveSub(env, body.sub, "customer", String(n)))) return reply(400, { ok: false, code: "bad_sub" });
-      later(pushTo(env, [body.sub], { title: "تم تفعيل الإشعارات", body: "بنبلغك أول ما تتغير حالة طلبك #" + (1000 + n), url: "./", tag: "order" + n }));
+      later(pushTo(env, [normSub(body.sub)], { title: "تم تفعيل الإشعارات", body: "بنبلغك أول ما تتغير حالة طلبك #" + (1000 + n), url: "./", tag: "order" + n }));
       return reply(200, { ok: true });
     }
     if (path === "/push/unsub") {
@@ -1703,10 +1703,23 @@ async function readStats(env, days) {
 }
 
 // ---------- الإشعارات (Web Push) ----------
-async function saveSub(env, sub, role, ref) {
-  if (!sub || typeof sub !== "object" || !sub.keys) return false;
-  const ep = String(sub.endpoint || ""), p = String(sub.keys.p256dh || ""), a = String(sub.keys.auth || "");
-  if (!/^https:\/\/[^\s]{10,900}$/.test(ep) || !/^[\w-]{80,100}$/.test(p) || !/^[\w-]{16,30}$/.test(a)) return false;
+// اشتراك أصلي من تطبيق الزبائن: {native:'ios'|'android', token}. نخزّنه بنفس جدول subs بعنوان apns:… أو fcm:…
+function normSub(sub) {
+  if (sub && typeof sub === "object" && sub.native !== undefined && sub.native !== "ios" && sub.native !== "android") return null;
+  if (sub && typeof sub === "object" && (sub.native === "ios" || sub.native === "android")) {
+    const t = String(sub.token || "");
+    if (sub.native === "ios" ? !/^[0-9a-fA-F]{64,200}$/.test(t) : !/^[\w:.-]{40,500}$/.test(t)) return null;
+    return { endpoint: (sub.native === "ios" ? "apns:" : "fcm:") + t, keys: { p256dh: "", auth: "" }, native: sub.native };
+  }
+  return sub;
+}
+async function saveSub(env, sub0, role, ref) {
+  const sub = normSub(sub0);
+  if (!sub || typeof sub !== "object") return false;
+  if (sub.native && role !== "customer") return false;   // التطبيق الأصلي للزبائن بس (الإدارة والمندوب والمجهز ما فيهم)
+  if (!sub.native && !sub.keys) return false;
+  const ep = String(sub.endpoint || ""), p = String((sub.keys || {}).p256dh || ""), a = String((sub.keys || {}).auth || "");
+  if (!sub.native && (!/^https:\/\/[^\s]{10,900}$/.test(ep) || !/^[\w-]{80,100}$/.test(p) || !/^[\w-]{16,30}$/.test(a))) return false;
   await ensureSchema(env);
   if (role === "customer") await env.DB.prepare("DELETE FROM subs WHERE role = 'customer' AND created < ?").bind(Date.now() - 3 * 864e5).run();
   await env.DB.prepare("INSERT INTO subs (endpoint, role, ref, p256dh, auth, created) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(endpoint, role, ref) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth, created = excluded.created")
@@ -1725,13 +1738,64 @@ async function pushTo(env, subs, msg) {
   let ok = 0;
   await Promise.all(subs.map(async (s) => {
     try {
-      const st = await webPush(env, s, msg);
+      const ep = String(s.endpoint || "");
+      const st = ep.startsWith("apns:") ? await apnsPush(env, ep.slice(5), msg) : ep.startsWith("fcm:") ? await fcmPush(env, ep.slice(4), msg) : await webPush(env, s, msg);
       if (st >= 200 && st < 300) ok++;
-      else if (st === 404 || st === 410) await env.DB.prepare("DELETE FROM subs WHERE endpoint = ?").bind(s.endpoint).run();
+      else if (st === 404 || st === 410 || st === -410) await env.DB.prepare("DELETE FROM subs WHERE endpoint = ?").bind(s.endpoint).run();
     } catch {}
   }));
   return ok;
 }
+// ---- إشعارات التطبيق الأصلي ----
+// آيفون: APNs مباشرة (مفتاح .p8). أندرويد: FCM v1 (حساب خدمة). المفاتيح أسرار في Cloudflare، ولو ناقصة نتجاوز بدون خطأ.
+// الأسرار: APNS_KEY (نص ملف .p8)، APNS_KEY_ID، APNS_TEAM_ID، اختياري APNS_TOPIC (الافتراضي sa.ohod.store) و APNS_ENV=sandbox للتجارب؛ FCM_SERVICE_ACCOUNT (نص JSON).
+const pemDer = (pem) => Uint8Array.from(atob(String(pem).replace(/-----[^-]+-----/g, "").replace(/\s+/g, "")), (c) => c.charCodeAt(0));
+const b64uText = (o) => b64u(new TextEncoder().encode(typeof o === "string" ? o : JSON.stringify(o)));
+let apnsJwt = null, fcmTok = null;
+async function apnsPush(env, token, msg) {
+  if (!env.APNS_KEY || !env.APNS_KEY_ID || !env.APNS_TEAM_ID) return 0;
+  const now = Math.floor(Date.now() / 1000);
+  if (!apnsJwt || now - apnsJwt.at > 45 * 60 || apnsJwt.kid !== env.APNS_KEY_ID) {   // آبل تطلب تجديد الرمز كل أقل من ساعة، وما يزيد على مرة كل ٢٠ دقيقة
+    const key = await crypto.subtle.importKey("pkcs8", pemDer(env.APNS_KEY), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+    const unsigned = b64uText({ alg: "ES256", kid: env.APNS_KEY_ID }) + "." + b64uText({ iss: env.APNS_TEAM_ID, iat: now });
+    const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(unsigned)));
+    apnsJwt = { jwt: unsigned + "." + b64u(sig), at: now, kid: env.APNS_KEY_ID };
+  }
+  const host = env.APNS_ENV === "sandbox" ? "api.sandbox.push.apple.com" : "api.push.apple.com";
+  const r = await fetch("https://" + host + "/3/device/" + token, {
+    method: "POST",
+    headers: { "authorization": "bearer " + apnsJwt.jwt, "apns-topic": env.APNS_TOPIC || "sa.ohod.store", "apns-push-type": "alert", "apns-priority": "10", "apns-expiration": String(now + 86400), "content-type": "application/json" },
+    body: JSON.stringify({ aps: { alert: { title: String(msg.title || ""), body: String(msg.body || "") }, sound: "default", "thread-id": String(msg.tag || "") }, url: msg.url || "./", tag: msg.tag || "" }),
+  });
+  if (r.status === 410 || r.status === 400) { const j = await r.json().catch(() => ({})); if (r.status === 410 || j.reason === "BadDeviceToken" || j.reason === "Unregistered" || j.reason === "DeviceTokenNotForTopic") return -410; }
+  return r.status;
+}
+async function fcmAccess(env, sa) {
+  const now = Math.floor(Date.now() / 1000);
+  if (fcmTok && fcmTok.exp - 120 > now && fcmTok.mail === sa.client_email) return fcmTok.v;
+  const key = await crypto.subtle.importKey("pkcs8", pemDer(sa.private_key), { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  const unsigned = b64uText({ alg: "RS256", typ: "JWT" }) + "." + b64uText({ iss: sa.client_email, scope: "https://www.googleapis.com/auth/firebase.messaging", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 });
+  const sig = new Uint8Array(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(unsigned)));
+  const r = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "grant_type=" + encodeURIComponent("urn:ietf:params:oauth:grant-type:jwt-bearer") + "&assertion=" + unsigned + "." + b64u(sig) });
+  const j = await r.json().catch(() => ({}));
+  if (!j.access_token) throw new Error("fcm_auth");
+  fcmTok = { v: j.access_token, exp: now + (Number(j.expires_in) || 3600), mail: sa.client_email };
+  return fcmTok.v;
+}
+async function fcmPush(env, token, msg) {
+  if (!env.FCM_SERVICE_ACCOUNT) return 0;
+  let sa; try { sa = JSON.parse(env.FCM_SERVICE_ACCOUNT); } catch { return 0; }
+  if (!sa.project_id || !sa.client_email || !sa.private_key) return 0;
+  const access = await fcmAccess(env, sa);
+  const r = await fetch("https://fcm.googleapis.com/v1/projects/" + encodeURIComponent(sa.project_id) + "/messages:send", {
+    method: "POST", headers: { "authorization": "Bearer " + access, "content-type": "application/json" },
+    body: JSON.stringify({ message: { token, notification: { title: String(msg.title || ""), body: String(msg.body || "") }, data: { url: String(msg.url || "./"), tag: String(msg.tag || "") }, android: { priority: "HIGH", notification: { tag: String(msg.tag || "") } } } }),
+  });
+  if (r.status === 404 || r.status === 410) return -410;   // الجهاز ما عاد مسجّل
+  if (r.status === 400) { const j = await r.json().catch(() => ({})); if (/UNREGISTERED/.test(JSON.stringify(j))) return -410; }
+  return r.status;
+}
+
 let vapidCache = null;
 async function vapidKeys(env) {
   if (vapidCache) return vapidCache;

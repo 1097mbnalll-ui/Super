@@ -5,7 +5,10 @@
   "backgroundColor": "#FBF6EC",
   "server": {
     "androidScheme": "https",
-    "allowNavigation": ["1097mbnalll-ui.github.io", "ohod-admin.1097mbnalll.workers.dev"]
+    "allowNavigation": [
+      "1097mbnalll-ui.github.io",
+      "ohod-admin.1097mbnalll.workers.dev"
+    ]
   },
   "ios": {
     "contentInset": "never",
@@ -13,7 +16,21 @@
     "limitsNavigationsToAppBoundDomains": false
   },
   "plugins": {
-    "SplashScreen": { "launchShowDuration": 800, "backgroundColor": "#0E9F7B", "showSpinner": false },
-    "StatusBar": { "style": "DARK", "backgroundColor": "#FBF6EC" }
+    "SplashScreen": {
+      "launchShowDuration": 800,
+      "backgroundColor": "#0E9F7B",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#FBF6EC"
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
   }
 }

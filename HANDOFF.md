@@ -35,7 +35,7 @@
 
 ## ٥) الشغل المعلّق (مرتّب)
 1. **تحديث الخادم** (آخر `server/worker.js` من `gh-pages`) + **`ALLOWED_ORIGIN`** يشمل `https://1097mbnalll-ui.github.io,capacitor://localhost,https://localhost`. المالك يدخل أي مفتاح بنفسه.
-2. **تطبيق آبل/قوقل — المرحلة ٢** (انظر `mobile/README.md`): إشعارات أصلية (APNs/FCM، والخادم يخزّن نوع الجهاز بجنب اشتراكات الويب)، تحديد الموقع الأصلي، فتح الخرائط والاتصال والواتساب، الشاشات ذات الحافة. **قاعدة آبل ٤٫٢ ترفض «موقع داخل غلاف»**، فهذي مو اختيارية. المالك يسجّل حساب آبل (يفضّل كشركة بالسجل التجاري، مع D-U-N-S) وحساب قوقل، ويحتاج جوال آيفون للتجربة (TestFlight). البناء السحابي (Codemagic أو غيره) يحتاج Xcode 26.
+2. **تطبيق آبل/قوقل — المرحلة ٢:** الكود **انكتب وانجرّب بمحاكاة** (إشعارات أصلية APNs/FCM من الخادم وصفحة التطبيق، زر الرجوع، الاهتزاز؛ `server/test/native-push.mjs`). **الباقي:** مفاتيح الإشعارات (المالك يدخلها بنفسه، الخطوات في `mobile/README.md`)، أول بناء حقيقي على ماك/Android SDK، تجربة على جوال، ثم صور الشاشات وتقديم المتاجر. **قاعدة آبل ٤٫٢ ترفض «موقع داخل غلاف»**، فهذي مو اختيارية. المالك يسجّل حساب آبل (يفضّل كشركة بالسجل التجاري، مع D-U-N-S) وحساب قوقل، ويحتاج جوال آيفون للتجربة (TestFlight). البناء السحابي (Codemagic أو غيره) يحتاج Xcode 26.
 3. **إعدادات المتجر:** موقع المحل (`store.shop`) مو مسجّل → «الأقرب فالأقرب» من المحل وعرض المسافة ما يشتغلان. رسوم التوصيل ٢٫٧ والمجاني فوق ٣٠ والحد الأدنى ٢٠: **الكرت يقول «توصيل مجاني»** فلازم تتطابق. مدة التوصيل «٣٠–٤٥ دقيقة» نص ثابت (مقاضي الشهر تتجاوزها).
 4. **المحتوى:** المخبز الطازج (ما فيه إلا ~١٢ صنف خبز، والباقي كيك معبأ)، المحمصة والأجبان والخضار («قريباً» الحين)، صور ناقصة، قسم المنزل ثقيل.
 5. **الدومين:** لو انشرى: ١) أضفه لـ`ALLOWED_ORIGIN` مع القديم، ٢) أصدر تطبيق المندوب ١٫٤ يقبل المصدرين (`MainActivity.HOST` و`Api.ORIGIN` مقفلين على github.io، ولو تحوّل بدون تحديث التطبيق ينكسر)، ٣) اربط الدومين (GitHub يحوّل القديم)، ٤) اطبع الكروت بالجديد. **إشعارات الويب والسلة تنمسح عند تغيير الدومين.**
@@ -55,7 +55,7 @@
 ```
 node --test server/test/admin-access.mjs server/test/operations.mjs server/test/pos.mjs server/test/reliability.mjs
 node server/test/staff-and-pos.mjs && node server/test/unified-login.mjs && node server/test/catalog-import.mjs
-node server/test/ops-features.mjs && node server/test/packs.mjs && node server/test/prep-mode.mjs
+node server/test/ops-features.mjs && node server/test/packs.mjs && node server/test/prep-mode.mjs && node server/test/native-push.mjs
 ANDROID_JAR=/path/android-all-34.jar node android-driver/test/run-core-test.mjs      # تطبيق المندوب
 ```
 كلها محلية ببيانات وهمية (`server/test/fixtures/catalog.json`)، ما تثبت سلوك Cloudflare الحقيقي. اختبارات المتصفح (Playwright) كانت سكربتات مؤقتة ما انحفظت، وتعاد كتابتها عند الحاجة.
