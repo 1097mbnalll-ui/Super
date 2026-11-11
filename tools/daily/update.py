@@ -47,13 +47,13 @@ def main(data_path, xlsx, dry=False):
     names = {key(p['name']) for p in ps}
     by_name = {}
     for p in ps: by_name.setdefault(key(p['name']), p)
-    rep = collections.Counter(); changed = []; seen = set()
-    # الملف فيه أحياناً نفس الباركود (أو نفس الاسم) أكثر من سطر: نأخذ السطر اللي كميته أكبر
+    rep = collections.Counter(); changed = []; seen = set(); qty_of = {}
+    # الملف فيه أحياناً نفس الباركود (أو نفس الاسم) أكثر من سطر: المعتمد آخر سطر (قرار المالك)
     best = {}
     for row in read_rows(xlsx):
         code, name = row[0], row[1]
         k = code if re.fullmatch(r'\d{6,14}', code) else 'n:' + key(name)
-        if k not in best or row[3] > best[k][3]: best[k] = row
+        best.pop(k, None); best[k] = row
     for code, name, unit, qty, price in best.values():
         if SKIP.search(name) or price <= 0: rep['skip'] += 1; continue
         good = bool(re.fullmatch(r'\d{6,14}', code))
@@ -63,7 +63,7 @@ def main(data_path, xlsx, dry=False):
             p = by_name[key(name)]
         if p and p['id'] in seen: rep['repeat'] += 1; continue
         if p:
-            seen.add(p['id'])
+            seen.add(p['id']); qty_of[p['id']] = max(0, int(qty))
             avail = qty > 0
             if bool(p.get('stock')) != avail: p['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
             # سعر الملف = السعر الأساسي. المنتج اللي عليه عرض (old): العرض يبقى، و«السعر قبل» يصير سعر الملف.
@@ -86,9 +86,13 @@ def main(data_path, xlsx, dry=False):
               'unit': UNIT.get(unit, 'حبة'), 'price': price, 'cat': cat, 'stock': qty > 0}
         if good: np['bc'] = code
         if cat == 'misc' and sub: np['sub'] = sub
+        qty_of[np['id']] = max(0, int(qty))
         ps.append(np); by_id[np['id']] = np; names.add(key(name)); rep['added'] += 1
         if good: by_bc[code] = np
     if not dry: json.dump(d, open(data_path, 'w'), ensure_ascii=False, separators=(',', ':'))
+    # الكميات بالعدد للخادم (D1 جدول stock): python3 tools/daily/d1_stock.py الملف_هذا
+    out = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--stock-out=')), None)
+    if out: json.dump(qty_of, open(out, 'w'))
     print(dict(rep))
     for n, a, b in changed[:40]: print('  سعر:', n, a, '→', b)
     return rep

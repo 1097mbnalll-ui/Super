@@ -1,3 +1,4 @@
 # نتائج اختبارات المحاكاة (تتولّد كل تشغيل)
 sim-result.json
 sim5-result.json
+__pycache__/
