@@ -38,8 +38,8 @@ struct ProductView: View {
                     RemoteImage(url: product.imageURL, maxPixel: 900)
                         .padding(36)
                         .opacity(available ? 1 : 0.5)
-                    if let saving = bestPackSaving(product), available {
-                        Label("وفّر \(Money.plain(saving.amount)) ر.س بالـ\(saving.unit)", systemImage: "percent")
+                    if available, let badge = product.offerBadge {
+                        Label(badge, systemImage: "percent")
                             .font(.kufi(12, .bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 10).padding(.vertical, 6)
@@ -64,6 +64,23 @@ struct ProductView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         PriceLabel(price: product.price, old: product.old, size: 24)
                         Text("/ \(product.unit)").font(.system(size: 14)).foregroundStyle(Theme.muted)
+                    }
+                    if available, let old = product.old, let pct = product.discountPercent {
+                        Label("عليه عرض: كان \(Money.sar(old)) وصار \(Money.sar(product.price)) · وفّر \(Money.sar(old - product.price)) (\(pct)٪)",
+                              systemImage: "flame.fill")
+                            .font(.system(size: 13.5, weight: .bold))
+                            .foregroundStyle(Theme.copperInk)
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    } else if available, let q = product.quantityOffer {
+                        Label("عرض \(Product.pieces(q.count)): بـ \(Money.sar(q.price)) بدل \(Money.sar(q.before)) · وفّر \(Money.sar(q.before - q.price))",
+                              systemImage: "flame.fill")
+                            .font(.system(size: 13.5, weight: .bold))
+                            .foregroundStyle(Theme.copperInk)
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     if !available {
                         Label("نفد من المحل حالياً", systemImage: "exclamationmark.circle")
@@ -157,15 +174,16 @@ struct PackPicker: View {
     var body: some View {
         let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
         LazyVGrid(columns: columns, spacing: 10) {
-            option(title: product.unit.isEmpty ? "حبة" : product.unit, price: product.price, index: nil, best: false)
+            option(title: product.unit.isEmpty ? "حبة" : product.unit, price: product.price, index: nil, best: false, before: nil)
             ForEach(Array(product.packs.enumerated()), id: \.offset) { i, pack in
+                let before = (product.price * Double(pack.count) * 100).rounded() / 100
                 option(title: "\(pack.unit)", price: pack.price, index: i,
-                       best: product.price * Double(pack.count) - pack.price > 0.009)
+                       best: before - pack.price > 0.009, before: before - pack.price > 0.009 ? before : nil)
             }
         }
     }
 
-    private func option(title: String, price: Double, index: Int?, best: Bool) -> some View {
+    private func option(title: String, price: Double, index: Int?, best: Bool, before: Double?) -> some View {
         let selected = selection == index
         return Button {
             guard selection != index else { return }
@@ -174,7 +192,13 @@ struct PackPicker: View {
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.kufi(14, .bold)).foregroundStyle(Theme.ink).lineLimit(1)
-                Text(Money.sar(price)).font(.system(size: 13)).foregroundStyle(Theme.muted)
+                HStack(spacing: 4) {
+                    Text(Money.sar(price)).font(.system(size: 13, weight: before == nil ? .regular : .bold))
+                        .foregroundStyle(before == nil ? Theme.muted : Theme.copperInk)
+                    if let before {
+                        Text(Money.plain(before)).font(.system(size: 11.5)).strikethrough().foregroundStyle(Theme.muted)
+                    }
+                }
             }
             .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
             .padding(.horizontal, 14).padding(.vertical, 8)

@@ -74,6 +74,25 @@ struct Product: Hashable, Sendable, Identifiable {
         guard let old, old > price else { return nil }
         return old - price
     }
+    var discountPercent: Int? {
+        guard let old, old > price else { return nil }
+        return max(1, Int(((old - price) / old * 100).rounded()))
+    }
+    /// أول عرض كمية: N حبات بسعر أقل من N × سعر الحبة (مثل ٣ بـ ١٠)
+    var quantityOffer: (index: Int, count: Int, price: Double, before: Double)? {
+        for (i, p) in packs.enumerated() where p.count > 1 {
+            let before = (Double(p.count) * price * 100).rounded() / 100
+            if p.price < before - 0.001 { return (i, p.count, p.price, before) }
+        }
+        return nil
+    }
+    /// شارة العرض على البطاقة: «خصم ٢٠٪» أو «عرض ٣ حبات»
+    var offerBadge: String? {
+        if let d = discountPercent { return "خصم \(d)٪" }
+        if let q = quantityOffer { return "عرض \(Product.pieces(q.count))" }
+        return nil
+    }
+    static func pieces(_ n: Int) -> String { n == 2 ? "حبتين" : n <= 10 ? "\(n) حبات" : "\(n) حبة" }
 }
 
 struct Banner: Hashable, Sendable, Identifiable {

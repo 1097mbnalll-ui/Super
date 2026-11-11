@@ -17,10 +17,10 @@ struct ProductCard: View {
                         .padding(12)
                         .padding(.bottom, 12)
                         .opacity(available ? 1 : 0.45)
-                    if available, product.discount != nil || !product.packs.isEmpty {
-                        Label("عرض", systemImage: "percent")
-                            .font(.kufi(10, .bold, relativeTo: .caption2))
-                            .labelStyle(.titleAndIcon)
+                    if available, let badge = product.offerBadge {
+                        Text(badge)
+                            .font(.kufi(10.5, .bold, relativeTo: .caption2))
+                            .lineLimit(1)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 7).padding(.vertical, 3)
                             .background(Theme.copper, in: UnevenRoundedRectangle(bottomTrailingRadius: 10, topTrailingRadius: 0, style: .continuous))
@@ -57,6 +57,14 @@ struct ProductCard: View {
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
                 PriceLabel(price: product.price, old: available ? product.old : nil, size: 17)
+                if available, let q = product.quantityOffer {
+                    (Text(verbatim: "\(Product.pieces(q.count)) بـ \(Money.plain(q.price)) · بدل ") + Text(Money.plain(q.before)).strikethrough())
+                        .font(.system(size: 11.5, weight: .bold))
+                        .foregroundStyle(Theme.copperInk)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                }
             }
             .padding(6)
             .padding(.bottom, 4)
