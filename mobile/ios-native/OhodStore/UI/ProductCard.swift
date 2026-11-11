@@ -58,24 +58,22 @@ struct ProductCard: View {
                     .lineLimit(1)
                 if available, let q = product.quantityOffer {
                     // عرض الكمية مثل: ٥٫٨٠ ر.س  ~٦٫٠٠~  [العدد ٣]  ثم «🔥 وفّر ٠٫٢٠ ر.س بالعرض»
-                    HStack(alignment: .center, spacing: 4) {
-                        PriceLabel(price: q.price, old: q.before, size: 16)
-                        Spacer(minLength: 0)
-                        HStack(spacing: 3) {
+                    // السعر بسطر لحاله (الكرت ضيق)، وتحته «العدد N» و«وفّر»
+                    PriceLabel(price: q.price, old: q.before, size: 16)
+                    HStack(spacing: 4) {
+                        HStack(spacing: 2) {
                             Text("العدد").font(.ui(size: 9.5, weight: .bold))
-                            Text(verbatim: "\(q.count)").font(.kufi(13, .bold))
+                            Text(verbatim: "\(q.count)").font(.kufi(12.5, .bold))
                         }
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 6).padding(.vertical, 1)
-                        .background(Theme.copper, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(Theme.copper, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                         .fixedSize()
+                        Text("🔥 وفّر \(Money.plain(q.before - q.price))")
+                            .font(.ui(size: 10.5, weight: .bold))
+                            .foregroundStyle(Theme.copperInk)
+                            .lineLimit(1).minimumScaleFactor(0.7)
                     }
-                    Text("🔥 وفّر \(Money.plain(q.before - q.price)) ر.س بالعرض")
-                        .font(.ui(size: 11, weight: .bold))
-                        .foregroundStyle(Theme.copperInk)
-                        .lineLimit(1).minimumScaleFactor(0.75)
-                        .padding(.horizontal, 6).padding(.vertical, 3)
-                        .background(Theme.copperSoft, in: Capsule())
                 } else {
                     PriceLabel(price: product.price, old: available ? product.old : nil, size: 17)
                 }
