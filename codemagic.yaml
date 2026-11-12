@@ -156,8 +156,8 @@ workflows:
                       d = base64.b64decode(v).decode()
                       if "BEGIN" in d: cands.append(("b64:" + n, d))
                   except Exception: pass
-          for pat in ["~/.appstoreconnect/private_keys/*.p8", "~/.private_keys/*.p8", "/Users/builder/**/AuthKey_*.p8", "/tmp/**/AuthKey_*.p8"]:
-              for f in glob.glob(os.path.expanduser(pat), recursive=True)[:5]:
+          for pat in ["~/.appstoreconnect/private_keys/*.p8", "~/.private_keys/*.p8", "/Users/builder/clone/*.p8"]:
+              for f in glob.glob(os.path.expanduser(pat))[:5]:
                   print("found key file:", f); cands.append(("file:" + f, open(f).read()))
           print("candidates:", [c[0] for c in cands])
           ok = None
