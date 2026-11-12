@@ -189,6 +189,9 @@ workflows:
             --skip_metadata true --overwrite_screenshots true --force true --run_precheck_before_submit false \
             --submit_for_review false --automatic_release false \
             --screenshots_path fastlane/screenshots --ignore_language_directory_validation true --verbose
+      - name: 4 - audit after upload
+        script: |
+          python3 mobile/ios-native/scripts/run_limited.py 300 ruby mobile/ios-native/scripts/asc_audit.rb || true
 
   # ٧) فحص قراءة فقط لصفحة التطبيق في App Store Connect + precheck (ما يكتب شي)
   ios-asc-audit:
