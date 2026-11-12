@@ -2328,7 +2328,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         var c = j.code;
         if((c==='network'||c==='timeout'||j.status>=500)&&checkoutAttempt){checkoutAttempt.uncertain=true;saveCheckoutAttempt(checkoutAttempt);}
         if(!checkoutAttempt?.uncertain&&['bad_phone','bad_location','unavailable','item_limit','bad_items','min_order','closed','wallet_balance','wallet_login','bad_payment','bad_request_id'].includes(c))saveCheckoutAttempt(null);
-        if(c==='network'||c==='timeout'||j.status>=500)return sendErr(tr('ما قدرنا نؤكد نتيجة الطلب. اضغط أرسل مرة ثانية للتأكد من نفس الطلب بدون تكراره.','We could not confirm the order. Submit again to confirm the same order without duplicating it.'),false);
+        if(c==='network'||c==='timeout'||j.status>=500)return sendErr(tr('ما قدرنا نؤكد نتيجة الطلب. اضغط أرسل مرة ثانية للتأكد من نفس الطلب بدون تكراره.','We could not confirm the order. Submit again to confirm the same order without duplicating it.'),j.status>=500);
         if(c==='item_limit')return sendErr(tr('تجاوزت الحد المسموح لأحد المنتجات. ارجع للسلة وقلّل الكمية.','A product reached its purchase limit. Reduce its quantity in your cart.'));
         if(c==='bad_items'||c==='bad_request_id'||c==='request_conflict')return sendErr(tr('تعذر تأكيد بيانات الطلب. راجع السلة أو تواصل معنا قبل إرسال طلب آخر.','Review your cart or contact us before submitting another order.'));
         if (['wallet_login','wallet_balance','bad_payment'].indexOf(c)>=0) return sendErr('تعذر استخدام المحفظة. سجّل الدخول مجددًا وراجع الرصيد والمبلغ.');
