@@ -12,6 +12,8 @@ struct CartView: View {
     @State private var errorText: String?
     @State private var placed: SavedOrder?
     @State private var fixAddress = false
+    @State private var offerWhatsApp = false
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         let totals = cart.totals(catalog)
@@ -101,6 +103,14 @@ struct CartView: View {
             if fixAddress {
                 Button("عدّل العنوان") { fixAddress = false; sendAfterAddress = true; showAddress = true }
                 Button("إلغاء", role: .cancel) { fixAddress = false }
+            } else if offerWhatsApp, !waDigits.isEmpty {
+                Button("أرسل الطلب على واتساب بدلها") {
+                    offerWhatsApp = false
+                    var c = URLComponents(string: "https://wa.me/\(waDigits)")!
+                    c.queryItems = [URLQueryItem(name: "text", value: orders.whatsappText(cart: cart, catalog: catalog))]
+                    if let u = c.url { openURL(u) }
+                }
+                Button("تمام", role: .cancel) { offerWhatsApp = false }
             } else {
                 Button("تمام", role: .cancel) {}
             }
@@ -114,7 +124,10 @@ struct CartView: View {
         }
     }
 
+    private var waDigits: String { CatalogParser.latinDigits(catalog.store.whatsapp).filter(\.isNumber) }
+
     private func checkout() {
+        Analytics.shared.checkoutStarted()
         if orders.address == nil || OrderCenter.normalizedPhone(orders.phone) == nil {
             sendAfterAddress = true
             showAddress = true
@@ -132,6 +145,9 @@ struct CartView: View {
                 fixAddress = true
                 errorText = msg
             case .failure(.message(let msg)):
+                errorText = msg
+            case .failure(.whatsapp(let msg)):
+                offerWhatsApp = true
                 errorText = msg
             }
         }
@@ -302,10 +318,17 @@ private struct SubstitutionPicker: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: cart.substitution) { _, _ in Haptics.selected() }
-            if cart.substitution == "swap" {
-                Text("نرسل لك البديل وتوافق عليه من جوالك قبل لا نضيفه.")
-                    .font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
-            }
+            Text(cart.substitution == "swap" ? "المندوب يبدّله بمنتج مشابه."
+                 : cart.substitution == "remove" ? "ينشال من طلبك وما تدفع قيمته."
+                 : "نتصل عليك، ولو اقترح المندوب بديل توافق عليه من جوالك.")
+                .font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
+            TextField("ملاحظات (اختياري): مثلاً الخبز يكون حار", text: $cart.note, axis: .vertical)
+                .lineLimit(1...3)
+                .font(.ui(size: 14))
+                .padding(10)
+                .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.line))
+                .padding(.top, 4)
         }
     }
 }

@@ -71,6 +71,9 @@ struct Product: Hashable, Sendable, Identifiable {
     /// شارة المالك (طازج، جديد...) و«يحلى معه» (sugg)
     var badge: String? = nil
     var sugg: [String] = []
+    var nameEN: String? = nil
+    /// منتجات خدمة الطباعة (print): ما تطلع بالبحث
+    var isPrint = false
 
     var imageURL: URL? { AppConfig.asset(image) }
     var hasPhoto: Bool { image?.hasPrefix("p/") == true }
@@ -370,7 +373,8 @@ enum CatalogParser {
                            old: (old ?? 0) > price ? old : nil, cat: cat, sub: str(p["sub"]),
                            image: str(p["img"]), inStock: (p["stock"] as? Bool) ?? true, packs: packs,
                            barcode: str(p["bc"]), max: num(p["max"]).map { Int($0) },
-                           badge: str(p["badge"]), sugg: (p["sugg"] as? [Any])?.compactMap { str($0) } ?? [])
+                           badge: str(p["badge"]), sugg: (p["sugg"] as? [Any])?.compactMap { str($0) } ?? [],
+                           nameEN: str(p["name_en"]), isPrint: p["print"] != nil && !(p["print"] is NSNull) && (p["print"] as? Bool) != false)
         }
         return Catalog(store: store, categories: cats, products: products)
     }

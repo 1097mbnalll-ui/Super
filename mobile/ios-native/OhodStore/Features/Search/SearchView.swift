@@ -6,17 +6,37 @@ struct SearchView: View {
     @State private var query = ""
     @State private var results: [Product] = []
     @State private var presented = true
+    @AppStorage("search.recent") private var recentRaw = ""
+    private var recent: [String] { recentRaw.split(separator: "\n").map(String.init) }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    if !recent.isEmpty {
+                        HStack {
+                            Text("عمليات البحث الأخيرة").font(.kufi(15, .bold))
+                            Spacer()
+                            Button("مسح الكل") { recentRaw = "" }.font(.ui(size: 13, weight: .semibold))
+                        }
+                        .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8)
+                        WrapChips(items: recent) { query = $0 }.padding(.horizontal, 16)
+                    }
+                    let sugg = Array((catalog.index?.featured ?? []).filter { catalog.isAvailable($0) }.prefix(8).map(\.name))
+                    if !sugg.isEmpty {
+                        Text("مقترحات ذكية").font(.kufi(15, .bold)).padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 8)
+                        WrapChips(items: sugg, icon: "magnifyingglass") { query = $0 }.padding(.horizontal, 16)
+                    }
                     SectionHeader(title: "تصفّح الأقسام").padding(.top, 12).padding(.bottom, 10)
                     FlowChips()
                         .padding(.horizontal, 16)
                 } else if results.isEmpty {
-                    ContentUnavailableView.search(text: query)
-                        .padding(.top, 40)
+                    ContentUnavailableView {
+                        Label("ما لقينا «\(query)»", systemImage: "magnifyingglass")
+                    } description: {
+                        Text("اتصل علينا على \(catalog.store.phone) ونجيبه لك")
+                    }
+                    .padding(.top, 40)
                 } else {
                     Text("\(results.count) نتيجة")
                         .font(.ui(size: 13)).foregroundStyle(Theme.muted)
@@ -36,6 +56,36 @@ struct SearchView: View {
             try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled else { return }
             results = catalog.search(query)
+            // بعد ما يوقف الكتابة ثانية ونص: نسجّل البحث للتحليل (بدون بيانات شخصية)
+            try? await Task.sleep(for: .milliseconds(1350))
+            guard !Task.isCancelled else { return }
+            Analytics.shared.search(query, found: results.count)
+            // نحفظه في «الأخيرة» (٨ بالأكثر) مثل الموقع
+            let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            if q.count > 1 { recentRaw = ([q] + recent.filter { $0 != q }).prefix(8).joined(separator: "\n") }
+        }
+    }
+}
+
+/// شرائح نصية تلتف على أكثر من سطر
+private struct WrapChips: View {
+    let items: [String]
+    var icon: String? = nil
+    let tap: (String) -> Void
+    var body: some View {
+        let columns = [GridItem(.adaptive(minimum: 110), spacing: 8, alignment: .leading)]
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+            ForEach(items, id: \.self) { t in
+                Button { tap(t) } label: {
+                    Label { Text(t).lineLimit(1) } icon: { Image(systemName: icon ?? "clock.arrow.circlepath") }
+                        .font(.ui(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.line))
+                }
+                .buttonStyle(PressableStyle())
+            }
         }
     }
 }

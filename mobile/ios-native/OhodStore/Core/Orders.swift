@@ -29,9 +29,12 @@ struct SavedOrder: Codable, Identifiable, Equatable {
     var sub: String? = nil
     var lat: Double? = nil
     var lng: Double? = nil
+    /// الخادم يتابع الطلب (track). false = بدون تتبع ولا إلغاء من التطبيق
+    var track: Bool? = nil
     var id: String { no }
     var count: Int { lines?.reduce(0) { $0 + $1.qty } ?? items.values.reduce(0, +) }
-    var isActive: Bool { ["new", "accepted", "onway"].contains(status) }
+    /// طلب شغّال: حالته مفتوحة وعمره أقل من ١٢ ساعة (مثل activeOrder في الموقع)
+    var isActive: Bool { ["new", "accepted", "onway"].contains(status) && Date().timeIntervalSince(at) < 12 * 3600 && track != false }
 }
 
 struct SavedLine: Codable, Equatable, Identifiable {
@@ -52,8 +55,11 @@ struct DriverInfo: Equatable {
     var eta: Int?
     var before: Int
     var near: Bool
+    /// المسافة بالمتر وآخر تحديث لموقع المندوب
+    var meters: Double? = nil
+    var at: Date? = nil
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: lat, longitude: lng) }
-    static func == (a: DriverInfo, b: DriverInfo) -> Bool { a.lat == b.lat && a.lng == b.lng && a.eta == b.eta && a.before == b.before }
+    static func == (a: DriverInfo, b: DriverInfo) -> Bool { a.lat == b.lat && a.lng == b.lng && a.eta == b.eta && a.before == b.before && a.meters == b.meters && a.at == b.at && a.near == b.near }
 }
 
 /// بديل اقترحه المندوب لمنتج ناقص (من /track subs): الزبون يوافق أو يشيل المنتج (/sub-answer)
@@ -113,6 +119,8 @@ enum OrderError: Error, Equatable {
     case phone(String)
     case message(String)
     case address(String)
+    /// ما وصل الطلب: نعرض «أرسل الطلب على واتساب بدلها» مثل الموقع
+    case whatsapp(String)
 }
 
 @MainActor
@@ -176,13 +184,17 @@ final class OrderCenter {
         if !Self.inZone(address.coordinate, catalog.store.zone) {
             return .failure(.address("الموقع برا منطقة التوصيل. حرّك الدبوس على بيتك"))
         }
+        if let km = Self.tooFar(address.coordinate, catalog.store) {
+            return .failure(.address("بيتك يبعد \(Money.plain(km)) كم عن المحل، ونوصل لين \(Money.plain(catalog.store.maxKm ?? 0)) كم بس"))
+        }
         let items = cart.orderItems(catalog)
         let snapshot = cart.totals(catalog)
         let keyOrder = snapshot.rows.map(\.key)
         var body: [String: Any] = [
-            "items": items, "phone": phone, "name": name, "details": address.details, "note": "",
+            "items": items, "phone": phone, "name": name, "details": address.details,
+            "note": cart.note.trimmingCharacters(in: .whitespacesAndNewlines),
             "pay": cart.payment == "card" ? "card" : "cash", "sub": cart.substitution,
-            "lat": address.lat, "lng": address.lng, "walletAmount": 0,
+            "lat": (address.lat * 1e6).rounded() / 1e6, "lng": (address.lng * 1e6).rounded() / 1e6, "walletAmount": 0,
         ]
         let signature = Self.signature(body)
         var resendingOld = false
@@ -195,12 +207,14 @@ final class OrderCenter {
                 resendingOld = true
             }
             body["requestId"] = a.requestId
+            body["walletRequestId"] = a.requestId
         } else {
             guard !items.isEmpty else { return .failure(.message("سلتك فاضية")) }
-            let id = UUID().uuidString
+            let id = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
             body["requestId"] = id
+            body["walletRequestId"] = id
             attempt = Attempt(requestId: id, signature: signature,
-                              payload: (try? JSONSerialization.data(withJSONObject: body.filter { $0.key != "requestId" })) ?? Data(), at: Date())
+                              payload: (try? JSONSerialization.data(withJSONObject: body.filter { $0.key != "requestId" && $0.key != "walletRequestId" })) ?? Data(), at: Date())
         }
 
         sending = true
@@ -223,6 +237,8 @@ final class OrderCenter {
                 order2.details = address.details; order2.sub = cart.substitution
                 order2.lat = address.lat; order2.lng = address.lng
             }
+            order2.track = json["track"] as? Bool ?? true
+            if !resendingOld { cart.note = "" }
             if !orders.contains(where: { $0.no == no }) { orders.insert(order2, at: 0) }
             if orders.count > 30 { orders.removeLast(orders.count - 30) }
             cart.remove(sent: sent, catalog: catalog)
@@ -240,13 +256,22 @@ final class OrderCenter {
         }
         switch code {
         case "network", "timeout", "db", "data":
-            return .failure(.message("ما قدرنا نتأكد إن الطلب وصل. تأكد من النت واضغط «أرسل الطلب» مرة ثانية، وما راح يتكرر."))
+            return .failure(.whatsapp("ما قدرنا نتأكد إن الطلب وصل. تأكد من النت واضغط «أرسل الطلب» مرة ثانية، وما راح يتكرر."))
         case "bad_phone":
             return .failure(.phone("رقم الجوال غير صحيح"))
         case "bad_location":
             return .failure(.address("الموقع المحدد خارج السعودية. حرّك الخريطة على بيتك"))
-        case "out_of_zone", "too_far":
+        case "out_of_zone":
             return .failure(.address("بيتك برا منطقة التوصيل حالياً. نوصل داخل \(catalog.store.area) بس"))
+        case "too_far":
+            let km = CatalogParser.num(json["km"]).map { Money.plain($0) } ?? ""
+            return .failure(.address("بيتك يبعد \(km) كم عن المحل، ونوصل لين \(Money.plain(catalog.store.maxKm ?? 0)) كم بس"))
+        case "bad_items":
+            await catalog.refresh()
+            return .failure(.message("فيه منتج بسلتك تغيّر أو انشال. راجع السلة وأرسل مرة ثانية."))
+        case "bad_request_id", "request_conflict":
+            attempt = nil
+            return .failure(.message("صار تعارض في إرسال الطلب. اضغط «أرسل الطلب» مرة ثانية."))
         case "unavailable":
             if let id = json["id"] as? String, let left = CatalogParser.num(json["left"]).map({ Int($0) }) {
                 catalog.setLiveStock(id, left)
@@ -267,10 +292,29 @@ final class OrderCenter {
             let min = CatalogParser.num(json["min"]) ?? catalog.store.minOrder
             return .failure(.message("أقل مبلغ للطلب \(Money.short(min))"))
         case "slow_down":
-            return .failure(.message("أرسلت طلبات كثيرة بوقت قصير. انتظر شوي أو اتصل علينا."))
+            return .failure(.whatsapp("أرسلت طلبات كثيرة بوقت قصير. انتظر شوي أو اتصل علينا."))
         default:
-            return .failure(.message("صار خطأ وما انرسل الطلب. جرّب مرة ثانية أو اتصل علينا."))
+            return .failure(.whatsapp("صار خطأ وما انرسل الطلب. جرّب مرة ثانية أو اتصل علينا."))
         }
+    }
+
+    /// نص الطلب للواتساب (waOrderText في الموقع)
+    func whatsappText(cart: Cart, catalog: CatalogStore) -> String {
+        let t = cart.totals(catalog)
+        var m = "طلب جديد من تطبيق \(catalog.store.name):\n"
+        for r in t.rows where r.available && !r.locked {
+            m += "• \(r.product.name) (\(r.unitLabel)) × \(r.qty) = \(Money.sar(r.lineTotal))\n"
+        }
+        m += "\nالإجمالي: \(Money.sar(t.total))" + (t.fee > 0 ? " (شامل التوصيل)" : " (التوصيل مجاني)")
+        m += "\nالدفع: " + (cart.payment == "card" ? "شبكة" : "كاش") + " عند الاستلام"
+        m += "\nالجوال: " + (Self.normalizedPhone(phone) ?? phone)
+        if let a = address {
+            m += "\nالموقع: https://www.google.com/maps?q=\(String(format: "%.6f", a.lat)),\(String(format: "%.6f", a.lng))"
+            if !a.details.isEmpty { m += "\nتفاصيل البيت: " + a.details }
+        }
+        let note = cart.note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !note.isEmpty { m += "\nملاحظات: " + note }
+        return m
     }
 
     // MARK: متابعة وإلغاء
@@ -280,7 +324,9 @@ final class OrderCenter {
             let (_, json) = await API.post(catalog.apiBase, "/track", ["no": order.no, "phone": order.phone])
             if let d = json["driver"] as? [String: Any], let la = CatalogParser.num(d["lat"]), let ln = CatalogParser.num(d["lng"]) {
                 drivers[order.no] = DriverInfo(lat: la, lng: ln, eta: CatalogParser.num(d["eta"]).map { Int($0.rounded()) },
-                                               before: Int(CatalogParser.num(d["before"]) ?? 0), near: d["near"] as? Bool ?? false)
+                                               before: Int(CatalogParser.num(d["before"]) ?? 0), near: d["near"] as? Bool ?? false,
+                                               meters: CatalogParser.num(d["m"]),
+                                               at: CatalogParser.num(d["at"]).map { Date(timeIntervalSince1970: $0 / 1000) })
             } else if json["ok"] as? Bool == true {
                 drivers[order.no] = nil
             }
@@ -299,6 +345,7 @@ final class OrderCenter {
     }
 
     func canCancel(_ order: SavedOrder, policy: String) -> Bool {
+        guard order.track != false else { return false }
         switch policy {
         case "off": return false
         case "accepted": return ["new", "accepted"].contains(order.status)
@@ -307,8 +354,8 @@ final class OrderCenter {
     }
 
     /// nil = انلغى. غير كذا رسالة الخطأ
-    func cancel(_ order: SavedOrder, catalog: CatalogStore) async -> String? {
-        let (status, json) = await API.post(catalog.apiBase, "/cancel", ["no": order.no, "phone": order.phone, "reason": "من التطبيق"])
+    func cancel(_ order: SavedOrder, reason: String = "", catalog: CatalogStore) async -> String? {
+        let (status, json) = await API.post(catalog.apiBase, "/cancel", ["no": order.no, "phone": order.phone, "reason": reason])
         if json["ok"] as? Bool == true {
             if let i = orders.firstIndex(where: { $0.no == order.no }) { orders[i].status = "canceled" }
             subs[order.no] = nil
@@ -363,6 +410,13 @@ final class OrderCenter {
         if s.hasPrefix("0") { s.removeFirst() }
         guard s.count == 9, s.hasPrefix("5"), s.allSatisfy(\.isNumber) else { return nil }
         return "0" + s
+    }
+
+    /// بدون منطقة مرسومة: المسافة من المحل أكثر من maxKm؟ يرجع المسافة (كم) لو بعيد، وإلا nil (مثل tooFar في الموقع)
+    static func tooFar(_ c: CLLocationCoordinate2D, _ store: StoreInfo) -> Double? {
+        guard store.zone.count < 3, let max = store.maxKm, let shop = store.shop else { return nil }
+        let d = CLLocation(latitude: c.latitude, longitude: c.longitude).distance(from: CLLocation(latitude: shop[0], longitude: shop[1])) / 1000
+        return d > max ? (d * 10).rounded() / 10 : nil
     }
 
     /// المنطقة المرسومة [[lat, lng]]. بدون منطقة = نقبل (الخادم يقرر)

@@ -80,11 +80,26 @@ struct AccountView: View {
                     }
                 }
 
-                if !catalog.store.hours.isEmpty {
-                    Label("أوقات العمل: \(catalog.store.hours)", systemImage: "clock")
-                        .font(.ui(size: 13)).foregroundStyle(Theme.muted)
-                        .padding(.top, 4)
+                // معلومات المحل (نفس «حسابي» في الموقع)
+                let st = catalog.store
+                VStack(spacing: 0) {
+                    info("منطقة التوصيل", st.area)
+                    info("مدة التوصيل", st.eta)
+                    info("رسوم التوصيل", st.fee > 0 ? Money.sar(st.fee) : "مجاني")
+                    if st.freeOver > 0 { info("توصيل مجاني", "فوق \(Money.sar(st.freeOver))") }
+                    if st.minOrder > 0 { info("أقل طلب", Money.sar(st.minOrder)) }
+                    if !st.hours.isEmpty { info("أوقات العمل", st.hours) }
+                    info("الدفع", "كاش أو شبكة عند الاستلام")
+                    if !st.phone.isEmpty { info("رقم المحل", st.phone, last: true) }
                 }
+                .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
+                .padding(.top, 4)
+                Text("صور بعض الخضار والفواكه من مجموعة Fruits-360 لـ Mihai Oltean (رخصة MIT).")
+                    .font(.ui(size: 10.5)).foregroundStyle(Theme.muted.opacity(0.8))
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 8)
                 Text("الإصدار \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""))")
                     .font(.ui(size: 11)).foregroundStyle(Theme.muted.opacity(0.7))
                     .frame(maxWidth: .infinity)
@@ -150,6 +165,19 @@ struct AccountView: View {
     }
     private var phoneURL: URL? { digits.phone.isEmpty ? nil : URL(string: "tel:\(digits.phone)") }
     private var whatsappURL: URL? { digits.wa.isEmpty ? nil : URL(string: "https://wa.me/\(digits.wa)") }
+
+    private func info(_ title: String, _ value: String, last: Bool = false) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(title).font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
+                Spacer(minLength: 8)
+                Text(value).font(.ui(size: 13.5, weight: .semibold)).foregroundStyle(Theme.ink)
+                    .multilineTextAlignment(.trailing).textSelection(.enabled)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 11)
+            if !last { Divider().padding(.horizontal, 16) }
+        }
+    }
 
     private func row(_ title: String, systemImage: String, value: String? = nil) -> some View {
         HStack {

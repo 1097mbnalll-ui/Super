@@ -75,8 +75,12 @@ final class Cart {
     private(set) var revision = 0
 
     /// «لو منتج ناقص» اختيار واحد عام فوق السلة (swap / remove / call)
-    var substitution: String = UserDefaults.standard.string(forKey: "cart.sub") ?? "swap" {
-        didSet { UserDefaults.standard.set(substitution, forKey: "cart.sub") }
+    var substitution: String = UserDefaults.standard.string(forKey: "cart.sub2") ?? "call" {
+        didSet { UserDefaults.standard.set(substitution, forKey: "cart.sub2") }
+    }
+    /// ملاحظات الطلب (مثل «الخبز يكون حار»): تنمسح بعد ما ينرسل الطلب
+    var note: String = UserDefaults.standard.string(forKey: "cart.note") ?? "" {
+        didSet { UserDefaults.standard.set(note, forKey: "cart.note") }
     }
     /// الدفع عند الاستلام: cash أو card
     var payment: String = UserDefaults.standard.string(forKey: "cart.pay") ?? "cash" {
@@ -109,7 +113,7 @@ final class Cart {
         if q == 0 { order.removeAll { $0 == key } }
         revision &+= 1
         save()
-        if old == 0 && q > 0 { Haptics.added() } else if q == 0 { Haptics.removed() }
+        if old == 0 && q > 0 { Haptics.added(); Analytics.shared.addedToCart(key) } else if q == 0 { Haptics.removed() }
     }
 
     func increment(_ key: String, limit: Int?) {
@@ -136,9 +140,12 @@ final class Cart {
         if let pl = catalog.promoLine(key) { return pl.limit }
         guard let r = catalog.resolve(key) else { return nil }
         let per = r.pack?.count ?? 1
+        // الحد والمخزون بالحبات لكل المنتج: الحبة والكرتون والعروض تنجمع (canAddProduct في الموقع)
+        let mine = (lines[key]?.qty ?? 0) * per
+        let others = piecesInCart(r.product.id, catalog: catalog) - mine
         var cap: Int? = nil
-        if let m = r.product.max, m > 0 { cap = max(1, m / per) }
-        if let left = catalog.liveStock[r.product.id] { cap = min(cap ?? Int.max, max(0, left / per)) }
+        if let m = r.product.max, m > 0 { cap = max(1, (m - others) / per) }
+        if let left = catalog.liveStock[r.product.id] { cap = min(cap ?? Int.max, max(0, (left - others) / per)) }
         return cap
     }
 

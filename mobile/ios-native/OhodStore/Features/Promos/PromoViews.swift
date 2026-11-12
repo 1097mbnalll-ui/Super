@@ -88,11 +88,7 @@ struct DailyDealView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    HStack {
-                        Spacer()
-                        CardQuantityControl(key: "t:\(dd.product.id)", limit: catalog.store.daily.limit > 0 ? catalog.store.daily.limit : nil)
-                            .frame(width: 140)
-                    }
+                    DailyAddButton(key: "t:\(dd.product.id)", total: dd.price)
                 }
                 .padding(16)
             } else {
@@ -102,6 +98,40 @@ struct DailyDealView: View {
         .background(Theme.pageBG)
         .navigationTitle("عرض اليوم")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// زر كبير: «أضف للسلة» وبعدها عداد
+private struct DailyAddButton: View {
+    let key: String
+    let total: Double
+    @Environment(Cart.self) private var cart
+    @Environment(CatalogStore.self) private var catalog
+
+    var body: some View {
+        let line = cart.line(key)
+        let cap = cart.limit(for: key, in: catalog)
+        if line.qty == 0 {
+            Button { cart.increment(key, limit: cap) } label: {
+                HStack {
+                    Text("أضف للسلة").font(.kufi(16, .bold))
+                    Spacer()
+                    Text(Money.sar(total)).font(.kufi(15, .bold))
+                }
+                .foregroundStyle(.white).padding(.horizontal, 18)
+                .frame(maxWidth: .infinity, minHeight: 52)
+                .background(Theme.brand, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(PressableStyle(scale: 0.97))
+        } else {
+            HStack(spacing: 10) {
+                Text("في السلة").font(.kufi(15, .bold))
+                Spacer()
+                StepperCapsule(qty: line.qty, atLimit: cap.map { line.qty >= $0 } ?? false, large: true,
+                               onPlus: { cart.increment(key, limit: cap) }, onMinus: { cart.decrement(key) })
+                    .frame(width: 150)
+            }
+        }
     }
 }
 

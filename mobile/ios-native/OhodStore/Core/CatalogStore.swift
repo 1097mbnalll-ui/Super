@@ -30,8 +30,10 @@ struct CatalogIndex: Sendable {
         }
         // البحث يشمل أسماء الخيارات (شدّة/كرتون) وكلماتها العامة، و«موية» للماء
         let water = try? NSRegularExpression(pattern: "(^|\\s)(ماء|مياه)(\\s|$)")
-        let search = catalog.products.map { p -> (id: String, text: String, barcode: String) in
-            var text = p.name
+        let catNames = Dictionary(catalog.categories.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
+        let search = catalog.products.filter { !$0.isPrint }.map { p -> (id: String, text: String, barcode: String) in
+            // نفس فهرس الموقع: الاسم والإنجليزي والباركود واسم القسم والخيارات
+            var text = [p.name, p.nameEN ?? "", p.barcode ?? "", catNames[p.cat] ?? ""].joined(separator: " ")
             if !p.packs.isEmpty { text += " " + p.packs.map(\.unit).joined(separator: " ") + " كرتون كرتونه شده شد باكت علبه" }
             if water?.firstMatch(in: p.name, range: NSRange(p.name.startIndex..., in: p.name)) != nil { text += " موية مويه مويا مياه ماء" }
             return (id: p.id, text: ArabicSearch.normalize(text), barcode: p.barcode ?? "")
@@ -121,7 +123,7 @@ final class CatalogStore {
         let digits = CatalogParser.latinDigits(query).filter(\.isNumber)
         var hits: [Product] = []
         for entry in index.search {
-            if (digits.count >= 6 && entry.barcode == digits) || words.allSatisfy({ entry.text.contains($0) }),
+            if (digits.count >= 6 && entry.barcode.contains(digits)) || words.allSatisfy({ entry.text.contains($0) }),
                let p = index.byId[entry.id] {
                 hits.append(p)
                 if hits.count >= limit * 3 { break }
@@ -282,6 +284,7 @@ final class CatalogStore {
         }
         index = built
         dataVersion += 1
+        Analytics.shared.apiBase = built.catalog.store.api.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 
     private static var cacheURL: URL {

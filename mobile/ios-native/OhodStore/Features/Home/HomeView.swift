@@ -17,6 +17,22 @@ struct HomeView: View {
                     ClosedNotice(message: catalog.store.closedNowMessage)
                         .padding(.horizontal, 16).padding(.top, 12)
                 }
+                if catalog.store.freeOver > 0 {
+                    // كرت التوصيل المجاني (SEC.free في الموقع)
+                    HStack(spacing: 12) {
+                        Image(systemName: "truck.box.fill").font(.system(size: 18)).foregroundStyle(Theme.brandDeep)
+                            .frame(width: 40, height: 40).background(Theme.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("احصل على توصيلك المجاني!").font(.kufi(14, .bold))
+                            Text("لطلباتك فوق \(Money.sar(catalog.store.freeOver))").font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(12)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.line))
+                    .padding(.horizontal, 16).padding(.top, 12)
+                }
                 if AppLook.current.showChips {
                     QuickChips(tab: $tab, path: $path)
                         .padding(.top, 14)
@@ -25,7 +41,7 @@ struct HomeView: View {
                     if AppLook.current.showFeatured {
                         SectionHeader(title: "مختارات لك", emoji: "✨", actionTitle: "كل العروض") { tab = .offers }
                             .padding(.top, 18).padding(.bottom, 8)
-                        ProductGrid(products: index.featured, showCategory: true)
+                        ProductGrid(products: forYou(index), showCategory: true)
                     } else {
                         SectionHeader(title: "العروض", emoji: "🔥", actionTitle: "الكل") { tab = .offers }
                             .padding(.top, 18).padding(.bottom, 8)
@@ -52,6 +68,14 @@ struct HomeView: View {
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: orders.current?.no)
+    }
+
+    /// «مختارات لك»: اختيارات المالك (store.forYou) أول، وforOnly = بس هي (مثل الموقع)
+    private func forYou(_ index: CatalogIndex) -> [Product] {
+        let picks = catalog.store.forYou.compactMap { catalog.product($0) }.filter { catalog.isAvailable($0) }
+        if catalog.store.forOnly, !picks.isEmpty { return picks }
+        let ids = Set(picks.map(\.id))
+        return picks + index.featured.filter { !ids.contains($0.id) }
     }
 }
 
@@ -169,7 +193,12 @@ private struct HomeHeader: View {
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").font(.ui(size: 18, weight: .semibold))
-                    Text("وش ناقص بيتك اليوم؟").font(.ui(size: 16))
+                    // نص البحث يتبدل كل ٣ ثواني (مثل الموقع)
+                    TimelineView(.periodic(from: .now, by: 3.2)) { ctx in
+                        let list = ["وش ناقص بيتك اليوم؟", "قهوتك ناقصها حلا؟ ابحث عن الشوكولاتة…", "جهز جمعتك.. ابحث عن المشروبات…", "خبز حار؟ حليب؟ بيض؟ ابحث هنا…"]
+                        Text(list[Int(ctx.date.timeIntervalSince1970 / 3.2) % list.count]).font(.ui(size: 16))
+                            .lineLimit(1).contentTransition(.opacity)
+                    }
                     Spacer()
                 }
                 .foregroundStyle(Theme.muted)

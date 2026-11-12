@@ -84,11 +84,16 @@ struct CategorySection: Identifiable {
 
 struct CategoryTile: View {
     let category: Category
+    @Environment(CatalogStore.self) private var catalog
+    /// صورة القسم، وإلا صورة أول منتج متوفر فيه (catPhoto في الموقع)
+    private var picture: URL? {
+        AppConfig.asset(category.image) ?? catalog.products(in: category.id).first { $0.hasPhoto && catalog.isAvailable($0) }?.imageURL
+    }
     var body: some View {
         VStack(spacing: 7) {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.tileGradient)
-                RemoteImage(url: AppConfig.asset(category.image), maxPixel: 260, contentMode: .fill, blendWhite: false)
+                RemoteImage(url: picture, maxPixel: 260, contentMode: category.image == nil ? .fit : .fill, blendWhite: category.image == nil)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .padding(6)
                     .padding(.top, 4)
@@ -121,7 +126,11 @@ struct CategoryView: View {
     var body: some View {
         let category = catalog.category(categoryID)
         let all = catalog.products(in: categoryID)
-        let products = sub.map { s in all.filter { $0.sub == s } } ?? all
+        // نفس الموقع: عدد كل فرعي، والفرعي الفاضي ينخفي، و«أخرى» للمنتجات اللي فرعها مو معروف
+        let subs = category?.subs ?? []
+        let known = Set(subs.map(\.id))
+        let counts = Dictionary(grouping: all, by: { p -> String in p.sub.flatMap { known.contains($0) ? $0 : nil } ?? "_other" }).mapValues(\.count)
+        let products = sub.map { s in s == "_other" ? all.filter { $0.sub.map { !known.contains($0) } ?? true } : all.filter { $0.sub == s } } ?? all
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if let category, category.soon {
@@ -129,12 +138,15 @@ struct CategoryView: View {
                                            description: Text("نجهّز قسم \(category.name)، ويوصلك قريب إن شاء الله."))
                         .padding(.top, 60)
                 } else {
-                    if let subs = category?.subs, !subs.isEmpty {
+                    if !subs.isEmpty {
                         ScrollView(.horizontal) {
                             HStack(spacing: 8) {
-                                Button { select(nil) } label: { Chip(title: "الكل", selected: sub == nil) }
-                                ForEach(subs) { s in
-                                    Button { select(s.id) } label: { Chip(title: s.name, selected: sub == s.id) }
+                                Button { select(nil) } label: { Chip(title: "الكل (\(all.count))", selected: sub == nil) }
+                                ForEach(subs.filter { (counts[$0.id] ?? 0) > 0 }) { s in
+                                    Button { select(s.id) } label: { Chip(title: "\(s.name) (\(counts[s.id] ?? 0))", selected: sub == s.id) }
+                                }
+                                if let n = counts["_other"], n > 0, n < all.count {
+                                    Button { select("_other") } label: { Chip(title: "أخرى (\(n))", selected: sub == "_other") }
                                 }
                             }
                             .buttonStyle(PressableStyle())

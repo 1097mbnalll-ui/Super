@@ -20,6 +20,7 @@ struct ProductView: View {
             }
         }
         .modifier(ZoomDestination(id: productID))
+        .onAppear { Analytics.shared.view(productID) }
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -51,7 +52,7 @@ struct ProductView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     if let category {
-                        Text(category.name)
+                        Text([product.badge, category.name, catalog.dailyDeal?.product.id == product.id ? "عرض اليوم" : nil].compactMap { $0 }.joined(separator: " · "))
                             .font(.ui(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.oliveInk)
                             .padding(.horizontal, 9).padding(.vertical, 3)
@@ -81,6 +82,20 @@ struct ProductView: View {
                     } else if available, let q = product.quantityOffer {
                         QuantityOfferBox(product: product, offer: (q.count, q.price, q.before))
                     }
+                    if let dd = catalog.dailyDeal, dd.product.id == product.id, available {
+                        NavigationLink(value: Route.daily) {
+                            Label("عرض اليوم: \(Money.sar(dd.price)) بدل \(Money.sar(product.price)) · ينتهي نص الليل", systemImage: "flame.fill")
+                                .font(.ui(size: 13.5, weight: .bold)).foregroundStyle(.white)
+                                .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Theme.copper, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                    }
+                    if available, let low = catalog.lowLeft(product) {
+                        Text("باقي \(low) بس").font(.ui(size: 13, weight: .bold)).foregroundStyle(Theme.copperInk)
+                    }
+                    if available, let m = product.max, m > 0 {
+                        Text("الحد الأقصى \(m) لكل طلب").font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
+                    }
                     if !available {
                         Label("نفد من المحل حالياً", systemImage: "exclamationmark.circle")
                             .font(.ui(size: 14, weight: .semibold))
@@ -98,11 +113,13 @@ struct ProductView: View {
                         .padding(.horizontal, 16)
                 }
 
-                let suggestions = catalog.products(in: product.cat)
-                    .filter { $0.id != product.id && $0.hasPhoto && catalog.isAvailable($0) }
-                    .prefix(12)
+                // «يحلى معه» من اختيار المالك (sugg)، وإلا «ممكن يعجبك» من نفس القسم
+                let picked = product.sugg.compactMap { catalog.product($0) }.filter { $0.id != product.id && catalog.isAvailable($0) }
+                let suggestions = picked.isEmpty
+                    ? Array(catalog.products(in: product.cat).filter { $0.id != product.id && $0.hasPhoto && catalog.isAvailable($0) }.prefix(12))
+                    : picked
                 if !suggestions.isEmpty {
-                    SectionHeader(title: "ممكن يعجبك").padding(.top, 24).padding(.bottom, 10)
+                    SectionHeader(title: picked.isEmpty ? "ممكن يعجبك" : "يحلى معه").padding(.top, 24).padding(.bottom, 10)
                     ScrollView(.horizontal) {
                         LazyHStack(alignment: .top, spacing: 8) {
                             ForEach(Array(suggestions)) { p in

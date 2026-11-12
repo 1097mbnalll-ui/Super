@@ -30,7 +30,7 @@ struct AddressView: View {
     private var zone: [CLLocationCoordinate2D] {
         catalog.store.zone.map { CLLocationCoordinate2D(latitude: $0[0], longitude: $0[1]) }
     }
-    private var inside: Bool { OrderCenter.inZone(center, catalog.store.zone) }
+    private var inside: Bool { OrderCenter.inZone(center, catalog.store.zone) && OrderCenter.tooFar(center, catalog.store) == nil }
 
     var body: some View {
         NavigationStack {
@@ -194,6 +194,11 @@ struct AddressView: View {
             details = a.details
             center = a.coordinate
             position = .region(MKCoordinateRegion(center: a.coordinate, latitudinalMeters: 450, longitudinalMeters: 450))
+        } else if let p = catalog.store.mapCenter ?? catalog.store.shop {
+            // نفس الموقع: مركز الخريطة من الإدارة، وإلا موقع المحل
+            let c = CLLocationCoordinate2D(latitude: p[0], longitude: p[1])
+            center = c
+            position = .region(MKCoordinateRegion(center: c, latitudinalMeters: 1500, longitudinalMeters: 1500))
         } else if zone.count >= 3 {
             let lats = zone.map(\.latitude), lngs = zone.map(\.longitude)
             let c = CLLocationCoordinate2D(latitude: (lats.min()! + lats.max()!) / 2, longitude: (lngs.min()! + lngs.max()!) / 2)

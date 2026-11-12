@@ -69,7 +69,9 @@ struct RootView: View {
             applyLaunchArguments()
         }
         .onChange(of: scenePhase) { _, phase in
+            if phase == .background { Analytics.shared.flush() }
             if phase == .active {
+                Analytics.shared.becameActive()
                 Task {
                     await catalog.refreshIfStale()
                     await orders.refresh(catalog: catalog)
@@ -77,6 +79,13 @@ struct RootView: View {
             }
         }
         .onChange(of: catalog.dataVersion) { _, _ in cart.normalize(catalog) }
+        .task(id: scenePhase == .active) {
+            // المخزون الحي كل دقيقة والتطبيق مفتوح (مثل الموقع)
+            while !Task.isCancelled, scenePhase == .active {
+                try? await Task.sleep(for: .seconds(60))
+                await catalog.refreshStock(force: true)
+            }
+        }
         .task(id: orders.current?.no) {
             // نتابع الطلب الشغّال: كل ١٠ ثواني وهو في الطريق، وإلا كل ٢٠
             while !Task.isCancelled, orders.current != nil {

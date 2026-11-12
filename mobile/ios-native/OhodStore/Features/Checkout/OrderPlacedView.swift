@@ -209,15 +209,20 @@ struct CurrentOrderCard: View {
         .animation(.smooth, value: driver)
         .animation(.smooth, value: orders.subs[order.no])
         .sheet(isPresented: $showDetails) { OrderDetailView(order: order) }
-        .confirmationDialog("تلغي طلب \(order.no)؟", isPresented: $confirmCancel, titleVisibility: .visible) {
-            Button("إيه، ألغِ الطلب", role: .destructive) {
-                cancelling = true
-                Task {
-                    errorText = await orders.cancel(order, catalog: catalog)
-                    cancelling = false
+        .confirmationDialog("ليش تبي تلغي طلب \(order.no)؟", isPresented: $confirmCancel, titleVisibility: .visible) {
+            // نفس أسباب الموقع، والسبب يوصل للمحل
+            ForEach(["طلبته بالغلط", "أبي أعدّل الطلب", "تأخر", "سبب ثاني"], id: \.self) { reason in
+                Button(reason, role: .destructive) {
+                    cancelling = true
+                    Task {
+                        errorText = await orders.cancel(order, reason: reason, catalog: catalog)
+                        cancelling = false
+                    }
                 }
             }
             Button("لا، خلّه", role: .cancel) {}
+        } message: {
+            Text(order.status == "new" ? "تقدر تلغي الطلب قبل ما يبدأ المندوب التجهيز." : "تقدر تلغي الطلب قبل ما يطلع المندوب.")
         }
         .alert("ما انلغى الطلب", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("تمام", role: .cancel) {}
@@ -229,7 +234,12 @@ struct CurrentOrderCard: View {
     private func detailLine(_ driver: DriverInfo?) -> String {
         guard order.status == "onway", let driver else { return OrderStatus.detail(order.status) }
         var parts: [String] = []
+        if let m = driver.meters, m > 0 { parts.append(m < 1000 ? "يبعد \(Int(m.rounded())) م" : "يبعد \(Money.plain((m / 100).rounded() / 10)) كم") }
         if driver.before > 0 { parts.append(driver.before == 1 ? "قبلك توصيلة وحدة" : "قبلك \(driver.before) توصيلات") }
+        if let at = driver.at {
+            let sec = Int(Date().timeIntervalSince(at))
+            parts.append(sec < 30 ? "مباشر" : sec < 120 ? "قبل \(sec) ثانية" : "قبل \(sec / 60) دقيقة")
+        }
         if let eta = driver.eta {
             let at = Date().addingTimeInterval(Double(max(1, eta)) * 60)
             parts.append("يوصلك تقريباً \(at.formatted(.dateTime.hour().minute().locale(Locale(identifier: "ar_SA@numbers=latn"))))")
