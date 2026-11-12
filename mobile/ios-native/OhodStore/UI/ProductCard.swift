@@ -37,7 +37,7 @@ struct ProductCard: View {
                         .padding(.bottom, 12)
                         .opacity(available ? 1 : 0.45)
                     if available, let badge = badgeText {
-                        Text(badge)
+                        Text(tv: badge)
                             .font(.kufi(10.5, .bold, relativeTo: .caption2))
                             .lineLimit(1)
                             .foregroundStyle(.white)
@@ -67,7 +67,7 @@ struct ProductCard: View {
                 .modifier(ZoomSource(id: product.id))
 
                 if showCategory, AppLook.current.showCatChip, let cat = catalog.category(product.cat) {
-                    Text(cat.name)
+                    Text(tv: cat.name)
                         .font(.ui(size: 10.5, weight: .semibold))
                         .foregroundStyle(Theme.oliveInk)
                         .lineLimit(1)
@@ -75,13 +75,13 @@ struct ProductCard: View {
                         .background(Theme.oliveSoft, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                         .padding(.top, 4)
                 }
-                Text(product.name)
+                Text(tv: product.name)
                     .font(.ui(size: 14.5, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)
                     .padding(.top, showCategory ? 0 : 4)
-                Text(product.unit)
+                Text(tv: product.unit)
                     .font(.ui(size: 12.5))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)

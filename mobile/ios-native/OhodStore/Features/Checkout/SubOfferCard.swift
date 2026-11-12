@@ -24,11 +24,11 @@ struct SubOfferCard: View {
                     .frame(width: 58, height: 58)
                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(offer.toName).font(.ui(size: 14.5, weight: .bold)).foregroundStyle(Theme.ink).lineLimit(2)
+                    Text(tv: offer.toName).font(.ui(size: 14.5, weight: .bold)).foregroundStyle(Theme.ink).lineLimit(2)
                     Text(tv: [offer.toUnit, Money.sar(offer.toPrice) + (offer.qty > 1 ? " × \(offer.qty)" : "")]
                         .filter { !$0.isEmpty }.joined(separator: " · "))
                         .font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
-                    Text(diffText).font(.ui(size: 12.5, weight: .semibold))
+                    Text(tv: diffText).font(.ui(size: 12.5, weight: .semibold))
                         .foregroundStyle(offer.diff > 0.009 ? Theme.copperInk : Theme.brandDeep)
                 }
                 Spacer(minLength: 0)

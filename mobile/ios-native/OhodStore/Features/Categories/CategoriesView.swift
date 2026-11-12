@@ -107,7 +107,7 @@ struct CategoryTile: View {
                 }
             }
             .aspectRatio(1, contentMode: .fit)
-            Text(category.name)
+            Text(tv: category.name)
                 .font(.ui(size: 12.5, weight: .medium))
                 .foregroundStyle(Theme.ink)
                 .multilineTextAlignment(.center)
@@ -169,7 +169,7 @@ struct CategoryView: View {
         }
         .scrollIndicators(.hidden)
         .background(Theme.pageBG)
-        .navigationTitle(category?.name ?? "")
+        .navigationTitle(tr(category?.name ?? ""))
         .navigationBarTitleDisplayMode(.inline)
     }
 

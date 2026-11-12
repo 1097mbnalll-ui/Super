@@ -40,14 +40,14 @@ struct OrderPlacedView: View {
                         .overlay(Capsule().strokeBorder(Theme.olive, style: StrokeStyle(lineWidth: 1.3, dash: [5, 4])))
 
                     VStack(spacing: 12) {
-                        row("الإجمالي") { Text(Money.sar(order.total)).font(.kufi(15, .bold)) }
-                        row("الدفع") { Text(order.pay == "card" ? "💳 شبكة عند الاستلام" : "💵 كاش عند الاستلام").fontWeight(.semibold) }
+                        row("الإجمالي") { Text(tv: Money.sar(order.total)).font(.kufi(15, .bold)) }
+                        row("الدفع") { Text(tv: order.pay == "card" ? "💳 شبكة عند الاستلام" : "💵 كاش عند الاستلام").fontWeight(.semibold) }
                         if let wc = order.walletCents, wc > 0 {
-                            row("مدفوع بالمحفظة") { Text(Money.sar(Double(wc) / 100)).fontWeight(.semibold) }
-                            row("المتبقي عند الاستلام") { Text(Money.sar(max(0, order.total - Double(wc) / 100))).fontWeight(.semibold) }
+                            row("مدفوع بالمحفظة") { Text(tv: Money.sar(Double(wc) / 100)).fontWeight(.semibold) }
+                            row("المتبقي عند الاستلام") { Text(tv: Money.sar(max(0, order.total - Double(wc) / 100))).fontWeight(.semibold) }
                         }
                         row("التوصيل إلى") {
-                            Text(orders.address?.details.isEmpty == false ? orders.address!.details : catalog.store.area)
+                            Text(tv: orders.address?.details.isEmpty == false ? orders.address!.details : catalog.store.area)
                                 .fontWeight(.semibold).lineLimit(1)
                         }
                     }
@@ -64,7 +64,7 @@ struct OrderPlacedView: View {
                                 if await Push.shared.enable() { Push.shared.register(no: order.no, phone: order.phone, api: catalog.apiBase) }
                             }
                         } label: {
-                            Label(Push.shared.denied ? "الإشعارات مقفلة من إعدادات الجوال" : "نبّهني لما تتغير حالة طلبي", systemImage: "bell.badge")
+                            Label(tr(Push.shared.denied ? "الإشعارات مقفلة من إعدادات الجوال" : "نبّهني لما تتغير حالة طلبي"), systemImage: "bell.badge")
                                 .font(.ui(size: 15, weight: .semibold)).foregroundStyle(Theme.brandDeep)
                                 .frame(maxWidth: .infinity, minHeight: 48)
                                 .background(Theme.mint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -143,7 +143,7 @@ struct CurrentOrderCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tv: "طلبك الحالي · \(order.no)").font(.ui(size: 13)).foregroundStyle(Theme.muted)
-                    Text(driver?.near == true ? "المندوب قريب منك 🛵" : OrderStatus.title(order.status))
+                    Text(tv: driver?.near == true ? "المندوب قريب منك 🛵" : OrderStatus.title(order.status))
                         .font(.kufi(19, .bold, relativeTo: .title3))
                         .contentTransition(.opacity)
                     Text(tv: detailLine(driver)).font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
@@ -183,7 +183,7 @@ struct CurrentOrderCard: View {
                     Spacer(minLength: 0)
                     VStack(alignment: .trailing, spacing: 0) {
                         Text(tv: "\(order.count) أغراض").font(.ui(size: 12)).foregroundStyle(Theme.muted)
-                        Text(Money.sar(order.total)).font(.kufi(18, .bold)).foregroundStyle(Theme.ink)
+                        Text(tv: Money.sar(order.total)).font(.kufi(18, .bold)).foregroundStyle(Theme.ink)
                             .lineLimit(1).fixedSize()
                     }
                     .layoutPriority(1)
@@ -233,7 +233,7 @@ struct CurrentOrderCard: View {
         .confirmationDialog("ليش تبي تلغي طلب \(order.no)؟", isPresented: $confirmCancel, titleVisibility: .visible) {
             // نفس أسباب الموقع، والسبب يوصل للمحل
             ForEach(["طلبته بالغلط", "أبي أعدّل الطلب", "تأخر", "سبب ثاني"], id: \.self) { reason in
-                Button(reason, role: .destructive) {
+                Button(tr(reason), role: .destructive) {
                     cancelling = true
                     Task {
                         errorText = await orders.cancel(order, reason: reason, catalog: catalog)
@@ -243,7 +243,7 @@ struct CurrentOrderCard: View {
             }
             Button("لا، خلّه", role: .cancel) {}
         } message: {
-            Text(order.status == "new" ? "تقدر تلغي الطلب قبل ما يبدأ المندوب التجهيز." : "تقدر تلغي الطلب قبل ما يطلع المندوب.")
+            Text(tv: order.status == "new" ? "تقدر تلغي الطلب قبل ما يبدأ المندوب التجهيز." : "تقدر تلغي الطلب قبل ما يطلع المندوب.")
         }
         .alert("ما انلغى الطلب", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("تمام", role: .cancel) {}
@@ -263,9 +263,9 @@ struct CurrentOrderCard: View {
         }
         if let eta = driver.eta {
             let at = Date().addingTimeInterval(Double(max(1, eta)) * 60)
-            parts.append("يوصلك تقريباً \(at.formatted(.dateTime.hour().minute().locale(Locale(identifier: "ar_SA@numbers=latn"))))")
+            parts.append("يوصلك تقريباً \(at.formatted(.dateTime.hour().minute().locale(AppLang.locale)))")
         }
-        return parts.isEmpty ? OrderStatus.detail(order.status) : parts.joined(separator: " · ")
+        return parts.isEmpty ? OrderStatus.detail(order.status) : parts.map(tr).joined(separator: " · ")
     }
 }
 
@@ -322,7 +322,7 @@ struct OrderDetailView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if order.isActive {
                         let eta = orders.drivers[order.no]?.eta
-                        Label(order.status == "onway" && eta != nil ? "في الطريق · يوصلك خلال \(max(1, eta!)) دقايق" : OrderStatus.title(order.status),
+                        Label(tr(order.status == "onway" && eta != nil ? "في الطريق · يوصلك خلال \(max(1, eta!)) دقايق" : OrderStatus.title(order.status)),
                               systemImage: order.status == "onway" ? "scooter" : "clock")
                             .font(.ui(size: 14.5, weight: .bold))
                             .foregroundStyle(Theme.copperInk)
@@ -339,15 +339,15 @@ struct OrderDetailView: View {
                                     .frame(width: 50, height: 50)
                                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(line.name).font(.ui(size: 14.5, weight: .semibold)).foregroundStyle(Theme.ink).lineLimit(2)
+                                    Text(tv: line.name).font(.ui(size: 14.5, weight: .semibold)).foregroundStyle(Theme.ink).lineLimit(2)
                                     Text(tv: "\(line.unit) · \(line.qty) × \(Money.plain(line.price))")
                                         .font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
                                 }
                                 Spacer(minLength: 6)
                                 VStack(alignment: .trailing, spacing: 0) {
-                                    Text(Money.plain(line.total)).font(.kufi(15.5, .bold)).foregroundStyle(Theme.ink)
+                                    Text(tv: Money.plain(line.total)).font(.kufi(15.5, .bold)).foregroundStyle(Theme.ink)
                                     if let old = line.old, old > line.price {
-                                        Text(Money.plain(old * Double(line.qty))).font(.ui(size: 11.5)).strikethrough().foregroundStyle(Theme.muted)
+                                        Text(tv: Money.plain(old * Double(line.qty))).font(.ui(size: 11.5)).strikethrough().foregroundStyle(Theme.muted)
                                     }
                                 }
                             }
@@ -366,7 +366,7 @@ struct OrderDetailView: View {
                         HStack {
                             Text("الإجمالي").font(.kufi(16, .bold))
                             Spacer()
-                            Text(Money.sar(order.total)).font(.kufi(18, .bold))
+                            Text(tv: Money.sar(order.total)).font(.kufi(18, .bold))
                         }
                     }
                     .padding(14)
@@ -400,7 +400,7 @@ struct OrderDetailView: View {
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 0) {
                         Text("تفاصيل الطلب").font(.kufi(16, .bold))
-                        Text(tv: "\(order.no) · \(order.at.formatted(.dateTime.weekday(.wide).hour().minute().locale(Locale(identifier: "ar_SA@numbers=latn"))))")
+                        Text(tv: "\(order.no) · \(order.at.formatted(.dateTime.weekday(.wide).hour().minute().locale(AppLang.locale)))")
                             .font(.ui(size: 11.5)).foregroundStyle(Theme.muted)
                     }
                 }

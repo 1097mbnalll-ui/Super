@@ -102,7 +102,7 @@ struct AddressView: View {
     /// الدبوس: رأسه بالضبط على نص الخريطة، ويرتفع شوي وقت السحب
     private var pin: some View {
         VStack(spacing: 6) {
-            Text(inside ? "يوصلك هنا ✓" : "برا منطقة التوصيل")
+            Text(tv: inside ? "يوصلك هنا ✓" : "برا منطقة التوصيل")
                 .font(.ui(size: 13, weight: .bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 12).padding(.vertical, 7)
@@ -123,7 +123,7 @@ struct AddressView: View {
 
     private var form: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(inside ? "داخل منطقة التوصيل · \(catalog.store.area)" : "حرّك الخريطة لين يصير الدبوس على بيتك داخل المنطقة",
+            Label(tr(inside ? "داخل منطقة التوصيل · \(catalog.store.area)" : "حرّك الخريطة لين يصير الدبوس على بيتك داخل المنطقة"),
                   systemImage: inside ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                 .font(.ui(size: 13.5, weight: .semibold))
                 .foregroundStyle(inside ? Theme.brandDeep : Theme.copperInk)
@@ -141,7 +141,7 @@ struct AddressView: View {
                 .submitLabel(.done)
 
             Button(action: save) {
-                Text(confirmTitle).frame(maxWidth: .infinity)
+                Text(tv: confirmTitle).frame(maxWidth: .infinity)
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(!inside)
@@ -180,7 +180,7 @@ struct AddressView: View {
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(error == nil ? Theme.line : Theme.copper, lineWidth: error == nil ? 1 : 1.5))
             if let error {
-                Text(error).font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Theme.copperInk)
+                Text(tv: error).font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Theme.copperInk)
             }
         }
     }

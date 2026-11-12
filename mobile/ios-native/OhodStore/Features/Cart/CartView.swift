@@ -57,7 +57,7 @@ struct CartView: View {
                             HStack {
                                 Label("وفّرت على هالطلب", systemImage: "percent")
                                 Spacer()
-                                Text(Money.sar(totals.savings)).font(.kufi(14, .bold))
+                                Text(tv: Money.sar(totals.savings)).font(.kufi(14, .bold))
                             }
                             .font(.ui(size: 14, weight: .semibold))
                             .foregroundStyle(Theme.copperInk)
@@ -81,7 +81,7 @@ struct CartView: View {
                 }
             }
         }
-        .navigationTitle(totals.count > 0 ? "السلة (\(totals.count))" : "السلة")
+        .navigationTitle(tr(totals.count > 0 ? "السلة (\(totals.count))" : "السلة"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !totals.rows.isEmpty {
@@ -171,19 +171,19 @@ private struct DeliveryCard: View {
                 .frame(width: 40, height: 40)
                 .background(Theme.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(address == nil ? "التوصيل إلى \(area)" : "التوصيل إلى البيت")
+                Text(tv: address == nil ? "التوصيل إلى \(area)" : "التوصيل إلى البيت")
                     .font(.ui(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
-                Text(address.map { $0.details.isEmpty ? "على الموقع المحدد في الخريطة" : $0.details } ?? "حدد بيتك على الخريطة")
+                Text(tv: address.map { $0.details.isEmpty ? "على الموقع المحدد في الخريطة" : $0.details } ?? "حدد بيتك على الخريطة")
                     .font(.ui(size: 13)).foregroundStyle(address == nil ? Theme.copperInk : Theme.muted)
                     .lineLimit(1)
             }
             Spacer(minLength: 4)
             VStack(alignment: .trailing, spacing: 4) {
-                Label(eta, systemImage: "bolt")
+                Label(tr(eta), systemImage: "bolt")
                     .font(.kufi(11.5, .semibold))
                     .foregroundStyle(Theme.oliveInk)
                     .lineLimit(1)
-                Text(address == nil ? "حدّد" : "غيّر")
+                Text(tv: address == nil ? "حدّد" : "غيّر")
                     .font(.ui(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.brandDeep)
             }
@@ -204,7 +204,7 @@ private struct FreeDeliveryBar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if remaining > 0 {
-                (Text("🚚 باقي ") + Text(Money.sar(remaining)).font(.kufi(13, .bold)).foregroundColor(Theme.copperInk) + Text(" وتوصيلك مجاني"))
+                (Text("🚚 باقي ") + Text(tv: Money.sar(remaining)).font(.kufi(13, .bold)).foregroundColor(Theme.copperInk) + Text(" وتوصيلك مجاني"))
                     .font(.ui(size: 14, weight: .semibold))
             } else {
                 Text("🎉 توصيلك مجاني").font(.ui(size: 14, weight: .semibold)).foregroundStyle(Theme.brandDeep)
@@ -239,8 +239,8 @@ private struct CartRowView: View {
                 .frame(width: 62, height: 62)
                 .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(row.product.name).font(.ui(size: 14)).foregroundStyle(Theme.ink).lineLimit(2)
-                Text(row.unitLabel).font(.ui(size: 12)).foregroundStyle(Theme.muted)
+                Text(tv: row.product.name).font(.ui(size: 14)).foregroundStyle(Theme.ink).lineLimit(2)
+                Text(tv: row.unitLabel).font(.ui(size: 12)).foregroundStyle(Theme.muted)
                 if let tag = promoTag {
                     Text(tv: tag).font(.ui(size: 11.5, weight: .bold))
                         .padding(.horizontal, 7).padding(.vertical, 2)
@@ -321,7 +321,7 @@ private struct SubstitutionPicker: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: cart.substitution) { _, _ in Haptics.selected() }
-            Text(cart.substitution == "swap" ? "المندوب يبدّله بمنتج مشابه."
+            Text(tv: cart.substitution == "swap" ? "المندوب يبدّله بمنتج مشابه."
                  : cart.substitution == "remove" ? "ينشال من طلبك وما تدفع قيمته."
                  : "نتصل عليك، ولو اقترح المندوب بديل توافق عليه من جوالك.")
                 .font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
@@ -346,7 +346,7 @@ private struct SummaryCard: View {
             HStack {
                 Text("الإجمالي").font(.kufi(15, .bold))
                 Spacer()
-                Text(Money.sar(totals.total)).font(.kufi(17, .bold))
+                Text(tv: Money.sar(totals.total)).font(.kufi(17, .bold))
                     .contentTransition(.numericText(value: totals.total))
             }
             if let short = totals.belowMinimum {
@@ -395,7 +395,7 @@ private struct CheckoutBar: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: cart.payment == "card" ? "creditcard" : "banknote")
-                        Text(cart.payment == "card" ? "شبكة عند الاستلام" : "كاش عند الاستلام")
+                        Text(tv: cart.payment == "card" ? "شبكة عند الاستلام" : "كاش عند الاستلام")
                         Image(systemName: "chevron.down").font(.ui(size: 10, weight: .bold))
                     }
                     .font(.ui(size: 13, weight: .semibold))
@@ -409,10 +409,10 @@ private struct CheckoutBar: View {
                         ProgressView().tint(.white)
                         Text("جاري الإرسال…")
                     } else {
-                        Text(closed ? "المحل مقفل الحين" : "أرسل الطلب")
+                        Text(tv: closed ? "المحل مقفل الحين" : "أرسل الطلب")
                     }
                     Spacer()
-                    Text(Money.sar(totals.total)).contentTransition(.numericText(value: totals.total))
+                    Text(tv: Money.sar(totals.total)).contentTransition(.numericText(value: totals.total))
                 }
             }
             .buttonStyle(PrimaryButtonStyle())

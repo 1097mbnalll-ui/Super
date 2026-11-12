@@ -79,8 +79,8 @@ struct DailyDealView: View {
                         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
                     VStack(alignment: .leading, spacing: 6) {
                         Text("🔥 عرض اليوم").font(.ui(size: 13, weight: .bold)).foregroundStyle(Theme.copperInk)
-                        Text(dd.product.name).font(.kufi(20, .bold))
-                        Text(dd.product.unit).font(.ui(size: 13)).foregroundStyle(Theme.muted)
+                        Text(tv: dd.product.name).font(.kufi(20, .bold))
+                        Text(tv: dd.product.unit).font(.ui(size: 13)).foregroundStyle(Theme.muted)
                         PriceLabel(price: dd.price, old: dd.product.price, size: 24)
                         Countdown()
                         if catalog.store.daily.limit > 0 {
@@ -116,7 +116,7 @@ private struct DailyAddButton: View {
                 HStack {
                     Text("أضف للسلة").font(.kufi(16, .bold))
                     Spacer()
-                    Text(Money.sar(total)).font(.kufi(15, .bold))
+                    Text(tv: Money.sar(total)).font(.kufi(15, .bold))
                 }
                 .foregroundStyle(.white).padding(.horizontal, 18)
                 .frame(maxWidth: .infinity, minHeight: 52)
@@ -174,7 +174,7 @@ struct BannerProductsView: View {
             .padding(.bottom, 24)
         }
         .background(Theme.pageBG)
-        .navigationTitle(b?.title.replacingOccurrences(of: "\n", with: " ") ?? "عرض")
+        .navigationTitle(tr(b?.title.replacingOccurrences(of: "\n", with: " ") ?? "عرض"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -200,8 +200,8 @@ struct BundleBox: View {
                         RemoteImage(url: p.imageURL, maxPixel: 140).padding(4).frame(width: 52, height: 52)
                             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(p.name).font(.ui(size: 14, weight: .semibold)).lineLimit(2)
-                            Text(p.unit).font(.ui(size: 12)).foregroundStyle(Theme.muted)
+                            Text(tv: p.name).font(.ui(size: 14, weight: .semibold)).lineLimit(2)
+                            Text(tv: p.unit).font(.ui(size: 12)).foregroundStyle(Theme.muted)
                         }
                         Spacer(minLength: 4)
                         PriceLabel(price: alloc[id] ?? p.price, old: p.price, size: 14)

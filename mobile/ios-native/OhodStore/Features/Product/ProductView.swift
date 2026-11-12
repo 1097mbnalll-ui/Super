@@ -40,7 +40,7 @@ struct ProductView: View {
                         .padding(36)
                         .opacity(available ? 1 : 0.5)
                     if available, let badge = product.offerBadge {
-                        Label(badge, systemImage: "percent")
+                        Label(tr(badge), systemImage: "percent")
                             .font(.kufi(12, .bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 10).padding(.vertical, 6)
@@ -52,19 +52,19 @@ struct ProductView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     if let category {
-                        Text([product.badge, category.name, catalog.dailyDeal?.product.id == product.id ? "عرض اليوم" : nil].compactMap { $0 }.joined(separator: " · "))
+                        Text(tv: [product.badge, category.name, catalog.dailyDeal?.product.id == product.id ? "عرض اليوم" : nil].compactMap { $0 }.joined(separator: " · "))
                             .font(.ui(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.oliveInk)
                             .padding(.horizontal, 9).padding(.vertical, 3)
                             .background(Theme.oliveSoft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
-                    Text(product.name)
+                    Text(tv: product.name)
                         .font(.kufi(19, .bold, relativeTo: .title2))
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         PriceLabel(price: unitPrice, old: pack == nil ? product.old : nil, size: 24)
-                        Text(pack.map { "/ \($0.unit)" } ?? (product.packs.isEmpty ? "/ \(product.unit)" : "/ الحبة"))
+                        Text(tv: pack.map { "/ \($0.unit)" } ?? (product.packs.isEmpty ? "/ \(product.unit)" : "/ الحبة"))
                             .font(.ui(size: 14, weight: .semibold)).foregroundStyle(Theme.muted)
                     }
                     if let pack, pack.count > 1 {
@@ -148,7 +148,7 @@ struct ProductView: View {
                             HStack {
                                 Text("أضف للسلة")
                                 Spacer()
-                                Text(Money.sar(unitPrice))
+                                Text(tv: Money.sar(unitPrice))
                             }
                         }
                         .buttonStyle(PrimaryButtonStyle())
@@ -163,7 +163,7 @@ struct ProductView: View {
                             HStack {
                                 Text("في السلة").font(.kufi(15, .bold))
                                 Spacer()
-                                Text(Money.sar(total)).font(.kufi(15, .bold))
+                                Text(tv: Money.sar(total)).font(.kufi(15, .bold))
                                     .contentTransition(.numericText(value: total))
                             }
                             .foregroundStyle(Theme.brandDeep)
@@ -222,10 +222,10 @@ struct PackPicker: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(tv: title).font(.kufi(14, .bold)).foregroundStyle(Theme.ink).lineLimit(1)
                 HStack(spacing: 4) {
-                    Text(Money.sar(price)).font(.ui(size: 13, weight: before == nil ? .regular : .bold))
+                    Text(tv: Money.sar(price)).font(.ui(size: 13, weight: before == nil ? .regular : .bold))
                         .foregroundStyle(before == nil ? Theme.muted : Theme.copperInk)
                     if let before {
-                        Text(Money.plain(before)).font(.ui(size: 11.5)).strikethrough().foregroundStyle(Theme.muted)
+                        Text(tv: Money.plain(before)).font(.ui(size: 11.5)).strikethrough().foregroundStyle(Theme.muted)
                     }
                 }
             }

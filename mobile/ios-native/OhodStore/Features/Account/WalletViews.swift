@@ -15,8 +15,8 @@ struct WalletSheet: View {
             Form {
                 if wallet.loggedIn {
                     Section {
-                        LabeledContent("الجوال") { Text(wallet.phone ?? "").environment(\.layoutDirection, .leftToRight) }
-                        LabeledContent("المتاح") { Text(Money.sar(wallet.balance)).font(.kufi(17, .bold)).foregroundStyle(Theme.brandDeep) }
+                        LabeledContent("الجوال") { Text(tv: wallet.phone ?? "").environment(\.layoutDirection, .leftToRight) }
+                        LabeledContent("المتاح") { Text(tv: Money.sar(wallet.balance)).font(.kufi(17, .bold)).foregroundStyle(Theme.brandDeep) }
                     }
                     Section("سجل الرصيد") {
                         if wallet.history.isEmpty {
@@ -26,7 +26,7 @@ struct WalletSheet: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(tv: e.title).font(.ui(size: 14, weight: .semibold))
-                                    Text(e.at.formatted(.dateTime.day().month().hour().minute().locale(Locale(identifier: "ar_SA@numbers=latn"))))
+                                    Text(tv: e.at.formatted(.dateTime.day().month().hour().minute().locale(AppLang.locale)))
                                         .font(.ui(size: 12)).foregroundStyle(Theme.muted)
                                 }
                                 Spacer()
@@ -63,7 +63,7 @@ struct WalletSheet: View {
                     Text(tv: message).font(.ui(size: 13, weight: .semibold)).foregroundStyle(Theme.copperInk)
                 }
             }
-            .navigationTitle(wallet.loggedIn ? "محفظتي" : "دخول المحفظة")
+            .navigationTitle(tr(wallet.loggedIn ? "محفظتي" : "دخول المحفظة"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("تم") { dismiss() } } }
             .task {
@@ -110,7 +110,7 @@ struct CheckoutWalletBox: View {
             } else {
                 Text("سجّل دخول محفظتك لاستخدام الرصيد.").font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
             }
-            Button(wallet.loggedIn ? "عرض المحفظة" : "دخول المحفظة") { showWallet = true }
+            Button(tr(wallet.loggedIn ? "عرض المحفظة" : "دخول المحفظة")) { showWallet = true }
                 .font(.ui(size: 13.5, weight: .semibold))
         }
         .padding(14)

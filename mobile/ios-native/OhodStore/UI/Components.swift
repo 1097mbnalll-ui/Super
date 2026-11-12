@@ -131,14 +131,14 @@ struct SectionHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             HStack(spacing: 6) {
-                if let emoji { Text(emoji).font(.ui(size: 22)) }
+                if let emoji { Text(tv: emoji).font(.ui(size: 22)) }
                 Text(tv: title).font(.kufi(18, .bold, relativeTo: .title3)).foregroundStyle(Theme.ink)
             }
             Spacer()
             if let actionTitle, let action {
                 Button(action: action) {
                     HStack(spacing: 2) {
-                        Text(actionTitle)
+                        Text(tv: actionTitle)
                         Image(systemName: "chevron.forward").font(.ui(size: 11, weight: .semibold))
                     }
                     .font(.ui(size: 14, weight: .medium))
@@ -174,13 +174,13 @@ struct PriceLabel: View {
     var body: some View {
         let size = self.size * AppLook.current.priceScale
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(Money.plain(price))
+            Text(tv: Money.plain(price))
                 .font(.kufi(size, .bold, relativeTo: .headline))
                 .foregroundStyle(old == nil ? Theme.ink : Theme.copperInk)
                 .contentTransition(.numericText(value: price))
             Text("ر.س").font(.ui(size: size * 0.72, weight: .semibold)).foregroundStyle(Theme.ink)
             if let old {
-                Text(Money.plain(old))
+                Text(tv: Money.plain(old))
                     .font(.ui(size: size * 0.68))
                     .strikethrough()
                     .foregroundStyle(Theme.muted)

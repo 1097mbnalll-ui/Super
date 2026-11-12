@@ -381,7 +381,7 @@ enum CatalogParser {
                 return Pack(unit: str(pk["u"]) ?? "", count: Swift.max(1, Int(num(pk["n"]) ?? 1)), price: pr > 0 ? pr : 0)
             }
             let old = num(p["old"])
-            return Product(id: id, name: name, unit: str(en ? (p["unit_en"] ?? p["unit"]) : p["unit"]) ?? "", price: price,
+            return Product(id: id, name: name, unit: en ? (str(p["unit_en"]) ?? tr(str(p["unit"]) ?? "")) : (str(p["unit"]) ?? ""), price: price,
                            old: (old ?? 0) > price ? old : nil, cat: cat, sub: str(p["sub"]),
                            image: str(p["img"]), inStock: (p["stock"] as? Bool) ?? true, packs: packs,
                            barcode: str(p["bc"]), max: num(p["max"]).map { Int($0) },

@@ -396,4 +396,10 @@ let EnglishTable: [(String, String)] = [
     ("🖨️ طباعة {}: {} صفحة", "🖨️ Printing {}: {} pages"),
     ("🖨️ طباعة {}: {} صفحة × {} نسخة", "🖨️ Printing {}: {} pages × {} copies"),
     ("🚚 باقي ", "🚚 Add "),
+    ("يوصلك تقريباً {}", "Arrives around {}"),
+    ("يعني الحبة بـ {}", "That's {} per piece"),
+    ("المجموع: {} ({} صفحة × {} نسخة)", "Total: {} ({} pages × {} copies)"),
+    ("🎁 ضمن باقة {}", "🎁 Part of bundle {}"),
+    ("الإصدار {} ({})", "Version {} ({})"),
+    ("محفظة {} · المتاح {}", "Wallet {} · available {}"),
 ]

@@ -37,7 +37,7 @@ struct AccountView: View {
                 VStack(spacing: 10) {
                     Text("🛒").font(.ui(size: 40))
                     Text("ما طلبت شي للحين").font(.kufi(16, .bold))
-                    Text(introLine)
+                    Text(tv: introLine)
                         .font(.ui(size: 14)).foregroundStyle(Theme.muted)
                         .multilineTextAlignment(.center)
                     Button("ابدأ التسوّق") { tab = .home }
@@ -160,7 +160,7 @@ struct AccountView: View {
         HStack(spacing: 14) {
             Group {
                 if hasName {
-                    Text(String(orders.name.prefix(1)))
+                    Text(tv: String(orders.name.prefix(1)))
                         .font(.kufi(26, .bold))
                         .foregroundStyle(Theme.brandDeep)
                 } else {
@@ -174,8 +174,8 @@ struct AccountView: View {
             .overlay(Circle().strokeBorder(hasName ? Theme.brand.opacity(0.4) : Theme.olive,
                                            style: StrokeStyle(lineWidth: 1.6, dash: hasName ? [] : [4, 3])))
             VStack(alignment: .leading, spacing: 2) {
-                Text(hasName ? orders.name : "حيّاك في \(catalog.store.name) 👋").font(.kufi(18, .bold, relativeTo: .title3))
-                Text(orders.phone.isEmpty ? "تسوّق على راحتك، بدون تسجيل" : orders.phone)
+                Text(tv: hasName ? orders.name : "حيّاك في \(catalog.store.name) 👋").font(.kufi(18, .bold, relativeTo: .title3))
+                Text(tv: orders.phone.isEmpty ? "تسوّق على راحتك، بدون تسجيل" : orders.phone)
                     .font(.ui(size: 14)).foregroundStyle(Theme.muted)
             }
             Spacer(minLength: 0)
@@ -211,7 +211,7 @@ struct AccountView: View {
 
     private func row(_ title: String, systemImage: String, value: String? = nil) -> some View {
         HStack {
-            Label(title, systemImage: systemImage)
+            Label(tr(title), systemImage: systemImage)
             Spacer()
             if let value {
                 Text(tv: value).font(.ui(size: 14)).foregroundStyle(Theme.muted).lineLimit(1)
@@ -256,7 +256,7 @@ private struct ReorderCard: View {
                     }
                 }
             }
-            Text(tv: "\(order.at.formatted(.dateTime.weekday(.wide).locale(Locale(identifier: "ar_SA@numbers=latn")))) · \(Money.sar(order.total))")
+            Text(tv: "\(order.at.formatted(.dateTime.weekday(.wide).locale(AppLang.locale))) · \(Money.sar(order.total))")
                 .font(.kufi(13, .bold))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)

@@ -152,7 +152,7 @@ private struct OrderBubble: View {
                         .overlay(Circle().strokeBorder(.white, lineWidth: 3))
                         .shadow(color: Theme.brandDeep.opacity(0.45), radius: 10, y: 5)
                     VStack(spacing: 0) {
-                        Text(icon).font(.ui(size: eta == nil ? 28 : 22))
+                        Text(tv: icon).font(.ui(size: eta == nil ? 28 : 22))
                         if let eta, order.status == "onway" {
                             Text(tv: "\(max(1, eta)) د").font(.kufi(13, .bold)).foregroundStyle(.white)
                         }
@@ -169,7 +169,7 @@ private struct OrderBubble: View {
 
             let hasSub = !(orders.subs[order.no] ?? []).isEmpty
             if showTip || hasSub {
-                Text(hasSub ? "فيه بديل ينتظر موافقتك" : order.status == "onway" ? "طلبك في الطريق · اضغط تتابعه" : "تابع طلبك من هنا")
+                Text(tv: hasSub ? "فيه بديل ينتظر موافقتك" : order.status == "onway" ? "طلبك في الطريق · اضغط تتابعه" : "تابع طلبك من هنا")
                     .font(.ui(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12).padding(.vertical, 8)
@@ -215,14 +215,14 @@ private struct HomeHeader: View {
                         .frame(width: 42, height: 42)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
-                    Text(catalog.store.name)
+                    Text(tv: catalog.store.name)
                         .font(.kufi(24, .bold, relativeTo: .title))
                         .foregroundStyle(lightHeader ? Theme.brandDeep : .white)
                         .lineLimit(1).minimumScaleFactor(0.7)
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 6) {
-                    Label(catalog.store.eta, systemImage: "bolt.fill")
+                    Label(tr(catalog.store.eta), systemImage: "bolt.fill")
                         .font(.kufi(12.5, .semibold, relativeTo: .caption))
                         .foregroundStyle(headerText)
                         .lineLimit(1)
@@ -246,7 +246,7 @@ private struct HomeHeader: View {
                     // نص البحث يتبدل كل ٣ ثواني (مثل الموقع)
                     TimelineView(.periodic(from: .now, by: 3.2)) { ctx in
                         let list = ["وش ناقص بيتك اليوم؟", "قهوتك ناقصها حلا؟ ابحث عن الشوكولاتة…", "جهز جمعتك.. ابحث عن المشروبات…", "خبز حار؟ حليب؟ بيض؟ ابحث هنا…"]
-                        Text(list[Int(ctx.date.timeIntervalSince1970 / 3.2) % list.count]).font(.ui(size: 16))
+                        Text(tv: list[Int(ctx.date.timeIntervalSince1970 / 3.2) % list.count]).font(.ui(size: 16))
                             .lineLimit(1).contentTransition(.opacity)
                     }
                     Spacer()
