@@ -54,7 +54,7 @@ export default {
     if (request.method === "POST" && !/^\/(?:track|ev|stats|driver\/(?:orders|pending|loc|loc-off|cash|login|push)|admin\/(?:orders|alerts|today|stats|log|team|prep|pos-orders|openitems|driver-loc|staff|cash|day-report|settlement-requests))$/.test(path)) stockCache.at = 0;
     if (request.method === "GET" && path === "/stock") {
       // كل زائر يسأل عن المخزون كل دقيقة؛ مع آلاف المنتجات نخزن النتيجة ١٥ ثانية بدل ما نقرأ القاعدة كل مرة
-      if (!stockCache.body || Date.now() - stockCache.at > 15000) stockCache = { at: Date.now(), body: JSON.stringify({ ok: true, stock: env.DB ? await readStock(env) : {} }) };
+      if (!stockCache.body || Date.now() - stockCache.at > 15000) stockCache = { at: Date.now(), body: JSON.stringify({ ok: true, stock: env.DB ? await readShownStock(env) : {} }) };
       return new Response(stockCache.body, { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=10" } });
     }
     if (request.method === "GET" && path === "/push/key") {
@@ -122,8 +122,8 @@ export default {
         try {
           await ensureSchema(env);
           await withCost(env, record);
-          stockBefore = await readStock(env);
           const need = needOf(record);
+          stockBefore = await readStock(env, Object.keys(need));
           const short = () => Object.keys(need).find((id) => stockBefore[id] != null && stockBefore[id] < need[id]);
           let sid = short();
           if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
@@ -132,7 +132,7 @@ export default {
           } catch (e) {
             if (checkout) { const repeated = await checkoutResult(env, checkout); if (repeated) return reply(repeated.ok ? 200 : 409, repeated); }
             // ممكن طلب ثاني سبقه على آخر حبة: نشيّك المخزون مرة ثانية
-            stockBefore = await readStock(env); sid = short();
+            stockBefore = await readStock(env, Object.keys(need)); sid = short();
             if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
             throw e;
           }
@@ -784,7 +784,7 @@ export default {
       let orderNo, before = {};
       try {
         await ensureSchema(env);
-        before = await readStock(env);
+        before = await readStock(env, Object.keys(need));
         const sid = Object.keys(need).find((id) => before[id] != null && before[id] < need[id]);
         if (sid && !body.force) return reply(409, { ok: false, code: "unavailable", id: sid, left: before[sid] });
         await withCost(env, rec);
@@ -915,6 +915,7 @@ async function ensureSchema(env) {
   await env.DB.batch([
     "CREATE TABLE IF NOT EXISTS orders (no INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER NOT NULL, updated INTEGER NOT NULL, status TEXT NOT NULL, phone TEXT NOT NULL, data TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS stock (id TEXT PRIMARY KEY, qty INTEGER NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS stock_qty ON stock(qty)",
     "CREATE TABLE IF NOT EXISTS subs (endpoint TEXT NOT NULL, role TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', p256dh TEXT NOT NULL, auth TEXT NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (endpoint, role, ref))",
     "CREATE TABLE IF NOT EXISTS st_day (day TEXT PRIMARY KEY, orders INTEGER NOT NULL, revenue REAL NOT NULL)",
     "CREATE TABLE IF NOT EXISTS st_hour (day TEXT NOT NULL, hour INTEGER NOT NULL, orders INTEGER NOT NULL, revenue REAL NOT NULL, PRIMARY KEY (day, hour))",
@@ -1069,7 +1070,7 @@ async function changeStatus(env, n, st, now = Date.now(), who = "", actor = null
   if (who) stmts.push(logStmt(env, who, "status", "#" + (1000 + n), { from: old.status, to: st, total: Number(rec.total || 0) }));
   if ((st === "canceled") !== (old.status === "canceled")) {
     const back = st === "canceled";
-    const need = needOf(rec), cur = await readStock(env);
+    const need = needOf(rec), cur = await readStock(env, Object.keys(needOf(rec)));
     for (const id of Object.keys(need)) if (cur[id] != null) stmts.push(P("UPDATE stock SET qty = MAX(qty + ?, 0) WHERE id = ?", (back ? 1 : -1) * need[id], id));
     if (counted) stmts.push(...statsStmts(env, rec, day, hour, back ? -1 : 1, back ? 1 : -1));
   }
@@ -1187,7 +1188,7 @@ async function editOrder(env, data, body, who) {
   if (rec.st) stmts.push(...statsStmts(env, rec, day, hour, -1, 0));
   stmts.push(...statsStmts(env, nr, day, hour, 1, 0));
   if (old.status === "delivered" && rec.st) stmts.push(P("UPDATE st_day SET deliv_rev = deliv_rev + ? WHERE day = ?", round2(nr.total - Number(rec.total || 0)), day));
-  const a = needOf(rec), b = needOf(nr), cur = await readStock(env);
+  const a = needOf(rec), b = needOf(nr), cur = await readStock(env, [...new Set(Object.keys(a).concat(Object.keys(b)))]);
   for (const id of new Set(Object.keys(a).concat(Object.keys(b)))) {
     const d = (b[id] || 0) - (a[id] || 0);
     if (d && cur[id] != null) stmts.push(P("UPDATE stock SET qty = MAX(qty - ?, 0) WHERE id = ?", d, id));
@@ -1502,15 +1503,26 @@ function needOf(rec) {
   return need;
 }
 let stockCache = { at: 0, body: "" };
-async function readStock(env) {
+// للزبائن: بس الكميات القليلة (≤ STOCK_SHOW). الكمية الكبيرة ما تحد السلة، والخادم يتأكد وقت الطلب ويرجع الباقي لو ما كفى
+const STOCK_SHOW = 50;
+async function readShownStock(env) {
   await ensureSchema(env);
-  const rs = await env.DB.prepare("SELECT id, qty FROM stock").all();
+  const rs = await env.DB.prepare("SELECT id, qty FROM stock WHERE qty <= ?").bind(STOCK_SHOW).all();
+  const out = {};
+  for (const r of rs.results || []) out[r.id] = r.qty;
+  return out;
+}
+async function readStock(env, ids) {
+  await ensureSchema(env);
+  // مع ١١ ألف منتج، قراءة الجدول كامل لكل طلب تخلّص حد القراءة اليومي في D1؛ نقرأ بس المنتجات المطلوبة
+  const rs = ids ? await env.DB.prepare("SELECT id, qty FROM stock WHERE id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids.map(String))).all()
+    : await env.DB.prepare("SELECT id, qty FROM stock").all();
   const out = {};
   for (const r of rs.results || []) out[r.id] = r.qty;
   return out;
 }
 async function moveStock(env, need, sign, known) {
-  const cur = known || (await readStock(env));
+  const cur = known || (await readStock(env, Object.keys(need)));
   const st = Object.keys(need).filter((id) => cur[id] != null)
     .map((id) => env.DB.prepare("UPDATE stock SET qty = MAX(qty + ?, 0) WHERE id = ?").bind(sign * need[id], id));
   if (st.length) await env.DB.batch(st);
