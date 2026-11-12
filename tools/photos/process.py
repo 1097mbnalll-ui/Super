@@ -5,12 +5,13 @@
 - ظل ناعم خفيف تحت المنتج.
 - إضاءة موحدة: متوسط سطوع المنتج يتعدل لهدف ثابت (TARGET_L)، مع تباين وحدة خفيفة.
 - فحص جودة: لو المنتج المقصوص صغير (أقل من ٤٥٠ بكسل) أو الصورة مهزوزة أو مظلمة كثير، تنعلّم «تحتاج إعادة تصوير».
-الاستخدام: python process.py in.jpg out.jpg   (يحتاج Pillow و rembg)"""
+الاستخدام: python process.py in.jpg out.jpg [--lid 0.55]   (يحتاج Pillow و rembg)"""
 import sys, os, json
 from PIL import Image, ImageFilter, ImageEnhance, ImageOps, ImageStat
 from rembg import remove, new_session
 
-S = 1000; BOTTOM = 0.08; MAX_W = 0.84; MAX_H = 0.78; TARGET_L = 150; MIN_PX = 450
+LID = 1.0  # --lid 0.55 للعلب المصورة من فوق
+S = 1000; BOTTOM = 0.14; MAX_W = 0.84; MAX_H = 0.78; TARGET_L = 150; MIN_PX = 450
 
 def lum(img, mask):
     return ImageStat.Stat(img.convert('L'), mask).mean[0]
@@ -25,7 +26,13 @@ def process(src, dst, sess):
     cut = remove(im, session=sess, alpha_matting=True, alpha_matting_foreground_threshold=240,
                  alpha_matting_background_threshold=20, alpha_matting_erode_size=8)
     a = cut.split()[-1].point(lambda v: 0 if v < 30 else v)
-    cut.putalpha(a); box = a.getbbox(); cut = cut.crop(box); a = cut.split()[-1]
+    cut.putalpha(a); box = a.getbbox(); cut = cut.crop(box)
+    # العلب والأسطوانات المصورة من فوق شوي: نضغط منطقة الغطاء (أعلى ٣٠٪) عمودياً فتبان مستقيمة قدّام الكاميرا
+    if LID < 1:
+        w0, h0 = cut.size; lid = int(h0 * 0.30)
+        top = cut.crop((0, 0, w0, lid)).resize((w0, max(1, int(lid * LID))), Image.LANCZOS)
+        n = Image.new('RGBA', (w0, h0 - lid + top.size[1]), (0, 0, 0, 0)); n.paste(top, (0, 0)); n.paste(cut.crop((0, lid, w0, h0)), (0, top.size[1])); cut = n
+    a = cut.split()[-1]
     rgb = cut.convert('RGB')
     notes = []
     if max(cut.size) < MIN_PX: notes.append('المنتج صغير في الصورة: قرّب الكاميرا')
@@ -48,6 +55,8 @@ def process(src, dst, sess):
     nw, nh = max(1, round(w * f)), max(1, round(h * f))
     rgb = rgb.resize((nw, nh), Image.LANCZOS); a = a.resize((nw, nh), Image.LANCZOS)
     x = (S - nw) // 2; y = S - round(S * BOTTOM) - nh
+    # المنتج العريض القصير (علب، كراتين مسطحة) يرتفع لين يكون نازل عن النص شوي بس
+    y = min(y, round((S - nh) / 2 + S * 0.04))
     bg = Image.new('RGB', (S, S), 'white')
     # ظل ناعم بيضاوي تحت المنتج
     sh_l = Image.new('L', (S, S), 0); from PIL import ImageDraw
@@ -59,5 +68,7 @@ def process(src, dst, sess):
     return {'file': os.path.basename(src), 'brightness_before': round(l0), 'gamma': round(g, 2), 'sharp': round(sh), 'size': max(w, h), 'notes': notes}
 
 if __name__ == '__main__':
+    args = sys.argv[1:]
+    if '--lid' in args: i = args.index('--lid'); LID = float(args[i + 1]); del args[i:i + 2]
     sess = new_session('isnet-general-use')
-    print(json.dumps(process(sys.argv[1], sys.argv[2], sess), ensure_ascii=False))
+    print(json.dumps(process(args[0], args[1], sess), ensure_ascii=False))
