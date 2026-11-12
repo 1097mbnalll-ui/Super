@@ -55,6 +55,8 @@ struct CartTotals {
     var savings: Double = 0
     var freeOver: Double = 0
     var minOrder: Double = 0
+    /// التوصيل مجاني وكان سعره كذا (يطلع مشطوب)
+    var feeWas: Double = 0
     var total: Double { subtotal + fee }
     var freeRemaining: Double { freeOver > 0 ? max(0, freeOver - subtotal) : 0 }
     var freeProgress: Double { freeOver > 0 ? min(1, subtotal / freeOver) : 1 }
@@ -217,6 +219,7 @@ final class Cart {
         }
         t.subtotal = (t.subtotal * 100).rounded() / 100
         if t.count > 0 { t.fee = (store.freeOver > 0 && t.subtotal >= store.freeOver) ? 0 : store.fee }
+        if t.count > 0, t.fee == 0, store.feeWas > 0 { t.feeWas = store.feeWas; t.savings += store.feeWas }
         // السلة طباعة بس: أقل طلب حق الطباعة (minOrderNow في الموقع)
         if !t.rows.isEmpty, t.rows.allSatisfy(\.product.isPrint), let pm = store.printMinOrder { t.minOrder = pm }
         return t

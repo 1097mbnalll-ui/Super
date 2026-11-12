@@ -213,6 +213,8 @@ struct StoreInfo: Sendable {
     var hours = ""
     var eta = "30–45 دقيقة"
     var fee: Double = 0
+    /// سعر التوصيل اللي يطلع مشطوب لما يكون مجاني (feeWas)، وينحسب ضمن «وفّرت»
+    var feeWas: Double = 0
     var freeOver: Double = 0
     var minOrder: Double = 0
     var closed = false
@@ -294,6 +296,7 @@ enum CatalogParser {
         store.eta = str(pick("eta")).map(latinDigits) ?? store.eta
         store.fee = num(s["fee"]) ?? 0
         store.freeOver = num(s["freeOver"]) ?? 0
+        store.feeWas = max(0, num(s["feeWas"]) ?? 0)
         store.minOrder = num(s["minOrder"]) ?? 0
         store.closed = (s["closed"] as? Bool) ?? false
         store.closedMessage = str(pick("closedMsg")) ?? str(s["closedMessage"]) ?? ""

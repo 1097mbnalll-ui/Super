@@ -341,7 +341,18 @@ private struct SummaryCard: View {
     var body: some View {
         VStack(spacing: 10) {
             row("المنتجات", Money.sar(totals.subtotal))
-            row("التوصيل", totals.fee == 0 ? "مجاني" : Money.sar(totals.fee), highlight: totals.fee == 0)
+            if totals.fee == 0, totals.feeWas > 0 {
+                // «التوصيل ~٤٫٨٠~ مجاني» مثل الموقع
+                HStack {
+                    Text("التوصيل").foregroundStyle(Theme.muted)
+                    Spacer()
+                    Text(Money.sar(totals.feeWas)).strikethrough().foregroundStyle(Theme.muted)
+                    Text("مجاني").fontWeight(.semibold).foregroundStyle(Theme.brandDeep)
+                }
+                .font(.ui(size: 15))
+            } else {
+                row("التوصيل", totals.fee == 0 ? "مجاني" : Money.sar(totals.fee), highlight: totals.fee == 0)
+            }
             Divider()
             HStack {
                 Text("الإجمالي").font(.kufi(15, .bold))
