@@ -120,32 +120,44 @@ struct ProductView: View {
         .background(Color.white)
         .safeAreaInset(edge: .bottom) {
             if available {
-                HStack(spacing: 10) {
-                    StepperCapsule(qty: qty, atLimit: qty >= 20, compact: false,
-                                   onPlus: { if qty < 20 { qty += 1 } },
-                                   onMinus: { if qty > 1 { qty -= 1 } })
-                        .frame(width: 118)
-                    Button {
-                        let line = cart.line(key)
-                        let cap = cart.limit(for: key, in: catalog) ?? product.max
-                        let target = cap.map { min(line.qty + qty, $0) } ?? line.qty + qty
-                        cart.set(key, target)
-                        Haptics.success()
-                        withAnimation(.snappy) { justAdded = true }
-                        Task {
-                            try? await Task.sleep(for: .seconds(1.6))
-                            withAnimation(.snappy) { justAdded = false }
+                // الشريط تحت يعدّل السلة نفسها: قبل الإضافة زر واحد، وبعدها عداد السلة ومجموع المنتج فيها
+                let line = cart.line(key)
+                let cap = cart.limit(for: key, in: catalog) ?? product.max
+                Group {
+                    if line.qty == 0 {
+                        Button {
+                            cart.increment(key, limit: cap)
+                        } label: {
+                            HStack {
+                                Text("أضف للسلة")
+                                Spacer()
+                                Text(Money.sar(unitPrice))
+                            }
                         }
-                    } label: {
-                        HStack {
-                            Text(justAdded ? "انضاف للسلة ✓" : "أضف للسلة")
-                            Spacer()
-                            Text(Money.sar(unitPrice * Double(qty)))
-                                .contentTransition(.numericText(value: unitPrice * Double(qty)))
+                        .buttonStyle(PrimaryButtonStyle())
+                        .transition(.opacity)
+                    } else {
+                        HStack(spacing: 10) {
+                            StepperCapsule(qty: line.qty, atLimit: cap.map { line.qty >= $0 } ?? false, compact: false,
+                                           onPlus: { cart.increment(key, limit: cap) },
+                                           onMinus: { cart.decrement(key) })
+                                .frame(width: 128)
+                            let total = cart.totals(catalog).rows.first(where: { $0.key == key })?.lineTotal ?? unitPrice * Double(line.qty)
+                            HStack {
+                                Text("في السلة").font(.kufi(15, .bold))
+                                Spacer()
+                                Text(Money.sar(total)).font(.kufi(15, .bold))
+                                    .contentTransition(.numericText(value: total))
+                            }
+                            .foregroundStyle(Theme.brandDeep)
+                            .padding(.horizontal, 16)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .background(Theme.mint, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
+                        .transition(.opacity)
                     }
-                    .buttonStyle(PrimaryButtonStyle())
                 }
+                .animation(.snappy(duration: 0.25), value: line.qty == 0)
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 6)
@@ -222,6 +234,16 @@ struct PackPicker: View {
 }
 
 /// «🔥 عرض: أي ٤ حبات بـ ٧ ر.س» مع شريط تقدّم: «عندك ٢ بالسلة · أضف ٢ وتحصل على العرض»
+/// «مرتين»، «٣ مرات»، «١٣ مرة»
+private func times(_ n: Int) -> String {
+    switch n {
+    case ..<2: return ""
+    case 2: return " مرتين"
+    case 3...10: return " \(n) مرات"
+    default: return " \(n) مرة"
+    }
+}
+
 private struct QuantityOfferBox: View {
     let product: Product
     let offer: (count: Int, price: Double, before: Double)
@@ -249,7 +271,7 @@ private struct QuantityOfferBox: View {
                 if inCart == 0 {
                     Text("أضف \(Product.pieces(offer.count)) وينطبق العرض لحاله")
                 } else if applied > 0 {
-                    Text("✓ العرض انطبق\(applied > 1 ? " \(applied) مرات" : "") · عندك \(inCart) بالسلة")
+                    Text("✓ العرض انطبق\(times(applied)) · عندك \(inCart) بالسلة")
                 } else {
                     Text("عندك \(inCart) بالسلة · زود \(offer.count - rest) وتحصل على العرض")
                 }

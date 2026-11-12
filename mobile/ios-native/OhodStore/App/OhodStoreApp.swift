@@ -60,7 +60,6 @@ struct RootView: View {
                 .tabItem { Label("حسابي", systemImage: icon("account", "person.fill")) }
                 .tag(AppTab.account)
         }
-        .modifier(TabBarMinimize())
         // لما يتغير «شكل التطبيق» من الإدارة نعيد رسم الواجهة بالإعدادات الجديدة
         .id(catalog.lookVersion)
         .environment(\.zoomNamespace, zoom)
