@@ -1639,6 +1639,17 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var q = Number(cart[k]) || 0, b = Math.floor(q / mo.n), loose = q - b * mo.n;
     return { mo: mo, b: b, loose: loose, total: Math.round((b * mo.price + loose * L.price) * 100) / 100, regular: Math.round(q * L.price * 100) / 100, miss: q && q % mo.n ? mo.n - q % mo.n : 0 };
   }
+  // مواعيد استقبال الطلبات (توقيت الرياض): openAt / closeAt مثل "12:00" و "01:00" (يقفل بعد منتصف الليل)
+  function hm(x){ var q = String(x || "").split(":"); return (Number(q[0]) || 0) * 60 + (Number(q[1]) || 0); }
+  function openNow(){ var a = S.openAt, b = S.closeAt; if (!a || !b) return true; var m = Math.floor((Date.now() / 60000 + 180) % 1440), o = hm(a), c = hm(b);
+    return o === c ? true : o < c ? (m >= o && m < c) : (m >= o || m < c); }
+  function isClosed(){ return !!S.closed || !openNow(); }
+  function hmTxt(x){ var t = hm(x), h = Math.floor(t / 60), mi = t % 60, ar = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    var part = h === 0 ? "بالليل" : h < 12 ? (h < 5 ? "بالليل" : "الصبح") : h === 12 ? "الظهر" : h < 16 ? "الظهر" : h < 19 ? "العصر" : "بالليل";
+    return num(ar) + (mi ? ":" + (mi < 10 ? "0" : "") + mi : "") + " " + part; }
+  function closedMsgNow(){ if (S.closed) return sv("closedMsg") || tr("تقدر تتصفح المنتجات، والطلب يرجع يشتغل لما نفتح.", "You can browse; ordering resumes when we open.");
+    return tr("نستقبل الطلبات يومياً من " + hmTxt(S.openAt) + " لين " + hmTxt(S.closeAt) + ". تقدر تتصفح الحين وتطلب وقت الفتح.", "We take orders daily " + S.openAt + "–" + S.closeAt + "."); }
+  setInterval(function(){ var c = isClosed(); if (window.__wasClosed !== undefined && window.__wasClosed !== c && mode === "store") render(); window.__wasClosed = c; }, 60000);
   function pcs(n){ return n === 2 ? "حبتين" : n <= 10 ? num(n) + " حبات" : num(n) + " حبة"; }
   function multiTxt(m){ return tr(pcs(m.n) + " بـ " + num(m.price) + " ر.س", m.n + " pcs for " + num(m.price) + " SAR"); }
   function multiEach(m){ return tr("الحبة بـ " + num(Math.round(m.price / m.n * 100) / 100), num(Math.round(m.price / m.n * 100) / 100) + " each"); }
@@ -1872,7 +1883,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function homeHTML(){
     var h = '<div class="kq-head"><div class="wrap">' +
       (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span>' + (lastOrder.subs && lastOrder.subs.length ? '<em class="trk-sub">' + tr("فيه بديل ينتظر موافقتك", "A replacement needs your answer") + '</em>' : '') + '</span>' + ic("fwd") + '</button>' : '') +
-      (S.closed ? '<div class="closedbar">' + ic("lock") + '<span><b>' + tr("المحل مقفل الحين", "The store is closed right now") + '</b>' + esc(sv("closedMsg") || tr("تقدر تتصفح المنتجات، والطلب يرجع يشتغل لما نفتح.", "You can browse; ordering resumes when we open.")) + '</span></div>' : '') +
+      (isClosed() ? '<div class="closedbar">' + ic("lock") + '<span><b>' + tr("المحل مقفل الحين", "The store is closed right now") + '</b>' + esc(closedMsgNow()) + '</span></div>' : '') +
       '<div class="kq-row"><div class="kq-logo"><img src="' + D.imgs.logo + '" alt=""><b>' + esc(sv("name")) + '</b></div>' +
       '<div class="kq-meta"><span class="kq-sched">' + ic("truck") + esc(sv("eta")) + '</span><span class="kq-loc">' + ic("pin") + esc(sv("area")) + ic("down") + '</span></div>' +
       '<button class="langbtn" type="button" data-lang="' + (LANG === "en" ? "ar" : "en") + '" aria-label="' + tr("English", "العربية") + '">' + (LANG === "en" ? "ع" : "EN") + '</button></div>' +
@@ -2053,9 +2064,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
         '<span class="stepper"><button type="button" data-act="dec" data-id="' + k + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button><b>' + cart[k] + '</b><button type="button" data-act="inc" data-id="' + k + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full || off ? ' disabled' : '') + '>' + ic("plus") + '</button></span></div>'; }).join("") + '</div>';
     h += tr('<div class="box totals"><div><span>المنتجات</span><span>', '<div class="box totals"><div><span>Items</span><span>') + rial(t.s) + tr('</span></div><div><span>التوصيل</span><span>', '</span></div><div><span>Delivery</span><span>') + (t.fee ? rial(t.fee) : tr("مجاني", "Free")) + tr('</span></div><div class="grand"><b>الإجمالي</b><span class="price">', '</span></div><div class="grand"><b>Total</b><span class="price">') + num(t.all) + tr(' <small>ر.س</small></span></div></div></div></div>', ' <small>SAR</small></span></div></div></div></div>');
     var minO = minOrderNow(), short = minO && t.s < minO;
-    if (S.closed) h = h.replace('<div class="lines">', '<div class="alert">' + tr("المحل مقفل الحين، وما نستقبل طلبات. ", "The store is closed and not taking orders right now. ") + esc(sv("closedMsg") || "") + '</div><div class="lines">');
+    if (isClosed()) h = h.replace('<div class="lines">', '<div class="alert">' + tr("المحل مقفل الحين، وما نستقبل طلبات. ", "The store is closed and not taking orders right now. ") + esc(closedMsgNow()) + '</div><div class="lines">');
     else if (short) h = h.replace('<div class="lines">', '<div class="alert soft">' + tr("أقل مبلغ للطلب ", "Minimum order is ") + rial(minO) + tr("، باقي لك ", ", add ") + rial(minO - t.s) + tr("", " more") + '</div><div class="lines">');
-    h += '<div class="bottomcta"><button class="btn btn-teal" type="button" data-nav="checkout"' + (t.n && !S.closed && !short ? '' : ' disabled') + tr('>كمّل الطلب', '>Continue to checkout') + ic("fwd") + '</button></div>';
+    h += '<div class="bottomcta"><button class="btn btn-teal" type="button" data-nav="checkout"' + (t.n && !isClosed() && !short ? '' : ' disabled') + tr('>كمّل الطلب', '>Continue to checkout') + ic("fwd") + '</button></div>';
     return h;
   }
   function checkoutHTML(){
@@ -2799,14 +2810,14 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function fetchJSON(url,options){
     var controller=new AbortController(),timer;
     var request=fetch(url,Object.assign({},options,{signal:controller.signal})).then(function(r){return r.json().catch(function(e){if(controller.signal.aborted)throw e;return {ok:false,code:'http_'+r.status};}).then(function(j){j.status=r.status;return j;});});
-    var timeout=new Promise(function(resolve){timer=setTimeout(function(){controller.abort();resolve({ok:false,code:'timeout'});},15000);});
+    var timeout=new Promise(function(resolve){timer=setTimeout(function(){controller.abort();resolve({ok:false,code:'timeout'});},(options&&options.timeoutMs)||15000);});
     return Promise.race([request,timeout]).catch(function(){return {ok:false,code:controller.signal.aborted?'timeout':'network'};}).then(function(j){clearTimeout(timer);return j;});
   }
-  function api(path, body){
+  function api(path, body, timeoutMs){
     body = Object.assign({}, body || {});
     if (staffAuth && body.pin === adminPin) { body.session = staffAuth.token; delete body.pin; }
     if (body.pin && STAFF && !body.by) body.by = STAFF;
-    return fetchJSON(apiUrl()+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(j){
+    return fetchJSON(apiUrl()+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),timeoutMs:timeoutMs}).then(function(j){
       if (j.code==='session_expired'&&staffAuth){endAdminSession();sToast('انتهت الجلسة. سجّل دخولك من جديد.');}return j;
     });
   }
@@ -2933,6 +2944,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
           field("sFee","رسوم التوصيل (ريال)",draft.store.fee,"number") + field("sFree","توصيل مجاني فوق (ريال، ٠ = بدون)",draft.store.freeOver,"number") +
         '</div></div><div class="card"><h2>استقبال الطلبات</h2><div class="fields">' +
           '<label class="chk wide"><input type="checkbox" id="sClosed"' + (draft.store.closed ? ' checked' : '') + '>إيقاف طلبات التوصيل مؤقتًا (يبقى تصفح المتجر متاحًا)</label>' +
+          '<label for="sOpenAt">نبدأ نستقبل الطلبات الساعة<input id="sOpenAt" type="time" value="' + esc(draft.store.openAt || "") + '"></label>' +
+          '<label for="sCloseAt">نوقف استقبال الطلبات الساعة<input id="sCloseAt" type="time" value="' + esc(draft.store.closeAt || "") + '"></label>' +
+          '<p class="hint wide">الموقع والتطبيق والخادم يقفلون ويفتحون لحالهم على هالمواعيد كل يوم (توقيت الرياض). فاضي = مفتوح دايم. لو وقت القفل قبل وقت الفتح (مثل ١٢ الظهر لين ١ بالليل) يعني يقفل بعد منتصف الليل.</p>' +
           field("sClosedMsg", "رسالة للزبائن لما يكون مقفل", draft.store.closedMsg || "") + field("sMin", "أقل مبلغ للطلب (ريال، ٠ = بدون)", draft.store.minOrder || 0, "number") +
           '<label for="sKeep">مدة حفظ تفاصيل الطلبات المنتهية<select id="sKeep">' + [[30,"شهر"],[90,"٣ شهور"],[180,"٦ شهور"],[365,"سنة"],[730,"سنتين"]].map(function(x){ return '<option value="' + x[0] + '"' + ((draft.store.keepDays || 90) === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join("") + '</select></label>' +
         '</div><p class="hint">أرقام التحليل (المبيعات والمنتجات والزبائن) تنحفظ دايم. اللي ينحذف بعد المدة هو تفاصيل الطلب نفسه (الجوال والعنوان) عشان خصوصية الزبائن.</p></div>' +
@@ -2955,6 +2969,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         '<input class="search" id="ppQ" type="search" placeholder="ابحث عن منتج…" aria-label="بحث"><div class="pick pp-grid" id="ppGrid"></div></div></div>';
     var bind = { sName:"name", sTag:"tagline", sPhone:"phone", sWa:"wa", sArea:"area", sHours:"hours", sEta:"eta", sFee:"fee", sFree:"freeOver", sNameEn:"name_en", sTagEn:"tagline_en", sAreaEn:"area_en", sHoursEn:"hours_en", sEtaEn:"eta_en", sVat:"vat" };
     $("sClosed").addEventListener("change", function(){ if (this.checked) draft.store.closed = true; else delete draft.store.closed; markDirty(); });
+    ["sOpenAt", "sCloseAt"].forEach(function(id){ $(id).addEventListener("change", function(){ var k = id === "sOpenAt" ? "openAt" : "closeAt"; if (this.value) draft.store[k] = this.value; else delete draft.store[k]; markDirty(); }); });
     $("sClosedMsg").addEventListener("input", function(){ if (this.value.trim()) draft.store.closedMsg = this.value; else delete draft.store.closedMsg; markDirty(); });
     $("sShop").addEventListener("input", function(){ var m = /(-?\d{1,2}\.\d+)\s*[,،]\s*(-?\d{1,3}\.\d+)/.exec(this.value); if (m) draft.store.shop = [Number(m[1]), Number(m[2])]; else delete draft.store.shop; markDirty(); });
     $("sCustCancel").addEventListener("change", function(){ if (this.value === "new") delete draft.store.custCancel; else draft.store.custCancel = this.value; markDirty(); });
@@ -3074,6 +3089,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<h3>الألوان</h3>' + color("brand", "اللون الأساسي (الأزرار والرأس)", "#0E8A6A") + color("accent", "لون العروض والخصومات", "#EE7417") +
       '<h3>رأس الصفحة الرئيسية</h3>' + seg("header", [["dark","أخضر غامق"],["light","فاتح"]], A.header || "dark") +
       '<h3>المنتجات في الصف</h3>' + seg("columns", [[3,"٣ منتجات"],[2,"منتجين (أكبر)"]], A.columns || 3) +
+      '<h3>زر الإضافة للسلة</h3><p class="hint">حجمه يكبر ويصغر مع «كل الكتابة» فوق، فيبقى متناسق مع المنتج والسعر.</p>' + seg("addStyle", [["filled","أخضر مليان"],["outline","أبيض بإطار"]], A.addStyle || "filled") +
+      '<h3>حواف الكروت</h3>' + seg("radius", [["round","دائرية"],["soft","خفيفة"],["square","شبه مربعة"]], A.radius || "round") +
+      '<h3>خلفية الصفحات</h3>' + seg("background", [["white","أبيض"],["gray","رمادي فاتح"]], A.background || "white") +
+      check("showCatChip", "اسم القسم على كرت المنتج") +
       '<h3>الرئيسية</h3>' + check("showChips", "أزرار الأقسام تحت البنرات") + check("showFeatured", "«مختارات لك» (لو قفلتها تطلع العروض بدالها)") +
       '<h3>أيقونة كل قسم</h3><p class="hint">اكتب إيموجي (مثل 🥛 أو 🍫). فاضي = الأيقونة الافتراضية.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">' +
         draft.cats.map(function(c){ return '<label style="display:flex;gap:6px;align-items:center"><input data-appcat="' + esc(c.id) + '" value="' + esc(icons[c.id] || "") + '" maxlength="4" style="width:52px;text-align:center;font-size:20px">' + esc(c.name) + '</label>'; }).join("") + '</div>' +
@@ -3632,6 +3651,24 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var parts = KEEP.map(function(h){ return h === null ? '<script type="application/json" id="store-data" data-keep>' + json + '<\/script>' : h; });
     return HEAD + "\n" + parts.join("\n") + "\n</body></html>";
   }
+  // دمج ثلاثي: تعديلاتك (مقارنة بالنسخة اللي فتحت عليها) تنحط فوق آخر نسخة محفوظة، فما يضيع حفظ أحد
+  function mergeCatalog(base, mine, theirs){
+    var J = JSON.stringify, out = JSON.parse(J(theirs)); base = base || { store: {}, products: [], cats: [], imgs: {} };
+    out.store = out.store || {}; var ks = {}; [base.store || {}, mine.store || {}].forEach(function(o){ Object.keys(o).forEach(function(k){ ks[k] = 1; }); });
+    Object.keys(ks).forEach(function(k){ if (J(mine.store[k]) !== J((base.store || {})[k])) { if (mine.store[k] === undefined) delete out.store[k]; else out.store[k] = mine.store[k]; } });
+    ["products", "cats"].forEach(function(key){
+      var b = {}, m = {}, t = {}; (base[key] || []).forEach(function(x){ b[x.id] = x; }); (mine[key] || []).forEach(function(x){ m[x.id] = x; }); (out[key] || []).forEach(function(x){ t[x.id] = x; });
+      var order = (out[key] || []).map(function(x){ return x.id; });
+      Object.keys(m).forEach(function(id){ if (!b[id]) { if (!t[id]) order.push(id); t[id] = m[id]; } else if (J(m[id]) !== J(b[id])) t[id] = m[id]; });
+      Object.keys(b).forEach(function(id){ if (!m[id]) delete t[id]; });
+      var mo = (mine[key] || []).map(function(x){ return x.id; }), bo = (base[key] || []).map(function(x){ return x.id; });
+      if (J(mo) !== J(bo)) order = mo.concat(order.filter(function(id){ return !m[id]; }));
+      out[key] = order.filter(function(id, i, a){ return t[id] && a.indexOf(id) === i; }).map(function(id){ return t[id]; });
+    });
+    out.imgs = out.imgs || {}; Object.keys(mine.imgs || {}).forEach(function(k){ if (!base.imgs || mine.imgs[k] !== base.imgs[k]) out.imgs[k] = mine.imgs[k]; });
+    Object.keys(mine).forEach(function(k){ if (["store", "products", "cats", "imgs"].indexOf(k) < 0 && J(mine[k]) !== J(base[k])) out[k] = mine[k]; });
+    return out;
+  }
   function publish(){
     var st = $("aStatus"), btn = $("aSave");
     if(!catalogSaveAvailable()){recoverAdminSave(true);return;}
@@ -3648,7 +3685,20 @@ html.sp-on,html.sp-on body{overflow:hidden}
       // خيار بيع ناقص (بدون عدد حبات أو سعر) ما ينحفظ
       payload.products.forEach(function(p){ if (!Array.isArray(p.packs)) return; p.packs = p.packs.filter(function(x){ return Number(x.n) >= 1 && Number(x.price) > 0; }); if (!p.packs.length) delete p.packs; });
       var stockSend = Object.keys(stockEdit).length ? stockEdit : undefined, costSend = Object.keys(costEdit).length ? costEdit : undefined;
-      api("/save", { pin: adminPin, data: payload, newPin: newPin || undefined, newDriverPin: newDPin || undefined, stock: stockSend, costs: costSend, baseVersion: adminCatalogVersion }).then(function(j){
+      var tries = 0;
+      var saveOnce = function(data, version){ return api("/save", { pin: adminPin, data: data, newPin: newPin || undefined, newDriverPin: newDPin || undefined, stock: stockSend, costs: costSend, baseVersion: version }, 90000).then(function(j){
+        if (j.ok || (j.code !== "data_conflict" && j.code !== "timeout") || tries >= 3) return j;
+        // فيه حفظ أحدث، أو الاتصال طوّل: نجيب آخر نسخة، ندمج تعديلاتك عليها، ونحفظ لحالنا
+        tries++; st.className = "status"; st.textContent = "فيه حفظ أحدث، ندمج تعديلاتك عليه ونحفظ…";
+        return api("/admin/catalog", { pin: adminPin }, 90000).then(function(c){
+          if (!c.ok || !c.data || !c.version) return j;
+          var latest = c.data; delete latest.status;
+          if (j.code === "timeout" && JSON.stringify(gcData(JSON.parse(JSON.stringify(latest)))) === JSON.stringify(data)) return { ok: true, version: c.version };
+          payload = gcData(mergeCatalog(adminCatalogBase, data, latest)); delete payload.store.pinHash;
+          return saveOnce(payload, c.version);
+        });
+      }); };
+      saveOnce(payload, adminCatalogVersion).then(function(j){
         btn.disabled = false;
         if (j.ok) {
           if (j.stock) { STK = j.stock; LIVE = j.stock; } stockEdit = {}; Object.keys(costEdit).forEach(function(k){ if (costEdit[k] == null) delete COST[k]; else COST[k] = costEdit[k]; }); costEdit = {};
