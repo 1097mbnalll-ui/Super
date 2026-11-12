@@ -17,7 +17,7 @@ APP="build/Build/Products/Debug-iphonesimulator/OhodStore.app"
 
 # أحدث آيفون Pro متوفر في المحاكي
 DEVICE=$(xcrun simctl list devices available -j | python3 -c '
-import json,sys,re
+import json,sys,re,os
 d=json.load(sys.stdin)["devices"]
 best=None
 for rt,devs in d.items():
@@ -25,7 +25,8 @@ for rt,devs in d.items():
     v=tuple(int(x) for x in re.findall(r"(\d+)", rt.split("iOS")[-1])[:2])
     for dev in devs:
         n=dev["name"]
-        if n.startswith("iPhone") and "Pro" in n and "Max" not in n:
+        want_max = os.environ.get("SIM_MAX") == "1"   # صور المتجر: Pro Max (مقاس ٦٫٩ اللي تطلبه آبل)
+        if n.startswith("iPhone") and "Pro" in n and (("Max" in n) == want_max):
             key=(v, n)
             if best is None or key>best[0]: best=(key, dev["udid"])
 print(best[1] if best else "")')
@@ -38,6 +39,7 @@ xcrun simctl spawn "$DEVICE" defaults write -g AppleLanguages -array ar
 xcrun simctl spawn "$DEVICE" defaults write -g AppleLocale -string ar_SA
 xcrun simctl status_bar "$DEVICE" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
 xcrun simctl install "$DEVICE" "$APP"
+[ -f "$APP/PrivacyInfo.xcprivacy" ] && echo "privacy manifest: OK" || echo "privacy manifest: MISSING"
 
 shot() {  # shot <name> <args...>
   local name="$1"; shift

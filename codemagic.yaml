@@ -96,6 +96,22 @@ workflows:
       - screenshots/*.png
       - screenshots/build.log
 
+  # ٥) صور المتجر (App Store): نفس شاشات المعاينة على آيفون Pro Max (مقاس ٦٫٩). يدوي من Codemagic أو الـ API
+  ios-native-store-shots:
+    name: iOS Native App Store screenshots
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install XcodeGen
+        script: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Build for simulator + Pro Max screenshots
+        script: SIM_MAX=1 OUT="$CM_BUILD_DIR/screenshots" mobile/ios-native/scripts/preview-screens.sh
+    artifacts:
+      - screenshots/*.png
+      - screenshots/build.log
+
   # ٤) التطبيق الأصلي: بناء موقّع ورفع لـ TestFlight. يشتغل لما ينرفع tag يبدأ بـ ios-native-
   ios-native-testflight:
     name: iOS Native TestFlight
