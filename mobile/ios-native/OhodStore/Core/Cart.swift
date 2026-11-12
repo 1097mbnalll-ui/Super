@@ -82,6 +82,26 @@ final class Cart {
     var note: String = UserDefaults.standard.string(forKey: "cart.note") ?? "" {
         didSet { UserDefaults.standard.set(note, forKey: "cart.note") }
     }
+    /// طلبات الطباعة: النوع ← صفحات ونسخ ووجهين (printJobs في الموقع)
+    var printJobs: [String: [String: Int]] = (UserDefaults.standard.dictionary(forKey: "print.jobs") as? [String: [String: Int]]) ?? [:] {
+        didSet { UserDefaults.standard.set(printJobs, forKey: "print.jobs") }
+    }
+    /// سطر الطباعة اللي ينضاف لملاحظات الطلب (printNote)
+    func printNote(_ catalog: CatalogStore) -> String {
+        var out: [String] = []
+        for (t, id) in [("bw", "print_bw"), ("color", "print_color")] {
+            let qty = lines[id]?.qty ?? 0
+            guard qty > 0, catalog.product(id) != nil else { continue }
+            let label = t == "bw" ? "أبيض وأسود" : "ألوان"
+            if let j = printJobs[t], let pg = j["pages"], let cp = j["copies"], pg * cp == qty {
+                out.append("🖨️ طباعة \(label): \(pg) صفحة × \(cp) نسخة" + (j["sides"] == 2 ? " (وجهين)" : ""))
+            } else {
+                out.append("🖨️ طباعة \(label): \(qty) صفحة")
+            }
+        }
+        return out.joined(separator: "\n")
+    }
+
     /// الدفع عند الاستلام: cash أو card
     var payment: String = UserDefaults.standard.string(forKey: "cart.pay") ?? "cash" {
         didSet { UserDefaults.standard.set(payment, forKey: "cart.pay") }
@@ -197,6 +217,8 @@ final class Cart {
         }
         t.subtotal = (t.subtotal * 100).rounded() / 100
         if t.count > 0 { t.fee = (store.freeOver > 0 && t.subtotal >= store.freeOver) ? 0 : store.fee }
+        // السلة طباعة بس: أقل طلب حق الطباعة (minOrderNow في الموقع)
+        if !t.rows.isEmpty, t.rows.allSatisfy(\.product.isPrint), let pm = store.printMinOrder { t.minOrder = pm }
         return t
     }
 

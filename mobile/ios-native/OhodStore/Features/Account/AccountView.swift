@@ -8,6 +8,7 @@ struct AccountView: View {
     @Environment(Cart.self) private var cart
     @State private var haptics = Haptics.enabled
     @State private var showAddress = false
+    @State private var showWallet = false
 
     var body: some View {
         ScrollView {
@@ -62,6 +63,22 @@ struct AccountView: View {
                     .padding(.horizontal, 16).frame(minHeight: 56)
                     .onChange(of: haptics) { _, on in Haptics.enabled = on; if on { Haptics.selected() } }
                     Divider().padding(.trailing, 52)
+                    Button {
+                        Task {
+                            if await Push.shared.enable() {
+                                for o in orders.orders where o.isActive { Push.shared.register(no: o.no, phone: o.phone, api: catalog.apiBase) }
+                            }
+                        }
+                    } label: {
+                        row("الإشعارات", systemImage: "bell.badge",
+                            value: Push.shared.enabled ? "مفعّلة ✓" : Push.shared.denied ? "مقفلة من الإعدادات" : "فعّلها")
+                    }
+                    .disabled(Push.shared.enabled)
+                    Divider().padding(.trailing, 52)
+                    Button { showWallet = true } label: {
+                        row("محفظتي والكاش باك", systemImage: "wallet.pass")
+                    }
+                    Divider().padding(.trailing, 52)
                     Link(destination: URL(string: "privacy.html", relativeTo: AppConfig.site)!.absoluteURL) {
                         row("سياسة الخصوصية", systemImage: "hand.raised")
                     }
@@ -113,6 +130,7 @@ struct AccountView: View {
         .navigationBarTitleDisplayMode(.inline)
         .animation(.smooth, value: orders.current?.status)
         .sheet(isPresented: $showAddress) { AddressView() }
+        .sheet(isPresented: $showWallet) { WalletSheet() }
         .refreshable { await orders.refresh(catalog: catalog) }
     }
 

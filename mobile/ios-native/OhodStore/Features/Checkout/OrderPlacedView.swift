@@ -42,6 +42,10 @@ struct OrderPlacedView: View {
                     VStack(spacing: 12) {
                         row("الإجمالي") { Text(Money.sar(order.total)).font(.kufi(15, .bold)) }
                         row("الدفع") { Text(order.pay == "card" ? "💳 شبكة عند الاستلام" : "💵 كاش عند الاستلام").fontWeight(.semibold) }
+                        if let wc = order.walletCents, wc > 0 {
+                            row("مدفوع بالمحفظة") { Text(Money.sar(Double(wc) / 100)).fontWeight(.semibold) }
+                            row("المتبقي عند الاستلام") { Text(Money.sar(max(0, order.total - Double(wc) / 100))).fontWeight(.semibold) }
+                        }
                         row("التوصيل إلى") {
                             Text(orders.address?.details.isEmpty == false ? orders.address!.details : catalog.store.area)
                                 .fontWeight(.semibold).lineLimit(1)
@@ -51,6 +55,22 @@ struct OrderPlacedView: View {
                     .padding(16)
                     .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
+
+                    PrintWhatsAppCard(order: order)
+                    // «نبّهني لما تتغير حالة طلبي» (مثل الموقع)
+                    if !Push.shared.enabled, order.track != false {
+                        Button {
+                            Task {
+                                if await Push.shared.enable() { Push.shared.register(no: order.no, phone: order.phone, api: catalog.apiBase) }
+                            }
+                        } label: {
+                            Label(Push.shared.denied ? "الإشعارات مقفلة من إعدادات الجوال" : "نبّهني لما تتغير حالة طلبي", systemImage: "bell.badge")
+                                .font(.ui(size: 15, weight: .semibold)).foregroundStyle(Theme.brandDeep)
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                                .background(Theme.mint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                        .buttonStyle(PressableStyle(scale: 0.97))
+                    }
                 }
                 .padding(.horizontal, 20)
             }
@@ -129,6 +149,7 @@ struct CurrentOrderCard: View {
                     Text(detailLine(driver)).font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
                 }
                 ForEach(orders.subs[order.no] ?? []) { SubOfferCard(offer: $0, order: order) }
+                PrintWhatsAppCard(order: order)
                 VStack(spacing: 5) {
                     HStack(spacing: 6) {
                         ForEach(1...4, id: \.self) { i in
@@ -354,6 +375,10 @@ struct OrderDetailView: View {
 
                     VStack(spacing: 10) {
                         row("الدفع", order.pay == "card" ? "💳 شبكة عند الاستلام" : "💵 كاش عند الاستلام")
+                        if let wc = order.walletCents, wc > 0 {
+                            row("مدفوع بالمحفظة", Money.sar(Double(wc) / 100), color: Theme.brandDeep)
+                            row("المتبقي عند الاستلام", Money.sar(max(0, order.total - Double(wc) / 100)))
+                        }
                         if let d = order.details, !d.isEmpty { row("التوصيل إلى", d) }
                         if let sub = order.sub {
                             row("لو منتج ناقص", ["swap": "بدّلوه بمشابه", "remove": "شيلوه", "call": "اتصلوا علي"][sub] ?? "")

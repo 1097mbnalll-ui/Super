@@ -31,6 +31,10 @@ struct SavedOrder: Codable, Identifiable, Equatable {
     var lng: Double? = nil
     /// الخادم يتابع الطلب (track). false = بدون تتبع ولا إلغاء من التطبيق
     var track: Bool? = nil
+    /// اللي انخصم من المحفظة (هللة)
+    var walletCents: Int? = nil
+    /// نص الطباعة: بعد الطلب يرسل الملف على واتساب برقم الطلب
+    var printText: String? = nil
     var id: String { no }
     var count: Int { lines?.reduce(0) { $0 + $1.qty } ?? items.values.reduce(0, +) }
     /// طلب شغّال: حالته مفتوحة وعمره أقل من ١٢ ساعة (مثل activeOrder في الموقع)
@@ -177,7 +181,7 @@ final class OrderCenter {
 
     // MARK: إرسال الطلب
 
-    func place(cart: Cart, catalog: CatalogStore) async -> Result<SavedOrder, OrderError> {
+    func place(cart: Cart, catalog: CatalogStore, wallet: WalletCenter? = nil) async -> Result<SavedOrder, OrderError> {
         guard !sending else { return .failure(.message("الطلب جاري إرساله")) }
         guard let phone = Self.normalizedPhone(phone) else { return .failure(.phone("اكتب رقم جوال سعودي صحيح، مثل 05XXXXXXXX")) }
         guard let address else { return .failure(.address("حدد بيتك على الخريطة أول")) }
@@ -189,12 +193,19 @@ final class OrderCenter {
         }
         let items = cart.orderItems(catalog)
         let snapshot = cart.totals(catalog)
+        // الدفع من المحفظة: لازم دخول بنفس الجوال، والمبلغ ما يتعدى الرصيد ولا الإجمالي (مثل الموقع)
+        let walletUse = wallet.map { ($0.useAmount * 100).rounded() / 100 } ?? 0
+        if walletUse > 0 {
+            guard let w = wallet, w.loggedIn, w.phone == phone, walletUse <= snapshot.total + 0.001, walletUse <= w.balance + 0.001 else {
+                return .failure(.message("راجع رقم الجوال ورصيد المحفظة والمبلغ المستخدم."))
+            }
+        }
         let keyOrder = snapshot.rows.map(\.key)
         var body: [String: Any] = [
             "items": items, "phone": phone, "name": name, "details": address.details,
-            "note": cart.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            "note": [cart.printNote(catalog), cart.note.trimmingCharacters(in: .whitespacesAndNewlines)].filter { !$0.isEmpty }.joined(separator: "\n"),
             "pay": cart.payment == "card" ? "card" : "cash", "sub": cart.substitution,
-            "lat": (address.lat * 1e6).rounded() / 1e6, "lng": (address.lng * 1e6).rounded() / 1e6, "walletAmount": 0,
+            "lat": (address.lat * 1e6).rounded() / 1e6, "lng": (address.lng * 1e6).rounded() / 1e6, "walletAmount": walletUse,
         ]
         let signature = Self.signature(body)
         var resendingOld = false
@@ -217,6 +228,8 @@ final class OrderCenter {
                               payload: (try? JSONSerialization.data(withJSONObject: body.filter { $0.key != "requestId" && $0.key != "walletRequestId" })) ?? Data(), at: Date())
         }
 
+        // توكن المحفظة ما ينحفظ مع المحاولة، ينضاف وقت الإرسال بس
+        body["walletToken"] = (wallet?.phone == body["phone"] as? String) ? (wallet?.token ?? "") : ""
         sending = true
         defer { sending = false }
         let (status, json) = await API.post(catalog.apiBase, "/order", body)
@@ -238,10 +251,15 @@ final class OrderCenter {
                 order2.lat = address.lat; order2.lng = address.lng
             }
             order2.track = json["track"] as? Bool ?? true
+            let pn = resendingOld ? "" : cart.printNote(catalog)
+            if !pn.isEmpty { order2.printText = pn }
+            let usedWallet = CatalogParser.num(body["walletAmount"]) ?? 0
+            if usedWallet > 0 { order2.walletCents = Int((usedWallet * 100).rounded()); wallet?.spent(usedWallet) }
             if !resendingOld { cart.note = "" }
             if !orders.contains(where: { $0.no == no }) { orders.insert(order2, at: 0) }
             if orders.count > 30 { orders.removeLast(orders.count - 30) }
             cart.remove(sent: sent, catalog: catalog)
+            if order2.track != false { Push.shared.register(no: no, phone: order2.phone, api: catalog.apiBase) }
             Haptics.success()
             Task { await catalog.refreshStock(force: true) }
             return .success(order2)
@@ -266,6 +284,8 @@ final class OrderCenter {
         case "too_far":
             let km = CatalogParser.num(json["km"]).map { Money.plain($0) } ?? ""
             return .failure(.address("بيتك يبعد \(km) كم عن المحل، ونوصل لين \(Money.plain(catalog.store.maxKm ?? 0)) كم بس"))
+        case "wallet_login", "wallet_balance", "bad_payment":
+            return .failure(.message("تعذر استخدام المحفظة. سجّل الدخول مجددًا وراجع الرصيد والمبلغ."))
         case "bad_items":
             await catalog.refresh()
             return .failure(.message("فيه منتج بسلتك تغيّر أو انشال. راجع السلة وأرسل مرة ثانية."))

@@ -137,6 +137,8 @@ struct CategoryView: View {
                     ContentUnavailableView("قريباً", systemImage: "clock",
                                            description: Text("نجهّز قسم \(category.name)، ويوصلك قريب إن شاء الله."))
                         .padding(.top, 60)
+                } else if categoryID == "print", catalog.product("print_bw")?.isPrint == true, catalog.product("print_color")?.isPrint == true {
+                    PrintCalculator()
                 } else {
                     if !subs.isEmpty {
                         ScrollView(.horizontal) {

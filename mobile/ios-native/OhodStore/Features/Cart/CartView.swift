@@ -6,6 +6,7 @@ struct CartView: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(Cart.self) private var cart
     @Environment(OrderCenter.self) private var orders
+    @Environment(WalletCenter.self) private var wallet
     @State private var confirmClear = false
     @State private var showAddress = false
     @State private var sendAfterAddress = false
@@ -65,6 +66,8 @@ struct CartView: View {
                         }
 
                         SubstitutionPicker()
+
+                        CheckoutWalletBox(total: totals.total)
 
                         SummaryCard(totals: totals)
                     }
@@ -138,7 +141,7 @@ struct CartView: View {
 
     private func send() {
         Task {
-            switch await orders.place(cart: cart, catalog: catalog) {
+            switch await orders.place(cart: cart, catalog: catalog, wallet: wallet) {
             case .success(let order):
                 placed = order
             case .failure(.address(let msg)), .failure(.phone(let msg)):

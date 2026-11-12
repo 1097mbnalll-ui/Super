@@ -263,6 +263,9 @@ struct StoreInfo: Sendable {
     var mapCenter: [Double]? = nil
     /// ترتيب أقسام الرئيسية (store.layout)
     var layout: [PromoSlot] = []
+    /// خدمة الطباعة (store.print): «قريباً»، وأقل طلب لو السلة طباعة بس
+    var printSoon = false
+    var printMinOrder: Double? = nil
 }
 
 struct Catalog: Sendable {
@@ -336,6 +339,10 @@ enum CatalogParser {
                                         return DailyDeal.Item(id: id, price: pr)
                                     })
         }
+        if let pr = s["print"] as? [String: Any] {
+            store.printSoon = (pr["soon"] as? Bool) ?? false
+            store.printMinOrder = num(pr["minOrder"])
+        }
         store.forYou = (s["forYou"] as? [Any])?.compactMap { str($0) } ?? []
         store.forOnly = (s["forOnly"] as? Bool) ?? false
         if s["lowAt"] != nil, let v = num(s["lowAt"]) { store.lowAt = Int(v) }
@@ -356,8 +363,9 @@ enum CatalogParser {
                 guard let sid = str(sc["id"]), let sname = str(sc["name"]) else { return nil }
                 return SubCategory(id: sid, name: sname)
             }
+            // قسم الطباعة «قريباً» من إعداد الطباعة (catSoon في الموقع)
             return Category(id: id, name: name, image: str(c["img"]), tint: str(c["tint"]),
-                            soon: (c["soon"] as? Bool) ?? false, subs: subs)
+                            soon: id == "print" ? store.printSoon : ((c["soon"] as? Bool) ?? false), subs: subs)
         }
 
         let products: [Product] = ((root["products"] as? [[String: Any]]) ?? []).compactMap { p in

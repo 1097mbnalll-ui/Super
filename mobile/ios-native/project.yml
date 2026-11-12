@@ -23,6 +23,11 @@ targets:
     platform: iOS
     sources:
       - path: OhodStore
+    # إشعارات حالة الطلب (APNs). App ID فيه Push مفعّل
+    entitlements:
+      path: OhodStore/OhodStore.entitlements
+      properties:
+        aps-environment: production
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: sa.ohod.store

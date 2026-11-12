@@ -2,9 +2,11 @@ import SwiftUI
 
 @main
 struct OhodStoreApp: App {
+    @UIApplicationDelegateAdaptor(PushDelegate.self) private var pushDelegate
     @State private var catalog = CatalogStore()
     @State private var cart = Cart()
     @State private var orders = OrderCenter()
+    @State private var wallet = WalletCenter()
 
     var body: some Scene {
         WindowGroup {
@@ -12,6 +14,7 @@ struct OhodStoreApp: App {
                 .environment(catalog)
                 .environment(cart)
                 .environment(orders)
+                .environment(wallet)
                 .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))   // عربي بأرقام إنجليزية (قرار المالك)
                 .tint(Theme.brand)
