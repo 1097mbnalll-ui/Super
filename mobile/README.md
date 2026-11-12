@@ -17,6 +17,8 @@ npm run sync        # يبني www ويزامنه مع ios/ و android/
 ```
 بناء آيفون يحتاج Xcode 26 (ماك أو خدمة بناء سحابية). بناء أندرويد يحتاج Android SDK (أو خدمة سحابية).
 
+**أندرويد وقوقل بلاي: الحالة والخطوات في `mobile/store/ANDROID.md`.**
+
 **البناء السحابي (موجود):** `.github/workflows/mobile-build.yml` على GitHub Actions (مجاني، المستودع عام). مع كل دفعة على `mobile-app` (أو يدوياً من تبويب Actions): أندرويد ينتج APK للتجربة (من صفحة التشغيل ← Artifacts)، وآيفون يتأكد إن المشروع ينبني بـ Xcode 26 للمحاكي (بدون توقيع). لو انضاف سر المستودع `GOOGLE_SERVICES_JSON` (نص ملف Firebase) تشتغل إشعارات أندرويد؛ بدونه زر الإشعارات مخفي في أندرويد (علامة `__FCM__`) لأن الإضافة تطيّح التطبيق بدون Firebase.
 الأيقونات والشاشة الافتتاحية من `assets/`: `npx capacitor-assets generate --ios --android`.
 

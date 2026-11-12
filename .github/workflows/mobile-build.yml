@@ -46,11 +46,19 @@ jobs:
       - name: gradle assembleDebug
         working-directory: mobile/android
         run: ./gradlew --no-daemon assembleDebug
+      - name: gradle bundleRelease (unsigned, proves the Play bundle builds)
+        working-directory: mobile/android
+        run: ./gradlew --no-daemon bundleRelease
       - uses: actions/upload-artifact@v4
         with:
           name: ohod-store-android-debug
           path: mobile/android/app/build/outputs/apk/debug/*.apk
           retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ohod-store-android-unsigned-aab
+          path: mobile/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 7
 
   ios:
     runs-on: macos-15
