@@ -42,11 +42,13 @@ def read_rows(path):
         yield code_of(g('رقم الصنف')), re.sub(r'\s+', ' ', str(g('اسم الصنف'))).strip(), str(g('الوحدة') or '').strip(), qty, round(price, 2)
 
 PACKS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'packs_map.json')
+HIDDEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hidden.json')
 
 def main(data_path, xlsx, dry=False):
     d = json.load(open(data_path))
     pmap = {k: v for k, v in json.load(open(PACKS)).items() if k != '_'} if os.path.exists(PACKS) else {}
-    gone = {'x' + k for k in pmap}
+    hidden = {x['bc'] for x in json.load(open(HIDDEN)).get('items', [])} if os.path.exists(HIDDEN) else set()
+    gone = {'x' + k for k in pmap} | {'x' + b for b in hidden}
     if any(p['id'] in gone for p in d['products']):
         d['products'] = [p for p in d['products'] if p['id'] not in gone]
     ps = d['products']
@@ -64,6 +66,7 @@ def main(data_path, xlsx, dry=False):
         best.pop(k, None); best[k] = row
     for code, name, unit, qty, price in best.values():
         if SKIP.search(name) or price <= 0: rep['skip'] += 1; continue
+        if code in hidden: rep['hidden'] += 1; continue
         if code in pmap: pack_rows[code] = (qty, price); continue
         good = bool(re.fullmatch(r'\d{6,14}', code))
         p = by_bc.get(code) if good else None
