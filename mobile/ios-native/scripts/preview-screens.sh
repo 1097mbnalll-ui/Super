@@ -61,4 +61,5 @@ shot 09-placed -seed-order -screen placed
 shot 10-account-order -seed-driver -screen account
 shot 11-order-details -seed-driver -screen orderdetails
 shot 12-home-order -seed-driver -screen home
+shot 13-sub-offer -seed-order -seed-sub -screen account
 ls -la "$OUT"

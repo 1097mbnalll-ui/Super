@@ -56,6 +56,32 @@ struct DriverInfo: Equatable {
     static func == (a: DriverInfo, b: DriverInfo) -> Bool { a.lat == b.lat && a.lng == b.lng && a.eta == b.eta && a.before == b.before }
 }
 
+/// بديل اقترحه المندوب لمنتج ناقص (من /track subs): الزبون يوافق أو يشيل المنتج (/sub-answer)
+struct SubOffer: Equatable, Identifiable {
+    var id: Int
+    var name: String        // المنتج الناقص
+    var qty: Int
+    var price: Double
+    var toID: String
+    var toName: String
+    var toUnit: String
+    var toPrice: Double
+    var toImage: String
+    var diff: Double        // الفرق على الإجمالي (+ زيادة، − نقص)
+    var toImageURL: URL? { AppConfig.asset(toImage) }
+
+    static func parse(_ raw: Any?) -> [SubOffer] {
+        ((raw as? [[String: Any]]) ?? []).compactMap { x in
+            guard let id = CatalogParser.num(x["id"]).map({ Int($0) }), let to = x["to"] as? [String: Any],
+                  let toID = to["id"] as? String else { return nil }
+            return SubOffer(id: id, name: x["name"] as? String ?? "", qty: Int(CatalogParser.num(x["qty"]) ?? 1),
+                            price: CatalogParser.num(x["price"]) ?? 0, toID: toID, toName: to["name"] as? String ?? "",
+                            toUnit: to["unit"] as? String ?? "", toPrice: CatalogParser.num(to["price"]) ?? 0,
+                            toImage: to["img"] as? String ?? "", diff: CatalogParser.num(x["diff"]) ?? 0)
+        }
+    }
+}
+
 enum OrderStatus {
     static func title(_ s: String) -> String {
         switch s {
@@ -103,6 +129,9 @@ final class OrderCenter {
     private(set) var sending = false
     /// موقع المندوب لكل طلب في الطريق (ما ينحفظ)
     private(set) var drivers: [String: DriverInfo] = [:]
+    /// بدائل تنتظر رد الزبون لكل طلب (ما تنحفظ، تجي من /track)
+    private(set) var subs: [String: [SubOffer]] = [:]
+    var pendingSubs: Int { subs.values.reduce(0) { $0 + $1.count } }
 
     /// محاولة إرسال ما تأكدت نتيجتها (النت انقطع). نعيد نفس المحتوى بنفس الرقم فما يتكرر الطلب
     private struct Attempt: Codable {
@@ -134,6 +163,9 @@ final class OrderCenter {
         drivers[order.no] = driver
         if address == nil { address = DeliveryAddress(lat: 24.845, lng: 46.815, details: "فيلا ١٢، الباب الأخضر") }
     }
+
+    /// للتصوير بس (-seed-sub)
+    func seedSubs(_ no: String, _ list: [SubOffer]) { subs[no] = list }
 
     // MARK: إرسال الطلب
 
@@ -252,6 +284,13 @@ final class OrderCenter {
             } else if json["ok"] as? Bool == true {
                 drivers[order.no] = nil
             }
+            if json["ok"] as? Bool == true {
+                let list = SubOffer.parse(json["subs"])
+                if subs[order.no] ?? [] != list {
+                    if list.count > (subs[order.no] ?? []).count { Haptics.warning() }
+                    subs[order.no] = list.isEmpty ? nil : list
+                }
+            }
             guard json["ok"] as? Bool == true, let st = json["status"] as? String,
                   let i = orders.firstIndex(where: { $0.no == order.no }), orders[i].status != st else { continue }
             orders[i].status = st
@@ -272,6 +311,7 @@ final class OrderCenter {
         let (status, json) = await API.post(catalog.apiBase, "/cancel", ["no": order.no, "phone": order.phone, "reason": "من التطبيق"])
         if json["ok"] as? Bool == true {
             if let i = orders.firstIndex(where: { $0.no == order.no }) { orders[i].status = "canceled" }
+            subs[order.no] = nil
             return nil
         }
         switch json["code"] as? String {
@@ -280,6 +320,36 @@ final class OrderCenter {
             return "بدأنا في طلبك، فما نقدر نلغيه من هنا. اتصل على المحل."
         case "slow_down": return "محاولات كثيرة، جرّب بعد شوي."
         default: return status == 0 ? "ما قدرنا نوصل للمحل. تأكد من النت." : "ما قدرنا نلغي الطلب. اتصل على المحل."
+        }
+    }
+
+    /// رد الزبون على بديل المندوب. nil = تم، غير كذا رسالة الخطأ
+    func answer(_ offer: SubOffer, accept: Bool, order: SavedOrder, catalog: CatalogStore) async -> String? {
+        let (status, json) = await API.post(catalog.apiBase, "/sub-answer", ["no": order.no, "phone": order.phone, "offer": offer.id, "accept": accept])
+        if json["ok"] as? Bool == true {
+            subs[order.no]?.removeAll { $0.id == offer.id }
+            if subs[order.no]?.isEmpty == true { subs[order.no] = nil }
+            if let t = CatalogParser.num((json["order"] as? [String: Any])?["total"]), let i = orders.firstIndex(where: { $0.no == order.no }) {
+                orders[i].total = t
+                // السطور المحفوظة صارت قديمة بعد التبديل: التفاصيل تعرض من الخادم بعدين
+                if accept {
+                    orders[i].lines = orders[i].lines?.filter { $0.name != offer.name }
+                    orders[i].lines?.append(SavedLine(key: offer.toID, name: offer.toName, unit: offer.toUnit, qty: offer.qty, price: offer.toPrice, old: nil))
+                } else {
+                    orders[i].lines = orders[i].lines?.filter { $0.name != offer.name }
+                }
+            }
+            Haptics.success()
+            return nil
+        }
+        switch json["code"] as? String {
+        case "last_item": return "هذا آخر منتج في طلبك. وافق على البديل أو ألغِ الطلب."
+        case "stale":
+            subs[order.no]?.removeAll { $0.id == offer.id }
+            return "الاقتراح تغيّر. حدّثنا الطلب."
+        case "bad_swap": return "البديل خلص للأسف. المندوب بيقترح غيره."
+        case "slow_down": return "محاولات كثيرة، جرّب بعد شوي."
+        default: return status == 0 ? "ما وصل ردك. تأكد من النت وجرّب مرة ثانية." : "ما وصل ردك. جرّب مرة ثانية."
         }
     }
 

@@ -93,12 +93,13 @@ private struct OrderBubble: View {
             .buttonStyle(PressableStyle(scale: 0.92))
             .accessibilityLabel("طلبك \(order.no): \(OrderStatus.title(order.status))")
 
-            if showTip {
-                Text(order.status == "onway" ? "طلبك في الطريق · اضغط تتابعه" : "تابع طلبك من هنا")
+            let hasSub = !(orders.subs[order.no] ?? []).isEmpty
+            if showTip || hasSub {
+                Text(hasSub ? "فيه بديل ينتظر موافقتك" : order.status == "onway" ? "طلبك في الطريق · اضغط تتابعه" : "تابع طلبك من هنا")
                     .font(.ui(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(Theme.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(hasSub ? Theme.copperInk : Theme.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .transition(.opacity.combined(with: .move(edge: .leading)))
             }
         }

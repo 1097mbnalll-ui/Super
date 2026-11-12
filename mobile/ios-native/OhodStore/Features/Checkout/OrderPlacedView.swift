@@ -128,6 +128,7 @@ struct CurrentOrderCard: View {
                         .contentTransition(.opacity)
                     Text(detailLine(driver)).font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
                 }
+                ForEach(orders.subs[order.no] ?? []) { SubOfferCard(offer: $0, order: order) }
                 VStack(spacing: 5) {
                     HStack(spacing: 6) {
                         ForEach(1...4, id: \.self) { i in
@@ -206,6 +207,7 @@ struct CurrentOrderCard: View {
         .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Theme.line))
         .shadow(color: .black.opacity(0.08), radius: 14, y: 5)
         .animation(.smooth, value: driver)
+        .animation(.smooth, value: orders.subs[order.no])
         .sheet(isPresented: $showDetails) { OrderDetailView(order: order) }
         .confirmationDialog("تلغي طلب \(order.no)؟", isPresented: $confirmCancel, titleVisibility: .visible) {
             Button("إيه، ألغِ الطلب", role: .destructive) {
@@ -297,6 +299,7 @@ struct OrderDetailView: View {
                             .padding(12)
                             .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
+                    ForEach(orders.subs[order.no] ?? []) { SubOfferCard(offer: $0, order: order) }
                     VStack(spacing: 0) {
                         ForEach(rows) { line in
                             HStack(spacing: 10) {

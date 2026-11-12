@@ -58,6 +58,7 @@ struct RootView: View {
                 .tag(AppTab.cart)
             TabStack(path: $accountPath) { AccountView(tab: $tab) }
                 .tabItem { Label("حسابي", systemImage: icon("account", "person.fill")) }
+                .badge(orders.pendingSubs)
                 .tag(AppTab.account)
         }
         // لما يتغير «شكل التطبيق» من الإدارة نعيد رسم الواجهة بالإعدادات الجديدة
@@ -113,6 +114,11 @@ struct RootView: View {
             o.subtotal = picks.reduce(0) { $0 + $1.price }; o.fee = 0; o.savings = 3.5
             o.details = "فيلا ١٢، الباب الأخضر"; o.sub = "swap"; o.lat = 24.8452; o.lng = 46.8148
             orders.seedPreview(o, driver: DriverInfo(lat: 24.8418, lng: 46.8102, eta: 8, before: 1, near: false))
+        }
+        if args.contains("-seed-sub"), let o = orders.orders.first, let index = catalog.index, index.featured.count > 6 {
+            let a = index.featured[0], b = index.featured[6]
+            orders.seedSubs(o.no, [SubOffer(id: 1, name: a.name, qty: 1, price: a.price, toID: b.id, toName: b.name, toUnit: b.unit,
+                                            toPrice: b.price, toImage: b.image ?? "", diff: ((b.price - a.price) * 100).rounded() / 100)])
         }
         guard let i = args.firstIndex(of: "-screen"), i + 1 < args.count else { return }
         let value = args[i + 1]
