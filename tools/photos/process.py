@@ -11,8 +11,9 @@ from PIL import Image, ImageFilter, ImageEnhance, ImageOps, ImageStat
 from rembg import remove, new_session
 
 LID = 1.0  # --lid 0.55 للعلب المصورة من فوق
+BOX = False  # --box للكراتين: تعديل الزاوية لمستطيل مستقيم
 HULL = False  # --hull للكراتين والعلب المستقيمة (القناع = الشكل الكامل)
-S = 1000; BOTTOM = 0.14; MAX_W = 0.84; MAX_H = 0.78; TARGET_L = 150; MIN_PX = 450
+S = 1000; BOTTOM = 0.14; MAX_W = 0.84; MAX_H = 0.78; TARGET_L = 165; MIN_PX = 450
 
 def fix_mask(a):
     """يسد الفراغات داخل المنتج (مثل المربع الأبيض على علبة كيري)، ويخلي أكبر قطعة بس.
@@ -63,6 +64,42 @@ def fix_mask(a):
     arr = np.array(a); arr[holes] = 255; arr[~(m | holes)] = 0
     return Image.fromarray(arr)
 
+def box_quad(a):
+    """أضلاع الكرتون الأربعة من حدود القناع: نقسم الحدود لأربع جهات ونرسم خط لكل جهة (أقل مربعات)، والزوايا = تقاطع الخطوط"""
+    import numpy as np
+    m = np.array(a) > 128; H, W = m.shape
+    ys, xs = np.nonzero(m)
+    if len(xs) < 1000: return None
+    x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), ys.max(); cw, ch = x1 - x0, y1 - y0
+    rows = np.arange(y0 + ch * 0.15, y1 - ch * 0.15, max(1, ch // 80)).astype(int)
+    cols = np.arange(x0 + cw * 0.15, x1 - cw * 0.15, max(1, cw // 80)).astype(int)
+    L = [(np.nonzero(m[y])[0].min(), y) for y in rows if m[y].any()]
+    R = [(np.nonzero(m[y])[0].max(), y) for y in rows if m[y].any()]
+    T = [(x, np.nonzero(m[:, x])[0].min()) for x in cols if m[:, x].any()]
+    B = [(x, np.nonzero(m[:, x])[0].max()) for x in cols if m[:, x].any()]
+    def fit(pts, vertical):
+        P = np.array(pts, float)
+        # خط متين: نشيل النقاط البعيدة (الزاوية الممسوحة) ونعيد
+        for _ in range(3):
+            if vertical: k, c = np.polyfit(P[:, 1], P[:, 0], 1); r = P[:, 0] - (k * P[:, 1] + c)
+            else: k, c = np.polyfit(P[:, 0], P[:, 1], 1); r = P[:, 1] - (k * P[:, 0] + c)
+            keep = np.abs(r) <= max(3, 2.0 * np.median(np.abs(r)) + 1)
+            if keep.all() or keep.sum() < 6: break
+            P = P[keep]
+        return k, c
+    l, r_, t, b = fit(L, True), fit(R, True), fit(T, False), fit(B, False)
+    def cross(v, h):  # x = kv*y + cv ; y = kh*x + ch
+        kv, cv = v; kh, chh = h; y = (kh * cv + chh) / (1 - kh * kv); return (kv * y + cv, y)
+    return (cross(l, t), cross(r_, t), cross(r_, b), cross(l, b))
+
+def persp_coeffs(dst_pts, src_pts):
+    import numpy as np
+    A = []; B = []
+    for (x, y), (u, v) in zip(dst_pts, src_pts):
+        A.append([x, y, 1, 0, 0, 0, -u * x, -u * y]); B.append(u)
+        A.append([0, 0, 0, x, y, 1, -v * x, -v * y]); B.append(v)
+    return np.linalg.solve(np.array(A, float), np.array(B, float)).tolist()
+
 def lum(img, mask):
     return ImageStat.Stat(img.convert('L'), mask).mean[0]
 
@@ -78,7 +115,29 @@ def process(src, dst, sess):
     a = cut.split()[-1].point(lambda v: 0 if v < 30 else v)
     a = fix_mask(a)
     cut = im.copy()  # الألوان من الصورة الأصلية (القص يبهّت الحواف)، والقناع من القص
+    if BOX:
+        # الكرتون: نلقى أضلاع الواجهة الأربعة (حتى لو زاوية ممسوحة) ونفردها لمستطيل، كأن الكاميرا قدّام نصه بالضبط
+        quad = box_quad(a)
+        if quad:
+            (tl, tr, br, bl) = quad
+            import math
+            Wd = int((math.dist(tl, tr) + math.dist(bl, br)) / 2); Hd = int((math.dist(tl, bl) + math.dist(tr, br)) / 2)
+            coeffs = persp_coeffs([(0, 0), (Wd, 0), (Wd, Hd), (0, Hd)], [tl, tr, br, bl])
+            rgb0 = im.transform((Wd, Hd), Image.PERSPECTIVE, coeffs, Image.BICUBIC)
+            # القناع بعد التعديل، وكل عمود يتعبى من أول المنتج لين تحت (يرجّع الزوايا الممسوحة تحت ويخلي شكل الأعلى مثل الغطيان)
+            import numpy as np
+            am = np.array(a.transform((Wd, Hd), Image.PERSPECTIVE, coeffs, Image.BILINEAR)) > 128
+            out = np.zeros((Hd, Wd), np.uint8)
+            for x in range(Wd):
+                col = np.nonzero(am[:, x])[0]
+                if len(col): out[col.min():, x] = 255
+            a = Image.fromarray(out).filter(ImageFilter.GaussianBlur(0.8))
+            cut = rgb0; cut.putalpha(a); cut = cut.crop(a.getbbox())
+            return finish(cut, a, dst, src)
     cut.putalpha(a); box = a.getbbox(); cut = cut.crop(box)
+    return finish(cut, None, dst, src)
+
+def finish(cut, _a, dst, src):
     # العلب والأسطوانات المصورة من فوق شوي: نضغط منطقة الغطاء (أعلى ٣٠٪) عمودياً فتبان مستقيمة قدّام الكاميرا
     if LID < 1:
         w0, h0 = cut.size; lid = int(h0 * 0.30)
@@ -96,7 +155,7 @@ def process(src, dst, sess):
     # رفع الإضاءة بمنحنى (gamma) يرفع الدرجات المتوسطة والغامقة بدون ما يحرق الأبيض واللمعة
     import math
     k = max(0.85, min(1.4, TARGET_L / max(l0, 1)))
-    g = max(0.6, min(1.15, math.log(TARGET_L / 255) / math.log(max(l0, 1) / 255)))
+    g = max(0.5, min(1.15, math.log(TARGET_L / 255) / math.log(max(l0, 1) / 255)))
     lut = [round(255 * (i / 255) ** g) for i in range(256)]
     rgb = rgb.point(lut * 3)
     rgb = ImageEnhance.Contrast(rgb).enhance(1.06)
@@ -123,5 +182,6 @@ if __name__ == '__main__':
     args = sys.argv[1:]
     if '--lid' in args: i = args.index('--lid'); LID = float(args[i + 1]); del args[i:i + 2]
     if '--hull' in args: HULL = True; args.remove('--hull')
+    if '--box' in args: BOX = True; HULL = True; args.remove('--box')
     sess = new_session(os.environ.get('MODEL', 'isnet-general-use'))
     print(json.dumps(process(args[0], args[1], sess), ensure_ascii=False))
