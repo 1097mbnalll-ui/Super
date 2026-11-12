@@ -84,6 +84,8 @@ workflows:
         excludes:
           - 'mobile/ios-native/design/'
           - 'mobile/ios-native/research/'
+          - 'mobile/ios-native/fastlane/'
+          - 'mobile/ios-native/scripts/'
           - '**/*.md'
     environment:
       xcode: latest
@@ -128,14 +130,21 @@ workflows:
           app-store-connect apps list --bundle-id-identifier sa.ohod.store 2>&1 | head -30 || true
           if [ -z "$APP_STORE_CONNECT_PRIVATE_KEY" ]; then echo "NO_KEY_ENV"; exit 0; fi
           python3 - <<'PY'
-          import json, os
+          import json, os, re, sys
+          k = os.environ["APP_STORE_CONNECT_PRIVATE_KEY"].replace("\\n", "\n").strip()
+          body = re.sub(r"-----[^-]+-----|\s+", "", k)
+          pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(body[i:i+64] for i in range(0, len(body), 64)) + "\n-----END PRIVATE KEY-----\n"
+          print("key chars:", len(body), "header ok:", k.startswith("-----BEGIN"), "key id len:", len(os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"]))
+          open("/tmp/AuthKey.p8", "w").write(pem)
           json.dump({"key_id": os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"], "issuer_id": os.environ["APP_STORE_CONNECT_ISSUER_ID"],
-                     "key": os.environ["APP_STORE_CONNECT_PRIVATE_KEY"], "in_house": False}, open("/tmp/asc.json", "w"))
+                     "key": pem, "in_house": False}, open("/tmp/asc.json", "w"))
           PY
+          openssl pkey -in /tmp/AuthKey.p8 -noout && echo "KEY_OK" || { echo "KEY_BAD"; exit 1; }
           cd mobile/ios-native
           fastlane deliver --api_key_path /tmp/asc.json --app_identifier sa.ohod.store --skip_binary_upload true \
             --overwrite_screenshots true --force true --run_precheck_before_submit false --submit_for_review false \
             --metadata_path fastlane/metadata --screenshots_path fastlane/screenshots --ignore_language_directory_validation true 2>&1 | tail -80
+          test ${PIPESTATUS[0]} -eq 0
 
   # ٤) التطبيق الأصلي: بناء موقّع ورفع لـ TestFlight. يشتغل لما ينرفع tag يبدأ بـ ios-native-
   ios-native-testflight:
