@@ -1187,6 +1187,14 @@ async function loadData(env) {
 // يوم الرياض (UTC+3) عشان عرض اليوم يتطابق مع اللي يشوفه الزبون
 function riyadhDayNo() { return Math.floor((Date.now() + 3 * 3600e3) / 864e5); }
 
+// مواعيد استقبال الطلبات اليومية (توقيت الرياض): store.openAt / store.closeAt مثل "12:00" و "01:00"
+function openNow(S, now = Date.now()) {
+  const hm = (x) => { const q = String(x || "").split(":"); return (Number(q[0]) || 0) * 60 + (Number(q[1]) || 0); };
+  if (!S || !S.openAt || !S.closeAt) return true;
+  const m = Math.floor((now / 60000 + 180) % 1440), o = hm(S.openAt), c = hm(S.closeAt);
+  return o === c ? true : o < c ? (m >= o && m < c) : (m >= o || m < c);
+}
+
 function priceOrder(data, body) {
   const S = data.store || {};
   const byId = {};
@@ -1260,7 +1268,7 @@ function priceOrder(data, body) {
     if (max > 0 && qty > max) return {error:'item_limit',id,max};
   }
   if (!count) return { error: "empty" };
-  if (S.closed) return { error: "closed" };
+  if (S.closed || !openNow(S)) return { error: "closed" };
   const onlyPrint = lines.length > 0 && lines.every((l) => l.p.print), PR = S.print && typeof S.print === "object" ? S.print : null;
   const minOrder = onlyPrint && PR && PR.minOrder != null ? Number(PR.minOrder) || 0 : Number(S.minOrder) || 0;
   if (minOrder > 0 && base + dealSum < minOrder) return { error: "min_order", min: minOrder };
