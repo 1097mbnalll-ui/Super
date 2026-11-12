@@ -128,19 +128,45 @@ workflows:
         script: |
           set -o pipefail
           python3 - <<'PY'
-          import base64, json, os, re
-          k = os.environ["APP_STORE_CONNECT_PRIVATE_KEY"].replace("\\n", "\n").strip()
-          if "BEGIN" not in k:
-              try: k = base64.b64decode(k).decode()
-              except Exception: pass
-          body = re.sub(r"-----[^-]+-----|\s+", "", k)
-          pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(body[i:i+64] for i in range(0, len(body), 64)) + "\n-----END PRIVATE KEY-----\n"
-          print("key chars:", len(body), "| key id len:", len(os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"]), "| issuer set:", bool(os.environ.get("APP_STORE_CONNECT_ISSUER_ID")))
-          open("/tmp/AuthKey.p8", "w").write(pem)
-          json.dump({"key_id": os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"], "issuer_id": os.environ["APP_STORE_CONNECT_ISSUER_ID"],
-                     "key": pem, "in_house": False}, open("/tmp/asc.json", "w"))
+          import base64, glob, json, os, re, subprocess
+          E = os.environ
+          names = sorted(k for k in E if "APP_STORE" in k or k.startswith("ASC") or "PRIVATE_KEY" in k or "CM_APP_STORE" in k)
+          print("env names:", names)
+          def kind(v):
+              if not v: return "empty"
+              if "BEGIN" in v: return "pem(lines=%d,len=%d)" % (v.count("\n") + 1, len(v))
+              if os.path.exists(v.strip()): return "path-to-existing-file"
+              if v.strip().startswith("/"): return "path-missing"
+              return "other(len=%d)" % len(v)
+          for n in names:
+              if n != "APP_STORE_CONNECT_KEY_IDENTIFIER" and n != "APP_STORE_CONNECT_ISSUER_ID": print(" ", n, "=", kind(E[n]))
+          cands = []
+          for n in names:
+              v = E[n]
+              if not v: continue
+              if "BEGIN" in v: cands.append(("env:" + n, v.replace("\\n", "\n")))
+              elif os.path.exists(v.strip()) and os.path.isfile(v.strip()): cands.append(("file:" + n, open(v.strip()).read()))
+              else:
+                  try:
+                      d = base64.b64decode(v).decode()
+                      if "BEGIN" in d: cands.append(("b64:" + n, d))
+                  except Exception: pass
+          for pat in ["~/.appstoreconnect/private_keys/*.p8", "~/.private_keys/*.p8", "/Users/builder/**/AuthKey_*.p8", "/tmp/**/AuthKey_*.p8"]:
+              for f in glob.glob(os.path.expanduser(pat), recursive=True)[:5]:
+                  print("found key file:", f); cands.append(("file:" + f, open(f).read()))
+          print("candidates:", [c[0] for c in cands])
+          ok = None
+          for name, raw in cands:
+              body = re.sub(r"-----[^-]+-----|\s+", "", raw)
+              pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(body[i:i+64] for i in range(0, len(body), 64)) + "\n-----END PRIVATE KEY-----\n"
+              open("/tmp/AuthKey.p8", "w").write(pem)
+              r = subprocess.run(["openssl", "pkey", "-in", "/tmp/AuthKey.p8", "-noout"], capture_output=True)
+              print("try", name, "chars", len(body), "->", "OK" if r.returncode == 0 else "no")
+              if r.returncode == 0: ok = pem; break
+          if not ok: print("KEY_NOT_FOUND"); raise SystemExit(1)
+          json.dump({"key_id": E["APP_STORE_CONNECT_KEY_IDENTIFIER"], "issuer_id": E["APP_STORE_CONNECT_ISSUER_ID"], "key": ok, "in_house": False}, open("/tmp/asc.json", "w"))
           PY
-          openssl pkey -in /tmp/AuthKey.p8 -noout && echo "KEY_PARSES_OK" || { echo "KEY_BAD"; exit 1; }
+          echo "KEY_PARSES_OK"
           # تسجيل دخول تجريبي قبل الرفع
           ruby -e 'require "spaceship"; t = Spaceship::ConnectAPI::Token.from_json_file("/tmp/asc.json"); Spaceship::ConnectAPI.token = t; puts "LOGIN_OK apps=" + Spaceship::ConnectAPI::App.all.map(&:bundle_id).inspect'
           cd mobile/ios-native
