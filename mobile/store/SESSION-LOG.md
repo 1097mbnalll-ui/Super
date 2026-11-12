@@ -71,3 +71,18 @@
 - اختبارات قبل أي نشر: `node --test server/test/{admin-access,operations,pos,reliability}.mjs` (٣٣)، `staff-and-pos`, `ops-features`, `unified-login`, `prep-mode`, `packs`, `native-push` (٢٩).
 - بعد أي دمج: `node --input-type=module -e "import('./server/worker.js')"`.
 - المنتج بـ`id = "x"+الباركود`. الصور في `p/`. `data.json` سطر واحد مصغّر (اكتبه بـ`separators=(',',':')`).
+
+## ١٢) نتيجة رفع صفحة المتجر لـ App Store Connect (١٢ نوفمبر، بناء Codemagic `ios-store-listing` رقم #6، رقمه `6af60c76ea5b7590130945a9`)
+**نجح، وسجله يقول:**
+- **الدخول:** `LOGIN_OK apps=["sa.ohod.store"]`.
+- **النصوص (للغة `ar-SA`، آبل قبلتها بدون ما نحتاج `ar`):** الوصف، الكلمات المفتاحية، النص الترويجي، الاسم، العنوان الفرعي، رابط الدعم، رابط التسويق، رابط الخصوصية، على الإصدار 1.0.
+- **اللقطات:** رُفعت ١٢ لقطة (٦ بمقاس ١٢٠٦×٢٦٢٢ و٦ بمقاس ١٣٢٠×٢٨٦٨)، وقال fastlane: `Successfully uploaded all screenshots`. صنّفها آبل في مجموعتين: `APP_IPHONE_61` للمقاس ١٢٠٦×٢٦٢٢ و`APP_IPHONE_67` للمقاس ١٣٢٠×٢٨٦٨. **هل مجموعة ١٢٠٦×٢٦٢٢ هي اللي تسميها واجهة آبل «iPhone with Dynamic Island» الإجبارية؟ ما أقدر أتأكد من السجل، لازم ينشاف في App Store Connect.**
+- **ما انلمس:** معلومات المراجع، الحقوق، التصنيف (المالك عبّاها يدوي)، ولا قُدّم للمراجعة ولا فُعّل النشر التلقائي. `submit_for_review=false` و`automatic_release=false`.
+
+**دروس من هالجولة (لا تكررها):**
+١) **متغير `APP_STORE_CONNECT_PRIVATE_KEY` في Codemagic ما هو محتوى المفتاح** (طوله ٧٢ حرف، مو ملف `.p8` ~٢٠٠ حرف). المفتاح الحقيقي ملف على الجهاز: `~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8`. السكربت يلقاه تلقائياً من هناك.
+٢) **لا تبحث بـ `**` في `/Users/builder`**: يعلّق ٣٠ دقيقة وينتهي البناء بدون سجل (علّق بنائين بسببه).
+٣) كل خطوة ثقيلة تنفصل بخطوة وحدها ومعها `scripts/run_limited.py` (مهلة وسجل لحظي).
+٤) الخطة المجانية تشغّل بناء واحد بس، وكل دفعة على `mobile-app` تطلّع بناء معاينة تلقائي (`ios-native-preview`) ممكن يسد الطابور: ألغِه من واجهة Codemagic أو API (`POST /builds/<id>/cancel`) قبل بناء مهم.
+
+**اللي بقي:** المالك يفتح صفحة الإصدار 1.0 في App Store Connect ويشوف النصوص واللقطات، ولو تمام يضغط Submit بنفسه (أو يقول صراحة وأضغطه من Codemagic). **لا تقدّم للمراجعة بدون إذن صريح.**
