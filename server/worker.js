@@ -582,7 +582,21 @@ export default {
         if (env.DB) { await ensureSchema(env); await logStmt(env, staff(body), "apns_key", "", { keyId: kid || null }).run(); }
       }
       const c = await apnsCreds(env);
-      return reply(200, { ok: true, ready: !!(c.pem && c.kid && c.team), hasKey: !!c.pem, keyId: c.kid || "", team: !!c.team });
+      let test = null;
+      if (body.test && env.DB) {
+        // «جرّب إشعار»: يرسل لآخر جوال آيفون اشترك، ويرجع رد آبل
+        await ensureSchema(env);
+        const sub = await env.DB.prepare("SELECT endpoint FROM subs WHERE endpoint LIKE 'apns:%' ORDER BY created DESC LIMIT 1").first();
+        if (!sub) test = { status: 0, reason: "no_device" };
+        else {
+          await env.LOCKS.delete("apns_last");
+          let st = 0; try { st = await apnsPush(env, sub.endpoint.slice(5), { title: "تجربة إشعار ✓", body: "إشعارات متاجر أحد شغّالة", url: "./", tag: "test" }); } catch (e) { await apnsNote(env, { status: 0, reason: "error: " + String(e && e.message || e).slice(0, 200) }); }
+          const last = await env.LOCKS.get("apns_last", "json");
+          test = st >= 200 && st < 300 ? { status: st, reason: "" } : (last || { status: st, reason: "" });
+        }
+      }
+      const last = await env.LOCKS.get("apns_last", "json");
+      return reply(200, { ok: true, ready: !!(c.pem && c.kid && c.team), hasKey: !!c.pem, keyId: c.kid || "", team: !!c.team, test, last });
     }
     if (path === "/admin/offers-advice") {
       if (principal) return reply(403, { ok: false, code: "forbidden" });
@@ -1768,7 +1782,7 @@ async function pushTo(env, subs, msg) {
       const st = ep.startsWith("apns:") ? await apnsPush(env, ep.slice(5), msg) : ep.startsWith("fcm:") ? await fcmPush(env, ep.slice(4), msg) : await webPush(env, s, msg);
       if (st >= 200 && st < 300) ok++;
       else if (st === 404 || st === 410 || st === -410) await env.DB.prepare("DELETE FROM subs WHERE endpoint = ?").bind(s.endpoint).run();
-    } catch {}
+    } catch (e) { if (String(s.endpoint || "").startsWith("apns:")) await apnsNote(env, { status: 0, reason: "error: " + String(e && e.message || e).slice(0, 200) }); }
   }));
   return ok;
 }
@@ -1778,6 +1792,14 @@ async function pushTo(env, subs, msg) {
 const pemDer = (pem) => Uint8Array.from(atob(String(pem).replace(/-----[^-]+-----/g, "").replace(/\s+/g, "")), (c) => c.charCodeAt(0));
 const b64uText = (o) => b64u(new TextEncoder().encode(typeof o === "string" ? o : JSON.stringify(o)));
 let apnsJwt = null, fcmTok = null;
+// آخر رد غلط من آبل (للتشخيص في الإدارة وسجل العمليات)
+async function apnsNote(env, info) {
+  try {
+    info = { ...info, at: Date.now() };
+    if (env.LOCKS) await env.LOCKS.put("apns_last", JSON.stringify(info));
+    if (env.DB) await logStmt(env, "الخادم", "apns_fail", "", info).run();
+  } catch {}
+}
 // المفتاح من أسرار Cloudflare، أو اللي رفعه المالك من الإدارة (KV)
 async function apnsCreds(env) {
   const kv = env.LOCKS;
@@ -1787,7 +1809,7 @@ async function apnsCreds(env) {
 }
 async function apnsPush(env, token, msg) {
   const c = await apnsCreds(env);
-  if (!c.pem || !c.kid || !c.team) return 0;
+  if (!c.pem || !c.kid || !c.team) { await apnsNote(env, { status: 0, reason: "missing_key" }); return 0; }
   const now = Math.floor(Date.now() / 1000);
   if (!apnsJwt || now - apnsJwt.at > 45 * 60 || apnsJwt.kid !== c.kid) {   // آبل تطلب تجديد الرمز كل أقل من ساعة، وما يزيد على مرة كل ٢٠ دقيقة
     const key = await crypto.subtle.importKey("pkcs8", pemDer(c.pem), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
@@ -1801,7 +1823,10 @@ async function apnsPush(env, token, msg) {
     headers: { "authorization": "bearer " + apnsJwt.jwt, "apns-topic": env.APNS_TOPIC || "sa.ohod.store", "apns-push-type": "alert", "apns-priority": "10", "apns-expiration": String(now + 86400), "content-type": "application/json" },
     body: JSON.stringify({ aps: { alert: { title: String(msg.title || ""), body: String(msg.body || "") }, sound: "default", "thread-id": String(msg.tag || "") }, url: msg.url || "./", tag: msg.tag || "" }),
   });
-  if (r.status === 410 || r.status === 400) { const j = await r.json().catch(() => ({})); if (r.status === 410 || j.reason === "BadDeviceToken" || j.reason === "Unregistered" || j.reason === "DeviceTokenNotForTopic") return -410; }
+  if (r.status >= 200 && r.status < 300) { try { if (env.LOCKS) await env.LOCKS.put("apns_last", JSON.stringify({ status: r.status, reason: "", host, id: r.headers.get("apns-id") || "", at: Date.now() })); } catch {} return r.status; }
+  const j = await r.json().catch(() => ({}));
+  await apnsNote(env, { status: r.status, reason: j.reason || "", host });
+  if (r.status === 410 || j.reason === "BadDeviceToken" || j.reason === "Unregistered" || j.reason === "DeviceTokenNotForTopic") return -410;
   return r.status;
 }
 async function fcmAccess(env, sa) {

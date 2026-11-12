@@ -6,6 +6,8 @@
 - المنتج الجديد: ينضاف بقسمه حسب اسمه (classify.py)، واللي كميته صفر ينضاف «نفد».
 - ما يلمس: الصور، الأقسام، الخيارات (packs)، الإعدادات. التكلفة والكميات بالعدد مكانها الخادم (D1) مو هالملف.
 قرار المالك ١١ نوفمبر ٢٠٢٦: كل منتج بالملف ينضاف، واللي مخزونه صفر يطلع «نفد»، وتحديث يومي للمخزون والأسعار.
+- الشدّات والكراتين اللي في packs_map.json (قرار المالك ١٢ نوفمبر) ما تنضاف منتج منفصل: سعرها يصير سعر خيارها داخل منتج
+  الحبة، وكميتها × عدد حباتها تنضاف لمخزون الحبة (المخزون بالحبات)، والمنتج المنفصل القديم ينشال.
 """
 import sys, json, re, hashlib, collections, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -39,15 +41,21 @@ def read_rows(path):
         except (TypeError, ValueError): qty = 0
         yield code_of(g('رقم الصنف')), re.sub(r'\s+', ' ', str(g('اسم الصنف'))).strip(), str(g('الوحدة') or '').strip(), qty, round(price, 2)
 
+PACKS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'packs_map.json')
+
 def main(data_path, xlsx, dry=False):
     d = json.load(open(data_path))
+    pmap = {k: v for k, v in json.load(open(PACKS)).items() if k != '_'} if os.path.exists(PACKS) else {}
+    gone = {'x' + k for k in pmap}
+    if any(p['id'] in gone for p in d['products']):
+        d['products'] = [p for p in d['products'] if p['id'] not in gone]
     ps = d['products']
     by_bc = {p['bc']: p for p in ps if p.get('bc')}
     by_id = {p['id']: p for p in ps}
     names = {key(p['name']) for p in ps}
     by_name = {}
     for p in ps: by_name.setdefault(key(p['name']), p)
-    rep = collections.Counter(); changed = []; seen = set(); qty_of = {}
+    rep = collections.Counter(); changed = []; seen = set(); qty_of = {}; pack_rows = {}
     # الملف فيه أحياناً نفس الباركود (أو نفس الاسم) أكثر من سطر: المعتمد آخر سطر (قرار المالك)
     best = {}
     for row in read_rows(xlsx):
@@ -56,6 +64,7 @@ def main(data_path, xlsx, dry=False):
         best.pop(k, None); best[k] = row
     for code, name, unit, qty, price in best.values():
         if SKIP.search(name) or price <= 0: rep['skip'] += 1; continue
+        if code in pmap: pack_rows[code] = (qty, price); continue
         good = bool(re.fullmatch(r'\d{6,14}', code))
         p = by_bc.get(code) if good else None
         p = p or by_id.get('x' + code if good else 'xn' + hashlib.sha1(name.encode()).hexdigest()[:10])
@@ -64,6 +73,8 @@ def main(data_path, xlsx, dry=False):
         if p and p['id'] in seen: rep['repeat'] += 1; continue
         if p:
             seen.add(p['id']); qty_of[p['id']] = max(0, int(qty))
+            # الكرتون والشدّة من عمود «الوحدة» (قرار المالك ١٢ نوفمبر): الوحدة تتبع الملف، فيطلع المنتج في قسم «الكراتين والشدّات»
+            if UNIT.get(unit) in ('كرتون', 'شدّة') and p.get('unit') != UNIT[unit]: p['unit'] = UNIT[unit]; rep['unit'] += 1
             avail = qty > 0
             if bool(p.get('stock')) != avail: p['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
             # سعر الملف = السعر الأساسي. المنتج اللي عليه عرض (old): العرض يبقى، و«السعر قبل» يصير سعر الملف.
@@ -89,6 +100,18 @@ def main(data_path, xlsx, dry=False):
         qty_of[np['id']] = max(0, int(qty))
         ps.append(np); by_id[np['id']] = np; names.add(key(name)); rep['added'] += 1
         if good: by_bc[code] = np
+    # الشدّة/الكرتون: سعر الخيار من الملف، والكمية بالحبات تنضاف للحبة
+    for code, (qty, price) in pack_rows.items():
+        m = pmap[code]; b = by_id.get(m['base'])
+        if not b: rep['pack_no_base'] += 1; continue
+        pk = b.setdefault('packs', [])
+        o = next((x for x in pk if int(x.get('n') or 0) == int(m['n'])), None)
+        if not o: o = {'u': m['u'], 'n': int(m['n']), 'price': price}; pk.append(o); rep['pack_added'] += 1
+        elif abs(float(o.get('price') or 0) - price) >= 0.01: changed.append((b['name'] + ' · ' + o['u'], o['price'], price)); o['price'] = price; rep['pack_price'] += 1
+        qty_of[b['id']] = qty_of.get(b['id'], 0) + max(0, int(qty)) * int(m['n'])
+        avail = qty_of[b['id']] > 0
+        if bool(b.get('stock')) != avail: b['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
+        rep['pack_rows'] += 1
     if not dry: json.dump(d, open(data_path, 'w'), ensure_ascii=False, separators=(',', ':'))
     # الكميات بالعدد للخادم (D1 جدول stock): python3 tools/daily/d1_stock.py الملف_هذا
     out = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--stock-out=')), None)

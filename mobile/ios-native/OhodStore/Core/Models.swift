@@ -49,6 +49,7 @@ struct Category: Hashable, Sendable, Identifiable {
         case "clean": return "🧴"
         case "care": return "🧼"
         case "misc": return "🏠"
+        case "cartons": return "📦"
         case "print": return "🖨️"
         default: return "🛒"
         }
@@ -78,6 +79,11 @@ struct Product: Hashable, Sendable, Identifiable {
 
     var imageURL: URL? { AppConfig.asset(image) }
     var hasPhoto: Bool { image?.hasPrefix("p/") == true }
+    /// كرتون أو شدّة (الوحدة من ملف التحديث اليومي، أو خيار بيع) ← قسم «الكراتين والشدّات»
+    var isCarton: Bool {
+        let re = ["كرتون", "كرتونه", "شدّة", "شدة", "شده"]
+        return re.contains { unit.hasPrefix($0) } || packs.contains { pk in pk.price > 0 && re.contains { pk.unit.hasPrefix($0) } }
+    }
     var discount: Double? {
         guard let old, old > price else { return nil }
         return old - price

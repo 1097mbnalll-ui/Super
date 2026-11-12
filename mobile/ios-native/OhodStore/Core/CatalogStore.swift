@@ -20,6 +20,10 @@ struct CatalogIndex: Sendable {
             byId[p.id] = p
             byCategory[p.cat, default: []].append(p)
         }
+        // قسم «الكراتين والشدّات» (cartons): كل منتج وحدته كرتون/شدّة أو له خيار كرتون/شدّة، من كل الأقسام (مثل الموقع)
+        if catalog.categories.contains(where: { $0.id == "cartons" }) {
+            byCategory["cartons"] = catalog.products.filter(\.isCarton)
+        }
         // داخل كل قسم: المتوفر أول، وبعده اللي له صورة، مع الحفاظ على ترتيب المتجر
         for (k, list) in byCategory {
             byCategory[k] = list.enumerated().sorted { a, b in
@@ -33,7 +37,7 @@ struct CatalogIndex: Sendable {
         let catNames = Dictionary(catalog.categories.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
         let search = catalog.products.filter { !$0.isPrint }.map { p -> (id: String, text: String, barcode: String) in
             // نفس فهرس الموقع: الاسم والإنجليزي والباركود واسم القسم والخيارات
-            var text = [p.name, p.nameEN ?? "", p.barcode ?? "", catNames[p.cat] ?? ""].joined(separator: " ")
+            var text = [p.name, p.nameEN ?? "", p.barcode ?? "", catNames[p.cat] ?? "", p.unit, p.isCarton ? "كرتون كرتونه شده شد كراتين جملة" : ""].joined(separator: " ")
             if !p.packs.isEmpty { text += " " + p.packs.map(\.unit).joined(separator: " ") + " كرتون كرتونه شده شد باكت علبه" }
             if water?.firstMatch(in: p.name, range: NSRange(p.name.startIndex..., in: p.name)) != nil { text += " موية مويه مويا مياه ماء" }
             return (id: p.id, text: ArabicSearch.normalize(text), barcode: p.barcode ?? "")

@@ -8,7 +8,7 @@ struct CategoriesView: View {
 
     private static let groups: [(emoji: String, title: String, ids: [String])] = [
         ("🍞", "الطازج والمخبز", ["bakery", "dairy", "cheese", "veg", "meat"]),
-        ("🧺", "المقاضي والمشروبات", ["pantry", "drinks", "sweets", "roast"]),
+        ("🧺", "المقاضي والمشروبات", ["pantry", "drinks", "cartons", "sweets", "roast"]),
         ("🧴", "البيت والعناية", ["clean", "care", "misc", "print"]),
     ]
 
