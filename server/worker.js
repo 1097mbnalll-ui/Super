@@ -566,6 +566,24 @@ export default {
       const o = await readOpex(env);
       return reply(200, { ok: true, opex: o, missing: opexMissing(o), fields: OPEX_FIELDS });
     }
+    // مفتاح إشعارات آبل (APNs .p8) يرفعه صاحب المتجر من الإدارة: ينحفظ في KV ولا يرجع للواجهة أبداً
+    if (path === "/admin/apns-key") {
+      if (principal) return reply(403, { ok: false, code: "forbidden" });
+      if (!env.LOCKS) return reply(503, { ok: false, code: "config", missing: "LOCKS" });
+      if (body.key) {
+        const pem = String(body.key).trim();
+        if (pem.length > 4000 || !/-----BEGIN PRIVATE KEY-----[\s\S]+-----END PRIVATE KEY-----/.test(pem)) return reply(400, { ok: false, code: "bad_key" });
+        try { await crypto.subtle.importKey("pkcs8", pemDer(pem), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]); } catch { return reply(400, { ok: false, code: "bad_key" }); }
+        const kid = String(body.keyId || "").trim().toUpperCase();
+        if (kid && !/^[A-Z0-9]{10}$/.test(kid)) return reply(400, { ok: false, code: "bad_key_id" });
+        await env.LOCKS.put("apns_key", pem);
+        if (kid) await env.LOCKS.put("apns_kid", kid);
+        apnsJwt = null;
+        if (env.DB) { await ensureSchema(env); await logStmt(env, staff(body), "apns_key", "", { keyId: kid || null }).run(); }
+      }
+      const c = await apnsCreds(env);
+      return reply(200, { ok: true, ready: !!(c.pem && c.kid && c.team), hasKey: !!c.pem, keyId: c.kid || "", team: !!c.team });
+    }
     if (path === "/admin/offers-advice") {
       if (principal) return reply(403, { ok: false, code: "forbidden" });
       if (!env.DB) return reply(503, { ok: false, code: "config", missing: "DB" });
@@ -1760,14 +1778,22 @@ async function pushTo(env, subs, msg) {
 const pemDer = (pem) => Uint8Array.from(atob(String(pem).replace(/-----[^-]+-----/g, "").replace(/\s+/g, "")), (c) => c.charCodeAt(0));
 const b64uText = (o) => b64u(new TextEncoder().encode(typeof o === "string" ? o : JSON.stringify(o)));
 let apnsJwt = null, fcmTok = null;
+// المفتاح من أسرار Cloudflare، أو اللي رفعه المالك من الإدارة (KV)
+async function apnsCreds(env) {
+  const kv = env.LOCKS;
+  const pem = env.APNS_KEY || (kv ? await kv.get("apns_key") : null);
+  const kid = env.APNS_KEY_ID || (kv ? await kv.get("apns_kid") : null);
+  return { pem, kid, team: env.APNS_TEAM_ID || null };
+}
 async function apnsPush(env, token, msg) {
-  if (!env.APNS_KEY || !env.APNS_KEY_ID || !env.APNS_TEAM_ID) return 0;
+  const c = await apnsCreds(env);
+  if (!c.pem || !c.kid || !c.team) return 0;
   const now = Math.floor(Date.now() / 1000);
-  if (!apnsJwt || now - apnsJwt.at > 45 * 60 || apnsJwt.kid !== env.APNS_KEY_ID) {   // آبل تطلب تجديد الرمز كل أقل من ساعة، وما يزيد على مرة كل ٢٠ دقيقة
-    const key = await crypto.subtle.importKey("pkcs8", pemDer(env.APNS_KEY), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
-    const unsigned = b64uText({ alg: "ES256", kid: env.APNS_KEY_ID }) + "." + b64uText({ iss: env.APNS_TEAM_ID, iat: now });
+  if (!apnsJwt || now - apnsJwt.at > 45 * 60 || apnsJwt.kid !== c.kid) {   // آبل تطلب تجديد الرمز كل أقل من ساعة، وما يزيد على مرة كل ٢٠ دقيقة
+    const key = await crypto.subtle.importKey("pkcs8", pemDer(c.pem), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+    const unsigned = b64uText({ alg: "ES256", kid: c.kid }) + "." + b64uText({ iss: c.team, iat: now });
     const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(unsigned)));
-    apnsJwt = { jwt: unsigned + "." + b64u(sig), at: now, kid: env.APNS_KEY_ID };
+    apnsJwt = { jwt: unsigned + "." + b64u(sig), at: now, kid: c.kid };
   }
   const host = env.APNS_ENV === "sandbox" ? "api.sandbox.push.apple.com" : "api.push.apple.com";
   const r = await fetch("https://" + host + "/3/device/" + token, {
@@ -2332,7 +2358,7 @@ async function pinTaken(env, pin, self) {
 }
 function publicStaff(u) { return { id: u.id, username: u.username, name: u.name, role: u.role }; }
 function staffMay(role, path, body) {
-  if (path === '/admin/staff' || path === '/admin/staff-save' || path === '/admin/team-save' || path === '/admin/opex' || path === '/admin/opex-save' || path === '/admin/offers-advice') return false;
+  if (path === '/admin/staff' || path === '/admin/staff-save' || path === '/admin/team-save' || path === '/admin/apns-key' || path === '/admin/opex' || path === '/admin/opex-save' || path === '/admin/offers-advice') return false;
   if(role==='cashier')return ['/pos/login','/pos/delivery-orders','/pos/delivery-receipt','/pos/delivery-issue','/login','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/settlement-requests','/admin/settlement-confirm','/admin/payment','/admin/day-report'].includes(path);
   if (role === 'preparer') return ['/login','/admin/prep','/admin/prep-save','/admin/prep-sub','/push/sub'].includes(path);
   if (role === 'manager') return !(path === '/save' && (body.newPin || body.newDriverPin));
