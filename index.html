@@ -1469,7 +1469,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var hasPic = function(k){ return isPath(k) || (isPhoto(k) && !!D.imgs[k]); };
   var picSrc = function(k){ return isPath(k) ? k : D.imgs[k]; };
   var imgTag = function(k, alt){ if (isPath(k)) return '<img src="' + esc(k) + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy" decoding="async">'; return isPhoto(k) && D.imgs[k] ? '<img src="' + D.imgs[k] + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy">' : '<span class="noimg" role="img" aria-label="' + esc(alt||"") + '"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>'; };
-  function catPhoto(c){ if (isPath(c.img)) return c.img; for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if (p.cat === c.id && avail(p) && hasPic(p.img)) return p.img; } return isPhoto(c.img) ? c.img : ""; }
+  // قسم «الكراتين والشدّات» (cartons): يجمع كل منتج وحدته كرتون أو شدّة (من ملف التحديث اليومي)، أو له خيار كرتون/شدّة، من كل الأقسام
+  var CARTON_RE = /^(كرتون|كرتونه|شدّة|شدة|شده)/;
+  function isCarton(p){ return CARTON_RE.test(String(p.unit || "")) || (Array.isArray(p.packs) && p.packs.some(function(x){ return CARTON_RE.test(String(x.u || "")) && Number(x.price) > 0; })); }
+  function inCat(p, cid){ return cid === "cartons" ? isCarton(p) : p.cat === cid; }
+  function catPhoto(c){ if (isPath(c.img)) return c.img; for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if (inCat(p, c.id) && avail(p) && hasPic(p.img)) return p.img; } return isPhoto(c.img) ? c.img : ""; }
   function photosOf(list){ return list.map(function(p){ return p.img; }).filter(function(k){ return hasPic(k); }); }
   var IC = {
     bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
@@ -1778,7 +1782,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (chip === "offers") return pagedCards(D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), "chip:offers");
     if (chip === "deals") return pagedCards(dealsList(), "chip:deals", "d");
     if (chip.indexOf("b:") === 0) { var bb = banOf(chip.slice(2)); return bb ? pagedCards((bb.ids || []).map(byId).filter(Boolean).sort(function(a,b){ return avail(b) - avail(a); }), "chip:" + chip) : []; }
-    if (chip.indexOf("c:") === 0) { var cid = chip.slice(2); return pagedCards(D.products.filter(function(p){ return p.cat === cid; }).sort(shelfSort), "chip:" + chip); }
+    if (chip.indexOf("c:") === 0) { var cid = chip.slice(2); return pagedCards(D.products.filter(function(p){ return inCat(p, cid); }).sort(shelfSort), "chip:" + chip); }
     var dd = daily(), fy = idsToList(S.forYou), fyId = {}; fy.forEach(function(p){ fyId[p.id] = 1; });
     var list = S.forOnly && fy.length ? [] : D.products.filter(function(p){ return avail(p) && !fyId[p.id]; }).slice().sort(function(a,b){ return ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)) || ((onSale(b) ? 1 : 0) - (onSale(a) ? 1 : 0)); });
     return (dd && !fyId[dd.p.id] ? [card(dd.p, "t")] : []).concat(pagedCards(fy.concat(list).sort(function(a,b){ return (hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0); }), "chip:for"));
@@ -1976,7 +1980,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<span class="pr-acts"><button type="button" class="btn btn-ghost" data-opencat="print">' + tr("تعديل", "Edit") + '</button><button type="button" class="sq" data-pdel="' + esc(k) + '" aria-label="' + tr("حذف", "Remove") + '">' + ic("trash") + '</button></span></div>';
   }
   function catHTML(){
-    var c = catOf(openCat) || D.cats[0], items = D.products.filter(function(p){ return p.cat === c.id; }).sort(shelfSort), isPrint = c.id === "print" && printOK();
+    var c = catOf(openCat) || D.cats[0], items = D.products.filter(function(p){ return inCat(p, c.id); }).sort(shelfSort), isPrint = c.id === "print" && printOK();
     // أقسام فرعية (اختيارية): القسم فيه subs، وكل منتج فيه sub. اللي بدون sub (أو sub مو معروف) يروح «أخرى»
     var subs = Array.isArray(c.subs) ? c.subs : [], known = {}, subBar = "", shown = items;
     if (subs.length) {
@@ -2027,7 +2031,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function normAr(s){ return String(s || "").toLowerCase().replace(/[إأآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/ؤ/g, "و").replace(/ئ/g, "ي").replace(/[\u064B-\u0652\u0640]/g, ""); }
   var searchIx = null, searchIxOf = null;
   function searchProducts(text){
-    if (searchIxOf !== D.products) { searchIxOf = D.products; searchIx = D.products.map(function(p){ var c = catOf(p.cat); var pk = p.packs || []; return normAr([p.name, p.name_en, p.bc, c && c.name, c && c.name_en, pk.map(function(x){ return x.u; }).join(" "), pk.length ? "كرتون كرتونه شده شد باكت علبه" : "", /(^|\s)(ماء|مياه)(\s|$)/.test(p.name) ? "موية مويه مويا مياه ماء" : ""].join(" ")); }); }
+    if (searchIxOf !== D.products) { searchIxOf = D.products; searchIx = D.products.map(function(p){ var c = catOf(p.cat); var pk = p.packs || []; return normAr([p.name, p.name_en, p.bc, c && c.name, c && c.name_en, p.unit, pk.map(function(x){ return x.u; }).join(" "), isCarton(p) ? "كرتون كرتونه شده شد كراتين جملة" : "", pk.length ? "كرتون كرتونه شده شد باكت علبه" : "", /(^|\s)(ماء|مياه)(\s|$)/.test(p.name) ? "موية مويه مويا مياه ماء" : ""].join(" ")); }); }
     var words = normAr(text).split(/\s+/).filter(Boolean); if (!words.length) return [];
     var out = [];
     for (var i = 0; i < D.products.length; i++) { var h = searchIx[i], ok = true; for (var w = 0; w < words.length; w++) if (h.indexOf(words[w]) < 0) { ok = false; break; } if (ok && !D.products[i].print) out.push(D.products[i]); }
@@ -2966,7 +2970,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         (apiUrl() && !staffAuth ? '<div class="card"><h2>إشعارات تطبيق الآيفون</h2><p class="hint">ارفع ملف مفتاح آبل (ينتهي بـ .p8) واكتب Key ID. ينحفظ في الخادم بسرية وما يطلع لأحد، وبعدها توصل إشعارات حالة الطلب لزبائن التطبيق.</p><div class="fields">' +
           '<label class="wide">ملف المفتاح (.p8)<input id="apnsFile" type="file" accept=".p8,text/plain,application/octet-stream,application/pkcs8"></label>' +
           '<label class="wide" for="apnsKid">Key ID<input id="apnsKid" type="text" maxlength="10" autocomplete="off" autocapitalize="characters" dir="ltr" placeholder="مثل RG7L4HY9H8"></label>' +
-          '</div><div class="actions"><button class="btn btn-teal" type="button" id="apnsSave">احفظ المفتاح</button></div><p class="status" id="apnsMsg" aria-live="polite"></p></div>' : '') +
+          '</div><div class="actions"><button class="btn btn-teal" type="button" id="apnsSave">احفظ المفتاح</button><button class="btn btn-soft" type="button" id="apnsTest">جرّب إشعار</button></div><p class="status" id="apnsMsg" aria-live="polite"></p></div>' : '') +
         '<div class="card"><h2>نسخة احتياطية</h2><p class="hint">نزّل نسخة من بياناتك على جهازك. يفضّل مرة كل شهر.</p><div class="actions">' +
           '<button class="btn btn-soft" type="button" id="bkData">المنتجات والأسعار والصور</button>' + (apiUrl() ? '<button class="btn btn-soft" type="button" id="bkOrders">الطلبات (Excel)</button><button class="btn btn-soft" type="button" id="bkStats">التحليل لسنة (Excel)</button>' : '') +
           '<label class="btn btn-ghost" for="bkRestore">استرجاع نسخة</label><input id="bkRestore" type="file" accept="application/json,.json" hidden></div><p class="status" id="bkMsg" aria-live="polite"></p></div>' +
@@ -4892,6 +4896,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   document.addEventListener('click',function(e){var t;if((t=e.target.closest('[data-opsclose]'))||e.target.id==='opsSheet'){var x=$('opsSheet');if(x)x.remove();return;}if(e.target.closest('[data-walletcustomer]')){customerWalletPanel();return;}if(mode==='admin'&&(t=e.target.closest('[data-payment]')))showPaymentEditor(t.dataset.payment);});
   // مفتاح إشعارات آبل: يقرأ الملف بالجهاز ويرسله للخادم (ما ينحفظ بالموقع)
   function apnsStatus(){var m=$('apnsMsg');if(!m||!apiUrl())return;api('/admin/apns-key',{pin:adminPin}).then(function(j){if(!$('apnsMsg'))return;if(!j.ok){m.textContent=j.code==='not_found'?'حدّث الخادم أول (نسخة فيها خانة المفتاح).':'';return;}m.className='status'+(j.ready?' ok':'');m.textContent=j.ready?'✓ الإشعارات جاهزة (Key ID: '+j.keyId+')':j.hasKey?'المفتاح محفوظ، ناقص Key ID':'ما فيه مفتاح للحين';if(j.keyId&&$('apnsKid')&&!$('apnsKid').value)$('apnsKid').value=j.keyId;});}
+  document.addEventListener('click',function(e){if(e.target.id!=='apnsTest')return;var b=e.target,m=$('apnsMsg');b.disabled=true;m.className='status';m.textContent='جاري الإرسال لآخر جوال آيفون اشترك…';
+    api('/admin/apns-key',{pin:adminPin,test:true}).then(function(j){b.disabled=false;var t=j&&j.test;if(!j.ok||!t){m.className='status err';m.textContent='ما قدرنا نجرب. حدّث الصفحة وحاول.';return;}
+      if(t.status>=200&&t.status<300){m.className='status ok';m.textContent='✓ آبل استلمت الإشعار. المفروض يوصل جوالك خلال ثواني.';return;}
+      m.className='status err';m.textContent=t.reason==='no_device'?'ما فيه جوال آيفون مشترك. افتح التطبيق واطلب واضغط «نبّهني».':'آبل رفضت: '+(t.status||'')+' '+(t.reason||'');});});
   document.addEventListener('click',function(e){if(e.target.id!=='apnsSave')return;var b=e.target,m=$('apnsMsg'),f=$('apnsFile')&&$('apnsFile').files[0],kid=($('apnsKid').value||'').trim().toUpperCase();
     if(!f){m.className='status err';m.textContent='اختر ملف المفتاح (.p8)';return;}if(f.size>4000){m.className='status err';m.textContent='هذا مو ملف مفتاح آبل';return;}
     var rd=new FileReader();rd.onload=function(){b.disabled=true;m.className='status';m.textContent='جاري الحفظ…';api('/admin/apns-key',{pin:adminPin,key:String(rd.result||''),keyId:kid}).then(function(j){b.disabled=false;if(!j.ok){m.className='status err';m.textContent=j.code==='bad_key'?'الملف مو مفتاح آبل صحيح (لازم ملف .p8 اللي نزّلته من آبل)':j.code==='bad_key_id'?'Key ID لازم ١٠ حروف وأرقام':j.code==='forbidden'?'هذي لصاحب المتجر بس':'ما انحفظ. حاول مرة ثانية.';return;}$('apnsFile').value='';m.className='status ok';m.textContent=j.ready?'✓ انحفظ. الإشعارات جاهزة':'انحفظ، بس ناقص Key ID';});};rd.readAsText(f);});

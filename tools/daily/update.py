@@ -73,6 +73,8 @@ def main(data_path, xlsx, dry=False):
         if p and p['id'] in seen: rep['repeat'] += 1; continue
         if p:
             seen.add(p['id']); qty_of[p['id']] = max(0, int(qty))
+            # الكرتون والشدّة من عمود «الوحدة» (قرار المالك ١٢ نوفمبر): الوحدة تتبع الملف، فيطلع المنتج في قسم «الكراتين والشدّات»
+            if UNIT.get(unit) in ('كرتون', 'شدّة') and p.get('unit') != UNIT[unit]: p['unit'] = UNIT[unit]; rep['unit'] += 1
             avail = qty > 0
             if bool(p.get('stock')) != avail: p['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
             # سعر الملف = السعر الأساسي. المنتج اللي عليه عرض (old): العرض يبقى، و«السعر قبل» يصير سعر الملف.
