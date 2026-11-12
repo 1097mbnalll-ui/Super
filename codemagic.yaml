@@ -112,22 +112,30 @@ workflows:
       - screenshots/*.png
       - screenshots/build.log
 
-  # ٦) فحص: وش يقدر Codemagic يوصل له في App Store Connect (بدون أي تعديل)
-  ios-asc-info:
-    name: App Store Connect info (read only)
+  # ٦) صفحة المتجر في App Store Connect: النصوص والصور والتصنيف وملاحظة المراجع (من mobile/ios-native/fastlane). ما يقدّم للمراجعة
+  ios-store-listing:
+    name: App Store listing upload (metadata + screenshots)
     instance_type: mac_mini_m2
-    max_build_duration: 15
+    max_build_duration: 30
     integrations:
       app_store_connect: ohod
     environment:
       xcode: latest
     scripts:
-      - name: Info
+      - name: Upload listing
         script: |
-          env | grep -i -E "APP_STORE|ASC|CM_" | sed -E 's/=.*/=<set>/' | sort
-          fastlane --version | tail -2 || true
-          app-store-connect --help | head -60 || true
-          app-store-connect apps list --bundle-id-identifier sa.ohod.store || true
+          env | grep -E "^APP_STORE_CONNECT" | sed -E 's/=.*/=<set>/' | sort
+          app-store-connect apps list --bundle-id-identifier sa.ohod.store 2>&1 | head -30 || true
+          if [ -z "$APP_STORE_CONNECT_PRIVATE_KEY" ]; then echo "NO_KEY_ENV"; exit 0; fi
+          python3 - <<'PY'
+          import json, os
+          json.dump({"key_id": os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"], "issuer_id": os.environ["APP_STORE_CONNECT_ISSUER_ID"],
+                     "key": os.environ["APP_STORE_CONNECT_PRIVATE_KEY"], "in_house": False}, open("/tmp/asc.json", "w"))
+          PY
+          cd mobile/ios-native
+          fastlane deliver --api_key_path /tmp/asc.json --app_identifier sa.ohod.store --skip_binary_upload true \
+            --overwrite_screenshots true --force true --run_precheck_before_submit false --submit_for_review false \
+            --metadata_path fastlane/metadata --screenshots_path fastlane/screenshots --ignore_language_directory_validation true 2>&1 | tail -80
 
   # ٤) التطبيق الأصلي: بناء موقّع ورفع لـ TestFlight. يشتغل لما ينرفع tag يبدأ بـ ios-native-
   ios-native-testflight:
