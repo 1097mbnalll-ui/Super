@@ -48,8 +48,13 @@ const iosTok = 'a'.repeat(64), andTok = 'f'.repeat(30) + ':APA91b' + 'x'.repeat(
 // ١) بدون أسرار: ينحفظ الاشتراك وما يصير شي (بدون خطأ ولا حذف)
 r = await call('/push/order', { no: o1, phone: ph, sub: { native: 'ios', token: iosTok } }); ok(r.ok, 'اشتراك آيفون ينحفظ');
 await tick(); ok(calls.length === 0 && sq.prepare("SELECT COUNT(*) n FROM subs WHERE endpoint = ?").get('apns:' + iosTok).n === 1, 'بدون مفاتيح: ما ينرسل شي، والاشتراك يبقى');
-// ٢) آبل: مع المفتاح
-Object.assign(env, { APNS_KEY: ecPem, APNS_KEY_ID: 'KEY123ABCD', APNS_TEAM_ID: 'TEAM123456' });
+// ٢) آبل: المالك يرفع المفتاح من الإدارة (KV)، والفريق من أسرار Cloudflare
+env.APNS_TEAM_ID = 'TEAM123456';
+r = await call('/admin/apns-key', { ...A, key: 'not a key', keyId: 'KEY123ABCD' }); ok(!r.ok && r.code === 'bad_key', 'ملف غلط ينرفض');
+r = await call('/admin/apns-key', { ...A, key: ecPem, keyId: 'bad' }); ok(!r.ok && r.code === 'bad_key_id', 'Key ID غلط ينرفض');
+r = await call('/admin/apns-key', { key: ecPem, keyId: 'KEY123ABCD' }); ok(!r.ok, 'بدون رقم الإدارة ما ينحفظ');
+r = await call('/admin/apns-key', { ...A, key: ecPem, keyId: 'key123abcd' }); ok(r.ok && r.ready && r.keyId === 'KEY123ABCD' && !JSON.stringify(r).includes('PRIVATE'), 'المفتاح ينحفظ ومايرجع للواجهة');
+r = await call('/admin/apns-key', A); ok(r.ok && r.ready && r.hasKey, 'حالة المفتاح تنقرأ');
 r = await call('/push/order', { no: o1, phone: ph, sub: { native: 'ios', token: iosTok } }); await tick();
 let ap = calls.find((c) => c.kind === 'apns'); ok(r.ok && ap, 'إشعار التأكيد يروح لآبل');
 ok(ap.url === 'https://api.push.apple.com/3/device/' + iosTok && ap.h['apns-topic'] === 'sa.ohod.store' && ap.h['apns-push-type'] === 'alert', 'العنوان والـtopic الصحيحين');

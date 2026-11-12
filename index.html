@@ -2963,6 +2963,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
           field("sClosedMsg", "رسالة للزبائن لما يكون مقفل", draft.store.closedMsg || "") + field("sMin", "أقل مبلغ للطلب (ريال، ٠ = بدون)", draft.store.minOrder || 0, "number") +
           '<label for="sKeep">مدة حفظ تفاصيل الطلبات المنتهية<select id="sKeep">' + [[30,"شهر"],[90,"٣ شهور"],[180,"٦ شهور"],[365,"سنة"],[730,"سنتين"]].map(function(x){ return '<option value="' + x[0] + '"' + ((draft.store.keepDays || 90) === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join("") + '</select></label>' +
         '</div><p class="hint">أرقام التحليل (المبيعات والمنتجات والزبائن) تنحفظ دايم. اللي ينحذف بعد المدة هو تفاصيل الطلب نفسه (الجوال والعنوان) عشان خصوصية الزبائن.</p></div>' +
+        (apiUrl() && !staffAuth ? '<div class="card"><h2>إشعارات تطبيق الآيفون</h2><p class="hint">ارفع ملف مفتاح آبل (ينتهي بـ .p8) واكتب Key ID. ينحفظ في الخادم بسرية وما يطلع لأحد، وبعدها توصل إشعارات حالة الطلب لزبائن التطبيق.</p><div class="fields">' +
+          '<label class="wide">ملف المفتاح (.p8)<input id="apnsFile" type="file" accept=".p8,text/plain,application/octet-stream,application/pkcs8"></label>' +
+          '<label class="wide" for="apnsKid">Key ID<input id="apnsKid" type="text" maxlength="10" autocomplete="off" autocapitalize="characters" dir="ltr" placeholder="مثل RG7L4HY9H8"></label>' +
+          '</div><div class="actions"><button class="btn btn-teal" type="button" id="apnsSave">احفظ المفتاح</button></div><p class="status" id="apnsMsg" aria-live="polite"></p></div>' : '') +
         '<div class="card"><h2>نسخة احتياطية</h2><p class="hint">نزّل نسخة من بياناتك على جهازك. يفضّل مرة كل شهر.</p><div class="actions">' +
           '<button class="btn btn-soft" type="button" id="bkData">المنتجات والأسعار والصور</button>' + (apiUrl() ? '<button class="btn btn-soft" type="button" id="bkOrders">الطلبات (Excel)</button><button class="btn btn-soft" type="button" id="bkStats">التحليل لسنة (Excel)</button>' : '') +
           '<label class="btn btn-ghost" for="bkRestore">استرجاع نسخة</label><input id="bkRestore" type="file" accept="application/json,.json" hidden></div><p class="status" id="bkMsg" aria-live="polite"></p></div>' +
@@ -3003,6 +3007,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       var r = new FileReader(); r.onload = function(){ var o; try { o = JSON.parse(r.result); } catch(e){}
         if (!o || !o.store || !Array.isArray(o.products) || !Array.isArray(o.cats) || !o.imgs) { m.className = "status err"; m.textContent = "الملف هذا مو نسخة من المتجر."; return; }
         applyData(o); adminShell(); markDirty(); showTab("store"); var m2 = $("bkMsg"); m2.className = "status"; m2.textContent = "انفتحت النسخة (" + o.products.length + " منتج). اضغط «حفظ تغييرات المتجر» عشان تنطبق على المتجر."; }; r.readAsText(file); });
+    apnsStatus();
     Object.keys(bind).forEach(function(id){ $(id).addEventListener("input", function(){ var k = bind[id]; draft.store[k] = (k === "fee" || k === "freeOver" || k === "feeWas") ? Number(this.value || 0) : this.value; markDirty(); }); });
     showTab(aTab);
     $("toStore").addEventListener("click", function(){ if (dirty && !window.confirm("عندك تغييرات ما انحفظت. تبي تعرض المتجر وتتركها؟")) return; go("store"); });
@@ -4885,6 +4890,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
     $('customerWalletLogin').onsubmit=function(e){e.preventDefault();var b=this.querySelector('button');b.disabled=true;api('/wallet/login',{phone:$('customerWalletPhone').value,password:$('customerWalletPass').value}).then(function(j){b.disabled=false;if(!j.ok){$('customerWalletMsg').textContent='تعذر الدخول؛ راجع البيانات أو تواصل مع الإدارة.';return;}walletCustomer=j;walletUseAmount=0;$('opsSheet').remove();if(screen==='checkout')render();else customerWalletPanel();});};
   }
   document.addEventListener('click',function(e){var t;if((t=e.target.closest('[data-opsclose]'))||e.target.id==='opsSheet'){var x=$('opsSheet');if(x)x.remove();return;}if(e.target.closest('[data-walletcustomer]')){customerWalletPanel();return;}if(mode==='admin'&&(t=e.target.closest('[data-payment]')))showPaymentEditor(t.dataset.payment);});
+  // مفتاح إشعارات آبل: يقرأ الملف بالجهاز ويرسله للخادم (ما ينحفظ بالموقع)
+  function apnsStatus(){var m=$('apnsMsg');if(!m||!apiUrl())return;api('/admin/apns-key',{pin:adminPin}).then(function(j){if(!$('apnsMsg'))return;if(!j.ok){m.textContent=j.code==='not_found'?'حدّث الخادم أول (نسخة فيها خانة المفتاح).':'';return;}m.className='status'+(j.ready?' ok':'');m.textContent=j.ready?'✓ الإشعارات جاهزة (Key ID: '+j.keyId+')':j.hasKey?'المفتاح محفوظ، ناقص Key ID':'ما فيه مفتاح للحين';if(j.keyId&&$('apnsKid')&&!$('apnsKid').value)$('apnsKid').value=j.keyId;});}
+  document.addEventListener('click',function(e){if(e.target.id!=='apnsSave')return;var b=e.target,m=$('apnsMsg'),f=$('apnsFile')&&$('apnsFile').files[0],kid=($('apnsKid').value||'').trim().toUpperCase();
+    if(!f){m.className='status err';m.textContent='اختر ملف المفتاح (.p8)';return;}if(f.size>4000){m.className='status err';m.textContent='هذا مو ملف مفتاح آبل';return;}
+    var rd=new FileReader();rd.onload=function(){b.disabled=true;m.className='status';m.textContent='جاري الحفظ…';api('/admin/apns-key',{pin:adminPin,key:String(rd.result||''),keyId:kid}).then(function(j){b.disabled=false;if(!j.ok){m.className='status err';m.textContent=j.code==='bad_key'?'الملف مو مفتاح آبل صحيح (لازم ملف .p8 اللي نزّلته من آبل)':j.code==='bad_key_id'?'Key ID لازم ١٠ حروف وأرقام':j.code==='forbidden'?'هذي لصاحب المتجر بس':'ما انحفظ. حاول مرة ثانية.';return;}$('apnsFile').value='';m.className='status ok';m.textContent=j.ready?'✓ انحفظ. الإشعارات جاهزة':'انحفظ، بس ناقص Key ID';});};rd.readAsText(f);});
   document.addEventListener('input',function(e){if(e.target.id==='checkoutWalletAmount'){var v=Number(e.target.value);walletUseAmount=Number.isFinite(v)&&v>=0?v:0;}});
 
   function deliveryPosAPI(path,body){
