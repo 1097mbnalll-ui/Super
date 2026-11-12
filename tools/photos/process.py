@@ -11,7 +11,57 @@ from PIL import Image, ImageFilter, ImageEnhance, ImageOps, ImageStat
 from rembg import remove, new_session
 
 LID = 1.0  # --lid 0.55 للعلب المصورة من فوق
+HULL = False  # --hull للكراتين والعلب المستقيمة (القناع = الشكل الكامل)
 S = 1000; BOTTOM = 0.14; MAX_W = 0.84; MAX_H = 0.78; TARGET_L = 150; MIN_PX = 450
+
+def fix_mask(a):
+    """يسد الفراغات داخل المنتج (مثل المربع الأبيض على علبة كيري)، ويخلي أكبر قطعة بس.
+    مع --hull (للكراتين والعلب المستقيمة): القناع يصير الشكل المحدّب الكامل للمنتج."""
+    import numpy as np
+    from PIL import ImageDraw
+    m = np.array(a) > 128
+    # أكبر قطعة متصلة (تشيل بقايا الرف والخلفية المتفرقة)
+    from collections import deque
+    H, W = m.shape; lab = np.zeros((H, W), np.int32); best, bestn, cur = 0, 0, 0
+    small = m[::4, ::4]; h, w = small.shape; lab = np.zeros((h, w), np.int32)
+    for y in range(h):
+        for x in range(w):
+            if small[y, x] and not lab[y, x]:
+                cur += 1; q = deque([(y, x)]); lab[y, x] = cur; n = 0
+                while q:
+                    cy, cx = q.popleft(); n += 1
+                    for ny, nx in ((cy+1,cx),(cy-1,cx),(cy,cx+1),(cy,cx-1)):
+                        if 0 <= ny < h and 0 <= nx < w and small[ny, nx] and not lab[ny, nx]: lab[ny, nx] = cur; q.append((ny, nx))
+                if n > bestn: best, bestn = cur, n
+    keep = np.kron(lab == best, np.ones((4, 4), bool))[:H, :W]
+    m = m & np.pad(keep, ((0, max(0, H - keep.shape[0])), (0, max(0, W - keep.shape[1]))))
+    if HULL:
+        ys, xs = np.nonzero(m[::2, ::2]); pts = sorted(set(zip((xs * 2).tolist(), (ys * 2).tolist())))
+        def cross(o, a_, b_): return (a_[0]-o[0])*(b_[1]-o[1]) - (a_[1]-o[1])*(b_[0]-o[0])
+        lo, up = [], []
+        for pt in pts:
+            while len(lo) >= 2 and cross(lo[-2], lo[-1], pt) <= 0: lo.pop()
+            lo.append(pt)
+        for pt in reversed(pts):
+            while len(up) >= 2 and cross(up[-2], up[-1], pt) <= 0: up.pop()
+            up.append(pt)
+        hull = Image.new('L', a.size, 0); ImageDraw.Draw(hull).polygon(lo[:-1] + up[:-1], fill=255)
+        return Image.fromarray(np.minimum(np.array(hull), 255).astype('uint8')).filter(ImageFilter.GaussianBlur(0.8))
+    # سد الفراغات: كل شي ما يوصل للحافة من الخلفية يصير جزء من المنتج
+    bg = ~m; seen = np.zeros_like(bg); q = deque()
+    for x in range(W):
+        for y in (0, H - 1):
+            if bg[y, x] and not seen[y, x]: seen[y, x] = True; q.append((y, x))
+    for y in range(H):
+        for x in (0, W - 1):
+            if bg[y, x] and not seen[y, x]: seen[y, x] = True; q.append((y, x))
+    while q:
+        cy, cx = q.popleft()
+        for ny, nx in ((cy+1,cx),(cy-1,cx),(cy,cx+1),(cy,cx-1)):
+            if 0 <= ny < H and 0 <= nx < W and bg[ny, nx] and not seen[ny, nx]: seen[ny, nx] = True; q.append((ny, nx))
+    holes = bg & ~seen
+    arr = np.array(a); arr[holes] = 255; arr[~(m | holes)] = 0
+    return Image.fromarray(arr)
 
 def lum(img, mask):
     return ImageStat.Stat(img.convert('L'), mask).mean[0]
@@ -26,6 +76,8 @@ def process(src, dst, sess):
     cut = remove(im, session=sess, alpha_matting=True, alpha_matting_foreground_threshold=240,
                  alpha_matting_background_threshold=20, alpha_matting_erode_size=8)
     a = cut.split()[-1].point(lambda v: 0 if v < 30 else v)
+    a = fix_mask(a)
+    cut = im.copy()  # الألوان من الصورة الأصلية (القص يبهّت الحواف)، والقناع من القص
     cut.putalpha(a); box = a.getbbox(); cut = cut.crop(box)
     # العلب والأسطوانات المصورة من فوق شوي: نضغط منطقة الغطاء (أعلى ٣٠٪) عمودياً فتبان مستقيمة قدّام الكاميرا
     if LID < 1:
@@ -70,5 +122,6 @@ def process(src, dst, sess):
 if __name__ == '__main__':
     args = sys.argv[1:]
     if '--lid' in args: i = args.index('--lid'); LID = float(args[i + 1]); del args[i:i + 2]
-    sess = new_session('isnet-general-use')
+    if '--hull' in args: HULL = True; args.remove('--hull')
+    sess = new_session(os.environ.get('MODEL', 'isnet-general-use'))
     print(json.dumps(process(args[0], args[1], sess), ensure_ascii=False))
