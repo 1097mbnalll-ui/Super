@@ -11,48 +11,12 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 0) {
                 HomeHeader(path: $path)
-                BannerCarousel(path: $path)
-                    .padding(.horizontal, 16).padding(.top, 16)
                 if catalog.store.isClosedNow {
                     ClosedNotice(message: catalog.store.closedNowMessage)
                         .padding(.horizontal, 16).padding(.top, 12)
                 }
-                if catalog.store.freeOver > 0 {
-                    // كرت التوصيل المجاني (SEC.free في الموقع)
-                    HStack(spacing: 12) {
-                        Image(systemName: "truck.box.fill").font(.system(size: 18)).foregroundStyle(Theme.brandDeep)
-                            .frame(width: 40, height: 40).background(Theme.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("احصل على توصيلك المجاني!").font(.kufi(14, .bold))
-                            Text("لطلباتك فوق \(Money.sar(catalog.store.freeOver))").font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(12)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.line))
-                    .padding(.horizontal, 16).padding(.top, 12)
-                }
-                if AppLook.current.showChips {
-                    QuickChips(tab: $tab, path: $path)
-                        .padding(.top, 14)
-                }
-                if let index = catalog.index {
-                    if AppLook.current.showFeatured {
-                        SectionHeader(title: "مختارات لك", emoji: "✨", actionTitle: "كل العروض") { tab = .offers }
-                            .padding(.top, 18).padding(.bottom, 8)
-                        ProductGrid(products: forYou(index), showCategory: true)
-                    } else {
-                        SectionHeader(title: "العروض", emoji: "🔥", actionTitle: "الكل") { tab = .offers }
-                            .padding(.top, 18).padding(.bottom, 8)
-                        ProductGrid(products: Array(index.offers.prefix(30)), showCategory: true)
-                    }
-                } else if catalog.failed {
-                    LoadFailedView { Task { await catalog.refresh() } }
-                        .padding(.top, 40)
-                } else {
-                    LoadingGrid().padding(.top, 18)
-                }
+                // ترتيب أقسام الرئيسية من الإدارة (store.layout) مثل الموقع
+                ForEach(sections, id: \.self) { id in section(id) }
             }
             .padding(.bottom, 24)
         }
@@ -68,6 +32,92 @@ struct HomeView: View {
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: orders.current?.no)
+    }
+
+    private var sections: [String] {
+        let defaults = ["promos", "free", "catgrid", "offers", "deals", "grid"]
+        let lay = catalog.store.layout
+        if lay.isEmpty { return ["promos", "free", "catgrid", "grid"] }   // العروض و٠٫٩٥ مخفية افتراضياً
+        var out = lay.filter { $0.on && defaults.contains($0.id) }.map(\.id)
+        // اللي مو بالترتيب (جديد) ينضاف بعد، ما عدا العروض و٠٫٩٥
+        for id in ["promos", "free", "catgrid", "grid"] where !lay.contains(where: { $0.id == id }) { out.append(id) }
+        return out
+    }
+
+    @ViewBuilder private func section(_ id: String) -> some View {
+        switch id {
+        case "promos":
+            BannerCarousel(path: $path)
+                .padding(.horizontal, 16).padding(.top, 16)
+        case "free":
+            if catalog.store.freeOver > 0 {
+                // كرت التوصيل المجاني (SEC.free في الموقع)
+                HStack(spacing: 12) {
+                    Image(systemName: "truck.box.fill").font(.system(size: 18)).foregroundStyle(Theme.brandDeep)
+                        .frame(width: 40, height: 40).background(Theme.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("احصل على توصيلك المجاني!").font(.kufi(14, .bold))
+                        Text("لطلباتك فوق \(Money.sar(catalog.store.freeOver))").font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(12)
+                .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.line))
+                .padding(.horizontal, 16).padding(.top, 12)
+            }
+        case "catgrid":
+            if AppLook.current.showChips {
+                QuickChips(tab: $tab, path: $path)
+                    .padding(.top, 14)
+            }
+        case "offers":
+            if let index = catalog.index, !index.offers.isEmpty {
+                SectionHeader(title: "أفضل العروض", emoji: "🔥", actionTitle: "عرض الكل") { tab = .offers }
+                    .padding(.top, 18).padding(.bottom, 8)
+                ScrollView(.horizontal) {
+                    LazyHStack(alignment: .top, spacing: 8) {
+                        ForEach(Array(index.offers.filter { catalog.isAvailable($0) }.prefix(20))) { p in
+                            ProductCard(product: p).frame(width: 118)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                }
+                .scrollIndicators(.hidden)
+            }
+        case "deals":
+            let deals = catalog.dealProducts
+            if !deals.isEmpty {
+                SectionHeader(title: "كل منتج بـ \(Money.plain(catalog.store.deal95.price)) ر.س", emoji: "🔒", actionTitle: "عرض الكل") { path.append(Route.deals) }
+                    .padding(.top, 18).padding(.bottom, 8)
+                ScrollView(.horizontal) {
+                    LazyHStack(alignment: .top, spacing: 8) {
+                        ForEach(Array(deals.prefix(20))) { p in
+                            ProductCard(product: p, kind: .deal).frame(width: 118)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                }
+                .scrollIndicators(.hidden)
+            }
+        default:
+            if let index = catalog.index {
+                if AppLook.current.showFeatured {
+                    SectionHeader(title: "مختارات لك", emoji: "✨", actionTitle: "كل العروض") { tab = .offers }
+                        .padding(.top, 18).padding(.bottom, 8)
+                    ProductGrid(products: forYou(index), showCategory: true)
+                } else {
+                    SectionHeader(title: "العروض", emoji: "🔥", actionTitle: "الكل") { tab = .offers }
+                        .padding(.top, 18).padding(.bottom, 8)
+                    ProductGrid(products: Array(index.offers.prefix(30)), showCategory: true)
+                }
+            } else if catalog.failed {
+                LoadFailedView { Task { await catalog.refresh() } }
+                    .padding(.top, 40)
+            } else {
+                LoadingGrid().padding(.top, 18)
+            }
+        }
     }
 
     /// «مختارات لك»: اختيارات المالك (store.forYou) أول، وforOnly = بس هي (مثل الموقع)
@@ -234,12 +284,18 @@ private struct HomeBanner: Identifiable {
     let style: Style
     let images: [URL]
     let route: Route?
+    /// من الإدارة: لون ثاني للتدرج، نص غامق، وصورة كاملة للبنر (وهل يطلع النص فوقها)
+    var color2: Color? = nil
+    var darkText = false
+    var picture: URL? = nil
+    var showText = true
 }
 
 /// بنرات تتصفحها بالسحب (بدون تقليب تلقائي: احترام «تقليل الحركة» والقراءة على راحتك)
 private struct BannerCarousel: View {
     @Binding var path: NavigationPath
     @Environment(CatalogStore.self) private var catalog
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var current: String?
 
     var body: some View {
@@ -260,6 +316,16 @@ private struct BannerCarousel: View {
             .scrollIndicators(.hidden)
             .scrollPosition(id: $current)
             .frame(height: 150)
+            .task(id: banners.map(\.id)) {
+                // تقليب كل ٥ ثواني مثل الموقع (إلا لو «تقليل الحركة» مفعّل)
+                guard banners.count > 1, !reduceMotion else { return }
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(5))
+                    guard !Task.isCancelled else { return }
+                    let i = banners.firstIndex { $0.id == (current ?? banners.first?.id) } ?? 0
+                    withAnimation(.smooth) { current = banners[(i + 1) % banners.count].id }
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
             if banners.count > 1 {
@@ -377,7 +443,10 @@ private struct BannerCarousel: View {
             built[b.id] = HomeBanner(id: b.id, kicker: b.kicker ?? (catID.flatMap { catalog.category($0)?.name } ?? ""), title: b.title,
                                      subtitle: b.subtitle.isEmpty ? (bundle.map { "الباقة بـ \(Money.plain($0.price)) بدل \(Money.plain($0.sum)) ر.س" } ?? from.map { "تبدأ من \(Money.plain($0)) ر.س" } ?? "") : b.subtitle,
                                      button: b.noGo ? "" : (b.go ?? (bundle != nil ? "أضف الباقة" : "تسوّق الحين")), style: style(b.style, color: b.color, fallback: .light),
-                                     images: Array(products.prefix(3).compactMap(\.imageURL)), route: route)
+                                     images: Array(products.prefix(3).compactMap(\.imageURL)), route: route,
+                                     color2: Color(hexString: b.color2), darkText: b.dark,
+                                     picture: b.picture.flatMap { AppConfig.asset($0) ?? URL(string: $0) },
+                                     showText: b.showText)
         }
 
         // الترتيب والإخفاء من «ترتيب الواجهة» في الإدارة؛ الجديد اللي ما له ترتيب ينضاف آخر شي
@@ -394,6 +463,12 @@ private struct BannerCard: View {
     var body: some View {
         ZStack {
             background
+            if let pic = banner.picture {
+                RemoteImage(url: pic, maxPixel: 900, contentMode: .fill, blendWhite: false)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+            }
+            if banner.picture == nil || banner.showText {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 3) {
                     if !banner.kicker.isEmpty {
@@ -425,7 +500,8 @@ private struct BannerCard: View {
                 }
                 .padding(.vertical, 14).padding(.leading, 16)
                 Spacer(minLength: 0)
-                pictures.padding(.trailing, 12)
+                if banner.picture == nil { pictures.padding(.trailing, 12) }
+            }
             }
         }
         .frame(height: 150)
@@ -446,7 +522,7 @@ private struct BannerCard: View {
         case .glass:
             LinearGradient(colors: [Color(hex: 0xFCE4EF), Color(hex: 0xFFF6E0), Color(hex: 0xDDEEFF)], startPoint: .topTrailing, endPoint: .bottomLeading)
         case .custom(let c):
-            LinearGradient(colors: [c, c.opacity(0.78)], startPoint: .topTrailing, endPoint: .bottomLeading)
+            LinearGradient(colors: [c, banner.color2 ?? c.opacity(0.78)], startPoint: .topTrailing, endPoint: .bottomLeading)
         }
     }
 
@@ -474,6 +550,7 @@ private struct BannerCard: View {
     }
 
     private var isLight: Bool {
+        if banner.darkText { return true }
         switch banner.style {
         case .light, .calm, .glass: return true
         default: return false
