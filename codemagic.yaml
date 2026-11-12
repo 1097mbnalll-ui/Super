@@ -190,6 +190,30 @@ workflows:
             --submit_for_review false --automatic_release false \
             --screenshots_path fastlane/screenshots --ignore_language_directory_validation true --verbose
 
+  # ٧) فحص قراءة فقط لصفحة التطبيق في App Store Connect + precheck (ما يكتب شي)
+  ios-asc-audit:
+    name: App Store Connect audit (read only)
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    integrations:
+      app_store_connect: ohod
+    environment:
+      xcode: latest
+      vars:
+        FASTLANE_SKIP_UPDATE_CHECK: "1"
+        FASTLANE_OPT_OUT_USAGE: "1"
+        FASTLANE_DISABLE_COLORS: "1"
+        CI: "true"
+    scripts:
+      - name: 1 - key
+        script: python3 mobile/ios-native/scripts/asc_key.py
+      - name: 2 - audit
+        script: python3 mobile/ios-native/scripts/run_limited.py 300 ruby mobile/ios-native/scripts/asc_audit.rb
+      - name: 3 - precheck
+        script: |
+          cd mobile/ios-native
+          python3 scripts/run_limited.py 400 fastlane precheck --api_key_path /tmp/asc.json --app_identifier sa.ohod.store --default_rule_level warn --include_in_app_purchases false || true
+
   # ٤) التطبيق الأصلي: بناء موقّع ورفع لـ TestFlight. يشتغل لما ينرفع tag يبدأ بـ ios-native-
   ios-native-testflight:
     name: iOS Native TestFlight
