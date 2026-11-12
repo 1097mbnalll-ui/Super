@@ -4,9 +4,9 @@
 
 ## ١) صفحة النسخة «1.0 Prepare for Submission»
 1. **Previews and Screenshots** ← iPhone 6.9" Display: ارفع الصور (١٣٢٠×٢٨٦٨) بالترتيب. آبل تستخدمها للمقاسات الأصغر تلقائياً.
-2. **Promotional Text** و**Description** و**Keywords**: من `listing-ar.md` (احذف سطر الإشعارات: التطبيق الحالي ما فيه إشعارات).
+2. **Promotional Text** و**Description** و**Keywords**: من `listing-ar.md` (سطر الإشعارات يبقى: الإشعارات صارت شغالة).
 3. **Support URL**: `https://1097mbnalll-ui.github.io/Super/`
-4. **Build**: اضغط «Add Build» واختر **آخر بناء** (اللي فيه بيان الخصوصية، ١٢ نوفمبر). لو سأل عن التشفير: «None of the algorithms mentioned above» (التطبيق يستخدم HTTPS بس).
+4. **Build**: اضغط «Add Build» واختر **2611121049** (آخر بناء: فيه الإشعارات والمحفظة والعروض وبيان الخصوصية). لو سأل عن التشفير: «None of the algorithms mentioned above» (التطبيق يستخدم HTTPS بس).
 5. **Copyright**: `2026 متاجر أحد`
 6. **App Review Information**: شيل علامة «Sign-in required». حط اسمك وجوالك وبريدك، والصق «ملاحظات للمراجع» من الأسفل.
 7. **Version Release**: «Manually release this version» (أنت تختار متى ينزل بعد القبول).
@@ -31,7 +31,7 @@
 ارجع لصفحة النسخة ← «Add for Review» ← «Submit to App Review». المراجعة عادة ١–٣ أيام.
 
 ## ملاحظات للمراجع (الصقها في Notes)
-> No login or account is required. The store accepts orders daily from 12:00 PM to 1:00 AM Saudi time (UTC+3, i.e. 09:00–22:00 UTC); outside these hours the app shows "store closed" and ordering is disabled by design. To test: open any category, add products to the cart, open the cart and tap the checkout button, keep the map pin where it starts (inside the delivery area in Riyadh), enter any name and a Saudi mobile number (e.g. 0500000000), choose Cash, and send the order. You can then follow the order status from the Account tab. Payment is cash or card on delivery (physical goods), so no in-app purchase is used. Contact: +966 55 538 9587.
+> No login or account is required. The store accepts orders daily from 12:00 PM to 1:00 AM Saudi time (UTC+3, i.e. 09:00–22:00 UTC); outside these hours the app shows "store closed" and ordering is disabled by design. To test: open any category, add products to the cart, open the cart and tap the checkout button, keep the map pin where it starts (inside the delivery area in Riyadh), enter any name and a Saudi mobile number (e.g. 0500000000), choose Cash, and send the order. You can then follow the order status from the Account tab and allow notifications to get status updates. The optional "Wallet" is a store-credit account issued by the shop at the counter; there is no in-app sign-up, purchase or payment of digital content. Payment is cash or card on delivery (physical goods), so no in-app purchase is used. Contact: +966 55 538 9587.
 
 ## وقت المراجعة
 - خل المتجر مفتوح (لا تقفله يدوي من الإدارة)، والخادم شغّال.
