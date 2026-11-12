@@ -76,6 +76,13 @@ export default {
     if (body.pin != null) body.pin = asciiDigits(String(body.pin));
 
     // طلب من زبون: ما يحتاج رقم سري
+    if (path === "/promo/check") {
+      if (!env.DB) return reply(503, { ok: false, code: "promo_invalid" });
+      if (await rateHit(env, "promo:" + ip, 15, 600)) return reply(429, { ok: false, code: "slow_down" });
+      const pc = await promoCheck(env, body.code, normPhone(body.phone) || null, null);
+      if (pc.error) return reply(400, { ok: false, code: pc.error });
+      return reply(200, { ok: true, ...pc.rule });
+    }
     if (path === "/order") {
       if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
       const chat = env.TELEGRAM_BOT_TOKEN ? await env.LOCKS.get("tg_chat") : null;
@@ -103,6 +110,13 @@ export default {
       if (!zone && shop && maxKm > 0 && hasLoc) {
         const km = distM(shop[0], shop[1], Number(body.lat), Number(body.lng)) / 1000;
         if (km > maxKm) return reply(400, { ok: false, code: "too_far", km: Math.round(km * 10) / 10, max: maxKm });
+      }
+      if (body.promo) {
+        const pc = await promoCheck(env, body.promo, priced.phone, priced.subtotal);
+        if (pc.error) return reply(400, { ok: false, code: pc.error, min: pc.min });
+        priced.gift = 0; priced.promo = pc.rule.code; priced.promoAmt = promoAmount(pc.rule, priced.subtotal);
+        priced.promoRule = { kind: pc.rule.kind, value: pc.rule.value, min: pc.rule.min, cap: pc.rule.cap };
+        priced.total = round2(priced.subtotal + priced.fee - priced.promoAmt);
       }
       if (priced.gift && env.DB) {
         await ensureSchema(env);
@@ -153,7 +167,7 @@ export default {
         });
         if (!sent.ok && !env.DB) return reply(502, { ok: false, code: "telegram" });
       }
-      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, gift: priced.gift || 0, total: priced.total, count: priced.count, track: !!env.DB });
+      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, gift: priced.gift || 0, promo: priced.promo || "", promoAmt: priced.promoAmt || 0, total: priced.total, count: priced.count, track: !!env.DB });
     }
 
     // الزبون يتابع حالة طلبه (رقم الطلب + نفس رقم الجوال)
@@ -627,7 +641,7 @@ export default {
       return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
     }
 
-    if (['/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
+    if (['/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/wallet', '/admin/promos', '/admin/promo-save', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
       if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
       await ensureSchema(env);
       const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner', later);
@@ -921,6 +935,7 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS orders (no INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER NOT NULL, updated INTEGER NOT NULL, status TEXT NOT NULL, phone TEXT NOT NULL, data TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS stock (id TEXT PRIMARY KEY, qty INTEGER NOT NULL)",
     "CREATE INDEX IF NOT EXISTS stock_qty ON stock(qty)",
+    "CREATE TABLE IF NOT EXISTS promo_codes (code TEXT PRIMARY KEY, kind TEXT NOT NULL, value REAL NOT NULL, min REAL NOT NULL DEFAULT 0, cap REAL NOT NULL DEFAULT 0, until INTEGER NOT NULL DEFAULT 0, max_uses INTEGER NOT NULL DEFAULT 0, per_phone INTEGER NOT NULL DEFAULT 1, active INTEGER NOT NULL DEFAULT 1, note TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL, who TEXT NOT NULL DEFAULT '')",
     "CREATE TABLE IF NOT EXISTS subs (endpoint TEXT NOT NULL, role TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', p256dh TEXT NOT NULL, auth TEXT NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (endpoint, role, ref))",
     "CREATE TABLE IF NOT EXISTS st_day (day TEXT PRIMARY KEY, orders INTEGER NOT NULL, revenue REAL NOT NULL)",
     "CREATE TABLE IF NOT EXISTS st_hour (day TEXT NOT NULL, hour INTEGER NOT NULL, orders INTEGER NOT NULL, revenue REAL NOT NULL, PRIMARY KEY (day, hour))",
@@ -994,7 +1009,7 @@ async function ensureSchema(env) {
 function orderRecord(o, body) {
   return {
     lines: o.lines.map((l) => ({ id: l.p.id, name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, regularPrice: Math.max(Number(l.price), Number(l.p.price)||0, Number(l.p.old)||0), tag: l.tag || "", ...(l.p.per ? { per: l.p.per } : {}) })),
-    subtotal: o.subtotal, fee: o.fee, ...(o.gift > 0 ? { gift: o.gift } : {}), total: o.total, count: o.count, phone: o.phone,
+    subtotal: o.subtotal, fee: o.fee, ...(o.gift > 0 ? { gift: o.gift } : {}), ...(o.promo ? { promo: o.promo, promoAmt: o.promoAmt, promoRule: o.promoRule } : {}), total: o.total, count: o.count, phone: o.phone,
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
     pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
     st: 1, // انحسب في التحليل
@@ -1166,9 +1181,12 @@ async function editOrder(env, data, body, who) {
   const subtotal = round2(lines.reduce((s, l) => s + l.qty * l.price, 0));
   // هدية الاعتذار تبقى بعد التعديل ما دام المنتجات ٣٠ وفوق
   const gift = Number(rec.gift) > 0 && subtotal >= GIFT.min ? Number(rec.gift) : 0;
-  const nr = { ...rec, lines, subtotal, fee, total: round2(subtotal + fee - gift), count: lines.reduce((s, l) => s + l.qty, 0), st: 1,
-    edits: (rec.edits || []).concat([{ at: Date.now(), before: rec.total, after: round2(subtotal + fee - gift) }]).slice(-20) };
+  // كود الخصم ينحسب من جديد على المبلغ الجديد (النسبة تتغير، والمبلغ الثابت يبقى ما دام فوق الحد الأدنى)
+  const promoAmt = rec.promo && rec.promoRule ? promoAmount(rec.promoRule, subtotal) : 0;
+  const nr = { ...rec, lines, subtotal, fee, total: round2(subtotal + fee - gift - promoAmt), count: lines.reduce((s, l) => s + l.qty, 0), st: 1,
+    edits: (rec.edits || []).concat([{ at: Date.now(), before: rec.total, after: round2(subtotal + fee - gift - promoAmt) }]).slice(-20) };
   if (gift) nr.gift = gift; else delete nr.gift;
+  if (rec.promo) nr.promoAmt = promoAmt;
   await withCost(env, nr, true);
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created);
@@ -1240,6 +1258,30 @@ function openNow(S, now = Date.now()) {
 // لين نهاية ١٥ نوفمبر بتوقيت الرياض، مرة وحدة لكل جوال (الطلبات الملغاة ما تنحسب). الزبون يكتب «هدية اعتذار» في الملاحظات
 const GIFT = { amount: 5, min: 30, until: Date.UTC(2026, 10, 15, 21, 0) };
 const giftAsked = (note) => /هدي[ةه]\s*(?:ال)?اعتذار/.test(String(note || ""));
+// أكواد الخصم: يضيفها المالك أو المدير من الإدارة (جدول promo_codes، سري: ما ينحفظ في data.json)
+// kind: amount (ريال) أو percent (نسبة، مع حد أعلى cap). min: أقل مبلغ منتجات. until: آخر وقت (0 = بدون). max_uses: كل الاستخدامات (0 = بدون حد). per_phone: كم مرة لكل جوال (0 = بدون حد)
+// الكود ما يجتمع مع «هدية اعتذار»: واحد بس لكل طلب
+function normCode(v) { return asciiDigits(String(v || "")).replace(/\s+/g, "").toUpperCase().slice(0, 24); }
+function promoAmount(rule, subtotal) {
+  if (!rule || subtotal < Number(rule.min || 0)) return 0;
+  let a = rule.kind === "percent" ? subtotal * Number(rule.value) / 100 : Number(rule.value);
+  if (rule.kind === "percent" && Number(rule.cap) > 0) a = Math.min(a, Number(rule.cap));
+  return round2(Math.max(0, Math.min(a, subtotal)));
+}
+// يرجع القاعدة أو كود الخطأ: promo_invalid / promo_expired / promo_min / promo_used / promo_limit
+async function promoCheck(env, code, phone, subtotal) {
+  code = normCode(code);
+  if (!code || !env.DB) return { error: "promo_invalid" };
+  await ensureSchema(env);
+  const r = await env.DB.prepare("SELECT * FROM promo_codes WHERE code = ?").bind(code).first();
+  if (!r || !r.active) return { error: "promo_invalid" };
+  if (r.until && Date.now() > r.until) return { error: "promo_expired" };
+  const rule = { code, kind: r.kind, value: r.value, min: r.min, cap: r.cap, until: r.until };
+  if (subtotal != null && subtotal < Number(r.min || 0)) return { error: "promo_min", min: r.min, rule };
+  if (r.max_uses > 0) { const u = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE status != 'canceled' AND json_extract(data, '$.promo') = ?").bind(code).first(); if ((u?.n || 0) >= r.max_uses) return { error: "promo_limit" }; }
+  if (phone && r.per_phone > 0) { const u = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE phone = ? AND status != 'canceled' AND json_extract(data, '$.promo') = ?").bind(phone, code).first(); if ((u?.n || 0) >= r.per_phone) return { error: "promo_used" }; }
+  return { rule };
+}
 function priceOrder(data, body) {
   const S = data.store || {};
   const byId = {};
@@ -1351,6 +1393,7 @@ function orderText(data, o, body, orderNo) {
     `المنتجات: ${money(o.subtotal)}`,
     `التوصيل: ${o.fee ? money(o.fee) : "مجاني"}`,
     o.gift ? `🎁 هدية اعتذار: −${money(o.gift)}` : null,
+    o.promoAmt ? `🏷️ كود خصم ${esc(o.promo)}: −${money(o.promoAmt)}` : null,
     `<b>الإجمالي: ${money(o.total)}</b>`,
     `الدفع: ${pay}`,
     "",
@@ -1495,7 +1538,7 @@ async function saveToGitHub(env, file, text, message, baseVersion) {
 
 function asciiDigits(value) { return String(value??'').replace(/[٠-٩۰-۹]/g,c=>String(c.charCodeAt(0)-(c<='٩'?0x660:0x6f0))); }
 async function checkoutFingerprint(body) {
-  return dataVersion({items:body.items||{},phone:normPhone(body.phone),pay:body.pay==='card'?'card':'cash',name:String(body.name||''),details:String(body.details||''),note:String(body.note||''),sub:body.sub||'call',lat:Number(body.lat),lng:Number(body.lng),wallet:moneyCents(body.walletAmount||0)});
+  return dataVersion({items:body.items||{},phone:normPhone(body.phone),pay:body.pay==='card'?'card':'cash',name:String(body.name||''),details:String(body.details||''),note:String(body.note||''),sub:body.sub||'call',promo:normCode(body.promo),lat:Number(body.lat),lng:Number(body.lng),wallet:moneyCents(body.walletAmount||0)});
 }
 async function checkoutResult(env, checkout) {
   const old=await env.DB.prepare('SELECT k.fingerprint,o.no,o.total FROM checkout_keys k JOIN orders o ON o.no=k.no WHERE k.request_id=?').bind(checkout.id).first();
@@ -2569,6 +2612,21 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     try{await env.DB.batch([snapshotGuard,P('INSERT INTO day_closures(day,at,who,expected,actual,cash_total,card_total,wallet_total,sales,orders,note) VALUES(?,?,?,?,?,?,?,?,?,?,?)',day,Date.now(),who,report.outstanding,actual,report.cash,report.card,report.wallet,report.sales,report.count,note),...receipts]);}catch{return fail('conflict',409);}
     return {ok:true,difference:actual-report.outstanding};
   }
+  if(path==='/admin/promos'||path==='/admin/promo-save'){
+    if(!['owner','admin','manager'].includes(role))return fail('forbidden',403);
+    if(path==='/admin/promo-save'){
+      const code=normCode(body.code);if(!/^[A-Z0-9\u0621-\u064A_-]{3,24}$/.test(code))return fail('bad_code');
+      if(body.remove){await env.DB.batch([P('DELETE FROM promo_codes WHERE code=?',code),logStmt(env,who,'promo_remove',code,{})]);}
+      else{
+        const kind=body.kind==='percent'?'percent':'amount',value=Number(body.value),min=Math.max(0,Number(body.min)||0),cap=Math.max(0,Number(body.cap)||0);
+        if(!(value>0)||(kind==='percent'&&value>90)||(kind==='amount'&&value>500))return fail('bad_value');
+        const until=Number(body.until)||0,maxUses=Math.max(0,Math.floor(Number(body.maxUses)||0)),perPhone=Math.max(0,Math.floor(Number(body.perPhone??1)));
+        await env.DB.batch([P("INSERT INTO promo_codes(code,kind,value,min,cap,until,max_uses,per_phone,active,note,created,who) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(code) DO UPDATE SET kind=excluded.kind,value=excluded.value,min=excluded.min,cap=excluded.cap,until=excluded.until,max_uses=excluded.max_uses,per_phone=excluded.per_phone,active=excluded.active,note=excluded.note",code,kind,value,min,cap,until,maxUses,perPhone,body.active===false?0:1,String(body.note||'').slice(0,100),Date.now(),who),logStmt(env,who,'promo_save',code,{kind,value,min,active:body.active!==false})]);
+      }
+    }
+    const rows=(await P("SELECT c.*,(SELECT COUNT(*) FROM orders o WHERE o.status!='canceled' AND json_extract(o.data,'$.promo')=c.code) used,(SELECT IFNULL(SUM(json_extract(o.data,'$.promoAmt')),0) FROM orders o WHERE o.status!='canceled' AND json_extract(o.data,'$.promo')=c.code) given FROM promo_codes c ORDER BY c.created DESC LIMIT 200").all()).results||[];
+    return {ok:true,codes:rows.map(r=>({code:r.code,kind:r.kind,value:r.value,min:r.min,cap:r.cap,until:r.until,maxUses:r.max_uses,perPhone:r.per_phone,active:!!r.active,note:r.note,used:r.used,given:Math.round(r.given*100)/100,created:r.created}))};
+  }
   if(path==='/admin/prep-mode'){
     if(role==='preparer')return fail('forbidden',403);
     if(body.mode!==undefined||body.lateMin!==undefined){
@@ -2647,7 +2705,7 @@ function posDocument(raw,no){
     if(price===null||regular===null||!Number.isInteger(qty)||qty<=0)throw Error('bad_order');
     return {id:String(l.id||''),name:String(l.name||''),unit:String(l.unit||''),qty,price,regular:Math.max(price,regular),total:price*qty,tag:String(l.tag||'')};
   });
-  const subtotal=moneyCents(order.subtotal),fee=moneyCents(order.fee||0),gift=moneyCents(order.gift||0),total=moneyCents(order.total),gross=lines.reduce((s,l)=>s+l.regular*l.qty,0);
+  const subtotal=moneyCents(order.subtotal),fee=moneyCents(order.fee||0),gift=moneyCents(Number(order.gift||0)+Number(order.promoAmt||0)),total=moneyCents(order.total),gross=lines.reduce((s,l)=>s+l.regular*l.qty,0);
   if(!lines.length||subtotal===null||fee===null||gift===null||total===null||lines.reduce((s,l)=>s+l.total,0)!==subtotal||subtotal+fee-gift!==total)throw Error('bad_order');
   return {orderNo:'#'+(1000+no),lines,gross,discount:gross-subtotal,subtotal,fee,...(gift?{gift}:{}),total};
 }

@@ -206,6 +206,8 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .totals{display:grid;gap:8px}
 .totals div{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2)}
 .totals s.was{color:var(--muted);margin-inline-end:4px}.totals b.free{color:var(--brand,#0E8A6A)}.totals .saved{color:#C4560A;font-weight:700}
+.codes-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.codes-wrap{overflow-x:auto}.codes-tbl{width:100%;border-collapse:collapse;font-size:14px}.codes-tbl th,.codes-tbl td{padding:8px 6px;border-bottom:1px solid var(--line,#e6e6e6);text-align:start;vertical-align:top;white-space:nowrap}
+.promo-row{display:flex;gap:8px}.promo-row input{flex:1;min-width:0;text-transform:uppercase}.promo-row button{flex:none}.promo-msg{margin:6px 0 0;font-size:13px}.promo-msg.ok{color:var(--brand,#0E8A6A)}.promo-msg.bad{color:#B42318}
 .totals .grand{padding-top:8px;border-top:1px dashed var(--line);align-items:baseline;color:var(--ink)}
 .totals .grand b{font-family:var(--display);font-size:14px}
 .totals .grand .price{font-size:18px}
@@ -1534,6 +1536,26 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var GIFT = { amount: 5, min: 30, until: Date.UTC(2026, 10, 15, 21, 0) };
   function giftOf(s){ return /هدي[ةه]\s*(?:ال)?اعتذار/.test(String(form.note || "")) && Date.now() < GIFT.until && s >= GIFT.min ? GIFT.amount : 0; }
   function giftRow(t){ return t.gift ? '<div class="saved"><span>' + tr("هدية اعتذار", "Apology gift") + '</span><span>−' + rial(t.gift) + '</span></div>' : ''; }
+  // كود الخصم: الخادم يتأكد منه (/promo/check) ويحسبه وقت الطلب. ما يجتمع مع «هدية اعتذار»
+  var promoRule = null;
+  function promoAmt(r, s){ if (!r || s < Number(r.min || 0)) return 0; var a = r.kind === "percent" ? s * Number(r.value) / 100 : Number(r.value); if (r.kind === "percent" && Number(r.cap) > 0) a = Math.min(a, Number(r.cap)); return Math.round(Math.max(0, Math.min(a, s)) * 100) / 100; }
+  function promoRow(t){ if (!promoRule) return ''; return t.promo ? '<div class="saved"><span>' + tr("كود الخصم ", "Promo ") + esc(promoRule.code) + '</span><span>−' + rial(t.promo) + '</span></div>' : '<div class="saved"><span>' + tr("الكود ", "Code ") + esc(promoRule.code) + tr(" يحتاج منتجات بـ ", " needs items worth ") + num(promoRule.min) + tr(" ر.س", " SAR") + '</span><span></span></div>'; }
+  var PROMO_ERR = { promo_invalid: ["الكود غير صحيح أو موقوف.", "Invalid code."], promo_expired: ["انتهت صلاحية الكود.", "This code has expired."], promo_used: ["استخدمت هالكود قبل بنفس الجوال.", "You already used this code."], promo_limit: ["الكود خلص عدد استخداماته.", "This code has reached its limit."], promo_min: ["الكود يحتاج مبلغ أعلى للمنتجات.", "Your items total is below this code's minimum."], slow_down: ["محاولات كثيرة، جرّب بعد شوي.", "Too many tries, please wait."] };
+  function promoMsg(code){ var m = PROMO_ERR[code] || ["ما قدرنا نتأكد من الكود، جرّب مرة ثانية.", "Could not check the code, try again."]; return tr(m[0], m[1]); }
+  function applyPromo(){
+    var inp = $("cPromo"), msg = $("cPromoMsg"), btn = $("cPromoBtn"); if (!inp) return;
+    var code = asciiDigits(inp.value).replace(/\s+/g, "").toUpperCase();
+    if (promoRule && (!code || code === promoRule.code)) { promoRule = null; inp.value = ""; msg.className = "promo-msg"; msg.textContent = ""; btn.textContent = tr("طبّق", "Apply"); updateCheckoutTotals(); return; }
+    if (!code) return;
+    btn.disabled = true; msg.className = "promo-msg"; msg.textContent = tr("جاري التحقق…", "Checking…");
+    fetchJSON(apiUrl() + "/promo/check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: code, phone: normPhone(form.phone) }) }).then(function(j){
+      btn.disabled = false;
+      if (!j || !j.ok) { promoRule = null; msg.className = "promo-msg bad"; msg.textContent = promoMsg(j && j.code); updateCheckoutTotals(); return; }
+      promoRule = { code: j.code, kind: j.kind, value: j.value, min: j.min, cap: j.cap };
+      msg.className = "promo-msg ok"; msg.textContent = tr("تم تطبيق الكود: ", "Code applied: ") + (j.kind === "percent" ? num(j.value) + "٪" + (j.cap > 0 ? tr(" (حتى ", " (up to ") + num(j.cap) + tr(" ر.س)", " SAR)") : "") : num(j.value) + tr(" ر.س", " SAR")) + (j.min > 0 ? tr(" على طلب ", " on orders from ") + num(j.min) + tr(" ر.س وفوق", " SAR") : "");
+      btn.textContent = tr("شيل", "Remove"); updateCheckoutTotals();
+    });
+  }
   function savedRow(t){ return t.saved > 0.009 ? '<div class="saved"><span>' + tr("وفّرت على هالطلب", "You saved") + '</span><span>' + rial(t.saved) + '</span></div>' : ''; }
   // ترتيب العرض: المتوفر أول، وبعده اللي له صورة (عشان أول ما يشوفه الزبون يكون بصور)
   function shelfSort(a, b){ return (avail(b) - avail(a)) || ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)); }
@@ -1631,9 +1653,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var fee = cnt ? ((S.freeOver && s >= S.freeOver) ? 0 : Number(S.fee || 0)) : 0;
     // التوصيل المجاني يطلع «كان X وصار مجاني» وينحسب ضمن وفّرت (feeWas من بيانات المتجر)
     var feeWas = cnt && !fee && Number(S.feeWas) > 0 ? Number(S.feeWas) : 0;
-    var gift = cnt ? giftOf(s) : 0;
-    var saved = Math.round((sv + (unlocked ? dsv : 0) + feeWas + gift) * 100) / 100;
-    return { n: cnt, s: s, fee: fee, gift: gift, all: Math.round((s + fee - gift) * 100) / 100, base: base, unlocked: unlocked, dn: dn, left: Math.max(0, min - base), feeWas: feeWas, saved: saved };
+    var promo = cnt ? promoAmt(promoRule, s) : 0, gift = cnt && !promo ? giftOf(s) : 0;
+    var saved = Math.round((sv + (unlocked ? dsv : 0) + feeWas + gift + promo) * 100) / 100;
+    return { n: cnt, s: s, fee: fee, gift: gift, promo: promo, all: Math.round((s + fee - gift - promo) * 100) / 100, base: base, unlocked: unlocked, dn: dn, left: Math.max(0, min - base), feeWas: feeWas, saved: saved };
   }
   // الحد والمخزون بالحبات: الكرتون يحسب بعدد حباته من نفس المنتج
   function cartProductQty(id){return Object.keys(cart).reduce(function(sum,key){var line=lineOf(key);return sum+(line&&(line.p.base||line.p.id)===id?(Number(cart[key])||0)*(line.p.per||1):0);},0);}
@@ -2104,6 +2126,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="fld"><span>' + tr("لو منتج ناقص وقت التجهيز", "If an item is out of stock") + '</span><div class="pays subs">' + [["swap", tr("بدّلوه بمشابه", "Replace it")], ["remove", tr("شيلوه", "Remove it")], ["call", tr("اتصلوا علي", "Call me")]].map(function(x){ return '<button type="button" data-sub="' + x[0] + '" aria-pressed="' + ((form.sub || "call") === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div></div>' +
       tr('<div class="fld"><span>الدفع عند الاستلام</span><div class="pays"><button type="button" data-pay="cash" aria-pressed="', '<div class="fld"><span>Pay on delivery</span><div class="pays"><button type="button" data-pay="cash" aria-pressed="') + (form.pay !== "card") + tr('">كاش</button><button type="button" data-pay="card" aria-pressed="', '">Cash</button><button type="button" data-pay="card" aria-pressed="') + (form.pay === "card") + tr('">شبكة</button></div></div>', '">Card</button></div></div>') +
       tr('<label class="fld" for="cNote">ملاحظات <small>(اختياري)</small><textarea id="cNote" rows="2" placeholder="مثلاً: الخبز يكون حار">', '<label class="fld" for="cNote">Notes <small>(optional)</small><textarea id="cNote" rows="2" placeholder="e.g. I want the bread hot">') + esc(form.note) + '</textarea></label>' +
+      tr('<div class="fld"><label for="cPromo">كود الخصم <small>(إذا عندك)</small></label><div class="promo-row"><input id="cPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="اكتب الكود" value="', '<div class="fld"><label for="cPromo">Promo code <small>(optional)</small></label><div class="promo-row"><input id="cPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Enter code" value="') + esc(promoRule ? promoRule.code : "") + '"><button class="btn btn-soft" type="button" id="cPromoBtn">' + (promoRule ? tr("شيل", "Remove") : tr("طبّق", "Apply")) + '</button></div><p class="promo-msg" id="cPromoMsg" aria-live="polite"></p></div>' +
       '<div class="box totals" id="cTot">' + checkoutTotals(t) + '</div>' +
       walletCheckoutHTML(t.all) + '<div id="sendErr"></div></div></div>' +
       '</div>' + '<div class="bottomcta"><button class="btn btn-orange" type="button" id="sendOrder"' + (t.n && !isClosed() ? '' : ' disabled') + tr('><span>أرسل الطلب</span><span>', '><span>Place order</span><span>') + rial(t.all) + '</span></button></div>';
@@ -2277,8 +2300,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var bind = { cPhone: "phone", cDetails: "details", cName: "name", cNote: "note" };
     Object.keys(bind).forEach(function(id){ $(id).addEventListener("input", function(){ form[bind[id]] = this.value; saveForm(); if (id === "cNote") updateCheckoutTotals(); if (id === "cPhone") { $("phoneBox").classList.remove("bad"); $("phoneErr").hidden = true; } }); });
     $("sendOrder").addEventListener("click", sendOrder);
+    if ($("cPromoBtn")) { $("cPromoBtn").addEventListener("click", applyPromo); $("cPromo").addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); applyPromo(); } }); }
   }
-  function checkoutTotals(t){ return tr('<div><span>المنتجات (', '<div><span>Items (') + t.n + ')</span><span>' + rial(t.s) + tr('</span></div><div><span>التوصيل</span><span>', '</span></div><div><span>Delivery</span><span>') + feeCell(t) + '</span></div>' + giftRow(t) + savedRow(t) + tr('<div class="grand"><b>الإجمالي</b><span class="price">', '<div class="grand"><b>Total</b><span class="price">') + num(t.all) + tr(' <small>ر.س</small></span></div>', ' <small>SAR</small></span></div>'); }
+  function checkoutTotals(t){ return tr('<div><span>المنتجات (', '<div><span>Items (') + t.n + ')</span><span>' + rial(t.s) + tr('</span></div><div><span>التوصيل</span><span>', '</span></div><div><span>Delivery</span><span>') + feeCell(t) + '</span></div>' + giftRow(t) + promoRow(t) + savedRow(t) + tr('<div class="grand"><b>الإجمالي</b><span class="price">', '<div class="grand"><b>Total</b><span class="price">') + num(t.all) + tr(' <small>ر.س</small></span></div>', ' <small>SAR</small></span></div>'); }
   // لما الزبون يكتب «هدية اعتذار» نحدّث المجموع وزر الإرسال بدون ما نعيد رسم الصفحة (الخريطة)
   function updateCheckoutTotals(){ var t = totals(), b = $("cTot"); if (b) b.innerHTML = checkoutTotals(t); var sp = $("sendOrder") && $("sendOrder").querySelectorAll("span")[1]; if (sp) sp.innerHTML = rial(t.all); }
   function normPhone(v){ var s = asciiDigits(v).replace(/[^\d+]/g, "").replace(/^\+?966/, "").replace(/^0/, ""); return /^5\d{8}$/.test(s) ? "0" + s : ""; }
@@ -2313,7 +2337,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       if (ao && ao.b) { var pk = lineOf(k).p.id + "~" + ao.mo.i; items[pk] = (items[pk] || 0) + ao.b; if (ao.loose) items[k] = (items[k] || 0) + ao.loose; }
       else items[k] = (items[k] || 0) + cart[k]; });
     var pnote = printNote(), fullNote = pnote ? pnote + (form.note ? "\n" + form.note : "") : form.note;
-    var payload={items:items,phone:phone,name:form.name,details:form.details,note:fullNote,pay:form.pay,sub:form.sub||'call',lat:form.lat,lng:form.lng,walletAmount:walletCustomer?walletUseAmount:0};
+    var payload={items:items,phone:phone,name:form.name,details:form.details,note:fullNote,pay:form.pay,sub:form.sub||'call',lat:form.lat,lng:form.lng,walletAmount:walletCustomer?walletUseAmount:0};if(promoRule&&promoAmt(promoRule,t.s)>0)payload.promo=promoRule.code;
     var signature=JSON.stringify(payload);
     if(checkoutAttempt&&checkoutAttempt.signature!==signature){
       if(!confirm('عندك طلب سابق ما تأكدت نتيجته. بنعيد تأكيد نفس الطلب السابق أولًا قبل إرسال أي طلب جديد. تبي تكمل؟'))return;
@@ -2337,6 +2361,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         if((c==='network'||c==='timeout'||j.status>=500)&&checkoutAttempt){checkoutAttempt.uncertain=true;saveCheckoutAttempt(checkoutAttempt);}
         if(!checkoutAttempt?.uncertain&&['bad_phone','bad_location','unavailable','item_limit','bad_items','min_order','closed','wallet_balance','wallet_login','bad_payment','bad_request_id'].includes(c))saveCheckoutAttempt(null);
         if(c==='network'||c==='timeout'||j.status>=500)return sendErr(tr('ما قدرنا نؤكد نتيجة الطلب. اضغط أرسل مرة ثانية للتأكد من نفس الطلب بدون تكراره.','We could not confirm the order. Submit again to confirm the same order without duplicating it.'),j.status>=500);
+        if(c&&/^promo_/.test(c)){promoRule=null;updateCheckoutTotals();if($("cPromoBtn"))$("cPromoBtn").textContent=tr("طبّق","Apply");return sendErr(promoMsg(c)+tr(' شلنا الكود، تقدر ترسل الطلب بدونه.',' The code was removed; you can send the order without it.'));}
         if(c==='item_limit')return sendErr(tr('تجاوزت الحد المسموح لأحد المنتجات. ارجع للسلة وقلّل الكمية.','A product reached its purchase limit. Reduce its quantity in your cart.'));
         if(c==='bad_items'||c==='bad_request_id'||c==='request_conflict')return sendErr(tr('تعذر تأكيد بيانات الطلب. راجع السلة أو تواصل معنا قبل إرسال طلب آخر.','Review your cart or contact us before submitting another order.'));
         if (['wallet_login','wallet_balance','bad_payment'].indexOf(c)>=0) return sendErr('تعذر استخدام المحفظة. سجّل الدخول مجددًا وراجع الرصيد والمبلغ.');
@@ -2932,7 +2957,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (staffAuth && staffAuth.user.role === "preparer") { preparerShell(); return; }
     if (ordersOnly()) { ordersShell(); return; }
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
-    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
+    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
       '<aside class="adm-side"><div class="adm-brand"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b>' + esc(D.store.name) + '</b><span>لوحة الإدارة</span></div></div>' +
       '<nav class="adm-nav" aria-label="أقسام الإدارة">' + TABS.map(function(x){ return '<button type="button" data-atab="' + x[0] + '"' + (x[0] === aTab ? ' aria-current="page"' : '') + '>' + ic(x[2]) + '<span>' + x[1] + '</span>' + (x[0] === "prods" ? '<em class="n">' + draft.products.length + '</em>' : x[0] === "cats" ? '<em class="n">' + draft.cats.length + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
@@ -2951,6 +2976,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<section class="adm-panel" data-panel="cats"><div class="card"><div class="sec-head" style="margin:0"><h2>الأقسام</h2><button class="btn btn-brand" type="button" id="addCat">+ قسم جديد</button></div><p class="hint">الأسهم ترتّب الأقسام في المتجر كله: الدوائر والشبكة وصفحة الأقسام.</p><div class="alist" id="aCats"></div></div></section>' +
       '<section class="adm-panel" data-panel="offers"><div class="card" id="aPromos"></div></section>' +
       '<section class="adm-panel" data-panel="costs" id="aCosts"></section>' +
+      '<section class="adm-panel" data-panel="codes" id="aCodes"></section>' +
       '<section class="adm-panel" data-panel="layout"><div class="card" id="aLayout"></div></section>' +
       '<section class="adm-panel" data-panel="look"><div class="card" id="aLook"></div></section>' +
       '<section class="adm-panel" data-panel="store"><div class="card"><h2>بيانات المحل</h2><div class="fields">' +
@@ -3049,7 +3075,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     renderPromos(); renderLayout(); renderBans(); renderLook(); renderACats(); renderAFilter(); renderAProds(); renderOver();
     adminExtras();
   }
-  var TAB_TITLE = { pos:"كاشير التوصيل", prep:"تجهيز الطلبات", settlement:"حساب المندوب", wallets:"المحافظ والكاش باك", staff: "حسابات الموظفين", alerts: "الطلبات المتأخرة", stats: "التحليل", bans: "البنرات ومنتجات «لك»", over: "نظرة عامة", prods: "المنتجات", cats: "الأقسام", offers: "العروض", layout: "ترتيب الواجهة", look: "المظهر واللغة", store: "بيانات المحل", orders: "المندوب والإشعارات", olist: "الطلبات", log: "سجل العمليات", cust: "استرجاع الزبائن", sign: "ورقة عرض للطباعة" };
+  var TAB_TITLE = { codes:"أكواد الخصم", pos:"كاشير التوصيل", prep:"تجهيز الطلبات", settlement:"حساب المندوب", wallets:"المحافظ والكاش باك", staff: "حسابات الموظفين", alerts: "الطلبات المتأخرة", stats: "التحليل", bans: "البنرات ومنتجات «لك»", over: "نظرة عامة", prods: "المنتجات", cats: "الأقسام", offers: "العروض", layout: "ترتيب الواجهة", look: "المظهر واللغة", store: "بيانات المحل", orders: "المندوب والإشعارات", olist: "الطلبات", log: "سجل العمليات", cust: "استرجاع الزبائن", sign: "ورقة عرض للطباعة" };
   function showTab(id){
     if(staffAuth && staffAuth.user.role==='cashier' && ['pos','settlement'].indexOf(id)<0)return;
     if (staffAuth && staffAuth.user.role === "preparer" && id !== "prep") return;
@@ -3065,6 +3091,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if(fullAdminRoot()&&!dirty&&$('aStatus')&&!$('aStatus').classList.contains('err'))$('aStatus').textContent='';
     if(id === "store"){renderAdminPOSSettings();initZoneEditor();}
     if(id === "costs")renderCosts();
+    if(id === "codes")renderCodes();
     if(id === "pos")renderPOS();
     if (id === "prep") renderPreparation();
     if (id === "settlement") renderSettlement();
@@ -3292,6 +3319,41 @@ html.sp-on,html.sp-on body{overflow:hidden}
   /* ----- التكاليف التشغيلية ومستشار العروض (للمالك بس؛ الأرقام سرية في القاعدة) ----- */
   var costsState = { opex: null, fields: null, adv: null, busy: false, msg: "" };
   var OPEX_GROUPS = [["fixed", "المصروفات الثابتة كل شهر (ر.س)"], ["order", "تكلفة كل طلب (ر.س)"], ["pct", "نسب من المبيعات (%)"], ["plan", "توقعاتك (تنفع لين يتجمع سجل طلبات كافي)"]];
+  // أكواد الخصم (المالك والمدير): الكود سري في الخادم، والزبون يكتبه في صفحة الدفع
+  function codesList(j){
+    var L = j.codes || [];
+    if (!L.length) return '<p class="hint">ما فيه أكواد للحين.</p>';
+    return '<div class="codes-wrap"><table class="codes-tbl"><thead><tr><th>الكود</th><th>الخصم</th><th>أقل طلب</th><th>ينتهي</th><th>الاستخدام</th><th>اللي انخصم</th><th></th></tr></thead><tbody>' + L.map(function(c){
+      var exp = c.until && Date.now() > c.until;
+      return '<tr' + (c.active && !exp ? '' : ' style="opacity:.55"') + '><td dir="ltr"><b>' + esc(c.code) + '</b>' + (c.note ? '<br><small>' + esc(c.note) + '</small>' : '') + '</td><td>' + (c.kind === "percent" ? num(c.value) + '٪' + (c.cap > 0 ? ' (حتى ' + num(c.cap) + ')' : '') : num(c.value) + ' ر.س') + '</td><td>' + (c.min ? num(c.min) : '—') + '</td><td>' + (c.until ? new Date(c.until).toLocaleDateString("ar-SA-u-nu-latn") + (exp ? ' (انتهى)' : '') : 'بدون') + '</td><td>' + num(c.used) + (c.maxUses ? ' / ' + num(c.maxUses) : '') + (c.perPhone ? '<br><small>' + num(c.perPhone) + ' لكل جوال</small>' : '') + '</td><td>' + num(c.given) + ' ر.س</td><td><button type="button" class="btn btn-soft" data-ctog="' + esc(c.code) + '">' + (c.active ? 'أوقف' : 'فعّل') + '</button> <button type="button" class="btn btn-ghost" data-cdel="' + esc(c.code) + '">احذف</button></td></tr>';
+    }).join("") + '</tbody></table></div>';
+  }
+  var codesCache = [];
+  function renderCodes(){
+    var box = $("aCodes"); if (!box) return;
+    if (!apiUrl()) { box.innerHTML = '<div class="card"><p class="hint">يحتاج ربط الخادم.</p></div>'; return; }
+    box.innerHTML = '<div class="card"><h2>كود جديد</h2><p class="hint">الزبون يكتب الكود في صفحة الدفع. الكود ما يجتمع مع «هدية اعتذار»، وينحسب على المنتجات بس (مو التوصيل). الطلب الملغى ما ينحسب من الاستخدام.</p>' +
+      '<form id="codeForm" class="codes-form"><label class="fld">الكود<input id="cdCode" required minlength="3" maxlength="24" dir="ltr" placeholder="مثلاً OHOD10" style="text-transform:uppercase"></label>' +
+      '<label class="fld">نوع الخصم<select id="cdKind"><option value="amount">مبلغ ثابت (ريال)</option><option value="percent">نسبة ٪</option></select></label>' +
+      '<label class="fld">قيمة الخصم<input id="cdValue" type="number" step="0.5" min="0.5" required inputmode="decimal"></label>' +
+      '<label class="fld">أقصى خصم بالريال <small>(للنسبة، اختياري)</small><input id="cdCap" type="number" step="0.5" min="0" inputmode="decimal"></label>' +
+      '<label class="fld">أقل مبلغ للمنتجات <small>(اختياري)</small><input id="cdMin" type="number" step="1" min="0" inputmode="decimal"></label>' +
+      '<label class="fld">آخر يوم <small>(اختياري)</small><input id="cdUntil" type="date"></label>' +
+      '<label class="fld">كم مرة لكل جوال <small>(٠ = بدون حد)</small><input id="cdPer" type="number" min="0" step="1" value="1"></label>' +
+      '<label class="fld">عدد الاستخدامات الكلي <small>(٠ = بدون حد)</small><input id="cdMax" type="number" min="0" step="1" value="0"></label>' +
+      '<label class="fld" style="grid-column:1/-1">ملاحظة لك <small>(اختياري، ما يشوفها الزبون)</small><input id="cdNote" maxlength="100"></label>' +
+      '<div style="grid-column:1/-1"><button class="btn btn-brand" type="submit">احفظ الكود</button> <span class="status" id="cdStatus"></span></div></form></div>' +
+      '<div class="card"><h2>الأكواد</h2><div id="codesBox"><p class="hint">جاري التحميل…</p></div></div>';
+    var show = function(j){ var b = $("codesBox"); if (!b) return; if (!j.ok) { b.innerHTML = '<p class="status err">' + (j.code === "not_found" ? "حدّث خادم Cloudflare عشان تشتغل الأكواد." : "ما قدرنا نحمّل الأكواد (" + esc(j.code || "?") + ").") + '</p>'; return; } codesCache = j.codes || []; b.innerHTML = codesList(j); };
+    var save = function(body, st){ return api("/admin/promo-save", Object.assign({ pin: adminPin }, body)).then(function(j){ if (st) { st.textContent = j.ok ? "انحفظ ✓" : ({ bad_code: "الكود لازم ٣ إلى ٢٤ حرف أو رقم بدون مسافات", bad_value: "قيمة الخصم غلط (النسبة حدها ٩٠٪، والمبلغ ٥٠٠)", forbidden: "ما عندك صلاحية" }[j.code] || "ما انحفظ (" + esc(j.code || "?") + ")"); st.className = "status" + (j.ok ? "" : " err"); } if (j.ok) show(j); return j; }); };
+    api("/admin/promos", { pin: adminPin }).then(show);
+    $("codeForm").onsubmit = function(e){ e.preventDefault(); var u = $("cdUntil").value;
+      save({ code: $("cdCode").value, kind: $("cdKind").value, value: Number($("cdValue").value), cap: Number($("cdCap").value) || 0, min: Number($("cdMin").value) || 0, until: u ? Date.parse(u + "T23:59:59+03:00") : 0, perPhone: Number($("cdPer").value) || 0, maxUses: Number($("cdMax").value) || 0, note: $("cdNote").value }, $("cdStatus")).then(function(j){ if (j.ok) this.reset(); }.bind(this)); };
+    $("codesBox").onclick = function(e){ var t = e.target.closest("[data-ctog],[data-cdel]"); if (!t) return;
+      var c = codesCache.filter(function(x){ return x.code === (t.dataset.ctog || t.dataset.cdel); })[0]; if (!c) return;
+      if (t.dataset.cdel) { if (confirm("تحذف الكود " + c.code + "؟ الطلبات اللي استخدمته تبقى.")) save({ code: c.code, remove: true }); return; }
+      save({ code: c.code, kind: c.kind, value: c.value, cap: c.cap, min: c.min, until: c.until, perPhone: c.perPhone, maxUses: c.maxUses, note: c.note, active: !c.active }); };
+  }
   function renderCosts(){
     var box = $("aCosts"); if (!box) return;
     if (staffAuth) { box.innerHTML = '<div class="card"><p class="hint">التكاليف ومستشار العروض لصاحب المتجر بس.</p></div>'; return; }
@@ -4101,7 +4163,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="actions">' + (o.phone ? '<a class="btn btn-soft sm" href="tel:' + esc(o.phone) + '">' + ic("phone") + 'اتصل</a><a class="btn btn-soft sm" target="_blank" rel="noopener" href="https://wa.me/966' + esc(String(o.phone).replace(/^0/, "")) + '">واتساب</a>' : '') + (o.map ? '<a class="btn btn-soft sm" target="_blank" rel="noopener" href="' + esc(o.map) + '">' + ic("pin") + 'الموقع</a>' : '') + '<button class="btn btn-soft sm" type="button" data-oprint="' + esc(o.no) + '">طباعة الفاتورة</button>' + (o.status === 'delivered' && !ordersOnly() ? '<button class="btn btn-soft sm" type="button" data-payment="'+esc(o.no)+'">تفصيل وتصحيح التحصيل</button>' : '') + (o.status !== "canceled" && o.status !== 'delivered' && !ordersOnly() ? '<button class="btn btn-soft sm" type="button" data-oedit="' + esc(o.no) + '">عدّل الطلب</button>' : '') + '</div>' +
       (o.edits && o.edits.length ? '<p class="hint">انعدّل ' + o.edits.length + ' مرة. آخر تعديل: من ' + num(o.edits[o.edits.length - 1].before) + ' إلى ' + num(o.edits[o.edits.length - 1].after) + ' ر.س</p>' : '') + (o.anon ? '<p class="hint">بيانات الزبون انمسحت بعد مدة الحفظ، والطلب وأرقامه باقية.</p>' : '') +
       '<div class="o-lines">' + (o.lines || []).map(function(l){ return '<div><span>' + esc(l.name) + ' <small class="hint">' + esc(l.unit || "") + '</small>' + (l.tag ? ' <span class="ltag deal">' + esc(l.tag) + '</span>' : '') + '</span><b>× ' + l.qty + '</b><span>' + num(Math.round(l.qty * l.price * 100) / 100) + '</span></div>'; }).join("") +
-        '<div class="sum"><span>المنتجات</span><b></b><span>' + num(o.subtotal) + '</span></div><div class="sum"><span>التوصيل</span><b></b><span>' + (o.fee ? num(o.fee) : 'مجاني') + '</span></div>' + (o.gift ? '<div class="sum"><span>هدية اعتذار</span><b></b><span>−' + num(o.gift) + '</span></div>' : '') + '<div class="sum grand"><span>الإجمالي</span><b></b><span>' + num(o.total) + ' ر.س</span></div></div>' +
+        '<div class="sum"><span>المنتجات</span><b></b><span>' + num(o.subtotal) + '</span></div><div class="sum"><span>التوصيل</span><b></b><span>' + (o.fee ? num(o.fee) : 'مجاني') + '</span></div>' + (o.gift ? '<div class="sum"><span>هدية اعتذار</span><b></b><span>−' + num(o.gift) + '</span></div>' : '') + (o.promoAmt ? '<div class="sum"><span>كود ' + esc(o.promo) + '</span><b></b><span>−' + num(o.promoAmt) + '</span></div>' : '') + '<div class="sum grand"><span>الإجمالي</span><b></b><span>' + num(o.total) + ' ر.س</span></div></div>' +
       '<div class="actions">' + nx.map(function(x){ return '<button class="btn ' + x[2] + '" type="button" data-ost="' + x[0] + '" data-no="' + esc(o.no) + '">' + x[1] + '</button>'; }).join("") +
         (o.status !== "canceled" && o.status !== "delivered" ? '<button class="btn btn-ghost" type="button" data-ost="canceled" data-no="' + esc(o.no) + '" style="color:var(--sale)">إلغاء الطلب</button>' : '') +
         (o.status === "canceled" && o.src !== "pos" ? '<button class="btn btn-ghost" type="button" data-ost="new" data-no="' + esc(o.no) + '">رجّع الطلب</button>' : '') + '<span class="status" id="oMsg"></span></div></div></div>';
@@ -4114,7 +4176,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="c"><img src="' + D.imgs.logo + '" style="width:64px;height:64px;object-fit:contain"><h1>' + esc(D.store.name) + '</h1><div>' + esc(D.store.phone || "") + '</div></div><hr>' +
       '<div>رقم الطلب: <b dir="ltr">' + esc(o.no) + '</b></div><div>التاريخ: ' + new Date(o.created).toLocaleString("ar-SA-u-nu-latn") + '</div><div>الزبون: ' + esc(o.name || "") + ' <span dir="ltr">' + esc(o.phone) + '</span></div>' + (o.details ? '<div>العنوان: ' + esc(o.details) + '</div>' : '') +
       '<table><tr><th>المنتج</th><th>الكمية</th><th>ر.س</th></tr>' + rows + '</table>' +
-      '<div>المنتجات: ' + num(o.subtotal) + ' ر.س</div><div>التوصيل: ' + (o.fee ? num(o.fee) + ' ر.س' : 'مجاني') + '</div>' + (o.gift ? '<div>هدية اعتذار: −' + num(o.gift) + ' ر.س</div>' : '') + '<div class="g">الإجمالي: ' + num(o.total) + ' ر.س</div><div>الدفع: ' + collectionLabel(o) + ' عند الاستلام</div>' + (o.note ? '<div>ملاحظات: ' + esc(o.note) + '</div>' : '') +
+      '<div>المنتجات: ' + num(o.subtotal) + ' ر.س</div><div>التوصيل: ' + (o.fee ? num(o.fee) + ' ر.س' : 'مجاني') + '</div>' + (o.gift ? '<div>هدية اعتذار: −' + num(o.gift) + ' ر.س</div>' : '') + (o.promoAmt ? '<div>كود ' + esc(o.promo) + ': −' + num(o.promoAmt) + ' ر.س</div>' : '') + '<div class="g">الإجمالي: ' + num(o.total) + ' ر.س</div><div>الدفع: ' + collectionLabel(o) + ' عند الاستلام</div>' + (o.note ? '<div>ملاحظات: ' + esc(o.note) + '</div>' : '') +
       '<hr><div class="c">شكرًا لطلبك من ' + esc(D.store.name) + '</div><p class="c"><button onclick="print()">طباعة</button></p><script>setTimeout(function(){print()},300)<\/script></body></html>');
     win.document.close();
   }
@@ -4471,6 +4533,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     order_new: function(i, r){ return 'سجّل طلب ' + ({ phone: "بالاتصال", whatsapp: "بالواتساب", store: "في المحل" }[i.src] || "") + ' <b dir="ltr">' + esc(r) + '</b> بـ ' + num(i.total) + ' ر.س' + (i.force ? ' (تجاوز المخزون)' : ''); },
     order_edit: function(i, r){ return 'عدّل الطلب <b dir="ltr">' + esc(r) + '</b> من ' + num(i.before) + ' إلى ' + num(i.after) + ' ر.س'; },
     status: function(i, r){ return (i.to === "canceled" ? '<b class="down">لغى</b> الطلب ' : i.from === "canceled" ? 'رجّع الطلب الملغي ' : 'غيّر حالة الطلب ') + '<b dir="ltr">' + esc(r) + '</b>' + (i.to !== "canceled" && i.from !== "canceled" ? ' إلى «' + (OST[i.to] || i.to) + '»' : '') + ' (' + num(i.total) + ' ر.س)'; },
+    promo_save: function(i, r){ return (i.active === false ? 'أوقف' : 'حفظ') + ' كود الخصم <b dir="ltr">' + esc(r) + '</b>' + (i.value ? ' (' + num(i.value) + (i.kind === 'percent' ? '٪' : ' ر.س') + ')' : ''); },
+    promo_remove: function(i, r){ return 'حذف كود الخصم <b dir="ltr">' + esc(r) + '</b>'; },
     winback: function(i){ return 'راسل زبون ما رجع (…' + esc(i.tail || "") + ') بالواتساب'; },
     cash_in: function(i){ return 'استلم <b>' + num(i.amount) + ' ر.س</b> كاش من المندوب' + (i.note ? ' (' + esc(i.note) + ')' : ''); }
   };
@@ -4942,7 +5006,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if(!$('posSettings'))panel.insertAdjacentHTML('beforeend','<div class="card" id="posSettings"><h2>سياسة مراجعة الكاشير</h2></div>');
     api('/admin/pos-settings',{pin:adminPin}).then(function(j){var x=$('posSettings');if(!x||!j.ok)return;x.innerHTML='<h2>سياسة مراجعة الكاشير</h2><label class="chk"><input id="requirePosReceipt" type="checkbox"'+(j.settings.require_receipt?' checked':'')+'>اشتراط اعتماد الكاشير قبل خروج المندوب</label><p class="hint">فعّله بعد تجهيز حساب الكاشير والطابعة. يؤثر على الطلبات الجارية أيضًا.</p>';$('requirePosReceipt').onchange=function(){var input=this,value=input.checked;input.disabled=true;api('/admin/pos-settings',{pin:adminPin,save:true,requireReceipt:value}).then(function(r){input.disabled=false;if(!r.ok){input.checked=!value;sToast(opError(r));}else sToast('تم حفظ إعداد الكاشير');});};});
   }
-  function posTotalsHTML(d){return '<div class="totals"><div><span>قبل خصومات الموقع</span><b>'+moneyFromCents(d.gross)+'</b></div><div><span>خصومات الموقع</span><b>− '+moneyFromCents(d.discount)+'</b></div><div><span>المنتجات بعد الخصم</span><b>'+moneyFromCents(d.subtotal)+'</b></div><div><span>التوصيل</span><b>'+moneyFromCents(d.fee)+'</b></div>'+(d.gift?'<div><span>هدية اعتذار</span><b>− '+moneyFromCents(d.gift)+'</b></div>':'')+'<div class="grand"><b>إجمالي طلب العميل</b><b>'+moneyFromCents(d.total)+'</b></div></div>';}
+  function posTotalsHTML(d){return '<div class="totals"><div><span>قبل خصومات الموقع</span><b>'+moneyFromCents(d.gross)+'</b></div><div><span>خصومات الموقع</span><b>− '+moneyFromCents(d.discount)+'</b></div><div><span>المنتجات بعد الخصم</span><b>'+moneyFromCents(d.subtotal)+'</b></div><div><span>التوصيل</span><b>'+moneyFromCents(d.fee)+'</b></div>'+(d.gift?'<div><span>هدية اعتذار / كود خصم</span><b>− '+moneyFromCents(d.gift)+'</b></div>':'')+'<div class="grand"><b>إجمالي طلب العميل</b><b>'+moneyFromCents(d.total)+'</b></div></div>';}
   function openDeliveryPOS(no){
     deliveryPosAPI('/admin/pos-receipt',{pin:adminPin,no:no}).then(function(j){if(!j.ok){sToast(j.code==='canceled'?'الطلب ملغي؛ لا تصدر إيصالًا له.':opError(j));return;}var d=j.document;
       showOperationSheet('مراجعة الطلب '+esc(no),'<p class="hint">راجع الكمية والحجم لكل صنف. الناقص يُعالج في الطلب قبل الاعتماد؛ لا نعدّل السعر عند الطباعة.</p><div class="delivery-pos-lines">'+d.lines.map(function(l,i){return '<label class="delivery-pos-line"><input type="checkbox" data-poscheck="'+i+'"><span><b>'+esc(l.name)+'</b><small>'+esc(l.unit)+' · '+esc(l.tag)+'</small></span><b>× '+num(l.qty)+'</b><strong>'+moneyFromCents(l.total)+'</strong></label>';}).join('')+'</div>'+posTotalsHTML(d)+'<p class="hint">إيصال طلب تشغيلي من الموقع. لا يسجل دفعًا من المندوب ولا يكرر خصم المخزون أو المبيعات.</p><div class="actions"><button type="button" class="btn btn-brand" id="issuePOS"'+(j.current?'':' disabled')+'>'+(j.current?'إعادة طباعة المعتمد':'اعتماد الإيصال وطباعته')+'</button><span class="status" id="posIssueMessage" role="status"></span></div><label>مقاس الطباعة<select id="posPaper"><option value="thermal">حراري ٨٠ مم</option><option value="a4">A4</option></select></label>'+(j.receipt?'<p class="hint">'+esc(j.receipt.number)+' · النسخة '+num(j.receipt.revision)+' · '+esc(j.receipt.who)+(j.current?'':' · نسخة سابقة؛ المبلغ الحالي يحتاج اعتمادًا جديدًا')+'</p>':''));
@@ -4963,14 +5027,14 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // The same panels and actions remain available; navigation follows daily work.
   var ADMIN_SECTIONS=[
     {name:'المتابعة اليومية',primary:true,items:[['over','اليوم'],['olist','الطلبات'],['alerts','الطلبات المتأخرة'],['settlement','حساب المناديب']]},
-    {name:'المنتجات والعروض',items:[['prods','المنتجات والأسعار'],['cats','الأقسام'],['offers','العروض'],['costs','التكاليف ومستشار العروض']]},
+    {name:'المنتجات والعروض',items:[['prods','المنتجات والأسعار'],['cats','الأقسام'],['offers','العروض'],['codes','أكواد الخصم'],['costs','التكاليف ومستشار العروض']]},
     {name:'العملاء والمحافظ',items:[['cust','التواصل مع العملاء'],['wallets','المحافظ والكاش باك']]},
     {name:'التقارير والمتابعة',items:[['stats','تحليل المبيعات'],['log','سجل التعديلات']]},
     {name:'شكل المتجر والطباعة',items:[['layout','ترتيب الصفحة الرئيسية'],['bans','البنرات والمنتجات المقترحة'],['look','الألوان واللغة'],['sign','طباعة ورقة عرض']]},
     {name:'الإعدادات والموظفون',items:[['store','بيانات المتجر والتوصيل'],['orders','المناديب والإشعارات'],['staff','الموظفون والصلاحيات']]}
   ];
-  var ADMIN_HINTS={over:'تابع الطلبات وابدأ المهمة اللي تحتاجها.',olist:'ابحث عن الطلب وافتحه لمتابعته أو تعديله.',prep:'راجع الأصناف، وسجّل الناقص، ثم سلّم الطلب للمندوب.',pos:'راجع طلب التوصيل واطبع إيصالًا بأسعاره المعتمدة.',alerts:'ابدأ بالطلبات المتأخرة وتابع سبب التأخير.',settlement:'راجع الكاش عند كل مندوب وأكّد المبلغ الذي استلمته فعلًا.',prods:'عدّل الاسم أو السعر أو الصورة، ثم احفظ تغييرات المتجر.',cats:'رتّب أقسام المتجر وسمِّها بشكل واضح.',offers:'اختر المنتجات والأسعار، ثم احفظ لتظهر العروض للزبائن.',cust:'ابحث عن العملاء وتواصل معهم عند الحاجة.',wallets:'ابدأ برقم العميل، ثم اختر العملية المطلوبة لمحفظته.',stats:'راجع نتائج الفترة وافتح التفاصيل التي تحتاجها.',log:'اعرف من عدّل البيانات ومتى.',layout:'غيّر ترتيب أقسام الصفحة الرئيسية ثم احفظ.',bans:'عدّل البنرات والاقتراحات التي تظهر في المتجر ثم احفظ.',look:'اختر الألوان واللغة ثم احفظ.',sign:'اختر المنتج والتصميم، ثم اطبع ورقة العرض.',store:'بيانات التواصل والتوصيل واستقبال الطلبات في مكان واحد.',orders:'الوصول لتطبيق المندوب وإعداد الإشعارات.',staff:'أضف العامل وحدّد دوره. الحسابات الإضافية للوحة الإدارة موجودة أسفل الصفحة.'};
-  var ADMIN_NAV_WORDS={over:'الرئيسية متابعة',olist:'طلب طلبات شراء فاتورة',prep:'عامل تجهيز ناقص نواقص',pos:'كاشير فاتورة فواتير ايصال إيصال طباعة',alerts:'متأخر تأخير تنبيه',settlement:'مندوب مناديب كاش حساب تسوية استلام فلوس',prods:'سعر أسعار اسعار صنف أصناف بضاعة مخزون كمية صور صورة',cats:'قسم تصنيف',offers:'عرض عروض خصم تخفيض',cust:'عميل زبون جوال اتصال واتساب',wallets:'محفظة محفظ رصيد عميل كاشباك كاش باك',stats:'تحليل مبيعات ربح أرباح تقرير تقارير',log:'سجل عمليات تعديل موظف',layout:'تصميم شكل ترتيب رئيسية',bans:'بنر اعلان إعلان مقترح اقتراح',look:'لون ألوان لغة انجليزي إنجليزي',sign:'ورقة طباعة عرض تصميم',store:'محل متجر توصيل هاتف جوال ضريبة دوام اوقات أوقات ساعات رسوم',orders:'مندوب مناديب كاشير تطبيق تحميل اشعار إشعار',staff:'موظف موظفين عامل عمال فريق صلاحية صلاحيات رقم سري دخول حساب'};
+  var ADMIN_HINTS={codes:'أكواد خصم يكتبها الزبون في صفحة الدفع.',over:'تابع الطلبات وابدأ المهمة اللي تحتاجها.',olist:'ابحث عن الطلب وافتحه لمتابعته أو تعديله.',prep:'راجع الأصناف، وسجّل الناقص، ثم سلّم الطلب للمندوب.',pos:'راجع طلب التوصيل واطبع إيصالًا بأسعاره المعتمدة.',alerts:'ابدأ بالطلبات المتأخرة وتابع سبب التأخير.',settlement:'راجع الكاش عند كل مندوب وأكّد المبلغ الذي استلمته فعلًا.',prods:'عدّل الاسم أو السعر أو الصورة، ثم احفظ تغييرات المتجر.',cats:'رتّب أقسام المتجر وسمِّها بشكل واضح.',offers:'اختر المنتجات والأسعار، ثم احفظ لتظهر العروض للزبائن.',cust:'ابحث عن العملاء وتواصل معهم عند الحاجة.',wallets:'ابدأ برقم العميل، ثم اختر العملية المطلوبة لمحفظته.',stats:'راجع نتائج الفترة وافتح التفاصيل التي تحتاجها.',log:'اعرف من عدّل البيانات ومتى.',layout:'غيّر ترتيب أقسام الصفحة الرئيسية ثم احفظ.',bans:'عدّل البنرات والاقتراحات التي تظهر في المتجر ثم احفظ.',look:'اختر الألوان واللغة ثم احفظ.',sign:'اختر المنتج والتصميم، ثم اطبع ورقة العرض.',store:'بيانات التواصل والتوصيل واستقبال الطلبات في مكان واحد.',orders:'الوصول لتطبيق المندوب وإعداد الإشعارات.',staff:'أضف العامل وحدّد دوره. الحسابات الإضافية للوحة الإدارة موجودة أسفل الصفحة.'};
+  var ADMIN_NAV_WORDS={codes:'كود كوبون خصم برومو تخفيض',over:'الرئيسية متابعة',olist:'طلب طلبات شراء فاتورة',prep:'عامل تجهيز ناقص نواقص',pos:'كاشير فاتورة فواتير ايصال إيصال طباعة',alerts:'متأخر تأخير تنبيه',settlement:'مندوب مناديب كاش حساب تسوية استلام فلوس',prods:'سعر أسعار اسعار صنف أصناف بضاعة مخزون كمية صور صورة',cats:'قسم تصنيف',offers:'عرض عروض خصم تخفيض',cust:'عميل زبون جوال اتصال واتساب',wallets:'محفظة محفظ رصيد عميل كاشباك كاش باك',stats:'تحليل مبيعات ربح أرباح تقرير تقارير',log:'سجل عمليات تعديل موظف',layout:'تصميم شكل ترتيب رئيسية',bans:'بنر اعلان إعلان مقترح اقتراح',look:'لون ألوان لغة انجليزي إنجليزي',sign:'ورقة طباعة عرض تصميم',store:'محل متجر توصيل هاتف جوال ضريبة دوام اوقات أوقات ساعات رسوم',orders:'مندوب مناديب كاشير تطبيق تحميل اشعار إشعار',staff:'موظف موظفين عامل عمال فريق صلاحية صلاحيات رقم سري دخول حساب'};
   function adminSearchTerm(text){return String(text||'').normalize('NFKD').replace(/[\u064B-\u065F\u0670]/g,'').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase();}
   var adminNavMedia=null,adminSaveObserver=null;
   function fullAdminRoot(){return document.querySelector('.adm[data-simple-admin]');}
