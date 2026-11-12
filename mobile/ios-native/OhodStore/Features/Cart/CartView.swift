@@ -35,6 +35,10 @@ struct CartView: View {
                         if catalog.store.isClosedNow {
                             ClosedNotice(message: catalog.store.closedNowMessage)
                         }
+                        if !catalog.dealProducts.isEmpty {
+                            NavigationLink(value: Route.deals) { DealLockBox(totals: totals) }
+                                .buttonStyle(PressableStyle(scale: 0.98))
+                        }
                         VStack(spacing: 0) {
                             ForEach(totals.rows) { row in
                                 CartRowView(row: row)
@@ -218,6 +222,13 @@ private struct CartRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(row.product.name).font(.ui(size: 14)).foregroundStyle(Theme.ink).lineLimit(2)
                 Text(row.unitLabel).font(.ui(size: 12)).foregroundStyle(Theme.muted)
+                if let tag = promoTag {
+                    Text(tag).font(.ui(size: 11.5, weight: .bold))
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .foregroundStyle(row.locked ? Theme.copperInk : Theme.brandDeep)
+                        .background(row.locked ? Theme.copperSoft : Theme.mint, in: Capsule())
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                }
                 if row.available {
                     if let o = row.offer {
                         Group {
@@ -234,14 +245,22 @@ private struct CartRowView: View {
                         .padding(.vertical, 1)
                     }
                     PriceLabel(price: row.lineTotal,
-                               old: row.offerSaving > 0.009 ? row.regularTotal : (row.pack == nil && row.product.old != nil ? (row.product.old ?? 0) * Double(row.qty) : nil),
+                               old: row.promo != nil ? row.product.price * Double(row.qty)
+                                   : row.offerSaving > 0.009 ? row.regularTotal : (row.pack == nil && row.product.old != nil ? (row.product.old ?? 0) * Double(row.qty) : nil),
                                size: 14)
+                        .opacity(row.locked ? 0.45 : 1)
                 } else {
                     Text("نفد، ما ينحسب").font(.ui(size: 12, weight: .semibold)).foregroundStyle(Theme.copperInk)
                 }
             }
             Spacer(minLength: 4)
-            if row.available {
+            if row.available, row.promo == .bundle, let bid = row.bannerID {
+                // الباقة تزيد وتنقص كاملة
+                let n = cart.bundleCount(bid, catalog: catalog)
+                StepperCapsule(qty: n, compact: true,
+                               onPlus: { withAnimation(.snappy) { _ = cart.setBundle(bid, n + 1, catalog: catalog) } },
+                               onMinus: { withAnimation(.snappy) { _ = cart.setBundle(bid, n - 1, catalog: catalog) } })
+            } else if row.available {
                 let cap = cart.limit(for: row.key, in: catalog) ?? row.product.max
                 StepperCapsule(qty: row.qty, atLimit: cap.map { row.qty >= $0 } ?? false, compact: true,
                                onPlus: { withAnimation(.snappy) { cart.increment(row.key, limit: cap) } },
@@ -255,6 +274,17 @@ private struct CartRowView: View {
             }
         }
         .padding(12)
+    }
+}
+
+extension CartRowView {
+    var promoTag: String? {
+        switch row.promo {
+        case .deal: return row.locked ? "🔒 مقفول: يفتح لطلبك فوق \(Money.plain(catalog.store.deal95.min)) ر.س" : "🔓 عرض \(Money.plain(catalog.store.deal95.price)) ر.س"
+        case .daily: return "🔥 عرض اليوم"
+        case .bundle: return "🎁 ضمن باقة \(row.bannerID.flatMap { catalog.banner($0)?.title.replacingOccurrences(of: "\n", with: " ") } ?? "")"
+        default: return nil
+        }
     }
 }
 

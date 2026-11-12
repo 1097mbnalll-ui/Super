@@ -76,6 +76,7 @@ struct RootView: View {
                 }
             }
         }
+        .onChange(of: catalog.dataVersion) { _, _ in cart.normalize(catalog) }
         .task(id: orders.current?.no) {
             // نتابع الطلب الشغّال: كل ١٠ ثواني وهو في الطريق، وإلا كل ٢٠
             while !Task.isCancelled, orders.current != nil {
@@ -99,6 +100,12 @@ struct RootView: View {
     /// للتصوير الآلي على المحاكي (Codemagic): -screen home|categories|category:<id>|product:<id>|cart|offers|account|address|placed و -seed-cart و -seed-order
     private func applyLaunchArguments() {
         let args = ProcessInfo.processInfo.arguments
+        if args.contains("-seed-promos") { catalog.previewPromos = true }
+        if args.contains("-seed-promo-cart"), let f = catalog.index?.featured, f.count > 12 {
+            cart.set("t:\(f[0].id)", 1)
+            cart.set("d:\(f[6].id)", 1)
+            cart.setBundle("pv-bundle", 1, catalog: catalog)
+        }
         if args.contains("-seed-cart"), cart.isEmpty, let index = catalog.index {
             for (i, p) in index.featured.prefix(4).enumerated() { cart.set(p.id, i == 0 ? 2 : 1) }
         }
@@ -128,6 +135,9 @@ struct RootView: View {
         else if value == "account" { tab = .account }
         else if value == "address" { tab = .cart; previewAddress = true }
         else if value == "placed" { tab = .cart; previewPlaced = orders.orders.first }
+        else if value == "deals" { tab = .home; homePath.append(Route.deals) }
+        else if value == "daily" { tab = .home; homePath.append(Route.daily) }
+        else if value == "bundle" { tab = .home; homePath.append(Route.banner("pv-bundle")) }
         else if value == "orderdetails" { tab = .account; previewDetails = orders.orders.first }
         else if value.hasPrefix("category:") { tab = .categories; categoriesPath.append(Route.category(String(value.dropFirst(9)))) }
         else if value.hasPrefix("product:") {
@@ -162,6 +172,9 @@ struct TabStack<Root: View>: View {
                     case .product(let id): ProductView(productID: id)
                     case .search: SearchView()
                     case .offers: OffersView()
+                    case .deals: DealsView()
+                    case .daily: DailyDealView()
+                    case .banner(let id): BannerProductsView(bannerID: id)
                     }
                 }
         }

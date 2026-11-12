@@ -68,6 +68,9 @@ struct Product: Hashable, Sendable, Identifiable {
     let packs: [Pack]
     let barcode: String?
     let max: Int?
+    /// شارة المالك (طازج، جديد...) و«يحلى معه» (sugg)
+    var badge: String? = nil
+    var sugg: [String] = []
 
     var imageURL: URL? { AppConfig.asset(image) }
     var hasPhoto: Bool { image?.hasPrefix("p/") == true }
@@ -106,6 +109,31 @@ struct Banner: Hashable, Sendable, Identifiable {
     var kicker: String? = nil
     var go: String? = nil
     var ids: [String] = []
+    /// باقة (style == "bundle"): سعرها كاملة
+    var bundlePrice: Double? = nil
+    var color2: String? = nil
+    var dark = false
+    /// بنر صورة كاملة من الإدارة (img) وهل يطلع النص فوقها
+    var picture: String? = nil
+    var showText = true
+    var noGo = false
+}
+
+/// «كل منتج بـ ٠٫٩٥» (store.deal95): يفتح لما مجموع الطلب العادي يوصل min. المفتاح في السلة d:<id>
+struct Deal95: Sendable {
+    var on = false
+    var min: Double = 0
+    var price: Double = 0.95
+    var limit = 0
+    var ids: [String] = []
+}
+
+/// عرض اليوم (store.daily): منتج واحد يتغير كل يوم من القائمة. المفتاح t:<id>
+struct DailyDeal: Sendable {
+    struct Item: Sendable { let id: String; let price: Double }
+    var on = false
+    var limit = 0
+    var list: [Item] = []
 }
 
 /// تعديلات المالك على بنر جاهز من لوحة الإدارة (store.banEdit): نفس اللي يقرأها الموقع، فالتعديل يطلع بالتطبيق بدون تحديث
@@ -219,6 +247,19 @@ struct StoreInfo: Sendable {
     var banEdit: [String: BannerSettings] = [:]
     var banPicks: [String: [String]] = [:]
     var look = AppLook()
+    var deal95 = Deal95()
+    var daily = DailyDeal()
+    /// مختارات المالك أول الرئيسية (store.forYou)، وforOnly = الرئيسية تعرضها بس
+    var forYou: [String] = []
+    var forOnly = false
+    /// «باقي N بس» يطلع لما المخزون الحي ≤ lowAt (افتراضي ٣)
+    var lowAt = 3
+    /// بدون منطقة مرسومة: المسافة القصوى من المحل (كم) وموقع المحل [lat, lng]، ومركز الخريطة
+    var maxKm: Double? = nil
+    var shop: [Double]? = nil
+    var mapCenter: [Double]? = nil
+    /// ترتيب أقسام الرئيسية (store.layout)
+    var layout: [PromoSlot] = []
 }
 
 struct Catalog: Sendable {
@@ -262,7 +303,9 @@ enum CatalogParser {
             guard let id = str(b["id"]), let title = text(b["title"]) else { continue }
             banners.append(Banner(id: id, title: title, subtitle: text(b["sub"]) ?? "", target: str(b["target"]), image: nil,
                                   color: str(b["color"]), style: str(b["style"]), kicker: text(b["k"]), go: text(b["go"]),
-                                  ids: (b["ids"] as? [Any])?.compactMap { str($0) } ?? []))
+                                  ids: (b["ids"] as? [Any])?.compactMap { str($0) } ?? [],
+                                  bundlePrice: num(b["bprice"]), color2: str(b["color2"]), dark: (b["dark"] as? Bool) ?? false,
+                                  picture: str(b["img"]), showText: (b["showText"] as? Bool) ?? true, noGo: (b["noGo"] as? Bool) ?? false))
         }
         store.look = AppLook.parse(s["app"])
         store.promos = ((s["promos"] as? [[String: Any]]) ?? []).compactMap { x in
@@ -279,6 +322,30 @@ enum CatalogParser {
             if !ids.isEmpty { store.banPicks[k] = ids }
         }
         store.banners = banners
+        if let d = s["deal95"] as? [String: Any] {
+            store.deal95 = Deal95(on: (d["on"] as? Bool) ?? false, min: num(d["min"]) ?? 0, price: num(d["price"]) ?? 0.95,
+                                  limit: Int(num(d["limit"]) ?? 0), ids: (d["ids"] as? [Any])?.compactMap { str($0) } ?? [])
+        }
+        if let d = s["daily"] as? [String: Any] {
+            store.daily = DailyDeal(on: (d["on"] as? Bool) ?? false, limit: Int(num(d["limit"]) ?? 0),
+                                    list: ((d["list"] as? [[String: Any]]) ?? []).compactMap { x in
+                                        guard let id = str(x["id"]), let pr = num(x["price"]) else { return nil }
+                                        return DailyDeal.Item(id: id, price: pr)
+                                    })
+        }
+        store.forYou = (s["forYou"] as? [Any])?.compactMap { str($0) } ?? []
+        store.forOnly = (s["forOnly"] as? Bool) ?? false
+        if s["lowAt"] != nil, let v = num(s["lowAt"]) { store.lowAt = Int(v) }
+        store.maxKm = num(s["maxKm"]).flatMap { $0 > 0 ? $0 : nil }
+        func point(_ any: Any?) -> [Double]? {
+            guard let a = any as? [Any], a.count == 2, let la = num(a[0]), let ln = num(a[1]) else { return nil }
+            return [la, ln]
+        }
+        store.shop = point(s["shop"])
+        store.mapCenter = point(s["mapCenter"])
+        store.layout = ((s["layout"] as? [[String: Any]]) ?? []).compactMap { x in
+            str(x["id"]).map { PromoSlot(id: $0, on: (x["on"] as? Bool) ?? true) }
+        }
 
         let cats: [Category] = ((root["cats"] as? [[String: Any]]) ?? []).compactMap { c in
             guard let id = str(c["id"]), let name = str(c["name"]) else { return nil }
@@ -302,7 +369,8 @@ enum CatalogParser {
             return Product(id: id, name: name, unit: str(p["unit"]) ?? "", price: price,
                            old: (old ?? 0) > price ? old : nil, cat: cat, sub: str(p["sub"]),
                            image: str(p["img"]), inStock: (p["stock"] as? Bool) ?? true, packs: packs,
-                           barcode: str(p["bc"]), max: num(p["max"]).map { Int($0) })
+                           barcode: str(p["bc"]), max: num(p["max"]).map { Int($0) },
+                           badge: str(p["badge"]), sugg: (p["sugg"] as? [Any])?.compactMap { str($0) } ?? [])
         }
         return Catalog(store: store, categories: cats, products: products)
     }

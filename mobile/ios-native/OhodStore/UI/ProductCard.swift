@@ -4,7 +4,26 @@ import SwiftUI
 struct ProductCard: View {
     let product: Product
     var showCategory = false
+    /// كرت عرض: deal (كل منتج بـ ٠٫٩٥) أو daily (عرض اليوم)، ومفتاحه في السلة d:/t:
+    var kind: PromoLine.Kind? = nil
     @Environment(CatalogStore.self) private var catalog
+    @Environment(Cart.self) private var cart
+
+    private var key: String { kind == .deal ? "d:\(product.id)" : kind == .daily ? "t:\(product.id)" : product.id }
+    private var promoPrice: Double? {
+        switch kind {
+        case .deal: return catalog.store.deal95.price
+        case .daily: return catalog.dailyDeal?.product.id == product.id ? catalog.dailyDeal?.price : nil
+        default: return nil
+        }
+    }
+    private var badgeText: String? {
+        switch kind {
+        case .deal: return "🔒 بـ \(Money.plain(catalog.store.deal95.price))"
+        case .daily: return "🔥 عرض اليوم"
+        default: return product.offerBadge ?? product.badge
+        }
+    }
 
     var body: some View {
         let available = catalog.isAvailable(product)
@@ -17,14 +36,24 @@ struct ProductCard: View {
                         .padding(12)
                         .padding(.bottom, 12)
                         .opacity(available ? 1 : 0.45)
-                    if available, let badge = product.offerBadge {
+                    if available, let badge = badgeText {
                         Text(badge)
                             .font(.kufi(10.5, .bold, relativeTo: .caption2))
                             .lineLimit(1)
                             .foregroundStyle(.white)
                             .padding(.horizontal, 7).padding(.vertical, 3)
                             .background(Theme.copper, in: UnevenRoundedRectangle(bottomTrailingRadius: 10, topTrailingRadius: 0, style: .continuous))
-                    } else if !available {
+                    }
+                    if available, let low = catalog.lowLeft(product) {
+                        Text(verbatim: "باقي \(low) بس")
+                            .font(.ui(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Theme.copperInk, in: Capsule())
+                            .padding(5)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                    if !available {
                         Text("نفد")
                             .font(.ui(size: 11, weight: .bold))
                             .foregroundStyle(Theme.muted)
@@ -56,7 +85,9 @@ struct ProductCard: View {
                     .font(.ui(size: 12.5))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
-                if available, let q = product.quantityOffer {
+                if let pp = promoPrice {
+                    PriceLabel(price: pp, old: product.price, size: 17)
+                } else if available, let q = product.quantityOffer {
                     // عرض الكمية مثل: ٥٫٨٠ ر.س  ~٦٫٠٠~  [العدد ٣]  ثم «🔥 وفّر ٠٫٢٠ ر.س بالعرض»
                     // السعر بسطر لحاله (الكرت ضيق)، وتحته «العدد N» و«وفّر»
                     PriceLabel(price: q.price, old: q.before, size: 16)
@@ -93,8 +124,22 @@ struct ProductCard: View {
                 .padding(6)
                 .overlay(alignment: .bottom) {
                     if available {
-                        CardQuantityControl(key: product.id, limit: product.max)
+                        if kind == .deal, !cart.dealUnlocked(catalog) {
+                            HStack {
+                                Spacer(minLength: 0)
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 13 * Theme.controlScale, weight: .bold))
+                                    .foregroundStyle(Theme.muted)
+                                    .frame(width: 30 * Theme.controlScale, height: 30 * Theme.controlScale)
+                                    .background(.white, in: RoundedRectangle(cornerRadius: 9 * Theme.controlScale, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: 9 * Theme.controlScale, style: .continuous).strokeBorder(Theme.line))
+                                    .accessibilityLabel("مقفول: يفتح لطلبك فوق \(Money.sar(catalog.store.deal95.min))")
+                            }
                             .padding(6)
+                        } else {
+                            CardQuantityControl(key: key, limit: product.max)
+                                .padding(6)
+                        }
                     }
                 }
         }
@@ -192,6 +237,7 @@ struct StepperCapsule: View {
 struct ProductGrid: View {
     let products: [Product]
     var showCategory = false
+    var kind: PromoLine.Kind? = nil
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -199,7 +245,7 @@ struct ProductGrid: View {
                             count: typeSize >= .accessibility1 ? 2 : AppLook.current.columns)
         LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
             ForEach(products) { p in
-                ProductCard(product: p, showCategory: showCategory)
+                ProductCard(product: p, showCategory: showCategory, kind: kind)
             }
         }
         .padding(.horizontal, 10)

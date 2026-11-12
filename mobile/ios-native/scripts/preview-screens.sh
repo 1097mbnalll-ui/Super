@@ -62,4 +62,9 @@ shot 10-account-order -seed-driver -screen account
 shot 11-order-details -seed-driver -screen orderdetails
 shot 12-home-order -seed-driver -screen home
 shot 13-sub-offer -seed-order -seed-sub -screen account
+shot 14-promo-home -seed-promos -screen home
+shot 15-deals -seed-promos -screen deals
+shot 16-daily -seed-promos -screen daily
+shot 17-bundle -seed-promos -screen bundle
+shot 18-promo-cart -seed-promos -seed-promo-cart -screen cart
 ls -la "$OUT"

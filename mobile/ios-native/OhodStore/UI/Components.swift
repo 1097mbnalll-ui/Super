@@ -7,6 +7,12 @@ enum Route: Hashable {
     case product(String)
     case search
     case offers
+    /// كل منتج بـ ٠٫٩٥
+    case deals
+    /// عرض اليوم
+    case daily
+    /// منتجات بنر (بدون هدف) أو باقة
+    case banner(String)
 }
 
 private struct ZoomNamespaceKey: EnvironmentKey {

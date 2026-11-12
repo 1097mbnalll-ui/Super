@@ -57,6 +57,17 @@ struct CatalogIndex: Sendable {
     }
 }
 
+struct PromoLine {
+    enum Kind { case deal, daily, bundle }
+    let kind: Kind
+    let product: Product
+    let price: Double
+    let limit: Int?
+    /// العرض لسا شغّال (لو انتهى: عرض اليوم يرجع سعر عادي، و٠٫٩٥ ينشال)
+    let valid: Bool
+    var bannerID: String? = nil
+}
+
 @MainActor
 @Observable
 final class CatalogStore {
@@ -65,7 +76,21 @@ final class CatalogStore {
     private(set) var liveStock: [String: Int] = [:]
     @ObservationIgnored private var lastStock = Date.distantPast
 
-    var store: StoreInfo { index?.catalog.store ?? StoreInfo() }
+    var store: StoreInfo {
+        guard previewPromos, var st = index?.catalog.store, let f = index?.featured, f.count > 12 else { return index?.catalog.store ?? StoreInfo() }
+        // للتصوير بس (-seed-promos): عروض المتجر شغّالة على منتجات من المختارات
+        st.deal95 = Deal95(on: true, min: 30, price: 0.95, limit: 1, ids: f[6..<12].map(\.id))
+        st.daily = DailyDeal(on: true, limit: 2, list: [DailyDeal.Item(id: f[0].id, price: (f[0].price * 0.7 * 100).rounded() / 100)])
+        let ids = f[1..<4].map(\.id)
+        let sum = f[1..<4].reduce(0) { $0 + $1.price }
+        if !st.banners.contains(where: { $0.id == "pv-bundle" }) {
+            st.banners.append(Banner(id: "pv-bundle", title: "باقة الفطور", subtitle: "", target: nil, image: nil, color: nil, style: "bundle",
+                                     ids: ids, bundlePrice: (sum * 0.85 * 100).rounded() / 100))
+        }
+        return st
+    }
+    /// للتصوير على المحاكي بس
+    var previewPromos = false
     var categories: [Category] { index?.catalog.categories ?? [] }
 
     func product(_ id: String) -> Product? { index?.byId[id] }
@@ -103,6 +128,89 @@ final class CatalogStore {
             }
         }
         return Array(hits.sorted { (isAvailable($0) ? 0 : 1, $0.hasPhoto ? 0 : 1) < (isAvailable($1) ? 0 : 1, $1.hasPhoto ? 0 : 1) }.prefix(limit))
+    }
+
+    // MARK: عروض المتجر (نفس الموقع: dealsList / daily / bundleAlloc / lineOf)
+
+    var dealOn: Bool { store.deal95.on }
+    /// منتجات «كل منتج بـ ٠٫٩٥» المتوفرة
+    var dealProducts: [Product] { dealOn ? store.deal95.ids.compactMap { product($0) }.filter { isAvailable($0) } : [] }
+
+    /// رقم اليوم (تاريخ الجوال) مثل dayNo في الموقع
+    static func dayNo(_ now: Date = Date()) -> Int {
+        let c = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: now)
+        var utc = Calendar(identifier: .gregorian); utc.timeZone = TimeZone(identifier: "UTC")!
+        let d = utc.date(from: DateComponents(year: c.year, month: c.month, day: c.day)) ?? now
+        return Int(floor(d.timeIntervalSince1970 / 86400))
+    }
+
+    /// عرض اليوم: منتج واحد يتبدل كل يوم من القائمة (المتوفر بس)
+    var dailyDeal: (product: Product, price: Double)? {
+        let d = store.daily
+        guard d.on else { return nil }
+        let l: [(Product, Double)] = d.list.compactMap { x in
+            guard let p = product(x.id), p.inStock, x.price > 0 else { return nil }
+            return (p, x.price)
+        }
+        guard !l.isEmpty else { return nil }
+        let x = l[Self.dayNo() % l.count]
+        return (x.0, x.1)
+    }
+
+    /// الباقة: ٢–٤ منتجات متوفرة بسعر أقل من مجموعها، ويتوزع السعر عليها نسبياً (الأخير ياخذ الباقي)
+    func bundle(_ b: Banner) -> (ids: [String], alloc: [String: Double], sum: Double, price: Double)? {
+        guard b.style == "bundle" else { return nil }
+        var seen = Set<String>()
+        let ids = Array(b.ids.filter { !$0.isEmpty && seen.insert($0).inserted }.prefix(4))
+        guard ids.count >= 2 else { return nil }
+        let ps = ids.compactMap { product($0) }
+        guard ps.count == ids.count, ps.allSatisfy(\.inStock) else { return nil }
+        let sum = (ps.reduce(0) { $0 + $1.price } * 100).rounded() / 100
+        guard let bp = b.bundlePrice, bp > 0, bp < sum else { return nil }
+        var alloc: [String: Double] = [:]
+        var acc = 0.0
+        for (i, p) in ps.enumerated() where i < ps.count - 1 {
+            let v = (p.price * bp / sum * 100).rounded() / 100
+            alloc[p.id] = v; acc += v
+        }
+        alloc[ps[ps.count - 1].id] = ((bp - acc) * 100).rounded() / 100
+        return (ids, alloc, sum, bp)
+    }
+    func banner(_ id: String) -> Banner? { store.banners.first { $0.id == id } }
+
+    /// سطر عرض: d:<id> (٠٫٩٥) أو t:<id> (عرض اليوم) أو x:<بنر>:<id> (باقة). nil = مو سطر عرض أو انتهى
+    func promoLine(_ key: String) -> PromoLine? {
+        let k = key.split(separator: ":").map(String.init)
+        guard k.count >= 2 else { return nil }
+        switch k[0] {
+        case "d":
+            guard let p = product(k[1]) else { return nil }
+            return PromoLine(kind: .deal, product: p, price: store.deal95.price, limit: cap(p, store.deal95.limit),
+                             valid: dealOn && store.deal95.ids.contains(p.id))
+        case "t":
+            guard let p = product(k[1]) else { return nil }
+            let dd = dailyDeal
+            let ok = dd?.product.id == p.id
+            return PromoLine(kind: .daily, product: p, price: ok ? dd!.price : p.price, limit: cap(p, store.daily.limit), valid: ok)
+        case "x":
+            guard k.count == 3, let p = product(k[2]), let b = banner(k[1]), let al = bundle(b), let price = al.alloc[p.id] else { return nil }
+            return PromoLine(kind: .bundle, product: p, price: price, limit: nil, valid: true, bannerID: b.id)
+        default: return nil
+        }
+    }
+
+    /// capOf في الموقع: حد العرض، وحد المنتج، والمخزون الحي
+    func cap(_ p: Product, _ base: Int) -> Int? {
+        var c = base > 0 ? base : 0
+        if let m = p.max, m > 0 { c = c > 0 ? Swift.min(c, m) : m }
+        if let l = liveStock[p.id], l > 0 { c = c > 0 ? Swift.min(c, l) : l }
+        return c > 0 ? c : nil
+    }
+
+    /// باقي كم من المنتج (المخزون الحي) لو أقل من حد التنبيه
+    func lowLeft(_ p: Product) -> Int? {
+        guard isAvailable(p), let l = liveStock[p.id], l <= store.lowAt else { return nil }
+        return l
     }
 
     /// الخادم قال إن المنتج باقي منه كذا (وقت إرسال الطلب)
@@ -163,6 +271,8 @@ final class CatalogStore {
 
     /// يزيد لما يتغير «شكل التطبيق» من الإدارة، والواجهة تنرسم من جديد
     private(set) var lookVersion = 0
+    /// يزيد مع كل نسخة جديدة من المتجر (السلة تنظّف عروضها المنتهية)
+    private(set) var dataVersion = 0
 
     private func apply(_ data: Data) async throws {
         let built = try await Task.detached(priority: .userInitiated) { try CatalogIndex.build(from: data) }.value
@@ -171,6 +281,7 @@ final class CatalogStore {
             lookVersion += 1
         }
         index = built
+        dataVersion += 1
     }
 
     private static var cacheURL: URL {

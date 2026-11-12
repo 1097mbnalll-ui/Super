@@ -294,6 +294,20 @@ private struct BannerCarousel: View {
                                   subtitle: "\(q.name)\nبدل \(Money.plain(qo.before)) · وفّر \(Money.plain(qo.before - qo.price))",
                                   button: "شوف العرض", style: .custom(Color(hex: 0x17407A)), products: [q], route: .product(q.id))
         }
+        // عرض اليوم (store.daily): منتج واحد لين نص الليل
+        if let dd = catalog.dailyDeal {
+            built["daily"] = make("daily", kicker: "🔥 عرض اليوم · ينتهي نص الليل", title: dd.product.name,
+                                  subtitle: "\(Money.plain(dd.price)) ر.س بدل \(Money.plain(dd.product.price))", button: "اطلبه الحين",
+                                  style: .calm, products: [dd.product], route: .daily)
+        }
+        // كل منتج بـ ٠٫٩٥ (store.deal95)
+        let deals = catalog.dealProducts
+        if !deals.isEmpty {
+            let d = store.deal95
+            built["deals"] = make("deals", kicker: "🔒 عروض مقفولة", title: "كل منتج بـ \(Money.plain(d.price)) ر.س",
+                                  subtitle: "تنفتح لطلبك فوق \(Money.plain(d.min)) ر.س", button: "شوف المنتجات",
+                                  style: .night, products: deals, route: .deals)
+        }
         // كل العروض
         if offers.count > 1 {
             let maxPct = offers.compactMap(\.discountPercent).max() ?? 0
@@ -320,14 +334,20 @@ private struct BannerCarousel: View {
                     route = .category(id); catID = id
                 } else if t.hasPrefix("prod:") { route = .product(String(t.dropFirst(5))) }
                 else if t == "offers" { route = .offers }
+                else if t == "deals" { route = .deals }
             }
             var products = b.ids.compactMap { catalog.product($0) }
             if products.isEmpty, let catID { products = catalog.products(in: catID).filter { $0.hasPhoto && catalog.isAvailable($0) } }
+            // الباقة: صفحتها فيها «أضف الباقة»
+            let bundle = catalog.bundle(b)
+            if b.style == "bundle", bundle == nil { continue }
+            if bundle != nil { route = .banner(b.id) }
             if route == nil, products.count == 1 { route = .product(products[0].id) }
+            if route == nil, products.count > 1 { route = .banner(b.id) }
             let from = products.map(\.price).min()
             built[b.id] = HomeBanner(id: b.id, kicker: b.kicker ?? (catID.flatMap { catalog.category($0)?.name } ?? ""), title: b.title,
-                                     subtitle: b.subtitle.isEmpty ? (from.map { "تبدأ من \(Money.plain($0)) ر.س" } ?? "") : b.subtitle,
-                                     button: b.go ?? "تسوّق الحين", style: style(b.style, color: b.color, fallback: .light),
+                                     subtitle: b.subtitle.isEmpty ? (bundle.map { "الباقة بـ \(Money.plain($0.price)) بدل \(Money.plain($0.sum)) ر.س" } ?? from.map { "تبدأ من \(Money.plain($0)) ر.س" } ?? "") : b.subtitle,
+                                     button: b.noGo ? "" : (b.go ?? (bundle != nil ? "أضف الباقة" : "تسوّق الحين")), style: style(b.style, color: b.color, fallback: .light),
                                      images: Array(products.prefix(3).compactMap(\.imageURL)), route: route)
         }
 
@@ -461,6 +481,18 @@ private struct QuickChips: View {
             HStack(spacing: 8) {
                 Button { tab = .offers } label: { Chip(title: "🔥 العروض") }
                     .buttonStyle(PressableStyle())
+                if catalog.dailyDeal != nil {
+                    Button { path.append(Route.daily) } label: { Chip(title: "⏰ عرض اليوم") }
+                        .buttonStyle(PressableStyle())
+                }
+                if !catalog.dealProducts.isEmpty {
+                    Button { path.append(Route.deals) } label: { Chip(title: "🔒 بـ \(Money.plain(catalog.store.deal95.price)) ر.س") }
+                        .buttonStyle(PressableStyle())
+                }
+                ForEach(catalog.store.banners.filter { catalog.bundle($0) != nil }) { b in
+                    Button { path.append(Route.banner(b.id)) } label: { Chip(title: "🎁 \(b.title.replacingOccurrences(of: "\n", with: " "))") }
+                        .buttonStyle(PressableStyle())
+                }
                 ForEach(catalog.categories.filter { !$0.soon }) { c in
                     Button { path.append(Route.category(c.id)) } label: { Chip(title: "\(c.emoji) \(c.name)") }
                         .buttonStyle(PressableStyle())
