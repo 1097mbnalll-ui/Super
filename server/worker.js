@@ -934,7 +934,6 @@ async function ensureSchema(env) {
   await env.DB.batch([
     "CREATE TABLE IF NOT EXISTS orders (no INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER NOT NULL, updated INTEGER NOT NULL, status TEXT NOT NULL, phone TEXT NOT NULL, data TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS stock (id TEXT PRIMARY KEY, qty INTEGER NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS stock_qty ON stock(qty)",
     "CREATE TABLE IF NOT EXISTS promo_codes (code TEXT PRIMARY KEY, kind TEXT NOT NULL, value REAL NOT NULL, min REAL NOT NULL DEFAULT 0, cap REAL NOT NULL DEFAULT 0, until INTEGER NOT NULL DEFAULT 0, max_uses INTEGER NOT NULL DEFAULT 0, per_phone INTEGER NOT NULL DEFAULT 1, active INTEGER NOT NULL DEFAULT 1, note TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL, who TEXT NOT NULL DEFAULT '')",
     "CREATE TABLE IF NOT EXISTS subs (endpoint TEXT NOT NULL, role TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', p256dh TEXT NOT NULL, auth TEXT NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (endpoint, role, ref))",
     "CREATE TABLE IF NOT EXISTS st_day (day TEXT PRIMARY KEY, orders INTEGER NOT NULL, revenue REAL NOT NULL)",
@@ -1561,7 +1560,7 @@ function needOf(rec) {
 }
 let stockCache = { at: 0, body: "" };
 // للزبائن: بس الكميات القليلة (≤ STOCK_SHOW). الكمية الكبيرة ما تحد السلة، والخادم يتأكد وقت الطلب ويرجع الباقي لو ما كفى
-const STOCK_SHOW = 50;
+const STOCK_SHOW = 10;
 async function readShownStock(env) {
   await ensureSchema(env);
   const rs = await env.DB.prepare("SELECT id, qty FROM stock WHERE qty <= ?").bind(STOCK_SHOW).all();
