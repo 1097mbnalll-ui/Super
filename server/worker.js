@@ -104,6 +104,11 @@ export default {
         const km = distM(shop[0], shop[1], Number(body.lat), Number(body.lng)) / 1000;
         if (km > maxKm) return reply(400, { ok: false, code: "too_far", km: Math.round(km * 10) / 10, max: maxKm });
       }
+      if (priced.gift && env.DB) {
+        await ensureSchema(env);
+        const used = await env.DB.prepare("SELECT 1 x FROM orders WHERE phone = ? AND status != 'canceled' AND json_extract(data, '$.gift') > 0 LIMIT 1").bind(priced.phone).first().catch(() => null);
+        if (used) { priced.gift = 0; priced.total = round2(priced.subtotal + priced.fee); }
+      }
       const record = orderRecord(priced, body);
       const walletPart = moneyCents(body.walletAmount || 0);
       if (walletPart === null || walletPart > moneyCents(record.total)) return reply(400,{ok:false,code:'bad_payment'});
@@ -148,7 +153,7 @@ export default {
         });
         if (!sent.ok && !env.DB) return reply(502, { ok: false, code: "telegram" });
       }
-      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, total: priced.total, count: priced.count, track: !!env.DB });
+      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, gift: priced.gift || 0, total: priced.total, count: priced.count, track: !!env.DB });
     }
 
     // الزبون يتابع حالة طلبه (رقم الطلب + نفس رقم الجوال)
@@ -989,7 +994,7 @@ async function ensureSchema(env) {
 function orderRecord(o, body) {
   return {
     lines: o.lines.map((l) => ({ id: l.p.id, name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, regularPrice: Math.max(Number(l.price), Number(l.p.price)||0, Number(l.p.old)||0), tag: l.tag || "", ...(l.p.per ? { per: l.p.per } : {}) })),
-    subtotal: o.subtotal, fee: o.fee, total: o.total, count: o.count, phone: o.phone,
+    subtotal: o.subtotal, fee: o.fee, ...(o.gift > 0 ? { gift: o.gift } : {}), total: o.total, count: o.count, phone: o.phone,
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
     pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
     st: 1, // انحسب في التحليل
@@ -1159,8 +1164,11 @@ async function editOrder(env, data, body, who) {
   if (!lines.length) return { error: "empty" };
   const fee = Math.max(0, Number(body.fee ?? rec.fee) || 0);
   const subtotal = round2(lines.reduce((s, l) => s + l.qty * l.price, 0));
-  const nr = { ...rec, lines, subtotal, fee, total: round2(subtotal + fee), count: lines.reduce((s, l) => s + l.qty, 0), st: 1,
-    edits: (rec.edits || []).concat([{ at: Date.now(), before: rec.total, after: round2(subtotal + fee) }]).slice(-20) };
+  // هدية الاعتذار تبقى بعد التعديل ما دام المنتجات ٣٠ وفوق
+  const gift = Number(rec.gift) > 0 && subtotal >= GIFT.min ? Number(rec.gift) : 0;
+  const nr = { ...rec, lines, subtotal, fee, total: round2(subtotal + fee - gift), count: lines.reduce((s, l) => s + l.qty, 0), st: 1,
+    edits: (rec.edits || []).concat([{ at: Date.now(), before: rec.total, after: round2(subtotal + fee - gift) }]).slice(-20) };
+  if (gift) nr.gift = gift; else delete nr.gift;
   await withCost(env, nr, true);
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created);
@@ -1228,6 +1236,10 @@ function openNow(S, now = Date.now()) {
   return o === c ? true : o < c ? (m >= o && m < c) : (m >= o || m < c);
 }
 
+// «هدية اعتذار» (١٢ نوفمبر ٢٠٢٦، بعد توقف الطلب بسبب حد D1): خصم ٥ ريال على طلب منتجاته ٣٠ ريال وفوق،
+// لين نهاية ١٥ نوفمبر بتوقيت الرياض، مرة وحدة لكل جوال (الطلبات الملغاة ما تنحسب). الزبون يكتب «هدية اعتذار» في الملاحظات
+const GIFT = { amount: 5, min: 30, until: Date.UTC(2026, 10, 15, 21, 0) };
+const giftAsked = (note) => /هدي[ةه]\s*(?:ال)?اعتذار/.test(String(note || ""));
 function priceOrder(data, body) {
   const S = data.store || {};
   const byId = {};
@@ -1307,7 +1319,8 @@ function priceOrder(data, body) {
   if (minOrder > 0 && base + dealSum < minOrder) return { error: "min_order", min: minOrder };
   const subtotal = round2(base + dealSum);
   const fee = S.freeOver && subtotal >= S.freeOver ? 0 : Number(S.fee || 0);
-  return { lines, subtotal, fee, total: round2(subtotal + fee), count, phone };
+  const gift = giftAsked(body.note) && Date.now() < GIFT.until && subtotal >= GIFT.min ? GIFT.amount : 0;
+  return { lines, subtotal, fee, gift, total: round2(subtotal + fee - gift), count, phone };
 }
 
 // وحدة بيع ثانية لنفس المنتج: «<المنتج>~<رقم الخيار>»، سعرها من بيانات المتجر، والمخزون ينخصم بعدد حباتها من المنتج الأساسي
@@ -1337,6 +1350,7 @@ function orderText(data, o, body, orderNo) {
     "",
     `المنتجات: ${money(o.subtotal)}`,
     `التوصيل: ${o.fee ? money(o.fee) : "مجاني"}`,
+    o.gift ? `🎁 هدية اعتذار: −${money(o.gift)}` : null,
     `<b>الإجمالي: ${money(o.total)}</b>`,
     `الدفع: ${pay}`,
     "",
@@ -2633,9 +2647,9 @@ function posDocument(raw,no){
     if(price===null||regular===null||!Number.isInteger(qty)||qty<=0)throw Error('bad_order');
     return {id:String(l.id||''),name:String(l.name||''),unit:String(l.unit||''),qty,price,regular:Math.max(price,regular),total:price*qty,tag:String(l.tag||'')};
   });
-  const subtotal=moneyCents(order.subtotal),fee=moneyCents(order.fee||0),total=moneyCents(order.total),gross=lines.reduce((s,l)=>s+l.regular*l.qty,0);
-  if(!lines.length||subtotal===null||fee===null||total===null||lines.reduce((s,l)=>s+l.total,0)!==subtotal||subtotal+fee!==total)throw Error('bad_order');
-  return {orderNo:'#'+(1000+no),lines,gross,discount:gross-subtotal,subtotal,fee,total};
+  const subtotal=moneyCents(order.subtotal),fee=moneyCents(order.fee||0),gift=moneyCents(order.gift||0),total=moneyCents(order.total),gross=lines.reduce((s,l)=>s+l.regular*l.qty,0);
+  if(!lines.length||subtotal===null||fee===null||gift===null||total===null||lines.reduce((s,l)=>s+l.total,0)!==subtotal||subtotal+fee-gift!==total)throw Error('bad_order');
+  return {orderNo:'#'+(1000+no),lines,gross,discount:gross-subtotal,subtotal,fee,...(gift?{gift}:{}),total};
 }
 async function latestPosReceipt(env,no){return env.DB.prepare('SELECT * FROM pos_receipts WHERE no=? ORDER BY revision DESC LIMIT 1').bind(no).first();}
 async function posRoute(env,path,body,who,role){
