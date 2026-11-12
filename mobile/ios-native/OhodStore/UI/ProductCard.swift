@@ -37,7 +37,7 @@ struct ProductCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                 .modifier(ZoomSource(id: product.id))
 
-                if showCategory, let cat = catalog.category(product.cat) {
+                if showCategory, AppLook.current.showCatChip, let cat = catalog.category(product.cat) {
                     Text(cat.name)
                         .font(.ui(size: 10.5, weight: .semibold))
                         .foregroundStyle(Theme.oliveInk)
@@ -80,8 +80,8 @@ struct ProductCard: View {
             }
             .padding(6)
             .padding(.bottom, 4)
-            .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.line))
+            .background(.white, in: RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous).strokeBorder(Theme.line))
             .shadow(color: Theme.ink.opacity(0.06), radius: 4, y: 2)
             .contentShape(Rectangle())
         }
@@ -119,12 +119,15 @@ struct CardQuantityControl: View {
                     Button {
                         cart.increment(key, limit: cap)
                     } label: {
+                        // الزر متناسق مع حجم الكرت والسعر، ويكبر ويصغر مع الخط من «شكل التطبيق»
+                        let outline = AppLook.current.addStyle == "outline"
                         Image(systemName: "plus")
-                            .font(.ui(size: 19, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 38, height: 38)
-                            .background(Theme.brand, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .shadow(color: Theme.brand.opacity(0.4), radius: 4, y: 2)
+                            .font(.system(size: 15 * Theme.controlScale, weight: .bold))
+                            .foregroundStyle(outline ? Theme.brandDeep : .white)
+                            .frame(width: 30 * Theme.controlScale, height: 30 * Theme.controlScale)
+                            .background(outline ? Color.white : Theme.brand, in: RoundedRectangle(cornerRadius: 9 * Theme.controlScale, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 9 * Theme.controlScale, style: .continuous).strokeBorder(outline ? Theme.line : .clear))
+                            .shadow(color: (outline ? Color.black : Theme.brand).opacity(outline ? 0.08 : 0.3), radius: 3, y: 1)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
@@ -148,6 +151,8 @@ struct StepperCapsule: View {
     let qty: Int
     var atLimit = false
     var compact = false
+    /// صفحة المنتج: عداد كبير جنب زر «في السلة»
+    var large = false
     let onPlus: () -> Void
     let onMinus: () -> Void
 
@@ -161,7 +166,7 @@ struct StepperCapsule: View {
             .opacity(atLimit ? 0.45 : 1)
             .accessibilityLabel("زيادة")
             Text(verbatim: String(qty))
-                .font(.kufi(compact ? 14 : 16, .bold))
+                .font(.kufi(large ? 17 : 14, .bold))
                 .contentTransition(.numericText(value: Double(qty)))
                 .frame(minWidth: 22)
                 .animation(.snappy, value: qty)
@@ -173,9 +178,9 @@ struct StepperCapsule: View {
             }
             .accessibilityLabel(qty == 1 ? "شيل من السلة" : "نقص")
         }
-        .font(.ui(size: compact ? 13 : 15, weight: .semibold))
+        .font(.ui(size: compact ? 13 : 14, weight: .semibold))
         .foregroundStyle(.white)
-        .frame(height: compact ? 40 : 38)
+        .frame(height: large ? 50 : (compact ? 38 : 32) * Theme.controlScale)
         .frame(minWidth: compact ? 96 : nil)
         .background(Theme.brand, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .shadow(color: Theme.brand.opacity(0.3), radius: 4, y: 2)

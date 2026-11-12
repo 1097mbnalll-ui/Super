@@ -28,7 +28,7 @@ struct SearchView: View {
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.immediately)
-        .background(Color.white)
+        .background(Theme.pageBG)
         .navigationTitle("البحث")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query, isPresented: $presented, placement: .navigationBarDrawer(displayMode: .always), prompt: "اسم المنتج أو الباركود")
@@ -81,7 +81,7 @@ struct OffersView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
-        .background(Color.white)
+        .background(Theme.pageBG)
         .navigationTitle("العروض")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await catalog.refresh() }

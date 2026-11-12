@@ -134,6 +134,13 @@ struct AppLook: Equatable, Sendable {
     var showChips = true
     var catIcons: [String: String] = [:]
     var tabIcons: [String: String] = [:]
+    /// زر الإضافة: filled أخضر مليان / outline أبيض بإطار
+    var addStyle = "filled"
+    /// حواف الكروت: round / soft / square
+    var radius = "round"
+    /// خلفية الصفحات: white / gray
+    var background = "white"
+    var showCatChip = true
 
     /// النسخة المطبّقة الحين (تتغير لما تنحمّل بيانات المتجر)
     nonisolated(unsafe) static var current = AppLook()
@@ -153,6 +160,10 @@ struct AppLook: Equatable, Sendable {
         l.showChips = (o["showChips"] as? Bool) ?? true
         for (k, v) in (o["catIcons"] as? [String: Any]) ?? [:] { if let e = CatalogParser.str(v) { l.catIcons[k] = String(e.prefix(4)) } }
         for (k, v) in (o["tabIcons"] as? [String: Any]) ?? [:] { if let e = CatalogParser.str(v) { l.tabIcons[k] = e } }
+        l.addStyle = CatalogParser.str(o["addStyle"]) == "outline" ? "outline" : "filled"
+        l.radius = ["soft", "square"].contains(CatalogParser.str(o["radius"]) ?? "") ? CatalogParser.str(o["radius"])! : "round"
+        l.background = CatalogParser.str(o["background"]) == "gray" ? "gray" : "white"
+        l.showCatChip = (o["showCatChip"] as? Bool) ?? true
         return l
     }
 }
@@ -174,6 +185,30 @@ struct StoreInfo: Sendable {
     var minOrder: Double = 0
     var closed = false
     var closedMessage = ""
+    /// مواعيد استقبال الطلبات اليومية بتوقيت الرياض ("12:00" و "01:00")، فاضي = مفتوح دايم
+    var openAt: String? = nil
+    var closeAt: String? = nil
+
+    /// مقفل الحين: يدوي من الإدارة أو برا المواعيد (نفس حساب الموقع والخادم)
+    var isClosedNow: Bool { closed || !StoreInfo.openNow(openAt, closeAt) }
+    var closedNowMessage: String {
+        if closed { return closedMessage }
+        guard let a = openAt, let b = closeAt else { return "" }
+        return "نستقبل الطلبات يومياً من \(StoreInfo.timeText(a)) لين \(StoreInfo.timeText(b)). تقدر تتصفح الحين وتطلب وقت الفتح."
+    }
+    static func minutes(_ x: String) -> Int { let q = x.split(separator: ":"); return (Int(q.first ?? "") ?? 0) * 60 + (q.count > 1 ? Int(q[1]) ?? 0 : 0) }
+    static func openNow(_ a: String?, _ b: String?, now: Date = Date()) -> Bool {
+        guard let a, let b else { return true }
+        let m = Int((now.timeIntervalSince1970 / 60 + 180).truncatingRemainder(dividingBy: 1440))
+        let o = minutes(a), c = minutes(b)
+        return o == c ? true : o < c ? (m >= o && m < c) : (m >= o || m < c)
+    }
+    static func timeText(_ x: String) -> String {
+        let t = minutes(x), h = t / 60, mi = t % 60
+        let h12 = h == 0 ? 12 : h > 12 ? h - 12 : h
+        let part = h == 0 || h < 5 ? "بالليل" : h < 12 ? "الصبح" : h < 16 ? "الظهر" : h < 19 ? "العصر" : "بالليل"
+        return "\(h12)\(mi > 0 ? String(format: ":%02d", mi) : "") \(part)"
+    }
     var api = AppConfig.defaultAPI
     var zone: [[Double]] = []
     /// إلغاء الزبون: new (قبل التجهيز) / accepted (قبل خروج المندوب) / off
@@ -211,6 +246,8 @@ enum CatalogParser {
         store.minOrder = num(s["minOrder"]) ?? 0
         store.closed = (s["closed"] as? Bool) ?? false
         store.closedMessage = str(s["closedMsg"]) ?? str(s["closedMessage"]) ?? ""
+        store.openAt = str(s["openAt"])
+        store.closeAt = str(s["closeAt"])
         store.api = str(s["api"]) ?? AppConfig.defaultAPI
         store.custCancel = str(s["custCancel"]) ?? "new"
         if let zone = s["zone"] as? [[Any]] {

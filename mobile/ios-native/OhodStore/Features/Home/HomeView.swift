@@ -13,8 +13,8 @@ struct HomeView: View {
                 HomeHeader(path: $path)
                 BannerCarousel(path: $path)
                     .padding(.horizontal, 16).padding(.top, 16)
-                if catalog.store.closed {
-                    ClosedNotice(message: catalog.store.closedMessage)
+                if catalog.store.isClosedNow {
+                    ClosedNotice(message: catalog.store.closedNowMessage)
                         .padding(.horizontal, 16).padding(.top, 12)
                 }
                 if AppLook.current.showChips {
@@ -41,7 +41,7 @@ struct HomeView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
-        .background(Color.white)
+        .background(Theme.pageBG)
         .refreshable { await catalog.refresh() }
         .toolbar(.hidden, for: .navigationBar)
         .overlay(alignment: .bottomLeading) {

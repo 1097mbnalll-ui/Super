@@ -32,8 +32,8 @@ struct CartView: View {
                         if totals.freeOver > 0 {
                             FreeDeliveryBar(remaining: totals.freeRemaining, progress: totals.freeProgress)
                         }
-                        if catalog.store.closed {
-                            ClosedNotice(message: catalog.store.closedMessage)
+                        if catalog.store.isClosedNow {
+                            ClosedNotice(message: catalog.store.closedNowMessage)
                         }
                         VStack(spacing: 0) {
                             ForEach(totals.rows) { row in
@@ -66,9 +66,9 @@ struct CartView: View {
                     .padding(.bottom, 8)
                 }
                 .scrollIndicators(.hidden)
-                .background(Color.white)
+                .background(Theme.pageBG)
                 .safeAreaInset(edge: .bottom) {
-                    CheckoutBar(totals: totals, sending: orders.sending, closed: catalog.store.closed) { checkout() }
+                    CheckoutBar(totals: totals, sending: orders.sending, closed: catalog.store.isClosedNow) { checkout() }
                 }
             }
         }

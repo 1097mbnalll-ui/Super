@@ -93,7 +93,7 @@ struct AccountView: View {
             .padding(16)
         }
         .scrollIndicators(.hidden)
-        .background(Color.white)
+        .background(Theme.pageBG)
         .navigationTitle("حسابي")
         .navigationBarTitleDisplayMode(.inline)
         .animation(.smooth, value: orders.current?.status)

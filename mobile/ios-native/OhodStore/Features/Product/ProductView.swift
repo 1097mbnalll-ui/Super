@@ -138,7 +138,7 @@ struct ProductView: View {
                         .transition(.opacity)
                     } else {
                         HStack(spacing: 10) {
-                            StepperCapsule(qty: line.qty, atLimit: cap.map { line.qty >= $0 } ?? false, compact: false,
+                            StepperCapsule(qty: line.qty, atLimit: cap.map { line.qty >= $0 } ?? false, compact: false, large: true,
                                            onPlus: { cart.increment(key, limit: cap) },
                                            onMinus: { cart.decrement(key) })
                                 .frame(width: 128)

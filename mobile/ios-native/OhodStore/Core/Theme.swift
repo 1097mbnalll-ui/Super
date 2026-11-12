@@ -45,6 +45,12 @@ enum Theme {
             ? LinearGradient(colors: [Color(hex: 0x12A07C), Color(hex: 0x0B7A5E), Color(hex: 0x07604A)], startPoint: .topTrailing, endPoint: .bottomLeading)
             : LinearGradient(colors: [brand, brand.opacity(0.82)], startPoint: .topTrailing, endPoint: .bottomLeading)
     }
+    /// خلفية الصفحات من «شكل التطبيق»
+    static var pageBG: Color { AppLook.current.background == "gray" ? Color(hex: 0xF3F5F4) : .white }
+    /// حواف الكروت من «شكل التطبيق»
+    static var cardRadius: CGFloat { ["soft": 12, "square": 6][AppLook.current.radius] ?? 18 }
+    /// حجم زر الإضافة والعداد يكبر ويصغر مع الخط
+    static var controlScale: CGFloat { CGFloat(AppLook.current.textScale) }
     /// خلفية فاتحة لأعلى الصفحات (الأقسام وصفحة المنتج)
     static let softGradient = LinearGradient(colors: [mint, mintSoft, .white], startPoint: .top, endPoint: .bottom)
     static let tileGradient = LinearGradient(colors: [mint, Color(hex: 0xF5FBF9)], startPoint: .top, endPoint: .bottom)

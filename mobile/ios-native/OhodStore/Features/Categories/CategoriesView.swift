@@ -154,7 +154,7 @@ struct CategoryView: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
-        .background(Color.white)
+        .background(Theme.pageBG)
         .navigationTitle(category?.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
     }
