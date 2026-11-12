@@ -25,12 +25,12 @@ struct WalletSheet: View {
                         ForEach(wallet.history) { e in
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(e.title).font(.ui(size: 14, weight: .semibold))
+                                    Text(tv: e.title).font(.ui(size: 14, weight: .semibold))
                                     Text(e.at.formatted(.dateTime.day().month().hour().minute().locale(Locale(identifier: "ar_SA@numbers=latn"))))
                                         .font(.ui(size: 12)).foregroundStyle(Theme.muted)
                                 }
                                 Spacer()
-                                Text(verbatim: (e.deltaCents >= 0 ? "+" : "−") + Money.sar(Double(abs(e.deltaCents)) / 100))
+                                Text(tv: (e.deltaCents >= 0 ? "+" : "−") + Money.sar(Double(abs(e.deltaCents)) / 100))
                                     .font(.kufi(14, .bold))
                                     .foregroundStyle(e.deltaCents >= 0 ? Theme.brandDeep : Theme.copperInk)
                             }
@@ -60,7 +60,7 @@ struct WalletSheet: View {
                     }
                 }
                 if let message {
-                    Text(message).font(.ui(size: 13, weight: .semibold)).foregroundStyle(Theme.copperInk)
+                    Text(tv: message).font(.ui(size: 13, weight: .semibold)).foregroundStyle(Theme.copperInk)
                 }
             }
             .navigationTitle(wallet.loggedIn ? "محفظتي" : "دخول المحفظة")

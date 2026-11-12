@@ -45,7 +45,7 @@ struct ProductCard: View {
                             .background(Theme.copper, in: UnevenRoundedRectangle(bottomTrailingRadius: 10, topTrailingRadius: 0, style: .continuous))
                     }
                     if available, let low = catalog.lowLeft(product) {
-                        Text(verbatim: "باقي \(low) بس")
+                        Text(tv: "باقي \(low) بس")
                             .font(.ui(size: 10, weight: .bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 6).padding(.vertical, 2)
@@ -94,7 +94,7 @@ struct ProductCard: View {
                     HStack(spacing: 4) {
                         HStack(spacing: 2) {
                             Text("العدد").font(.ui(size: 9.5, weight: .bold))
-                            Text(verbatim: "\(q.count)").font(.kufi(12.5, .bold))
+                            Text(tv: "\(q.count)").font(.kufi(12.5, .bold))
                         }
                         .foregroundStyle(.white)
                         .padding(.horizontal, 5).padding(.vertical, 1)
@@ -210,7 +210,7 @@ struct StepperCapsule: View {
             }
             .opacity(atLimit ? 0.45 : 1)
             .accessibilityLabel("زيادة")
-            Text(verbatim: String(qty))
+            Text(tv: String(qty))
                 .font(.kufi(large ? 17 : 14, .bold))
                 .contentTransition(.numericText(value: Double(qty)))
                 .frame(minWidth: 22)

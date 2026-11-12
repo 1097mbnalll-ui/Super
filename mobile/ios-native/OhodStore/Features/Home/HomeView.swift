@@ -154,7 +154,7 @@ private struct OrderBubble: View {
                     VStack(spacing: 0) {
                         Text(icon).font(.ui(size: eta == nil ? 28 : 22))
                         if let eta, order.status == "onway" {
-                            Text(verbatim: "\(max(1, eta)) د").font(.kufi(13, .bold)).foregroundStyle(.white)
+                            Text(tv: "\(max(1, eta)) د").font(.kufi(13, .bold)).foregroundStyle(.white)
                         }
                     }
                     Circle().fill(Theme.copper).frame(width: 16, height: 16)
@@ -472,26 +472,26 @@ private struct BannerCard: View {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 3) {
                     if !banner.kicker.isEmpty {
-                        Text(banner.kicker)
+                        Text(tv: banner.kicker)
                             .font(.ui(size: 11.5 * AppLook.current.bannerScale, weight: .bold))
                             .foregroundStyle(kickerColor)
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(kickerBackground, in: Capsule())
                     }
-                    Text(banner.title)
+                    Text(tv: banner.title)
                         .font(.kufi(18 * AppLook.current.bannerScale, .bold, relativeTo: .title3))
                         .foregroundStyle(textColor)
                         .lineLimit(2)
                         .minimumScaleFactor(0.75)
                     if !banner.subtitle.isEmpty {
-                        Text(banner.subtitle)
+                        Text(tv: banner.subtitle)
                             .font(.ui(size: 12 * AppLook.current.bannerScale, weight: .medium))
                             .foregroundStyle(textColor.opacity(0.9))
                             .lineLimit(2)
                     }
                     Spacer(minLength: 0)
                     if !banner.button.isEmpty {
-                    Text(banner.button)
+                    Text(tv: banner.button)
                         .font(.kufi(12 * AppLook.current.bannerScale, .bold))
                         .foregroundStyle(buttonText)
                         .padding(.horizontal, 13).padding(.vertical, 6)
@@ -617,7 +617,7 @@ struct ClosedNotice: View {
             Image(systemName: "moon.zzz.fill").foregroundStyle(Theme.copperInk)
             VStack(alignment: .leading, spacing: 2) {
                 Text("المتجر مقفل الحين").font(.kufi(13, .bold))
-                Text(message.isEmpty ? "تقدر تتصفح وتجهّز سلتك، ونستقبل الطلبات وقت الفتح." : message)
+                Text(tv: message.isEmpty ? "تقدر تتصفح وتجهّز سلتك، ونستقبل الطلبات وقت الفتح." : message)
                     .font(.ui(size: 13)).foregroundStyle(Theme.muted)
             }
             Spacer(minLength: 0)

@@ -76,9 +76,9 @@ extension Font {
 enum Money {
     /// أرقام إنجليزية بخانتين (قرار المالك): 2.00
     static func plain(_ value: Double) -> String { String(format: "%.2f", value) }
-    static func sar(_ value: Double) -> String { "\(plain(value)) ر.س" }
+    static func sar(_ value: Double) -> String { "\(plain(value)) \(AppLang.english ? "SAR" : "ر.س")" }
     /// للنصوص (حد التوصيل المجاني، أقل طلب): 30 ر.س بدل 30.00
     static func short(_ value: Double) -> String {
-        value == value.rounded() ? "\(Int(value)) ر.س" : sar(value)
+        value == value.rounded() ? "\(Int(value)) \(AppLang.english ? "SAR" : "ر.س")" : sar(value)
     }
 }

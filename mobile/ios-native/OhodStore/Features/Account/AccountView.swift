@@ -9,6 +9,7 @@ struct AccountView: View {
     @State private var haptics = Haptics.enabled
     @State private var showAddress = false
     @State private var showWallet = false
+    @State private var langNote = false
 
     var body: some View {
         ScrollView {
@@ -75,6 +76,13 @@ struct AccountView: View {
                     }
                     .disabled(Push.shared.enabled)
                     Divider().padding(.trailing, 52)
+                    Button {
+                        AppLang.set(english: !AppLang.english)
+                        langNote = true
+                    } label: {
+                        row("اللغة · Language", systemImage: "globe", value: AppLang.english ? "English" : "العربية")
+                    }
+                    Divider().padding(.trailing, 52)
                     Button { showWallet = true } label: {
                         row("محفظتي والكاش باك", systemImage: "wallet.pass")
                     }
@@ -131,6 +139,10 @@ struct AccountView: View {
         .animation(.smooth, value: orders.current?.status)
         .sheet(isPresented: $showAddress) { AddressView() }
         .sheet(isPresented: $showWallet) { WalletSheet() }
+        .alert(AppLang.english ? "تتغير اللغة للعربي لما تقفل التطبيق وتفتحه" : "The app switches to English when you close and reopen it",
+               isPresented: $langNote) {
+            Button("تمام") {}
+        }
         .refreshable { await orders.refresh(catalog: catalog) }
     }
 
@@ -172,8 +184,8 @@ struct AccountView: View {
 
     private var introLine: String {
         let s = catalog.store
-        var line = "أول طلب يوصلك خلال \(s.eta)"
-        if s.freeOver > 0 { line += "، والتوصيل مجاني فوق \(Money.short(s.freeOver))" }
+        var line = tr("أول طلب يوصلك خلال \(s.eta)")
+        if s.freeOver > 0 { line += tr("، والتوصيل مجاني فوق \(Money.short(s.freeOver))") }
         return line
     }
 
@@ -187,9 +199,9 @@ struct AccountView: View {
     private func info(_ title: String, _ value: String, last: Bool = false) -> some View {
         VStack(spacing: 0) {
             HStack {
-                Text(title).font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
+                Text(tv: title).font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
                 Spacer(minLength: 8)
-                Text(value).font(.ui(size: 13.5, weight: .semibold)).foregroundStyle(Theme.ink)
+                Text(tv: value).font(.ui(size: 13.5, weight: .semibold)).foregroundStyle(Theme.ink)
                     .multilineTextAlignment(.trailing).textSelection(.enabled)
             }
             .padding(.horizontal, 16).padding(.vertical, 11)
@@ -202,7 +214,7 @@ struct AccountView: View {
             Label(title, systemImage: systemImage)
             Spacer()
             if let value {
-                Text(value).font(.ui(size: 14)).foregroundStyle(Theme.muted).lineLimit(1)
+                Text(tv: value).font(.ui(size: 14)).foregroundStyle(Theme.muted).lineLimit(1)
             }
             Image(systemName: "chevron.forward").font(.ui(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
         }
@@ -216,7 +228,7 @@ struct AccountView: View {
                 .foregroundStyle(fg)
                 .frame(width: 38, height: 38)
                 .background(bg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            Text(title).font(.ui(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text(tv: title).font(.ui(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
             Spacer(minLength: 0)
         }
         .padding(12)
@@ -244,7 +256,7 @@ private struct ReorderCard: View {
                     }
                 }
             }
-            Text(verbatim: "\(order.at.formatted(.dateTime.weekday(.wide).locale(Locale(identifier: "ar_SA@numbers=latn")))) · \(Money.sar(order.total))")
+            Text(tv: "\(order.at.formatted(.dateTime.weekday(.wide).locale(Locale(identifier: "ar_SA@numbers=latn")))) · \(Money.sar(order.total))")
                 .font(.kufi(13, .bold))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)

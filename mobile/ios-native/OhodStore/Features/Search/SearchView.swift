@@ -77,7 +77,7 @@ private struct WrapChips: View {
         LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
             ForEach(items, id: \.self) { t in
                 Button { tap(t) } label: {
-                    Label { Text(t).lineLimit(1) } icon: { Image(systemName: icon ?? "clock.arrow.circlepath") }
+                    Label { Text(tv: t).lineLimit(1) } icon: { Image(systemName: icon ?? "clock.arrow.circlepath") }
                         .font(.ui(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .frame(maxWidth: .infinity, alignment: .leading)

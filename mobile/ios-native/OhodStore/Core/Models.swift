@@ -71,6 +71,7 @@ struct Product: Hashable, Sendable, Identifiable {
     /// شارة المالك (طازج، جديد...) و«يحلى معه» (sugg)
     var badge: String? = nil
     var sugg: [String] = []
+    /// الاسم باللغة الثانية (للبحث): الإنجليزي، أو العربي لو التطبيق إنجليزي
     var nameEN: String? = nil
     /// منتجات خدمة الطباعة (print): ما تطلع بالبحث
     var isPrint = false
@@ -282,17 +283,20 @@ enum CatalogParser {
         }
         let s = root["store"] as? [String: Any] ?? [:]
         var store = StoreInfo()
-        store.name = str(s["name"]) ?? store.name
+        let en = AppLang.english
+        /// الحقل الإنجليزي (name_en...) لو التطبيق إنجليزي وموجود
+        func pick(_ k: String) -> Any? { en ? (s[k + "_en"] ?? s[k]) : s[k] }
+        store.name = str(pick("name")) ?? store.name
         store.phone = str(s["phone"]) ?? ""
         store.whatsapp = str(s["wa"]) ?? store.phone
-        store.area = str(s["area"]) ?? store.area
-        store.hours = str(s["hours"]) ?? ""
-        store.eta = str(s["eta"]).map(latinDigits) ?? store.eta
+        store.area = str(pick("area")) ?? store.area
+        store.hours = str(pick("hours")) ?? ""
+        store.eta = str(pick("eta")).map(latinDigits) ?? store.eta
         store.fee = num(s["fee"]) ?? 0
         store.freeOver = num(s["freeOver"]) ?? 0
         store.minOrder = num(s["minOrder"]) ?? 0
         store.closed = (s["closed"] as? Bool) ?? false
-        store.closedMessage = str(s["closedMsg"]) ?? str(s["closedMessage"]) ?? ""
+        store.closedMessage = str(pick("closedMsg")) ?? str(s["closedMessage"]) ?? ""
         store.openAt = str(s["openAt"])
         store.closeAt = str(s["closeAt"])
         store.api = str(s["api"]) ?? AppConfig.defaultAPI
@@ -306,8 +310,8 @@ enum CatalogParser {
         // بنرات المالك من لوحة الإدارة. بنرات العروض تنبني في الرئيسية من العروض الحقيقية
         var banners: [Banner] = []
         for b in (s["bans"] as? [[String: Any]]) ?? [] {
-            guard let id = str(b["id"]), let title = text(b["title"]) else { continue }
-            banners.append(Banner(id: id, title: title, subtitle: text(b["sub"]) ?? "", target: str(b["target"]), image: nil,
+            guard let id = str(b["id"]), let title = text(en ? (b["title_en"] ?? b["title"]) : b["title"]) else { continue }
+            banners.append(Banner(id: id, title: title, subtitle: text(en ? (b["sub_en"] ?? b["sub"]) : b["sub"]) ?? "", target: str(b["target"]), image: nil,
                                   color: str(b["color"]), style: str(b["style"]), kicker: text(b["k"]), go: text(b["go"]),
                                   ids: (b["ids"] as? [Any])?.compactMap { str($0) } ?? [],
                                   bundlePrice: num(b["bprice"]), color2: str(b["color2"]), dark: (b["dark"] as? Bool) ?? false,
@@ -358,9 +362,9 @@ enum CatalogParser {
         }
 
         let cats: [Category] = ((root["cats"] as? [[String: Any]]) ?? []).compactMap { c in
-            guard let id = str(c["id"]), let name = str(c["name"]) else { return nil }
+            guard let id = str(c["id"]), let name = str(en ? (c["name_en"] ?? c["name"]) : c["name"]) else { return nil }
             let subs: [SubCategory] = ((c["subs"] as? [[String: Any]]) ?? []).compactMap { sc in
-                guard let sid = str(sc["id"]), let sname = str(sc["name"]) else { return nil }
+                guard let sid = str(sc["id"]), let sname = str(en ? (sc["name_en"] ?? sc["name"]) : sc["name"]) else { return nil }
                 return SubCategory(id: sid, name: sname)
             }
             // قسم الطباعة «قريباً» من إعداد الطباعة (catSoon في الموقع)
@@ -369,7 +373,7 @@ enum CatalogParser {
         }
 
         let products: [Product] = ((root["products"] as? [[String: Any]]) ?? []).compactMap { p in
-            guard let id = str(p["id"]), let name = str(p["name"]), let price = num(p["price"]), price > 0,
+            guard let id = str(p["id"]), let name = str(en ? (p["name_en"] ?? p["name"]) : p["name"]), let price = num(p["price"]), price > 0,
                   let cat = str(p["cat"]) else { return nil }
             // نفس ترقيم الخادم (packProduct): ما نشيل أي خيار عشان ما يتغير رقم «id~رقم»؛ الخيار بدون سعر يبقى مكانه ومخفي
             let packs: [Pack] = ((p["packs"] as? [[String: Any]]) ?? []).map { pk in
@@ -377,12 +381,12 @@ enum CatalogParser {
                 return Pack(unit: str(pk["u"]) ?? "", count: Swift.max(1, Int(num(pk["n"]) ?? 1)), price: pr > 0 ? pr : 0)
             }
             let old = num(p["old"])
-            return Product(id: id, name: name, unit: str(p["unit"]) ?? "", price: price,
+            return Product(id: id, name: name, unit: str(en ? (p["unit_en"] ?? p["unit"]) : p["unit"]) ?? "", price: price,
                            old: (old ?? 0) > price ? old : nil, cat: cat, sub: str(p["sub"]),
                            image: str(p["img"]), inStock: (p["stock"] as? Bool) ?? true, packs: packs,
                            barcode: str(p["bc"]), max: num(p["max"]).map { Int($0) },
-                           badge: str(p["badge"]), sugg: (p["sugg"] as? [Any])?.compactMap { str($0) } ?? [],
-                           nameEN: str(p["name_en"]), isPrint: p["print"] != nil && !(p["print"] is NSNull) && (p["print"] as? Bool) != false)
+                           badge: str(en ? (p["badge_en"] ?? p["badge"]) : p["badge"]), sugg: (p["sugg"] as? [Any])?.compactMap { str($0) } ?? [],
+                           nameEN: str(en ? p["name"] : p["name_en"]), isPrint: p["print"] != nil && !(p["print"] is NSNull) && (p["print"] as? Bool) != false)
         }
         return Catalog(store: store, categories: cats, products: products)
     }

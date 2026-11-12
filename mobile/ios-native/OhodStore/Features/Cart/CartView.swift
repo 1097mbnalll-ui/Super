@@ -118,7 +118,7 @@ struct CartView: View {
                 Button("تمام", role: .cancel) {}
             }
         } message: {
-            Text(errorText ?? "")
+            Text(tv: errorText ?? "")
         }
         .fullScreenCover(item: $placed) { order in
             OrderPlacedView(order: order,
@@ -242,7 +242,7 @@ private struct CartRowView: View {
                 Text(row.product.name).font(.ui(size: 14)).foregroundStyle(Theme.ink).lineLimit(2)
                 Text(row.unitLabel).font(.ui(size: 12)).foregroundStyle(Theme.muted)
                 if let tag = promoTag {
-                    Text(tag).font(.ui(size: 11.5, weight: .bold))
+                    Text(tv: tag).font(.ui(size: 11.5, weight: .bold))
                         .padding(.horizontal, 7).padding(.vertical, 2)
                         .foregroundStyle(row.locked ? Theme.copperInk : Theme.brandDeep)
                         .background(row.locked ? Theme.copperSoft : Theme.mint, in: Capsule())
@@ -364,9 +364,9 @@ private struct SummaryCard: View {
 
     private func row(_ title: String, _ value: String, highlight: Bool = false) -> some View {
         HStack {
-            Text(title).foregroundStyle(Theme.muted)
+            Text(tv: title).foregroundStyle(Theme.muted)
             Spacer()
-            Text(value).fontWeight(.semibold).foregroundStyle(highlight ? Theme.brandDeep : Theme.ink)
+            Text(tv: value).fontWeight(.semibold).foregroundStyle(highlight ? Theme.brandDeep : Theme.ink)
         }
         .font(.ui(size: 15))
     }
@@ -383,7 +383,7 @@ private struct CheckoutBar: View {
         @Bindable var cart = cart
         VStack(spacing: 8) {
             HStack {
-                Text(totals.fee == 0 ? "المنتجات \(Money.plain(totals.subtotal)) + توصيل مجاني"
+                Text(tv: totals.fee == 0 ? "المنتجات \(Money.plain(totals.subtotal)) + توصيل مجاني"
                           : "المنتجات \(Money.plain(totals.subtotal)) + التوصيل \(Money.plain(totals.fee))")
                     .font(.ui(size: 13)).foregroundStyle(Theme.muted)
                 Spacer()

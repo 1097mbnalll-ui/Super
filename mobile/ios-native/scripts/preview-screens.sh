@@ -67,4 +67,8 @@ shot 15-deals -seed-promos -screen deals
 shot 16-daily -seed-promos -screen daily
 shot 17-bundle -seed-promos -screen bundle
 shot 18-promo-cart -seed-promos -seed-promo-cart -screen cart
+# الإنجليزي (زر اللغة في «حسابي»)
+shot 19-en-home -app.lang en -AppleLanguages "(en)" -AppleLocale en_US -screen home
+shot 20-en-cart -app.lang en -AppleLanguages "(en)" -AppleLocale en_US -screen cart
+shot 21-en-account -app.lang en -AppleLanguages "(en)" -AppleLocale en_US -seed-driver -screen account
 ls -la "$OUT"

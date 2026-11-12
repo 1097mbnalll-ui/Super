@@ -23,7 +23,7 @@ struct PrintCalculator: View {
                     if let p = product(t) {
                         Button { type = t } label: {
                             VStack(spacing: 2) {
-                                Text(label).font(.kufi(15, .bold))
+                                Text(tv: label).font(.kufi(15, .bold))
                                 Text("\(Money.sar(p.price)) / صفحة").font(.ui(size: 12.5))
                             }
                             .foregroundStyle(type == t ? .white : Theme.ink)
@@ -62,7 +62,7 @@ struct PrintCalculator: View {
                     .background(Theme.brand, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(PressableStyle(scale: 0.97))
-            if let message { Text(message).font(.ui(size: 13, weight: .semibold)).foregroundStyle(Theme.brandDeep) }
+            if let message { Text(tv: message).font(.ui(size: 13, weight: .semibold)).foregroundStyle(Theme.brandDeep) }
             let inCart = [("bw", "أبيض وأسود"), ("color", "ألوان")].compactMap { t, l -> String? in
                 guard let p = product(t) else { return nil }
                 let q = cart.line(p.id).qty

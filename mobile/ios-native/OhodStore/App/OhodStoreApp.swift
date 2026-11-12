@@ -15,8 +15,8 @@ struct OhodStoreApp: App {
                 .environment(cart)
                 .environment(orders)
                 .environment(wallet)
-                .environment(\.layoutDirection, .rightToLeft)
-                .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))   // عربي بأرقام إنجليزية (قرار المالك)
+                .environment(\.layoutDirection, AppLang.direction)
+                .environment(\.locale, AppLang.locale)   // عربي بأرقام إنجليزية (قرار المالك)، أو إنجليزي من «حسابي»
                 .tint(Theme.brand)
                 .preferredColorScheme(.light)
         }

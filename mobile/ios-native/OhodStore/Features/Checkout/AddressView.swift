@@ -165,7 +165,7 @@ struct AddressView: View {
     private func field(_ title: String, text: Binding<String>, prompt: String, field: Field, error: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 12) {
-                Text(title)
+                Text(tv: title)
                     .font(.ui(size: 14))
                     .foregroundStyle(Theme.muted)
                     .frame(width: 52, alignment: .leading)

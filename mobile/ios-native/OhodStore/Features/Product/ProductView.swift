@@ -220,7 +220,7 @@ struct PackPicker: View {
             withAnimation(.snappy) { selection = index }
         } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.kufi(14, .bold)).foregroundStyle(Theme.ink).lineLimit(1)
+                Text(tv: title).font(.kufi(14, .bold)).foregroundStyle(Theme.ink).lineLimit(1)
                 HStack(spacing: 4) {
                     Text(Money.sar(price)).font(.ui(size: 13, weight: before == nil ? .regular : .bold))
                         .foregroundStyle(before == nil ? Theme.muted : Theme.copperInk)

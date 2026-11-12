@@ -13,7 +13,7 @@ struct SubOfferCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label {
-                Text(verbatim: "«\(offer.name)» مو متوفر").font(.kufi(15.5, .bold))
+                Text(tv: "«\(offer.name)» مو متوفر").font(.kufi(15.5, .bold))
             } icon: {
                 Image(systemName: "arrow.triangle.2.circlepath").foregroundStyle(Theme.copper)
             }
@@ -25,7 +25,7 @@ struct SubOfferCard: View {
                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(offer.toName).font(.ui(size: 14.5, weight: .bold)).foregroundStyle(Theme.ink).lineLimit(2)
-                    Text(verbatim: [offer.toUnit, Money.sar(offer.toPrice) + (offer.qty > 1 ? " × \(offer.qty)" : "")]
+                    Text(tv: [offer.toUnit, Money.sar(offer.toPrice) + (offer.qty > 1 ? " × \(offer.qty)" : "")]
                         .filter { !$0.isEmpty }.joined(separator: " · "))
                         .font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
                     Text(diffText).font(.ui(size: 12.5, weight: .semibold))
@@ -51,7 +51,7 @@ struct SubOfferCard: View {
             .disabled(busy)
             .overlay { if busy { ProgressView() } }
             if let errorText {
-                Text(errorText).font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Theme.copperInk)
+                Text(tv: errorText).font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Theme.copperInk)
             }
         }
         .padding(14)

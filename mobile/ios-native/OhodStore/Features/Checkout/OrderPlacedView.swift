@@ -29,7 +29,7 @@ struct OrderPlacedView: View {
 
                     VStack(spacing: 6) {
                         Text("وصلنا طلبك! 🎉").font(.kufi(24, .bold, relativeTo: .title))
-                        Text(verbatim: "طلب \(order.no) · بنبدأ نجهّزه الحين")
+                        Text(tv: "طلب \(order.no) · بنبدأ نجهّزه الحين")
                             .font(.ui(size: 15)).foregroundStyle(Theme.muted)
                     }
 
@@ -100,7 +100,7 @@ struct OrderPlacedView: View {
 
     private func row<V: View>(_ title: String, @ViewBuilder value: () -> V) -> some View {
         HStack {
-            Text(title).foregroundStyle(Theme.muted)
+            Text(tv: title).foregroundStyle(Theme.muted)
             Spacer(minLength: 12)
             value().foregroundStyle(Theme.ink)
         }
@@ -128,7 +128,7 @@ struct CurrentOrderCard: View {
                     .overlay(alignment: .topTrailing) {
                         if let eta = driver.eta {
                             VStack(spacing: 0) {
-                                Text(verbatim: "\(max(1, eta))").font(.kufi(26, .bold)).foregroundStyle(Theme.brandDeep)
+                                Text(tv: "\(max(1, eta))").font(.kufi(26, .bold)).foregroundStyle(Theme.brandDeep)
                                     .contentTransition(.numericText(value: Double(eta)))
                                 Text("دقايق").font(.ui(size: 12, weight: .semibold)).foregroundStyle(Theme.muted)
                             }
@@ -142,11 +142,11 @@ struct CurrentOrderCard: View {
             }
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(verbatim: "طلبك الحالي · \(order.no)").font(.ui(size: 13)).foregroundStyle(Theme.muted)
+                    Text(tv: "طلبك الحالي · \(order.no)").font(.ui(size: 13)).foregroundStyle(Theme.muted)
                     Text(driver?.near == true ? "المندوب قريب منك 🛵" : OrderStatus.title(order.status))
                         .font(.kufi(19, .bold, relativeTo: .title3))
                         .contentTransition(.opacity)
-                    Text(detailLine(driver)).font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
+                    Text(tv: detailLine(driver)).font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
                 }
                 ForEach(orders.subs[order.no] ?? []) { SubOfferCard(offer: $0, order: order) }
                 PrintWhatsAppCard(order: order)
@@ -158,7 +158,7 @@ struct CurrentOrderCard: View {
                     }
                     HStack(spacing: 6) {
                         ForEach(Array(["وصلنا", "نجهّزه", "في الطريق", "وصلك"].enumerated()), id: \.offset) { i, t in
-                            Text(t).font(.ui(size: 11.5, weight: .semibold))
+                            Text(tv: t).font(.ui(size: 11.5, weight: .semibold))
                                 .foregroundStyle(i + 1 == step ? Theme.copperInk : Theme.muted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -175,14 +175,14 @@ struct CurrentOrderCard: View {
                         }
                     }
                     if order.keys.count > 4 {
-                        Text(verbatim: "+\(order.keys.count - 4)")
+                        Text(tv: "+\(order.keys.count - 4)")
                             .font(.ui(size: 14, weight: .bold)).foregroundStyle(Theme.muted)
                             .frame(width: 44, height: 44)
                             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     Spacer(minLength: 0)
                     VStack(alignment: .trailing, spacing: 0) {
-                        Text(verbatim: "\(order.count) أغراض").font(.ui(size: 12)).foregroundStyle(Theme.muted)
+                        Text(tv: "\(order.count) أغراض").font(.ui(size: 12)).foregroundStyle(Theme.muted)
                         Text(Money.sar(order.total)).font(.kufi(18, .bold)).foregroundStyle(Theme.ink)
                             .lineLimit(1).fixedSize()
                     }
@@ -248,7 +248,7 @@ struct CurrentOrderCard: View {
         .alert("ما انلغى الطلب", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             Button("تمام", role: .cancel) {}
         } message: {
-            Text(errorText ?? "")
+            Text(tv: errorText ?? "")
         }
     }
 
@@ -340,7 +340,7 @@ struct OrderDetailView: View {
                                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(line.name).font(.ui(size: 14.5, weight: .semibold)).foregroundStyle(Theme.ink).lineLimit(2)
-                                    Text(verbatim: "\(line.unit) · \(line.qty) × \(Money.plain(line.price))")
+                                    Text(tv: "\(line.unit) · \(line.qty) × \(Money.plain(line.price))")
                                         .font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
                                 }
                                 Spacer(minLength: 6)
@@ -400,7 +400,7 @@ struct OrderDetailView: View {
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 0) {
                         Text("تفاصيل الطلب").font(.kufi(16, .bold))
-                        Text(verbatim: "\(order.no) · \(order.at.formatted(.dateTime.weekday(.wide).hour().minute().locale(Locale(identifier: "ar_SA@numbers=latn"))))")
+                        Text(tv: "\(order.no) · \(order.at.formatted(.dateTime.weekday(.wide).hour().minute().locale(Locale(identifier: "ar_SA@numbers=latn"))))")
                             .font(.ui(size: 11.5)).foregroundStyle(Theme.muted)
                     }
                 }
@@ -423,9 +423,9 @@ struct OrderDetailView: View {
 
     private func row(_ title: String, _ value: String, color: Color = Theme.ink) -> some View {
         HStack(alignment: .top) {
-            Text(title).foregroundStyle(Theme.muted)
+            Text(tv: title).foregroundStyle(Theme.muted)
             Spacer(minLength: 12)
-            Text(value).fontWeight(.semibold).foregroundStyle(color).multilineTextAlignment(.trailing)
+            Text(tv: value).fontWeight(.semibold).foregroundStyle(color).multilineTextAlignment(.trailing)
         }
         .font(.ui(size: 14.5))
     }

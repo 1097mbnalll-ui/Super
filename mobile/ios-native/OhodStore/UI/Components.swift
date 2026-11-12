@@ -132,7 +132,7 @@ struct SectionHeader: View {
         HStack(alignment: .firstTextBaseline) {
             HStack(spacing: 6) {
                 if let emoji { Text(emoji).font(.ui(size: 22)) }
-                Text(title).font(.kufi(18, .bold, relativeTo: .title3)).foregroundStyle(Theme.ink)
+                Text(tv: title).font(.kufi(18, .bold, relativeTo: .title3)).foregroundStyle(Theme.ink)
             }
             Spacer()
             if let actionTitle, let action {
@@ -155,7 +155,7 @@ struct Chip: View {
     let title: String
     var selected = false
     var body: some View {
-        Text(title)
+        Text(tv: title)
             .font(.ui(size: 15, weight: .semibold))
             .foregroundStyle(selected ? .white : Theme.ink)
             .padding(.horizontal, 15)

@@ -16,7 +16,7 @@ struct DealsView: View {
                     ContentUnavailableView("ما فيه منتجات بهالعرض الحين", systemImage: "lock")
                         .padding(.top, 40)
                 } else {
-                    Text(verbatim: "\(list.count) منتج · بحد \(max(1, d.limit)) من كل منتج")
+                    Text(tv: "\(list.count) منتج · بحد \(max(1, d.limit)) من كل منتج")
                         .font(.ui(size: 13)).foregroundStyle(Theme.muted)
                         .padding(.horizontal, 16)
                     ProductGrid(products: list, showCategory: true, kind: .deal)
@@ -44,9 +44,9 @@ struct DealLockBox: View {
                 Image(systemName: totals.dealUnlocked ? "lock.open.fill" : "lock.fill")
                     .foregroundStyle(totals.dealUnlocked ? Theme.brand : Theme.copper)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(totals.dealUnlocked ? "عروض \(Money.plain(d.price)) ر.س انفتحت لك 🎉" : "كل منتج بـ \(Money.plain(d.price)) ر.س")
+                    Text(tv: totals.dealUnlocked ? "عروض \(Money.plain(d.price)) ر.س انفتحت لك 🎉" : "كل منتج بـ \(Money.plain(d.price)) ر.س")
                         .font(.kufi(15, .bold))
-                    Text(totals.dealUnlocked ? "ضيف اللي تبغاه من المنتجات المختارة"
+                    Text(tv: totals.dealUnlocked ? "ضيف اللي تبغاه من المنتجات المختارة"
                          : "تنفتح لطلبك فوق \(Money.sar(d.min)) · باقي \(Money.sar(totals.dealLeft))")
                         .font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
                 }
@@ -141,7 +141,7 @@ struct Countdown: View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
             let end = Calendar.current.startOfDay(for: ctx.date).addingTimeInterval(86400)
             let s = max(0, Int(end.timeIntervalSince(ctx.date)))
-            Text(verbatim: "ينتهي بعد " + String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60))
+            Text(tv: "ينتهي بعد " + String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60))
                 .font(.ui(size: 13, weight: .semibold)).monospacedDigit()
                 .foregroundStyle(Theme.copperInk)
         }
@@ -164,7 +164,7 @@ struct BannerProductsView: View {
                 } else if let b {
                     let list = b.ids.compactMap { catalog.product($0) }
                     if let sub = b.subtitle.isEmpty ? nil : b.subtitle {
-                        Text(sub).font(.ui(size: 14)).foregroundStyle(Theme.muted).padding(.horizontal, 16).padding(.top, 10)
+                        Text(tv: sub).font(.ui(size: 14)).foregroundStyle(Theme.muted).padding(.horizontal, 16).padding(.top, 10)
                     }
                     ProductGrid(products: list, showCategory: true)
                 } else {

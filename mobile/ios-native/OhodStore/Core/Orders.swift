@@ -93,7 +93,9 @@ struct SubOffer: Equatable, Identifiable {
 }
 
 enum OrderStatus {
-    static func title(_ s: String) -> String {
+    static func title(_ s: String) -> String { tr(arTitle(s)) }
+    static func detail(_ s: String) -> String { tr(arDetail(s)) }
+    private static func arTitle(_ s: String) -> String {
         switch s {
         case "new": return "وصلنا طلبك"
         case "accepted": return "نجهّز طلبك"
@@ -103,7 +105,7 @@ enum OrderStatus {
         default: return "طلبك"
         }
     }
-    static func detail(_ s: String) -> String {
+    private static func arDetail(_ s: String) -> String {
         switch s {
         case "new": return "ننتظر المحل يأكده، عادة خلال دقايق"
         case "accepted": return "انقبل طلبك وجاري تجهيزه"
