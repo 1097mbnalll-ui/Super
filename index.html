@@ -2085,7 +2085,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       tr('<label class="fld" for="cNote">ملاحظات <small>(اختياري)</small><textarea id="cNote" rows="2" placeholder="مثلاً: الخبز يكون حار">', '<label class="fld" for="cNote">Notes <small>(optional)</small><textarea id="cNote" rows="2" placeholder="e.g. I want the bread hot">') + esc(form.note) + '</textarea></label>' +
       tr('<div class="box totals"><div><span>المنتجات (', '<div class="box totals"><div><span>Items (') + t.n + ')</span><span>' + rial(t.s) + tr('</span></div><div><span>التوصيل</span><span>', '</span></div><div><span>Delivery</span><span>') + (t.fee ? rial(t.fee) : tr("مجاني", "Free")) + tr('</span></div><div class="grand"><b>الإجمالي</b><span class="price">', '</span></div><div class="grand"><b>Total</b><span class="price">') + num(t.all) + tr(' <small>ر.س</small></span></div></div>', ' <small>SAR</small></span></div></div>') +
       walletCheckoutHTML(t.all) + '<div id="sendErr"></div></div></div>' +
-      '</div>' + '<div class="bottomcta"><button class="btn btn-orange" type="button" id="sendOrder"' + (t.n ? '' : ' disabled') + tr('><span>أرسل الطلب</span><span>', '><span>Place order</span><span>') + rial(t.all) + '</span></button></div>';
+      '</div>' + '<div class="bottomcta"><button class="btn btn-orange" type="button" id="sendOrder"' + (t.n && !isClosed() ? '' : ' disabled') + tr('><span>أرسل الطلب</span><span>', '><span>Place order</span><span>') + rial(t.all) + '</span></button></div>';
   }
   function sentHTML(){
     var o = lastOrder || {};
@@ -2261,7 +2261,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function mapsUrl(){ return "https://www.google.com/maps?q=" + form.lat + "," + form.lng; }
   function waOrderText(t){
     var m = tr("طلب جديد من موقع ", "New order from ") + sv("name") + ":\n";
-    Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (!L || (L.kind === "d" && !t.unlocked)) return; m += "• " + nm(L.p) + " (" + un(L.p) + ") × " + cart[k] + " = " + rial(cart[k] * L.price) + "\n"; });
+    Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (!L || (L.kind === "d" && !t.unlocked)) return; var ao = autoOffer(k); m += "• " + nm(L.p) + " (" + un(L.p) + ") × " + cart[k] + " = " + rial(ao && ao.b ? ao.total : cart[k] * L.price) + (ao && ao.b ? tr(" (عرض " + ao.mo.n + " بـ " + ao.mo.price + ")", " (offer " + ao.mo.n + " for " + ao.mo.price + ")") : "") + "\n"; });
     m += tr("\nالإجمالي: ", "\nTotal: ") + rial(t.all) + (t.fee ? tr(" (شامل التوصيل)", " (delivery included)") : tr(" (التوصيل مجاني)", " (free delivery)")) + tr("\nالدفع: ", "\nPayment: ") + (form.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + tr(" عند الاستلام\nالجوال: ", " on delivery\nMobile: ") + normPhone(form.phone) + tr("\nالموقع: ", "\nLocation: ") + mapsUrl();
     if (form.details) m += tr("\nتفاصيل البيت: ", "\nHome details: ") + form.details; if (form.note) m += tr("\nملاحظات: ", "\nNotes: ") + form.note;
     return m;
@@ -2280,6 +2280,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (!phone) { $("phoneBox").classList.add("bad"); var pe = $("phoneErr"); pe.hidden = false; pe.textContent = tr("اكتب رقم جوال سعودي صحيح، مثل 05XXXXXXXX", "Enter a valid Saudi mobile number, like 05XXXXXXXX"); $("cPhone").focus(); return; }
     if (!form.lat) { sendErr(tr("حدد موقع بيتك على الخريطة أول، أو اضغط «موقعي الحالي».", "Set your home location on the map first, or tap Use my location.")); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     if (!t.n) return;
+    if (isClosed()) { sendErr(closedMsgNow()); btn.disabled = true; return; }
     if (walletUseAmount && (!walletCustomer || walletCustomer.phone !== phone || walletUseAmount > t.all || walletUseAmount > walletCustomer.balance)) { sendErr('راجع رقم الجوال ورصيد المحفظة والمبلغ المستخدم.'); return; }
     if (zoneOut(form.lat, form.lng)) { sendErr(zoneMsg()); return; }
     var far0 = tooFar(form.lat, form.lng); if (far0) { sendErr(farMsg(far0)); return; }
@@ -2317,7 +2318,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         if (['wallet_login','wallet_balance','bad_payment'].indexOf(c)>=0) return sendErr('تعذر استخدام المحفظة. سجّل الدخول مجددًا وراجع الرصيد والمبلغ.');
         if (c === "bad_phone") { $("phoneBox").classList.add("bad"); var pe2 = $("phoneErr"); pe2.hidden = false; pe2.textContent = tr("رقم الجوال غير صحيح.", "The mobile number is not valid."); return; }
         if (c === "bad_location") return sendErr(tr("الموقع المحدد خارج السعودية. حرّك الخريطة على بيتك.", "The selected location is outside Saudi Arabia. Move the map to your home."));
-        if (c === "unavailable" && j.id && j.left != null) { LIVE[j.id] = j.left; Object.keys(cart).forEach(function(k){ var L2 = lineOf(k); if (L2 && L2.p.id === j.id) { if (!j.left) delete cart[k]; else cart[k] = Math.min(cart[k], j.left); } }); saveCart(); var pj = byId(j.id);
+        if (c === "unavailable" && j.id && j.left != null) { LIVE[j.id] = j.left; var rem = Math.max(0, Number(j.left) || 0); Object.keys(cart).forEach(function(k){ var L2 = lineOf(k); if (L2 && L2.kind !== "d" && String(k).split("~")[0] === j.id) { var per = Math.max(1, Number(L2.p.per) || 1), q = Math.min(cart[k], Math.floor(rem / per)); rem -= q * per; if (!q) delete cart[k]; else cart[k] = q; } }); saveCart(); var pj = byId(j.id);
           return sendErr(j.left ? tr("باقي " + j.left + " بس من «" + nm(pj) + "»، وعدّلنا الكمية في سلتك. اضغط أرسل مرة ثانية.", "Only " + j.left + " of " + nm(pj) + " left; we updated your cart. Tap Place order again.") : tr("«" + nm(pj) + "» نفد للتو وشلناه من سلتك. اضغط أرسل مرة ثانية.", nm(pj) + " just sold out and was removed from your cart. Tap Place order again.")); }
         if (c === "unavailable") return sendErr(tr("فيه منتج في سلتك نفد للتو. حدّث الصفحة وجرّب مرة ثانية.", "An item in your cart just sold out. Refresh the page and try again."));
         if (c === "too_far") return sendErr(farMsg(j.km || tooFar(form.lat, form.lng)));
@@ -3685,11 +3686,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
       // خيار بيع ناقص (بدون عدد حبات أو سعر) ما ينحفظ
       payload.products.forEach(function(p){ if (!Array.isArray(p.packs)) return; p.packs = p.packs.filter(function(x){ return Number(x.n) >= 1 && Number(x.price) > 0; }); if (!p.packs.length) delete p.packs; });
       var stockSend = Object.keys(stockEdit).length ? stockEdit : undefined, costSend = Object.keys(costEdit).length ? costEdit : undefined;
-      var tries = 0;
+      var tries = 0, merged = false;
       var saveOnce = function(data, version){ return api("/save", { pin: adminPin, data: data, newPin: newPin || undefined, newDriverPin: newDPin || undefined, stock: stockSend, costs: costSend, baseVersion: version }, 90000).then(function(j){
         if (j.ok || (j.code !== "data_conflict" && j.code !== "timeout") || tries >= 3) return j;
         // فيه حفظ أحدث، أو الاتصال طوّل: نجيب آخر نسخة، ندمج تعديلاتك عليها، ونحفظ لحالنا
-        tries++; st.className = "status"; st.textContent = "فيه حفظ أحدث، ندمج تعديلاتك عليه ونحفظ…";
+        tries++; merged = true; st.className = "status"; st.textContent = "فيه حفظ أحدث، ندمج تعديلاتك عليه ونحفظ…";
         return api("/admin/catalog", { pin: adminPin }, 90000).then(function(c){
           if (!c.ok || !c.data || !c.version) return j;
           var latest = c.data; delete latest.status;
@@ -3702,7 +3703,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         btn.disabled = false;
         if (j.ok) {
           if (j.stock) { STK = j.stock; LIVE = j.stock; } stockEdit = {}; Object.keys(costEdit).forEach(function(k){ if (costEdit[k] == null) delete COST[k]; else COST[k] = costEdit[k]; }); costEdit = {};
-          if(j.version)adminCatalogVersion=j.version;adminCatalogBase=JSON.parse(JSON.stringify(payload));applyData(payload); dirty = false; if (newPin) adminPin = newPin; newPin = ""; $("sPin").value = ""; newDPin = ""; if ($("sDPin")) $("sDPin").value = ""; if ($("tgCard")) renderTg();
+          if(j.version)adminCatalogVersion=j.version;adminCatalogBase=JSON.parse(JSON.stringify(payload));applyData(payload); dirty = false; if (merged) { draft = JSON.parse(JSON.stringify(D)); setTimeout(function(){ if (!dirty) adminShell(); }, 900); } if (newPin) adminPin = newPin; newPin = ""; $("sPin").value = ""; newDPin = ""; if ($("sDPin")) $("sDPin").value = ""; if ($("tgCard")) renderTg();
           st.className = "status"; st.textContent = "انحفظ. يوصل للزبائن خلال دقيقة تقريبًا."; $("aState").textContent = "كل شي محفوظ"; return;
         }
         st.className = "status err";
