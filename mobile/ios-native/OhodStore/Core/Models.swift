@@ -81,7 +81,7 @@ struct Product: Hashable, Sendable, Identifiable {
     }
     /// أول عرض كمية: N حبات بسعر أقل من N × سعر الحبة (مثل ٣ بـ ١٠)
     var quantityOffer: (index: Int, count: Int, price: Double, before: Double)? {
-        for (i, p) in packs.enumerated() where p.count > 1 {
+        for (i, p) in packs.enumerated() where p.count > 1 && p.price > 0 {
             let before = (Double(p.count) * price * 100).rounded() / 100
             if p.price < before - 0.001 { return (i, p.count, p.price, before) }
         }
@@ -293,9 +293,10 @@ enum CatalogParser {
         let products: [Product] = ((root["products"] as? [[String: Any]]) ?? []).compactMap { p in
             guard let id = str(p["id"]), let name = str(p["name"]), let price = num(p["price"]), price > 0,
                   let cat = str(p["cat"]) else { return nil }
-            let packs: [Pack] = ((p["packs"] as? [[String: Any]]) ?? []).compactMap { pk in
-                guard let unit = str(pk["u"]), let n = num(pk["n"]), let pr = num(pk["price"]), n >= 1, pr > 0 else { return nil }
-                return Pack(unit: unit, count: Int(n), price: pr)
+            // نفس ترقيم الخادم (packProduct): ما نشيل أي خيار عشان ما يتغير رقم «id~رقم»؛ الخيار بدون سعر يبقى مكانه ومخفي
+            let packs: [Pack] = ((p["packs"] as? [[String: Any]]) ?? []).map { pk in
+                let pr = num(pk["price"]) ?? 0
+                return Pack(unit: str(pk["u"]) ?? "", count: Swift.max(1, Int(num(pk["n"]) ?? 1)), price: pr > 0 ? pr : 0)
             }
             let old = num(p["old"])
             return Product(id: id, name: name, unit: str(p["unit"]) ?? "", price: price,

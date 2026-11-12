@@ -166,8 +166,11 @@ final class Cart {
 
     /// يحط سلة كاملة (اطلب مرة ثانية). المنتج اللي ما عاد موجود ينتجاهل
     func add(_ items: [String: Int], order keys: [String], catalog: CatalogStore) {
-        for key in keys {
-            guard let q = items[key], q > 0, let r = catalog.resolve(key), catalog.isAvailable(r.product) else { continue }
+        for k0 in keys {
+            guard var q = items[k0], q > 0, let r = catalog.resolve(k0), catalog.isAvailable(r.product) else { continue }
+            // خيار عرض الكمية يرجع حبات (العرض ينطبق لحاله في السلة)
+            var key = k0
+            if let pi = r.packIndex, let o = r.product.quantityOffer, o.index == pi { key = r.product.id; q *= o.count }
             let cap = limit(for: key, in: catalog) ?? 99
             let l = line(key)
             let newQty = min(l.qty + q, cap)
@@ -198,10 +201,11 @@ final class Cart {
     /// بعد نجاح الطلب: نفضّي اللي انرسل بس (لو الزبون غيّر السلة أثناء الإرسال يبقى الفرق)
     func remove(sent items: [String: Int], catalog: CatalogStore) {
         for (key, q) in items {
-            if let l = lines[key] { l.qty = max(0, l.qty - q); continue }
+            var rest = q
+            if let l = lines[key] { let take = min(rest, l.qty); l.qty -= take; rest -= take }
             // عرض كمية انرسل كخيار (id~رقم) وهو بالسلة حبات: ننقص الحبات
-            if let r = catalog.resolve(key), let pack = r.pack, let base = lines[r.product.id] {
-                base.qty = max(0, base.qty - q * pack.count)
+            if rest > 0, let r = catalog.resolve(key), let pack = r.pack, let base = lines[r.product.id] {
+                base.qty = max(0, base.qty - rest * pack.count)
             }
         }
         order.removeAll { (lines[$0]?.qty ?? 0) == 0 }

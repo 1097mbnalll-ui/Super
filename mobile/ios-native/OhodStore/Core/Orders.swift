@@ -109,6 +109,7 @@ final class OrderCenter {
         var requestId: String
         var signature: String
         var payload: Data
+        var at: Date? = nil
     }
     @ObservationIgnored private var attempt: Attempt? { didSet { Self.store(attempt, "order.attempt") } }
 
@@ -153,6 +154,8 @@ final class OrderCenter {
         ]
         let signature = Self.signature(body)
         var resendingOld = false
+        // محاولة قديمة ما تأكدنا منها: بعد ٢٠ دقيقة ما نرسلها (لا ترسل سلة قديمة بدل الجديدة)
+        if let a = attempt, Date().timeIntervalSince(a.at ?? .distantPast) > 20 * 60 { attempt = nil }
         if let a = attempt {
             if a.signature != signature, let old = try? JSONSerialization.jsonObject(with: a.payload) as? [String: Any] {
                 // فيه طلب قديم ما تأكدنا منه: نتأكد منه أول قبل أي طلب جديد
@@ -165,7 +168,7 @@ final class OrderCenter {
             let id = UUID().uuidString
             body["requestId"] = id
             attempt = Attempt(requestId: id, signature: signature,
-                              payload: (try? JSONSerialization.data(withJSONObject: body.filter { $0.key != "requestId" })) ?? Data())
+                              payload: (try? JSONSerialization.data(withJSONObject: body.filter { $0.key != "requestId" })) ?? Data(), at: Date())
         }
 
         sending = true
@@ -175,7 +178,7 @@ final class OrderCenter {
         if json["ok"] as? Bool == true, let no = json["orderNo"] as? String {
             attempt = nil
             let sent = body["items"] as? [String: Int] ?? items
-            let order = SavedOrder(no: no, total: CatalogParser.num(json["total"]) ?? 0, phone: phone,
+            let order = SavedOrder(no: no, total: CatalogParser.num(json["total"]) ?? 0, phone: body["phone"] as? String ?? phone,
                                    pay: body["pay"] as? String ?? "cash", at: Date(), status: "new",
                                    items: sent, keys: keyOrder.filter { sent[$0] != nil } + sent.keys.filter { !keyOrder.contains($0) }.sorted())
             var order2 = order
@@ -190,7 +193,7 @@ final class OrderCenter {
             }
             if !orders.contains(where: { $0.no == no }) { orders.insert(order2, at: 0) }
             if orders.count > 30 { orders.removeLast(orders.count - 30) }
-            if !resendingOld { cart.remove(sent: sent, catalog: catalog) }
+            cart.remove(sent: sent, catalog: catalog)
             Haptics.success()
             Task { await catalog.refreshStock(force: true) }
             return .success(order2)
@@ -213,7 +216,7 @@ final class OrderCenter {
         case "out_of_zone", "too_far":
             return .failure(.address("بيتك برا منطقة التوصيل حالياً. نوصل داخل \(catalog.store.area) بس"))
         case "unavailable":
-            if let id = json["id"] as? String, let left = CatalogParser.num(json["left"]).map { Int($0) } {
+            if let id = json["id"] as? String, let left = CatalogParser.num(json["left"]).map({ Int($0) }) {
                 catalog.setLiveStock(id, left)
                 cart.applyStock(productID: id, left: left, catalog: catalog)
                 let name = catalog.product(id)?.name ?? "منتج"
@@ -222,6 +225,7 @@ final class OrderCenter {
                     : "«\(name)» نفد للتو وشلناه من سلتك. اضغط «أرسل الطلب» مرة ثانية."))
             }
             await catalog.refreshStock(force: true)
+            await catalog.refresh()
             return .failure(.message("فيه منتج في سلتك نفد للتو. راجع السلة وأرسل مرة ثانية."))
         case "item_limit":
             return .failure(.message("تجاوزت الحد المسموح لأحد المنتجات. قلّل الكمية وأرسل مرة ثانية."))

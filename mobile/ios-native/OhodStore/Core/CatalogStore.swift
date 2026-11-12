@@ -83,7 +83,7 @@ final class CatalogStore {
         let parts = key.split(separator: "~", maxSplits: 1).map(String.init)
         guard let p = product(parts[0]) else { return nil }
         if parts.count == 2 {
-            guard let i = Int(parts[1]), i >= 0, i < p.packs.count else { return nil }
+            guard let i = Int(parts[1]), i >= 0, i < p.packs.count, p.packs[i].price > 0 else { return nil }
             return (p, p.packs[i], i)
         }
         return (p, nil, nil)

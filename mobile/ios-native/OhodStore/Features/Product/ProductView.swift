@@ -26,7 +26,7 @@ struct ProductView: View {
     @ViewBuilder
     private func content(_ product: Product) -> some View {
         let available = catalog.isAvailable(product)
-        let pack = packIndex.flatMap { $0 < product.packs.count ? product.packs[$0] : nil }
+        let pack = packIndex.flatMap { $0 < product.packs.count && product.packs[$0].price > 0 ? product.packs[$0] : nil }
         let unitPrice = pack?.price ?? product.price
         let key = packIndex.map { "\(product.id)~\($0)" } ?? product.id
         let category = catalog.category(product.cat)
@@ -90,7 +90,7 @@ struct ProductView: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 16)
 
-                if product.packs.indices.contains(where: { $0 != product.quantityOffer?.index }) {
+                if product.packs.indices.contains(where: { $0 != product.quantityOffer?.index && product.packs[$0].price > 0 }) {
                     Text("طريقة الشراء")
                         .font(.kufi(15, .bold))
                         .padding(.horizontal, 18).padding(.top, 20).padding(.bottom, 10)
@@ -169,7 +169,7 @@ struct ProductView: View {
 
     private func bestPackSaving(_ p: Product) -> (amount: Double, unit: String)? {
         var best: (Double, String)? = nil
-        for pack in p.packs {
+        for pack in p.packs where pack.price > 0 {
             let saving = p.price * Double(pack.count) - pack.price
             if saving > 0.009, saving > (best?.0 ?? 0) { best = (saving, pack.unit) }
         }
@@ -187,7 +187,7 @@ struct PackPicker: View {
         LazyVGrid(columns: columns, spacing: 10) {
             option(title: product.unit.isEmpty ? "حبة" : product.unit, price: product.price, index: nil, best: false, before: nil)
             // عرض الكمية ما يطلع هنا: ينطبق لحاله في السلة
-            ForEach(Array(product.packs.enumerated()).filter { $0.offset != product.quantityOffer?.index }, id: \.offset) { i, pack in
+            ForEach(Array(product.packs.enumerated()).filter { $0.offset != product.quantityOffer?.index && $0.element.price > 0 }, id: \.offset) { i, pack in
                 let before = (product.price * Double(pack.count) * 100).rounded() / 100
                 option(title: "\(pack.unit)", price: pack.price, index: i,
                        best: before - pack.price > 0.009, before: before - pack.price > 0.009 ? before : nil)
