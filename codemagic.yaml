@@ -126,25 +126,30 @@ workflows:
     scripts:
       - name: Upload listing
         script: |
-          env | grep -E "^APP_STORE_CONNECT" | sed -E 's/=.*/=<set>/' | sort
-          app-store-connect apps list --bundle-id-identifier sa.ohod.store 2>&1 | head -30 || true
-          if [ -z "$APP_STORE_CONNECT_PRIVATE_KEY" ]; then echo "NO_KEY_ENV"; exit 0; fi
+          set -o pipefail
           python3 - <<'PY'
-          import json, os, re, sys
+          import base64, json, os, re
           k = os.environ["APP_STORE_CONNECT_PRIVATE_KEY"].replace("\\n", "\n").strip()
+          if "BEGIN" not in k:
+              try: k = base64.b64decode(k).decode()
+              except Exception: pass
           body = re.sub(r"-----[^-]+-----|\s+", "", k)
           pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(body[i:i+64] for i in range(0, len(body), 64)) + "\n-----END PRIVATE KEY-----\n"
-          print("key chars:", len(body), "header ok:", k.startswith("-----BEGIN"), "key id len:", len(os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"]))
+          print("key chars:", len(body), "| key id len:", len(os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"]), "| issuer set:", bool(os.environ.get("APP_STORE_CONNECT_ISSUER_ID")))
           open("/tmp/AuthKey.p8", "w").write(pem)
           json.dump({"key_id": os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"], "issuer_id": os.environ["APP_STORE_CONNECT_ISSUER_ID"],
                      "key": pem, "in_house": False}, open("/tmp/asc.json", "w"))
           PY
-          openssl pkey -in /tmp/AuthKey.p8 -noout && echo "KEY_OK" || { echo "KEY_BAD"; exit 1; }
+          openssl pkey -in /tmp/AuthKey.p8 -noout && echo "KEY_PARSES_OK" || { echo "KEY_BAD"; exit 1; }
+          # تسجيل دخول تجريبي قبل الرفع
+          ruby -e 'require "spaceship"; t = Spaceship::ConnectAPI::Token.from_json_file("/tmp/asc.json"); Spaceship::ConnectAPI.token = t; puts "LOGIN_OK apps=" + Spaceship::ConnectAPI::App.all.map(&:bundle_id).inspect'
           cd mobile/ios-native
+          # ما نلمس معلومات المراجع ولا الحقوق ولا التصنيف (المالك عبّاها يدوي)، ولا نقدّم للمراجعة ولا نفعّل النشر التلقائي
           fastlane deliver --api_key_path /tmp/asc.json --app_identifier sa.ohod.store --skip_binary_upload true \
-            --overwrite_screenshots true --force true --run_precheck_before_submit false --submit_for_review false \
-            --metadata_path fastlane/metadata --screenshots_path fastlane/screenshots --ignore_language_directory_validation true 2>&1 | tail -80
-          test ${PIPESTATUS[0]} -eq 0
+            --overwrite_screenshots true --force true --run_precheck_before_submit false \
+            --submit_for_review false --automatic_release false \
+            --metadata_path fastlane/metadata --screenshots_path fastlane/screenshots \
+            --ignore_language_directory_validation true 2>&1 | tail -80
 
   # ٤) التطبيق الأصلي: بناء موقّع ورفع لـ TestFlight. يشتغل لما ينرفع tag يبدأ بـ ios-native-
   ios-native-testflight:
