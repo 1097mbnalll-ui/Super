@@ -112,6 +112,23 @@ workflows:
       - screenshots/*.png
       - screenshots/build.log
 
+  # ٦) فحص: وش يقدر Codemagic يوصل له في App Store Connect (بدون أي تعديل)
+  ios-asc-info:
+    name: App Store Connect info (read only)
+    instance_type: mac_mini_m2
+    max_build_duration: 15
+    integrations:
+      app_store_connect: ohod
+    environment:
+      xcode: latest
+    scripts:
+      - name: Info
+        script: |
+          env | grep -i -E "APP_STORE|ASC|CM_" | sed -E 's/=.*/=<set>/' | sort
+          fastlane --version | tail -2 || true
+          app-store-connect --help | head -60 || true
+          app-store-connect apps list --bundle-id-identifier sa.ohod.store || true
+
   # ٤) التطبيق الأصلي: بناء موقّع ورفع لـ TestFlight. يشتغل لما ينرفع tag يبدأ بـ ios-native-
   ios-native-testflight:
     name: iOS Native TestFlight
