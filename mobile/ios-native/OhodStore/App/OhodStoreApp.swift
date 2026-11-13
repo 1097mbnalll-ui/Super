@@ -37,6 +37,12 @@ struct RootView: View {
     @State private var previewPlaced: SavedOrder?
     @State private var previewDetails: SavedOrder?
     @State private var tab: AppTab = .home
+    @State private var seenSubs: Set<Int> = []
+    private struct PendingSub: Identifiable { let offer: SubOffer; let order: SavedOrder; var id: Int { offer.id } }
+    private var pendingSub: PendingSub? {
+        for o in orders.orders where o.isActive { if let s = (orders.subs[o.no] ?? []).first(where: { !seenSubs.contains($0.id) }) { return PendingSub(offer: s, order: o) } }
+        return nil
+    }
     @State private var homePath = NavigationPath()
     @State private var categoriesPath = NavigationPath()
     @State private var offersPath = NavigationPath()
@@ -95,6 +101,15 @@ struct RootView: View {
                 await orders.refresh(catalog: catalog)
                 try? await Task.sleep(for: .seconds(orders.current?.status == "onway" ? 10 : 20))
             }
+        }
+        // بديل مقترح لمنتج ناقص: يطلع للزبون على طول وين ما كان (مو بس في «حسابي») عشان يوافق أو يرفض
+        .sheet(item: Binding(get: { pendingSub }, set: { if $0 == nil, let p = pendingSub { seenSubs.insert(p.offer.id) } })) { p in
+            NavigationStack {
+                ScrollView { SubOfferCard(offer: p.offer, order: p.order).padding(16) }
+                    .navigationTitle("بديل لمنتج في طلبك").navigationBarTitleDisplayMode(.inline)
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("بعدين") { seenSubs.insert(p.offer.id) } } }
+            }
+            .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $previewAddress) { AddressView() }
         .sheet(item: $previewDetails) { OrderDetailView(order: $0) }

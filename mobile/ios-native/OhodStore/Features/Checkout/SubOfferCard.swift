@@ -17,7 +17,7 @@ struct SubOfferCard: View {
             } icon: {
                 Image(systemName: "arrow.triangle.2.circlepath").foregroundStyle(Theme.copper)
             }
-            Text("المندوب يقترح بداله:").font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
+            Text("نقترح بداله:").font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
             HStack(spacing: 10) {
                 RemoteImage(url: offer.toImageURL, maxPixel: 160)
                     .padding(4)
