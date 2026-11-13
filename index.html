@@ -984,6 +984,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-img img{width:78%;height:78%;object-fit:contain}
 .kq-img img.photo{width:92%;height:92%;object-fit:contain;mix-blend-mode:multiply}
 .kq-card.out .kq-img img{filter:grayscale(1);opacity:.45}
+.kq-badge.soon{background:#E8590C}.kq-now.soon,.price.soon{color:#E8590C;font-size:15px;font-weight:800}
 .kq-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;background:#E8394F;color:#fff;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:700;z-index:2}
 /* ---------- banners v2 ---------- */
 .kq-ban.kb{padding:0;display:block;isolation:isolate}
@@ -1852,11 +1853,15 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function pcs(n){ return n === 2 ? "حبتين" : n <= 10 ? num(n) + " حبات" : num(n) + " حبة"; }
   function multiTxt(m){ return tr(pcs(m.n) + " بـ " + num(m.price) + " ر.س", m.n + " pcs for " + num(m.price) + " SAR"); }
   function multiEach(m){ return tr("الحبة بـ " + num(Math.round(m.price / m.n * 100) / 100), num(Math.round(m.price / m.n * 100) / 100) + " each"); }
+  // منتج «قريباً» (منتج جديد بدون سعر، أو في قسم قريباً): ينشاف بدون سعر ولا إضافة
+  function soonP(p){ return !!p && !avail(p) && (!!p.soon || catSoon(catOf(p.cat))); }
   function card(p, kind){
     var dd = daily(), isDaily = kind === "t", isDeal = kind === "d", mo = !kind && avail(p) ? multiOf(p) : null;
     var price = isDeal ? Number(DEAL.price || 0.95) : isDaily ? dd.price : p.price;
     var was = isDeal || isDaily ? p.price : (onSale(p) ? p.old : 0);
     var c = catOf(p.cat), inCart = cart[(kind ? kind + ":" : "") + p.id] || 0;
+    if (soonP(p)) return '<article class="kq-card soonp" data-open="' + p.id + '"><div class="kq-img">' + (hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '"><b>' + esc(nm(p)) + '</b></span>') + '<span class="kq-badge soon">' + tr("قريباً", "Soon") + '</span></div>' +
+      '<div class="kq-price"><span class="kq-now soon">' + tr("قريباً", "Coming soon") + '</span></div><b class="kq-name">' + esc(nm(p)) + '</b></article>';
     var badge = !avail(p) ? '<span class="kq-badge out">' + tr("نفد", "Sold out") + '</span>' :
       isDeal ? '<span class="kq-badge deal">' + ic("lock") + tr("بـ ", "") + num(price) + tr(" ر.س", " SAR") + '</span>' :
       isDaily ? '<span class="kq-badge">' + ic("flame") + tr("عرض اليوم", "Deal of the day") + '</span>' :
@@ -2231,7 +2236,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     }
     return '<div class="aisle-head" style="background:' + tint(c.id) + '">' + imgTag(catPhoto(c), "") + tr('<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + tr('</button><button class="sq" type="button" data-nav="search" aria-label="بحث" style="background:rgba(255,255,255,.75)">', '</button><button class="sq" type="button" data-nav="search" aria-label="Search" style="background:rgba(255,255,255,.75)">') + ic("search") + '</button></div>' +
       '<h1>' + esc(nm(c)) + '</h1><p>' + (isPrint ? tr("اطبع أوراقك وتوصلك", "Print your papers, delivered") : catSoon(c) && c.id !== "print" ? tr("قريباً", "Coming soon") : items.length + tr(' منتج · التوصيل ', ' products · delivery ') + esc(sv("eta") || "")) + '</p></div></div>' +
-      (isPrint ? printHTML() : catSoon(c) && !items.some(avail) ? catSoonBox(c) : subBar + (subs.length && !openSub && items.length > 24 ? aisleRows(subs, items, known, other) : '<div class="wrap" style="margin-top:' + (subBar ? 4 : 16) + 'px"><div class="grid">' + pagedCards(shown, "cat:" + c.id + (openSub ? "|" + openSub : "")).join("") + '</div></div>'));
+      (isPrint ? printHTML() : catSoon(c) && !items.length ? catSoonBox(c) : subBar + (subs.length && !openSub && items.length > 24 ? aisleRows(subs, items, known, other) : '<div class="wrap" style="margin-top:' + (subBar ? 4 : 16) + 'px"><div class="grid">' + pagedCards(shown, "cat:" + c.id + (openSub ? "|" + openSub : "")).join("") + '</div></div>'));
   }
   // «الكل» في القسم الكبير: صف لكل قسم فرعي بترتيب الرحلة (أهم ١٢ منتج + «عرض الكل»)، مثل المتاجر الكبيرة
   function aisleRows(subs, items, known, other){
@@ -2260,12 +2265,12 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="art">' + imgTag(p.img, nm(p)) + '</div>' +
       '<div class="sheet-b"><div class="wrap">' +
       '<div class="ttl"><div style="display:grid;gap:4px"><span class="chipline">' + esc(bd(p) || (c ? nm(c) : "")) + (isDaily ? tr(' · عرض اليوم', ' · Deal of the day') : '') + '</span><h1>' + esc(nm(p)) + '</h1><span class="unit">' + esc(un(p)) + '</span></div>' +
-      '<div style="display:grid;justify-items:end"><span class="price' + (was ? ' sale' : '') + '">' + num(price) + tr('<small> ر.س</small></span>', '<small> SAR</small></span>') + (was ? '<s class="was" style="font-size:13px">' + rial(was) + '</s>' : '') + '</div></div>' +
+      '<div style="display:grid;justify-items:end">' + (soonP(p) ? '<span class="price soon">' + tr("قريباً", "Soon") + '</span>' : '<span class="price' + (was ? ' sale' : '') + '">' + num(price) + tr('<small> ر.س</small></span>', '<small> SAR</small></span>')) + (was ? '<s class="was" style="font-size:13px">' + rial(was) + '</s>' : '') + '</div></div>' +
       packHTML + (function(){ var gq = grpOf(packBase); if (!gq) return ''; return '<div class="ofbox must"><b>🔥 ' + esc(grpLine(gq)) + '</b><p>' + tr("كانت " + (gq.w1 || "الحبة") + " الوحدة بـ " + words(packBase.price) + (grpSave(gq) > 0 ? " · توفّر " + num(grpSave(gq)) + " ريال" : "") + " · تختار من أي نوع", "Mix any kinds") + '</p></div>'; })() + (function(){ var mu = moB && mustOf(packBase); if (!mu) return '';
         return '<div class="ofbox must"><b>🔥 ' + esc(mustLine(packBase, mu)) + '</b><p>' + tr("كانت " + mustW(packBase, mu).one + " الوحدة بـ " + words(packBase.price), "Was " + num(packBase.price) + " each") + (mustSave(packBase, mu) > 0 ? tr(" · توفّر " + num(mustSave(packBase, mu)) + " ريال", "") : "") + '</p>' + (packBase.packs[mu.i].mix ? '<p>' + tr("تقدر تختار من أي نوع.", "Mix any flavours.") + '</p>' : '') + '</div>'; })() + (function(){ if (!moB || mustOf(packBase) || !avail(packBase)) return ''; var inC = Number(cart[packBase.id]) || 0, rest = inC % moB.n, appl = Math.floor(inC / moB.n), pct = rest === 0 && appl ? 100 : Math.round(rest / moB.n * 100);
       return '<div class="ofbox"><b>🔥 ' + tr('عرض: أي ' + pcs(moB.n) + ' بـ ' + num(moB.price) + ' ر.س', 'Offer: any ' + moB.n + ' for ' + num(moB.price) + ' SAR') + '</b><p>' + tr('الحبة ' + num(Math.round(moB.price / moB.n * 100) / 100) + ' بدل ' + num(packBase.price) + ' · وفّر ' + num(Math.round((moB.n * packBase.price - moB.price) * 100) / 100) + ' ر.س على كل ' + num(moB.n), 'Each ' + num(Math.round(moB.price / moB.n * 100) / 100) + ' instead of ' + num(packBase.price)) + '</p><div class="pb"><i style="width:' + pct + '%"></i></div><div class="st">' +
         (!inC ? tr('أضف ' + pcs(moB.n) + ' وينطبق العرض لحاله', 'Add ' + moB.n + ' and the offer applies') : appl ? tr('✓ العرض انطبق · عندك ' + num(inC) + ' بالسلة', '✓ Offer applied') : tr('عندك ' + num(inC) + ' بالسلة · زود ' + num(moB.n - rest) + ' وتحصل على العرض', 'Add ' + (moB.n - rest) + ' more for the offer')) + '</div></div>'; })() + (was ? '<div class="savebar">' + ic("flame") + tr('عليه عرض: كان ', 'On offer: was ') + rial(was) + tr(' وصار ', ', now ') + rial(price) + tr(' · وفّر ', ' · save ') + rial(was - price) + ' (' + num(Math.max(1, Math.round((was - price) / was * 100))) + '٪)' + (isDaily ? tr(' · العرض ينتهي الساعة ١٢ بالليل', ' · deal ends at midnight') + (lim ? tr(' · الحد ', ' · limit ') + lim + tr(' لكل طلب', ' per order') : '') : tr(' على كل ', ' per ') + esc(un(p))) + '</div>' : '') +
-      (!avail(p) ? tr('<div class="alert">هذا المنتج نفد حاليًا.</div>', '<div class="alert">This item is sold out right now.</div>') : '') +
+      (soonP(p) ? tr('<div class="alert soft">قريباً إن شاء الله نوفّره، تابعنا.</div>', '<div class="alert soft">Coming soon.</div>') : !avail(p) ? tr('<div class="alert">هذا المنتج نفد حاليًا.</div>', '<div class="alert">This item is sold out right now.</div>') : '') +
       (avail(p) && ((lf != null && lf <= lowAt()) || Number(p.max) > 0) ? '<div class="pd-lims">' + (lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '') + (Number(p.max) > 0 ? '<span>' + tr("الحد الأقصى ", "Max ") + Number(p.max) + tr(" لكل طلب", " per order") + '</span>' : '') + '</div>' : '') +
       (pairs.length ? '<div class="pd-sugg"><b>' + (p.sugg && p.sugg.length ? tr("يحلى معه", "Goes well with") : tr("ينشرى معه عادة", "Often bought with")) + '</b><div class="rail">' + pairs.map(function(x){ return card(x); }).join("") + '</div></div>' : '') +
       '</div></div></div>' +
