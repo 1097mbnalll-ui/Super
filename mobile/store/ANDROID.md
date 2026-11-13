@@ -35,3 +35,11 @@ App ID `sa.ohod.store` (cannot change after publishing). minSdk 24, target/compi
 - The store only accepts orders 12 noon - 1 AM Riyadh time; reviewers outside that window see "closed". Keep it open during review and cancel reviewer test orders.
 - Catalog must stay free of tobacco/alcohol (Play policy).
 - The language toggle (EN) is still visible in the app header; the owner paused English work, decision pending whether to hide it.
+
+## Auto-update (Android loads the live site)
+- After `npm run sync`, `scripts/android-remote.mjs` sets `server.url` to `https://1097mbnalll-ui.github.io/Super/?app=android` (plus `&fcm=1` when Firebase is configured). Any website change (photos, prices, sections, design) reaches the Android app right away, with no new Play upload.
+- If there is no internet, the app shows `offline.html` with a retry button.
+- `ANDROID_LOCAL=1 npm run sync` builds from the branch files instead. The emulator test uses this.
+- **Before the first Play release:** the live site must already include the `mobile-app` changes to index.html (`?app=android` detection, `--sa-*` safe areas, delete-data.html). Otherwise the app shows the plain website. That deploy needs the owner's explicit «نزّله».
+- Data deletion: `delete-data.html` (also linked from the account page and privacy.html). Use this URL in Play Console → Data safety → "Delete account URL / data deletion".
+- Emulator check: workflow `android-emulator` (API 35) uploads screenshots, a scroll-smoothness report, gfxinfo, and logcat.
