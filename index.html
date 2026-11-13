@@ -984,6 +984,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-img img{width:78%;height:78%;object-fit:contain}
 .kq-img img.photo{width:92%;height:92%;object-fit:contain;mix-blend-mode:multiply}
 .kq-card.out .kq-img img{filter:grayscale(1);opacity:.45}
+.sarw{display:inline}svg.sar{width:.8em;height:.8em;fill:currentColor;vertical-align:-.08em;margin:0 .12em;display:inline-block;flex:none}
 .kq-badge.soon{background:#E8590C}.kq-now.soon,.price.soon{color:#E8590C;font-size:15px;font-weight:800}
 .kq-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;background:#E8394F;color:#fff;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:700;z-index:2}
 /* ---------- banners v2 ---------- */
@@ -1507,6 +1508,14 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // إعدادات الدمج تجي بالرابط (?…) أو بعد # (التطبيق الجديد يحطها بعد # عشان الصفحة نفسها تنحفظ بالكاش وتفتح أسرع)
   function qp(k){ var m = (location.search + "&" + location.hash.replace(/^#/, "")).match(new RegExp("[?&]" + k + "=([^&]*)")); if (!m) return ""; try { return decodeURIComponent(m[1]); } catch(e){ return m[1]; } }
   var EMBED = qp("embed") === "1", EMBED_BLOCKS = (qp("blocks") || "promos,catoffers").split(",");
+  // رمز الريال السعودي الجديد (الرسمي، U+20C1): أي «ر.س» يطلع بالصفحة يتحول للرمز تلقائي. النصوص اللي تنرسل (واتساب، الطباعة) تبقى نص
+  var SAR_PATH = "M750,1119 C730,1163,716,1211,711,1262 C711,1262,1136,1172,1136,1172 C1156,1127,1169,1079,1174,1028 C1174,1028,750,1119,750,1119Z M1136,901 C1156,857,1169,809,1174,758 C1174,758,843,828,843,828 C843,828,843,693,843,693 C843,693,1136,631,1136,631 C1156,587,1169,538,1174,488 C1174,488,843,558,843,558 C843,558,843,72,843,72 C793,100,748,138,711,183 C711,183,711,586,711,586 C711,586,579,614,579,614 C579,614,579,6,579,6 C528,34,483,72,447,117 C447,117,447,642,447,642 C447,642,151,705,151,705 C131,750,117,798,112,849 C112,849,447,777,447,777 C447,777,447,948,447,948 C447,948,88,1024,88,1024 C68,1068,55,1117,50,1167 C50,1167,425,1088,425,1088 C456,1081,482,1063,499,1038 C499,1038,568,936,568,936 C575,926,579,913,579,899 C579,899,579,749,579,749 C579,749,711,721,711,721 C711,721,711,992,711,992 C711,992,1136,901,1136,901Z";
+  function sarEl(){ var n = "http://www.w3.org/2000/svg", v = document.createElementNS(n, "svg"), p = document.createElementNS(n, "path"); v.setAttribute("viewBox", "0 0 1256 1256"); v.setAttribute("class", "sar"); v.setAttribute("role", "img"); v.setAttribute("aria-label", "ريال"); p.setAttribute("d", SAR_PATH); v.appendChild(p); return v; }
+  function sarize(root){ if (!root || !document.createTreeWalker) return; var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), l = [], t;
+    while ((t = w.nextNode())) { if (t.nodeValue.indexOf("ر.س") > -1) { var pn = t.parentNode && t.parentNode.nodeName; if (!/^(OPTION|TEXTAREA|SCRIPT|STYLE|TITLE)$/.test(pn)) l.push(t); } }
+    l.forEach(function(t){ var parts = t.nodeValue.split("ر.س"), fr = document.createElement("span"); fr.className = "sarw"; parts.forEach(function(x, i){ if (i) fr.appendChild(sarEl()); if (x) fr.appendChild(document.createTextNode(x)); }); t.parentNode.replaceChild(fr, t); }); }
+  if (window.MutationObserver) new MutationObserver(function(ms){ ms.forEach(function(m){ if (m.type === "characterData") sarize(m.target.parentNode); else m.addedNodes.forEach(function(n){ if (n.nodeType === 3) sarize(n.parentNode); else if (n.nodeType === 1) sarize(n); }); }); })
+    .observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   function toApp(m){ try { if (window.webkit && webkit.messageHandlers && webkit.messageHandlers.ohod) webkit.messageHandlers.ohod.postMessage(m); } catch(e){} }
   var LANG = "ar"; try { LANG = localStorage.getItem("ohod-lang") || (D.store && D.store.lang) || "ar"; } catch(e){ LANG = (D.store && D.store.lang) || "ar"; }
   if (LANG !== "en") LANG = "ar";
