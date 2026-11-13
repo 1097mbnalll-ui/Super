@@ -28,8 +28,16 @@ def run(path, use_db=True):
             sold[str(r['id']).split('~')[0]] = r['q']
         for r in q("SELECT id, SUM(views) v, SUM(carts) c FROM st_view WHERE day >= date('now', '-60 day') GROUP BY id"):
             views[r['id']] = r['v'] or 0; carts[r['id']] = r['c'] or 0
+    # «ينشرى معه» من طلبات المحل (st_pair): لكل منتج أكثر ٦ منتجات انطلبت معه مرتين أو أكثر
+    pairs = {}
+    if use_db:
+        for r in q("SELECT a, b, n FROM st_pair WHERE n >= 2 ORDER BY n DESC LIMIT 20000"):
+            for x, y in ((r['a'], r['b']), (r['b'], r['a'])): pairs.setdefault(str(x).split('~')[0], []).append(str(y).split('~')[0])
     n = 0
     for p in d['products']:
+        pl = [x for x in dict.fromkeys(pairs.get(p['id'], [])) if x != p['id']][:6]
+        if pl: p['pair'] = pl
+        else: p.pop('pair', None)
         nm = norm(p['name'])
         s = SUB_W.get(p.get('sub'), 0) + (25 if BRAND.search(nm) else 0) + (8 if SMALL.search(nm) else 0)
         s += 12 * math.log1p(sold.get(p['id'], 0)) * 10 + 6 * math.log1p(carts.get(p['id'], 0)) * 5 + 2 * math.log1p(views.get(p['id'], 0)) * 5
@@ -37,7 +45,7 @@ def run(path, use_db=True):
         if rk > 0: p['rk'] = rk; n += 1
         else: p.pop('rk', None)
     open(path, 'w', encoding='utf-8').write(json.dumps(d, ensure_ascii=False, separators=(',', ':')))
-    print('منتجات لها أهمية:', n, '· مبيعات:', len(sold), '· سلة/مشاهدة:', len(views))
+    print('منتجات لها أهمية:', n, '· ينشرى معه:', len(pairs), '· مبيعات:', len(sold), '· سلة/مشاهدة:', len(views))
 
 if __name__ == '__main__':
     run(sys.argv[1], '--no-db' not in sys.argv)

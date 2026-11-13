@@ -1642,7 +1642,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function sToast(m){ var x = document.createElement("div"); x.className = "dv-toast"; x.setAttribute("role", "status"); x.textContent = m; document.body.appendChild(x); setTimeout(function(){ x.remove(); }, 2200); }
   function banOf(id){ var l = S.bans || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
   function idsToList(ids){ return (ids || []).map(byId).filter(function(p){ return avail(p); }); }
-  var LAYOUT_DEF = ["promos","again","catoffers","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["top","multi","daily","offers","deals","bakery"];
+  var LAYOUT_DEF = ["promos","again","moment","catoffers","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["top","multi","daily","offers","deals","bakery"];
   function promoDefs(){ return PROMO_DEF.concat((S.bans || []).map(function(b){ return b.id; })); }
   function orderOf(list, defs){
     var out = [], seen = {};
@@ -1759,6 +1759,26 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function mustW(p, mo){ var x = p.packs[mo.i]; return { many: x.w || (mo.n === 2 ? "" : "حبات"), one: x.w1 || "الحبة" }; }
   function mustLine(p, mo){ var w = mustW(p, mo); return mo.n === 2 && !p.packs[mo.i].w ? tr("حبتين بـ ", "2 for ") + words(mo.price) : num(mo.n) + " " + w.many + tr(" بـ ", " for ") + words(mo.price); }
   function mustSave(p, mo){ return Math.floor(mo.n * p.price - mo.price + 1e-9); }
+  // «ينشرى معه»: من طلبات المحل (pair في data.json من popularity.py) وإلا من الأقسام اللي تنشرى مع بعض عادة
+  var GOES = { soft: ["chips", "chocolate", "water"], water: ["chips", "soft"], juice: ["biscuits", "cakes", "chips"], energy: ["chips", "chocolate"], tea: ["milk", "biscuits", "sugar"], icedtea: ["chips", "chocolate"],
+    chips: ["soft", "juice", "chocolate"], chocolate: ["soft", "biscuits", "milk"], biscuits: ["tea", "milk", "juice"], cakes: ["juice", "milk", "tea"], candy: ["chips", "soft"], icecream: ["cakes", "soft"], nuts: ["soft", "tea"],
+    milk: ["breakfast", "biscuits", "eggs", "flour"], laban: ["rice", "chicken"], eggs: ["milk", "cheese", "flour"], cheese: ["flour", "eggs", "breakfast"], cream: ["breakfast", "flour", "tea"],
+    rice: ["chicken", "spices", "oil", "canned"], chicken: ["rice", "spices", "sauces"], beef: ["rice", "spices", "sauces"], processed: ["flour", "sauces", "cheese"], fish: ["rice", "spices"],
+    oil: ["rice", "spices"], flour: ["cheese", "eggs", "milk"], canned: ["flour", "sauces", "rice"], pasta: ["sauces", "cheese", "chicken"], spices: ["rice", "chicken"], sauces: ["pasta", "processed", "chips"], breakfast: ["flour", "cheese", "milk"],
+    laundry: ["surfaces", "bags"], dishes: ["surfaces", "bags", "paper"], surfaces: ["dishes", "paper"], bags: ["dishes", "surfaces"], paper: ["surfaces", "bags"], baby: ["paper", "body"], hair: ["body", "deo"], body: ["hair", "oral"], oral: ["body", "hair"] };
+  function goesWith(p, n){
+    var out = [], seen = {}; seen[p.id] = 1;
+    (p.pair || []).forEach(function(id){ var x = byId(id); if (x && avail(x) && !seen[x.id]) { seen[x.id] = 1; out.push(x); } });
+    (GOES[p.sub] || []).forEach(function(sub){ D.products.filter(function(y){ return y.sub === sub && avail(y) && hasPic(y.img) && !seen[y.id]; }).sort(function(a, b){ return shelfScore(b) - shelfScore(a); }).slice(0, 3).forEach(function(y){ seen[y.id] = 1; out.push(y); }); });
+    if (out.length < 4) D.products.filter(function(y){ return y.cat === p.cat && y.sub === p.sub && avail(y) && hasPic(y.img) && !seen[y.id]; }).sort(function(a, b){ return shelfScore(b) - shelfScore(a); }).slice(0, 6).forEach(function(y){ out.push(y); });
+    return out.slice(0, n);
+  }
+  // وقت اليوم (الرياض): فطور الصبح، غدا الظهر، عصرية، سهرة الليل
+  function momentOf(){ var h = Math.floor((Date.now() / 3600000 + 3) % 24);
+    return h >= 5 && h < 11 ? { t: tr("فطورك جاهز", "Breakfast time"), e: "☕", subs: ["eggs", "milk", "cheese", "flour", "breakfast", "laban", "tea"] } :
+      h >= 11 && h < 15 ? { t: tr("مقاضي الغدا", "Lunch essentials"), e: "🍚", subs: ["rice", "chicken", "spices", "oil", "laban", "canned", "sauces"] } :
+      h >= 15 && h < 19 ? { t: tr("قهوة العصر", "Afternoon coffee"), e: "🫖", subs: ["tea", "biscuits", "cakes", "chocolate", "nuts"] } :
+      { t: tr("طلعات السهرة", "Evening snacks"), e: "🍿", subs: ["chips", "soft", "chocolate", "icecream", "nuts", "candy", "energy"] }; }
   function pcs(n){ return n === 2 ? "حبتين" : n <= 10 ? num(n) + " حبات" : num(n) + " حبة"; }
   function multiTxt(m){ return tr(pcs(m.n) + " بـ " + num(m.price) + " ر.س", m.n + " pcs for " + num(m.price) + " SAR"); }
   function multiEach(m){ return tr("الحبة بـ " + num(Math.round(m.price / m.n * 100) / 100), num(Math.round(m.price / m.n * 100) / 100) + " each"); }
@@ -2032,6 +2052,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var hl = EMBED ? [] : histList().slice(0, 16);
     SEC.again = hl.length ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("cart") + tr("اطلب مرة ثانية", "Order again") + '</h2><button type="button" id="addAgain">' + tr("أضف المعتاد كله", "Add all usuals") + ic("plus") + '</button></div><div class="rail">' +
       hl.map(function(x){ return card(x.p); }).join("") + '</div></div>' : '';
+    var mo2 = momentOf(), ml = [];
+    mo2.subs.forEach(function(sub){ D.products.filter(function(y){ return y.sub === sub && avail(y) && hasPic(y.img); }).sort(function(a, b){ return shelfScore(b) - shelfScore(a); }).slice(0, 3).forEach(function(y){ ml.push(y); }); });
+    SEC.moment = ml.length >= 4 ? '<div class="wrap"><div class="kq-sec"><h2>' + mo2.e + ' ' + mo2.t + '</h2></div><div class="rail">' + ml.slice(0, 16).map(function(x){ return card(x); }).join("") + '</div></div>' : '';
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
     SEC.free = S.freeOver ? '<div class="wrap kq-sec-wrap"><button type="button" class="kq-free" data-chip="for"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("احصل على توصيلك المجاني!", "Get free delivery!") + ' <em>' + tr("مجاني", "Free") + '</em></b><span>' + tr("لطلباتك فوق ", "On orders over ") + rial(S.freeOver) + '</span></span>' + ic("fwd") + '</button></div>' : '';
     SEC.catgrid = '<div class="wrap"><div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-nav="cats">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div></div>';
@@ -2143,7 +2166,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var dd = daily(), isDaily = dd && dd.p.id === p.id, price = isDaily ? dd.price : p.price, was = isDaily ? p.price : (onSale(p) ? p.old : 0);
     var c = catOf(p.cat);
     var pairs = idsToList(p.sugg).filter(function(x){ return x.id !== p.id; }).slice(0, 12);
-    if (!pairs.length) D.cats.forEach(function(cc){ if (cc.id === p.cat || pairs.length >= 4) return; var x = D.products.filter(function(y){ return y.cat === cc.id && avail(y); })[0]; if (x) pairs.push(x); });
+    if (!pairs.length) pairs = goesWith(p, 10);
     var lim = lineOf((isDaily ? "t:" : "") + p.id).limit, lf = left(p);
     if (lim && pdQty > lim) pdQty = lim;
     var inCart = cart[(isDaily ? "t:" : "") + p.id] || 0;
@@ -2159,7 +2182,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         (!inC ? tr('أضف ' + pcs(moB.n) + ' وينطبق العرض لحاله', 'Add ' + moB.n + ' and the offer applies') : appl ? tr('✓ العرض انطبق · عندك ' + num(inC) + ' بالسلة', '✓ Offer applied') : tr('عندك ' + num(inC) + ' بالسلة · زود ' + num(moB.n - rest) + ' وتحصل على العرض', 'Add ' + (moB.n - rest) + ' more for the offer')) + '</div></div>'; })() + (was ? '<div class="savebar">' + ic("flame") + tr('عليه عرض: كان ', 'On offer: was ') + rial(was) + tr(' وصار ', ', now ') + rial(price) + tr(' · وفّر ', ' · save ') + rial(was - price) + ' (' + num(Math.max(1, Math.round((was - price) / was * 100))) + '٪)' + (isDaily ? tr(' · العرض ينتهي الساعة ١٢ بالليل', ' · deal ends at midnight') + (lim ? tr(' · الحد ', ' · limit ') + lim + tr(' لكل طلب', ' per order') : '') : tr(' على كل ', ' per ') + esc(un(p))) + '</div>' : '') +
       (!avail(p) ? tr('<div class="alert">هذا المنتج نفد حاليًا.</div>', '<div class="alert">This item is sold out right now.</div>') : '') +
       (avail(p) && ((lf != null && lf <= lowAt()) || Number(p.max) > 0) ? '<div class="pd-lims">' + (lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '') + (Number(p.max) > 0 ? '<span>' + tr("الحد الأقصى ", "Max ") + Number(p.max) + tr(" لكل طلب", " per order") + '</span>' : '') + '</div>' : '') +
-      (pairs.length ? '<div class="pd-sugg"><b>' + (p.sugg && p.sugg.length ? tr("يحلى معه", "Goes well with") : tr("ممكن يعجبك", "You may also like")) + '</b><div class="rail">' + pairs.map(function(x){ return card(x); }).join("") + '</div></div>' : '') +
+      (pairs.length ? '<div class="pd-sugg"><b>' + (p.sugg && p.sugg.length ? tr("يحلى معه", "Goes well with") : tr("ينشرى معه عادة", "Often bought with")) + '</b><div class="rail">' + pairs.map(function(x){ return card(x); }).join("") + '</div></div>' : '') +
       '</div></div></div>' +
       (avail(p) ? tr('<div class="buybar"><div class="qtybig"><button type="button" data-pq="-1" aria-label="نقص">', '<div class="buybar"><div class="qtybig"><button type="button" data-pq="-1" aria-label="Decrease">') + ic("minus") + '</button><b id="pq">' + pdQty + tr('</b><button type="button" data-pq="1" aria-label="زيادة">', '</b><button type="button" data-pq="1" aria-label="Increase">') + ic("plus") + '</button></div>' +
         '<button class="btn btn-ink go" type="button" data-addprod="' + p.id + '" data-kind="' + (isDaily ? "t" : "") + tr('">أضف للسلة<span id="pqTotal">', '">Add to cart<span id="pqTotal">') + rial(price * pdQty) + '</span></button></div>' : '');
@@ -2307,6 +2330,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (t.n || t.dn ? tr('<button class="sq" type="button" id="emptyCart" aria-label="إفراغ السلة" style="color:var(--sale)">', '<button class="sq" type="button" id="emptyCart" aria-label="Empty cart" style="color:var(--sale)">') + ic("trash") + '</button>' : '<span class="sq" style="visibility:hidden"></span>') + '</div>';
     if (!Object.keys(cart).length) return head + '<div class="empty"><span class="big">' + ic("cart") + '</span><b>' + tr('السلة فارغة', 'Your cart is empty') + '</b><button class="btn btn-teal kq-browse" type="button" data-nav="home">' + ic("cart") + tr('تصفّح المنتجات', 'Browse products') + '</button></div></div>';
     var h = head + '<div style="display:grid;gap:12px;margin-top:16px">';
+    // «باقي X وتوصيلك مجاني»: منتجات تكمّل المبلغ (سعرها قريب من الباقي)
+    var gap = S.freeOver && t.fee ? Math.round((S.freeOver - t.s) * 100) / 100 : 0, fillL = [];
+    if (gap > 0 && gap <= 25) { var inC2 = {}; Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (L) inC2[L.p.base || L.p.id] = 1; });
+      fillL = D.products.filter(function(p){ return avail(p) && !inC2[p.id] && !p.print && hasPic(p.img) && p.price >= gap && p.price <= gap + 6; }).sort(function(a, b){ return (a.price - gap) - (b.price - gap) || shelfScore(b) - shelfScore(a); }).slice(0, 10); }
     if (S.freeOver) h += '<div class="darkbar"><div class="r"><span style="display:flex;gap:8px;align-items:center">' + ic("truck") + (t.fee ? tr('باقي ', 'Add ') + rial(S.freeOver - t.s) + tr(' وتوصيلك مجاني', ' more for free delivery') : tr('توصيلك مجاني', 'Free delivery unlocked')) + '</span><span>' + num(t.s) + ' / ' + num(S.freeOver) + '</span></div><div class="meter"><i style="width:' + Math.min(100, t.s / S.freeOver * 100) + '%"></i></div></div>';
     if (dealOn() && dealsList().length) h += '<div class="box lockbox' + (t.unlocked ? ' on' : '') + '"><span class="ic">' + ic(t.unlocked ? "unlock" : "lock") + '</span><span class="t"><div><b>' + (t.unlocked ? tr('عروض ', '') + num(DEAL.price) + tr(' ر.س مفتوحة لك', ' SAR offers unlocked') : tr('باقي ', 'Add ') + rial(t.left) + tr(' وتفتح عروض ', ' more to unlock items for ') + num(DEAL.price) + tr(' ر.س', ' SAR')) + '</b></div>' + (t.unlocked ? '' : '<div class="meter"><i style="width:' + Math.min(100, t.base / Number(DEAL.min || 1) * 100) + '%"></i></div>') + '</span></div>';
     var bseen = {};
@@ -2320,6 +2347,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         aoL ? (aoL.miss && !aoL.b ? '<span class="ltag miss">' + tr('زود ' + num(aoL.miss) + ' وتحصل على عرض ' + num(aoL.mo.n) + ' بـ ' + num(aoL.mo.price), 'Add ' + aoL.miss + ' for ' + aoL.mo.n + ' at ' + num(aoL.mo.price)) + '</span>' : '<span class="ltag ok">' + tr('✓ عرض ' + num(aoL.mo.n) + ' بـ ' + num(aoL.mo.price) + ' انطبق', '✓ Offer applied') + '</span>') : '';
       return '<div class="line' + (off ? ' off' : '') + '"><span class="plate" style="background:' + tint(p.cat) + '">' + imgTag(p.img, "") + '</span><span class="nm"><b>' + esc(nm(p)) + tag + '</b><span>' + esc(un(p)) + '</span><span class="price' + (L.kind !== "r" ? ' sale' : '') + '" style="font-size:14px">' + (off ? tr('مقفول', 'Locked') : aoL && aoL.b ? rial(aoL.total) + ' <s style="color:var(--muted);font-weight:400;font-size:12px">' + rial(aoL.regular) + '</s>' : rial(L.price * cart[k])) + '</span></span>' +
         '<span class="stepper"><button type="button" data-act="dec" data-id="' + k + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button><b>' + cart[k] + '</b><button type="button" data-act="inc" data-id="' + k + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full || off ? ' disabled' : '') + '>' + ic("plus") + '</button></span></div>'; }).join("") + '</div>';
+    if (fillL.length) h += '<div class="kq-sec" style="margin-top:4px"><h2>' + ic("truck") + tr("أضف واحد منها وتوصيلك مجاني", "Add one for free delivery") + '</h2></div><div class="rail cart-rail">' + fillL.map(function(p){ return card(p); }).join("") + '</div>';
     // «ممكن نسيت؟»: منتج تشتريه عادة (طلبته مرتين أو أكثر) وما هو بالسلة. الزبون الجديد يشوف «أضف قبل لا تطلب» (أشياء صغيرة مطلوبة)
     var inCart = {}; Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (L) inCart[L.p.base || L.p.id] = 1; });
     var forgot = histList().filter(function(x){ return x.h.n >= 2 && !inCart[x.p.id]; }).slice(0, 10).map(function(x){ return x.p; }), fTitle = tr("ممكن نسيت؟", "Forgot something?");
@@ -3482,7 +3510,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function field(id, label, val, type){ return '<label for="' + id + '">' + label + '<input id="' + id + '" type="' + (type || "text") + '" value="' + esc(val) + '"' + (type === "number" ? ' min="0" step="0.5" inputmode="decimal"' : '') + '></label>'; }
   function catOptions(sel){ return draft.cats.map(function(c){ return '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join(""); }
   function renderAFilter(){ $("aCat").innerHTML = '<option value="all">كل الأقسام</option>' + catOptions(aFilter.cat); }
-  var LAY_LABEL = { again: "اطلب مرة ثانية (للزبون اللي طلب قبل)", promos: "بنرات العروض", catoffers: "عروض الأقسام (مربعات)", free: "بطاقة التوصيل المجاني", catgrid: "الأقسام (مربعات الصور)", offers: "أفضل العروض (صف يتحرك)", deals: "منتجات السعر الرمزي (صف يتحرك)", grid: "الفلاتر والمنتجات" };
+  var LAY_LABEL = { again: "اطلب مرة ثانية (للزبون اللي طلب قبل)", moment: "حسب وقت اليوم (فطور، غدا، عصرية، سهرة)", promos: "بنرات العروض", catoffers: "عروض الأقسام (مربعات)", free: "بطاقة التوصيل المجاني", catgrid: "الأقسام (مربعات الصور)", offers: "أفضل العروض (صف يتحرك)", deals: "منتجات السعر الرمزي (صف يتحرك)", grid: "الفلاتر والمنتجات" };
   var PROMO_LABEL = { top: "أقوى خصم (تلقائي)", multi: "عرض الكمية (تلقائي)", daily: "عرض اليوم", offers: "عروض الأسبوع", deals: "منتجات السعر الرمزي", bakery: "بطاقة المخبز" };
   function mvBtns(kind, id, ends){ return '<span class="mv">' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':-99" aria-label="لأول الصفحة">أول</button>' : '') + '<button type="button" data-mv="' + kind + ':' + id + ':-1" aria-label="فوق">' + ic("up") + '</button><button type="button" data-mv="' + kind + ':' + id + ':1" aria-label="تحت">' + ic("down") + '</button>' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':99" aria-label="لآخر الصفحة">آخر</button>' : '') + '</span>'; }
   function renderLayout(){
