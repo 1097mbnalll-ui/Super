@@ -1475,6 +1475,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var CARTON_RE = /^(كرتون|كرتونه|شدّة|شدة|شده)/;
   function isCarton(p){ return CARTON_RE.test(String(p.unit || "")) || (Array.isArray(p.packs) && p.packs.some(function(x){ return CARTON_RE.test(String(x.u || "")) && Number(x.price) > 0; })); }
   function inCat(p, cid){ return cid === "cartons" ? isCarton(p) : p.cat === cid; }
+  // قسم الكراتين: المنتج يطلع بسعر الكرتون/الشدّة نفسه (خيار البيع)، وفي باقي الأقسام بسعر الحبة
+  function cartonView(p){ if (CARTON_RE.test(String(p.unit || ""))) return p; var L = Array.isArray(p.packs) ? p.packs : []; for (var i = 0; i < L.length; i++) if (CARTON_RE.test(String(L[i].u || "")) && Number(L[i].price) > 0) return packOf(p, i) || p; return p; }
+  function catItems(cid){ var l = D.products.filter(function(p){ return inCat(p, cid); }); return cid === "cartons" ? l.map(cartonView) : l; }
   function catPhoto(c){ if (isPath(c.img)) return c.img; for (var i = 0; i < D.products.length; i++) { var p = D.products[i]; if (inCat(p, c.id) && avail(p) && hasPic(p.img)) return p.img; } return isPhoto(c.img) ? c.img : ""; }
   function photosOf(list){ return list.map(function(p){ return p.img; }).filter(function(k){ return hasPic(k); }); }
   var IC = {
@@ -1809,7 +1812,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (chip === "offers") return pagedCards(D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), "chip:offers");
     if (chip === "deals") return pagedCards(dealsList(), "chip:deals", "d");
     if (chip.indexOf("b:") === 0) { var bb = banOf(chip.slice(2)); return bb ? pagedCards((bb.ids || []).map(byId).filter(Boolean).sort(function(a,b){ return avail(b) - avail(a); }), "chip:" + chip) : []; }
-    if (chip.indexOf("c:") === 0) { var cid = chip.slice(2); return pagedCards(D.products.filter(function(p){ return inCat(p, cid); }).sort(shelfSort), "chip:" + chip); }
+    if (chip.indexOf("c:") === 0) { var cid = chip.slice(2); return pagedCards(catItems(cid).sort(shelfSort), "chip:" + chip); }
     var dd = daily(), fy = idsToList(S.forYou), fyId = {}; fy.forEach(function(p){ fyId[p.id] = 1; });
     var list = S.forOnly && fy.length ? [] : D.products.filter(function(p){ return avail(p) && !fyId[p.id]; }).slice().sort(function(a,b){ return ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)) || ((onSale(b) ? 1 : 0) - (onSale(a) ? 1 : 0)); });
     return (dd && !fyId[dd.p.id] ? [card(dd.p, "t")] : []).concat(pagedCards(fy.concat(list).sort(function(a,b){ return (hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0); }), "chip:for"));
@@ -2007,7 +2010,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<span class="pr-acts"><button type="button" class="btn btn-ghost" data-opencat="print">' + tr("تعديل", "Edit") + '</button><button type="button" class="sq" data-pdel="' + esc(k) + '" aria-label="' + tr("حذف", "Remove") + '">' + ic("trash") + '</button></span></div>';
   }
   function catHTML(){
-    var c = catOf(openCat) || D.cats[0], items = D.products.filter(function(p){ return inCat(p, c.id); }).sort(shelfSort), isPrint = c.id === "print" && printOK();
+    var c = catOf(openCat) || D.cats[0], items = catItems(c.id).sort(shelfSort), isPrint = c.id === "print" && printOK();
     // أقسام فرعية (اختيارية): القسم فيه subs، وكل منتج فيه sub. اللي بدون sub (أو sub مو معروف) يروح «أخرى»
     var subs = Array.isArray(c.subs) ? c.subs : [], known = {}, subBar = "", shown = items;
     if (subs.length) {
