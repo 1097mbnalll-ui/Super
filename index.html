@@ -997,6 +997,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kb-p.boxed{background:#fff;border-radius:22px;padding:6%;box-sizing:border-box;filter:drop-shadow(0 8px 14px rgba(0,0,0,.18))}
 @media (prefers-reduced-motion:no-preference){.kb-p.ready{animation:kbFloat 5s ease-in-out infinite}}
 @keyframes kbFloat{50%{translate:0 -4px}}
+body.is-embed .embed.page{padding:12px 0 90px}body.is-embed .embed.page .kq-grid{display:grid}
 body.is-embed{background:transparent!important;padding:0!important;margin:0}body.is-embed .embed{padding:0 0 4px}body.is-embed .embed .wrap{padding-left:16px;padding-right:16px}body.is-embed #splash{display:none}
 /* 0 hero (نمط المتاجر الكبيرة: لون قوي، رقم الخصم كبير، المنتجات على صحن) */
 .kb.s-hero{background:linear-gradient(135deg,var(--bc,#0B7A5A) 0%,color-mix(in srgb,var(--bc,#0B7A5A) 72%,#000) 100%);color:#fff}
@@ -1685,7 +1686,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
 
   /* ---------- cart ---------- */
   var cart = {}; try { cart = JSON.parse(localStorage.getItem("ohod-cart") || "{}") || {}; } catch(e) { cart = {}; }
-  function saveCart(){ try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} }
+  // داخل التطبيق: سلة التطبيق تجي بالرابط (cart=…)، وأي إضافة تروح للتطبيق (cart.add / cart.set) بدل سلة الموقع
+  var EMBED_PAGE = ((location.search.match(/[?&]page=([^&]*)/) || [])[1] || ""), EMBED_SLOT = ((location.search.match(/[?&]slot=([^&]*)/) || [])[1] || ""), EMBED_ID = ((location.search.match(/[?&]id=([^&]*)/) || [])[1] || "");
+  try { EMBED_PAGE = decodeURIComponent(EMBED_PAGE); EMBED_ID = decodeURIComponent(EMBED_ID); } catch(e){}
+  if (EMBED) { try { cart = JSON.parse(decodeURIComponent((location.search.match(/[?&]cart=([^&]*)/) || [])[1] || "%7B%7D")) || {}; } catch(e) { cart = {}; } }
+  function saveCart(){ if (EMBED) return; try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} }
   // البيانات المدمجة بالصفحة قديمة (ما فيها أغلب المنتجات): ما ننظّف السلة المحفوظة إلا بعد ما ينحمّل data.json الحقيقي، وإلا الزبون يفقد سلته كل ما يفتح الموقع
   var dataReady = !GH;
   function normalize(){
@@ -1784,10 +1789,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
     document.body.appendChild(w);
   }
   document.addEventListener("click", function(e){ var t;
-    if ((t = e.target.closest("[data-gpick]"))) { e.preventDefault(); e.stopPropagation(); if (EMBED) toApp({ t: "group", id: t.dataset.gpick }); else openGroupPicker(t.dataset.gpick); return; }
+    if ((t = e.target.closest("[data-gpick]"))) { e.preventDefault(); e.stopPropagation(); if (EMBED && !EMBED_PAGE) toApp({ t: "group", id: t.dataset.gpick }); else openGroupPicker(t.dataset.gpick); return; }
     if (!GP) return;
     if ((t = e.target.closest("[data-gpq]"))) { var id = t.dataset.gpq, v = (GP.pick[id] || 0) + Number(t.dataset.d), p = byId(id); if (v < 0) v = 0; if (Number(t.dataset.d) > 0 && p && !canAddProduct(id, v - (cart[id] || 0))) { sToast(tr("وصلت للكمية المتاحة", "Reached available quantity")); return; } if (v) GP.pick[id] = v; else delete GP.pick[id]; drawGroupPicker(); return; }
-    if (e.target.closest("[data-gpok]")) { (GP.g.ids || []).forEach(function(id){ if (GP.pick[id]) cart[id] = GP.pick[id]; else delete cart[id]; }); var c2 = Object.keys(GP.pick).length; GP = null; drawGroupPicker(); saveCart(); refresh(); sToast(c2 ? tr("انضاف العرض للسلة", "Offer added to cart") : tr("انشال العرض من السلة", "Offer removed")); return; }
+    if (e.target.closest("[data-gpok]")) { if (EMBED) { var set = {}; (GP.g.ids || []).forEach(function(id){ set[id] = GP.pick[id] || 0; }); toApp({ t: "cart.set", set: set, msg: tr("انضاف العرض للسلة", "Offer added") }); GP = null; drawGroupPicker(); toApp({ t: "close" }); return; }
+      (GP.g.ids || []).forEach(function(id){ if (GP.pick[id]) cart[id] = GP.pick[id]; else delete cart[id]; }); var c2 = Object.keys(GP.pick).length; GP = null; drawGroupPicker(); saveCart(); refresh(); sToast(c2 ? tr("انضاف العرض للسلة", "Offer added to cart") : tr("انشال العرض من السلة", "Offer removed")); return; }
     if (e.target.closest("[data-gpclose]") || e.target.id === "gpSheet") { GP = null; drawGroupPicker(); }
   }, true);
   // عرض الكمية الإجباري (pack.must): المنتج ينباع بالمجموعة بس («3 علب بـ 11 ريال و95 هللة»). الكلام بسيط يفهمه أي زبون
@@ -2116,6 +2122,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<button type="button" class="kq-filter" data-nav="cats" aria-label="' + tr("الأقسام", "Categories") + '">' + ic("filter") + '</button>' +
       chipList().map(function(c){ return '<button type="button" class="kq-chip" data-chip="' + c.id + '" aria-pressed="' + (chip === c.id) + '">' + (c.img ? imgTag(c.img, "") : ic(c.icon)) + esc(c.name) + '</button>'; }).join("") + '</div></div></div>' +
       '<div class="wrap"><div class="kq-grid" id="kqGrid">' + chipItems().join("") + '</div></div>';
+    if (EMBED && EMBED_PAGE) { chip = EMBED_PAGE; return '<div class="embed page"><div class="wrap"><div class="kq-grid">' + chipItems().join("") + '</div></div></div>'; }
+    if (EMBED && EMBED_SLOT) return '<div class="embed">' + slotHTML(EMBED_SLOT, EMBED_ID) + '</div>';
     if (EMBED) return '<div class="embed">' + EMBED_BLOCKS.map(function(id){ return SEC[id] || ""; }).join("") + '</div>';
     orderOf(S.layout, LAYOUT_DEF).forEach(function(x){ if (x.on && SEC[x.id]) h += SEC[x.id]; });
     return h;
@@ -2533,10 +2541,28 @@ html.sp-on,html.sp-on body{overflow:hidden}
       });
     }; });
   }
+  // «خانات حية» داخل شاشات التطبيق: أي ميزة جديدة تنحط هنا وتطلع في التطبيق بدون تحديث
+  function slotHTML(slot, id){
+    if (slot === "product") { var p = byId(id); if (!p) return ""; var g = grpOf(p), h = "";
+      if (g) h += '<div class="wrap"><div class="ofbox must gp-head"><b>🔥 ' + esc(grpLine(g)) + '</b><p>' + tr("كانت " + (g.w1 || "الحبة") + " بـ " + num(grpOld(g)) + (grpSave(g) > 0 ? " · توفّر " + num(grpSave(g)) + " ريال" : "") + " · تختار من أي نوع", "") + '</p><button class="btn btn-ink" type="button" data-gpick="' + esc(g.id) + '">' + tr("اختر " + num(g.n) + " " + (g.w || "حبات"), "Pick " + g.n) + '</button></div></div>';
+      var gw = goesWith(p, 10); if (gw.length) h += '<div class="wrap"><div class="kq-sec"><h2>' + tr("ينشرى معه عادة", "Often bought with") + '</h2></div><div class="rail">' + gw.map(function(x){ return card(x); }).join("") + '</div></div>';
+      return h; }
+    if (slot === "cart") { var t = totals(), h2 = "";
+      if (t.gshort) h2 += '<div class="wrap"><div class="alert soft">' + tr("عرض " + esc(t.gshort.g.name || "") + ": باقي " + num(t.gshort.need) + " وتكمل العرض. ", "") + '<button type="button" class="btn btn-soft" data-gpick="' + esc(t.gshort.g.id) + '">' + tr("كمّل", "Complete") + '</button></div></div>';
+      var gap = S.freeOver && t.fee ? Math.round((S.freeOver - t.s) * 100) / 100 : 0;
+      if (gap > 0 && gap <= 25) { var inC = {}; Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (L) inC[L.p.base || L.p.id] = 1; });
+        var fl = D.products.filter(function(p){ return avail(p) && !inC[p.id] && !p.print && hasPic(p.img) && p.price >= gap && p.price <= gap + 6; }).sort(function(a, b){ return (a.price - gap) - (b.price - gap) || shelfScore(b) - shelfScore(a); }).slice(0, 10);
+        if (fl.length) h2 += '<div class="wrap"><div class="kq-sec"><h2>' + tr("أضف واحد منها وتوصيلك مجاني", "Add one for free delivery") + '</h2></div><div class="rail">' + fl.map(function(p){ return card(p); }).join("") + '</div></div>'; }
+      return h2; }
+    return "";
+  }
   function embedHeight(){ var e = document.querySelector(".embed"); toApp({ t: "h", h: e ? Math.ceil(e.getBoundingClientRect().height) : 0 }); }
   if (EMBED) { window.addEventListener("load", embedHeight); window.addEventListener("resize", embedHeight); try { new ResizeObserver(embedHeight).observe(document.body); } catch(e){}
     // الضغطات: نرسلها للتطبيق بدل ما نفتح شاشات الموقع
-    document.addEventListener("click", function(e){ var t = e.target.closest("[data-open],[data-opencat],[data-chip],[data-addbund],[data-nav]"); if (!t) return;
+    document.addEventListener("click", function(e){ var a = e.target.closest("[data-act]");
+      if (a && !EMBED_PAGE) { e.preventDefault(); e.stopPropagation(); var L = lineOf(a.dataset.id), st = L ? stepOf(L.p) : 1; toApp({ t: "cart.add", key: a.dataset.id, qty: (a.dataset.act === "dec" ? -1 : 1) * st }); return; }
+      if (a) return; // صفحة حية: السلة محلية وتنرسل عند «أضف»
+      var t = e.target.closest("[data-open],[data-opencat],[data-chip],[data-addbund],[data-nav]"); if (!t) return;
       e.preventDefault(); e.stopPropagation();
       if (t.dataset.addbund) toApp({ t: "bundle", id: t.dataset.addbund });
       else if (t.dataset.open) toApp({ t: "product", id: t.dataset.open, pack: t.dataset.openpack || "" });

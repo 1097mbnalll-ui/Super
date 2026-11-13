@@ -76,6 +76,18 @@ export default {
     if (body.pin != null) body.pin = asciiDigits(String(body.pin));
 
     // طلب من زبون: ما يحتاج رقم سري
+    // تسعير السلة من الخادم (للتطبيق): أي قاعدة تسعير جديدة (مجموعات، أكواد، هدايا) تطلع صح بدون تحديث التطبيق
+    if (path === "/quote") {
+      if (await rateHit(env, "quote:" + ip, 120, 600)) return reply(429, { ok: false, code: "slow_down" });
+      let data; try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+      const pr = priceOrder(data, body, true);
+      if (pr.error) return reply(200, { ok: false, code: pr.error, id: pr.id, n: pr.n, min: pr.min });
+      let promo = 0, promoCode = "";
+      if (body.promo && env.DB) { const pc = await promoCheck(env, body.promo, normPhone(body.phone) || null, pr.subtotal); if (!pc.error) { promo = promoAmount(pc.rule, pr.subtotal); promoCode = pc.rule.code; } else promoCode = "!" + pc.error; }
+      const gift = !promo ? (pr.gift || 0) : 0;
+      return reply(200, { ok: true, subtotal: pr.subtotal, fee: pr.fee, gift, promo, promoCode, total: round2(pr.subtotal + pr.fee - gift - promo), count: pr.count,
+        lines: pr.lines.map((l) => ({ id: l.p.id, qty: l.qty, price: l.price, tag: l.tag || "" })) });
+    }
     if (path === "/promo/check") {
       if (!env.DB) return reply(503, { ok: false, code: "promo_invalid" });
       if (await rateHit(env, "promo:" + ip, 15, 600)) return reply(429, { ok: false, code: "slow_down" });
@@ -1292,15 +1304,15 @@ async function promoCheck(env, code, phone, subtotal) {
   if (phone && r.per_phone > 0) { const u = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE phone = ? AND status != 'canceled' AND json_extract(data, '$.promo') = ?").bind(phone, code).first(); if ((u?.n || 0) >= r.per_phone) return { error: "promo_used" }; }
   return { rule };
 }
-function priceOrder(data, body) {
+function priceOrder(data, body, quote) {
   const S = data.store || {};
   const byId = {};
   for (const p of data.products || []) byId[p.id] = p;
   const items = body.items && typeof body.items === "object" ? body.items : {};
-  const phone = normPhone(body.phone);
-  if (!phone) return { error: "bad_phone" };
+  const phone = quote ? "" : normPhone(body.phone);
+  if (!quote && !phone) return { error: "bad_phone" };
   const lat = Number(body.lat), lng = Number(body.lng);
-  if (!(lat >= 16 && lat <= 33 && lng >= 34 && lng <= 56)) return { error: "bad_location" };
+  if (!quote && !(lat >= 16 && lat <= 33 && lng >= 34 && lng <= 56)) return { error: "bad_location" };
 
   const DEAL = S.deal95 && S.deal95.on ? S.deal95 : null;
   const DAILY = S.daily && S.daily.on ? S.daily : null;
@@ -1385,7 +1397,7 @@ function priceOrder(data, body) {
     if (max > 0 && qty > max) return {error:'item_limit',id,max};
   }
   if (!count) return { error: "empty" };
-  if (S.closed || !openNow(S)) return { error: "closed" };
+  if (!quote && (S.closed || !openNow(S))) return { error: "closed" };
   const onlyPrint = lines.length > 0 && lines.every((l) => l.p.print), PR = S.print && typeof S.print === "object" ? S.print : null;
   const minOrder = onlyPrint && PR && PR.minOrder != null ? Number(PR.minOrder) || 0 : Number(S.minOrder) || 0;
   if (minOrder > 0 && base + dealSum < minOrder) return { error: "min_order", min: minOrder };
