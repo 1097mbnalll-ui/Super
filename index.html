@@ -3182,11 +3182,21 @@ html.sp-on,html.sp-on body{overflow:hidden}
   /* ---------- admin console ---------- */
   var draft = null, dirty = false, pickTarget = null, aFilter = { cat: "all", q: "" }, aTab = "over";
   var STK = {}, STK_OK = false, stockEdit = {}, pp = null, statDays = 30, statCache = null, COST = {}, costEdit = {}, stat30 = null, todayCache = null;
-  function costOf(id){ return Object.prototype.hasOwnProperty.call(costEdit, id) ? costEdit[id] : (COST[id] == null ? null : COST[id]); }
-  function qtyOf(id){ return Object.prototype.hasOwnProperty.call(stockEdit, id) ? stockEdit[id] : (STK[id] == null ? null : STK[id]); }
+  function costOf(id){ if (!Object.prototype.hasOwnProperty.call(costEdit, id)) needStk(id); return Object.prototype.hasOwnProperty.call(costEdit, id) ? costEdit[id] : (COST[id] == null ? null : COST[id]); }
+  // الإدارة تقرأ مخزون وسعر شراء المنتجات اللي تنعرض بس (دفعات)، بدل ١١ ألف صف كل مرة
+  var STK_KNOWN = {}, STK_WANT = {}, STK_T = null, COST_N = 0, STK_LOW = {};
+  function needStk(id){ if (!STK_OK || STK_KNOWN[id] || !apiUrl()) return; STK_WANT[id] = 1; if (!STK_T) STK_T = setTimeout(fetchStk, 60); }
+  function fetchStk(){ STK_T = null; var ids = Object.keys(STK_WANT).slice(0, 500); ids.forEach(function(i){ delete STK_WANT[i]; STK_KNOWN[i] = 1; }); if (!ids.length) return;
+    api("/admin/stock", { pin: adminPin, ids: ids }).then(function(j){ if (!j.ok) return; Object.assign(STK, j.stock || {}); Object.assign(COST, j.costs || {});
+      if (mode === "admin") { if (aTab === "prods") renderAProds(); else if (aTab === "over") renderOver(); }
+      if (Object.keys(STK_WANT).length) STK_T = setTimeout(fetchStk, 60); }); }
+  function qtyOf(id){ if (!Object.prototype.hasOwnProperty.call(stockEdit, id)) needStk(id); return Object.prototype.hasOwnProperty.call(stockEdit, id) ? stockEdit[id] : (STK[id] == null ? null : STK[id]); }
   function loadAdminStock(){
     if (!apiUrl() || ordersOnly()) return;
-    api("/admin/stock", { pin: adminPin }).then(function(j){ if (!j.ok) return; STK = j.stock || {}; COST = j.costs || {}; STK_OK = !!j.hasDB; if (mode === "admin") { renderAProds(); renderOver(); } });
+    api("/admin/stock", { pin: adminPin, summary: true }).then(function(j){ if (!j.ok) return;
+      if (j.low) { STK = Object.assign({}, j.low); COST = {}; STK_LOW = j.low; COST_N = j.costCount || 0; STK_KNOWN = {}; Object.keys(j.low).forEach(function(i){ STK_KNOWN["~" + i] = 1; }); }
+      else { STK = j.stock || {}; COST = j.costs || {}; draft.products.forEach(function(p){ STK_KNOWN[p.id] = 1; }); } // خادم قديم: كل شي
+      STK_OK = !!j.hasDB; if (mode === "admin") { renderAProds(); renderOver(); } });
   }
   function uid(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
   function markDirty(){ dirty = true; if($("aSave"))$("aSave").disabled=!!adminProtectionCheck; var s = $("aState"); if (s) { s.textContent = "فيه تعديلات ما انحفظت"; s.className = "adm-state dirty"; } }
@@ -3464,7 +3474,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function lowHTML(){
     var la = draft.store.lowAt == null ? 3 : Number(draft.store.lowAt);
-    var l = draft.products.filter(function(p){ var q = qtyOf(p.id); return q != null && q <= la; }).sort(function(a, b){ return qtyOf(a.id) - qtyOf(b.id); });
+    var low = Object.keys(STK_LOW).length ? STK_LOW : STK, l = draft.products.filter(function(p){ var q = Object.prototype.hasOwnProperty.call(stockEdit, p.id) ? stockEdit[p.id] : low[p.id]; return q != null && q <= la; }).sort(function(a, b){ return (low[a.id] || 0) - (low[b.id] || 0); });
     if (!l.length) return '';
     return '<div class="lowlist"><b>منتجات قربت تخلص أو خلصت</b>' + l.slice(0, 12).map(function(p){ var q = qtyOf(p.id);
       return '<button type="button" class="lowrow" data-gostock="' + p.id + '">' + imgTag(p.img, "") + '<span>' + esc(p.name) + '</span><em class="' + (q ? 'low' : 'zero') + '">' + (q ? 'باقي ' + q : 'نفد') + '</em></button>'; }).join("") + '</div>';
@@ -4271,7 +4281,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         '<div class="tbl"><b class="down">دوّروا عليه وما لقوه</b>' + (miss.length ? '<div class="tags">' + miss.slice(0, 20).map(function(x){ return '<span class="atag miss">' + esc(x.q) + ' <em>' + x.miss + '</em></span>'; }).join("") + '</div><p class="hint">هذي فرص: منتجات يبغونها وما عندك، أو موجودة باسم ثاني.</p>' : '<p class="hint">كل اللي دوّروا عليه لقوه.</p>') + '</div></div>'); }
     // stock forecast + dead stock
     var per = {}; j.items.forEach(function(x){ per[x.id] = x.qty / j.days; });
-    var fc = draft.products.filter(function(p){ return qtyOf(p.id) != null && qtyOf(p.id) > 0 && per[p.id] > 0; }).map(function(p){ return { p: p, q: qtyOf(p.id), d: qtyOf(p.id) / per[p.id] }; }).filter(function(x){ return x.d <= 14; }).sort(function(a, b){ return a.d - b.d; });
+    var fc = draft.products.filter(function(p){ return per[p.id] > 0 && qtyOf(p.id) != null && qtyOf(p.id) > 0; }).map(function(p){ return { p: p, q: qtyOf(p.id), d: qtyOf(p.id) / per[p.id] }; }).filter(function(x){ return x.d <= 14; }).sort(function(a, b){ return a.d - b.d; });
     var dead = draft.products.filter(function(p){ return p.stock && !(smap[p.id] > 0); });
     h += sec("المخزون", (fc.length ? '<div class="tbl"><b>بيخلص قريب (حسب سرعة البيع)</b>' + fc.slice(0, 12).map(function(x){ return '<div class="trow fc">' + imgTag(x.p.img, "") + '<span class="nm">' + esc(x.p.name) + '</span><span class="v">باقي ' + num(x.q) + '</span><span class="v ' + (x.d < 3 ? 'down' : '') + '"><b>يخلص بعد ' + (x.d < 1 ? 'أقل من يوم' : num(Math.round(x.d)) + ' يوم') + '</b></span></div>'; }).join("") + '</div>' : '<p class="hint">ما فيه منتج بيخلص خلال أسبوعين (للمنتجات اللي حاط لها كمية).</p>') +
       (dead.length && A.orders >= 5 ? '<div class="tbl"><b>ما انباع ولا قطعة في هذي المدة (' + num(dead.length) + ')</b><div class="tags">' + dead.slice(0, 30).map(function(p){ return '<span class="atag">' + esc(p.name) + '</span>'; }).join("") + '</div></div>' : ''));
@@ -4628,7 +4638,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var A = sumDays(cur), B = sumDays(old);
     // 1) stock running out soon
     var per = {}; j.items.forEach(function(x){ per[x.id] = x.qty / j.days; });
-    var soon = draft.products.filter(function(p){ var q = qtyOf(p.id); return p.stock && q != null && per[p.id] > 0 && q / per[p.id] <= 3; }).map(function(p){ return { p: p, d: qtyOf(p.id) / per[p.id] }; }).sort(function(a, b){ return a.d - b.d; });
+    var soon = draft.products.filter(function(p){ if (!(p.stock && per[p.id] > 0)) return false; var q = qtyOf(p.id); return q != null && q / per[p.id] <= 3; }).map(function(p){ return { p: p, d: qtyOf(p.id) / per[p.id] }; }).sort(function(a, b){ return a.d - b.d; });
     soon.slice(0, 2).forEach(function(x){ out.push({ ic: "box", k: "warn", html: '<b>' + esc(x.p.name) + '</b> ' + (x.d <= 0 ? 'نفد مخزونه' : x.d < 1 ? 'قد ينفد خلال يوم' : 'قد ينفد خلال ' + Math.ceil(x.d) + ' يوم') + ' حسب سرعة البيع (باقي ' + num(qtyOf(x.p.id)) + '). متوسط البيع خلال ' + num(j.days) + ' يوم؛ راجع التوريد قبل تعديل الكمية.', act: ['data-gostock="' + x.p.id + '"', 'عدّل الكمية'] }); });
     // 2) trend
     if (prevOk(j) && B.orders >= 20 && A.orders >= 20 && B.revenue > 0 && A.revenue > 0) { var ch = Math.round((A.revenue - B.revenue) / B.revenue * 100); if (Math.abs(ch) >= 10) out.push({ ic: "chart", k: ch > 0 ? "good" : "warn", html: 'المبيعات ' + (ch > 0 ? 'زادت' : 'نقصت') + ' <b>' + Math.abs(ch) + '٪</b> عن الفترة اللي قبلها (' + num(Math.round(A.revenue)) + ' مقابل ' + num(Math.round(B.revenue)) + ' ريال). راجع تغيّر عدد الطلبات ومتوسط السلة قبل تعديل الأسعار.', act: ['data-atab="stats"', 'راجع التحليل'] }); }
@@ -4656,7 +4666,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     // 9) cancel rate
     if (A.orders + A.canceled >= 20 && A.canceled / (A.orders + A.canceled) > 0.08) out.push({ ic: "lock", k: "warn", html: 'نسبة الإلغاء <b>' + pct(A.canceled, A.orders + A.canceled) + '٪</b> من ' + num(A.orders + A.canceled) + ' طلبًا. راجع أسباب الإلغاء قبل تقديم خصومات.', act: ['data-tip-canceled', 'راجع الملغية'] });
     // 10) missing purchase prices
-    var noCost = draft.products.filter(function(p){ return p.stock && costOf(p.id) == null; }).length;
+    var noCost = Math.max(0, draft.products.filter(function(p){ return p.stock; }).length - COST_N);
     if (noCost && STK_OK) out.push({ ic: "tag", html: '<b>' + num(noCost) + ' منتج</b> بدون «سعر الشراء»، فالربح ما ينحسب لها.', act: ['data-atab="prods"', 'حط الأسعار'] });
     var noPhoto = draft.products.filter(function(p){ return p.stock && !(p.img && draft.imgs[p.img]); }).length;
     if (noPhoto) out.push({ ic: 'box', html: '<b>' + num(noPhoto) + ' منتج متاح</b> بدون صورة فعلية. ابدأ بالأكثر مبيعًا وصوّر الحجم والعلامة بوضوح.', act: ['data-atab="prods"', 'أكمل الصور'] });
@@ -4991,7 +5001,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     }
     staffAuth = null; adminPin = ''; canEdit = false; dirty = false; draft = null; STAFF = '';
     posOrders=[];posLoading=false;posSearch='';posFilter='active';staffUsers = []; editingStaffId = 0; alertOrders = []; lateOrderIds = {}; oState.list = null; oState.loading = false;
-    STK = {}; COST = {}; stockEdit = {}; costEdit = {}; statCache = null; stat30 = null; todayCache = null; logState.list = null; wb.data = null; wb.loading = false;
+    STK = {}; COST = {}; STK_KNOWN = {}; STK_LOW = {}; stockEdit = {}; costEdit = {}; statCache = null; stat30 = null; todayCache = null; logState.list = null; wb.data = null; wb.loading = false;
     ['oSheet','nfSheet','pinSheet','opsSheet'].forEach(function(id){ var x=$(id); if(x) x.remove(); });
     try { localStorage.removeItem('ohod-staff'); } catch(e){}
     go('store');

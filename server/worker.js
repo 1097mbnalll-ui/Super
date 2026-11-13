@@ -649,6 +649,13 @@ export default {
     }
     if (path === "/admin/stock") {
       if (!env.DB) return reply(200, { ok: true, stock: {}, costs: {}, hasDB: false });
+      // الإدارة تطلب بس اللي تحتاجه: ids = المنتجات المعروضة، summary = المخزون القليل (سطر واحد) وعدد أسعار الشراء
+      if (Array.isArray(body.ids)) { const ids = body.ids.slice(0, 500).map(String);
+        const cs = (await env.DB.prepare("SELECT id, cost FROM pcost WHERE id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids)).all()).results || [], costs = {}; for (const r of cs) costs[r.id] = r.cost;
+        return reply(200, { ok: true, stock: await readStock(env, ids), costs, hasDB: true }); }
+      if (body.summary) { await ensureSchema(env);
+        const n = await env.DB.prepare("SELECT COUNT(*) n FROM pcost").first();
+        return reply(200, { ok: true, low: await readShownStock(env), costCount: n ? n.n : 0, hasDB: true }); }
       return reply(200, { ok: true, stock: await readStock(env), costs: await readCosts(env), hasDB: true });
     }
     if (path === "/admin/log") {
