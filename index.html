@@ -1504,7 +1504,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var D = JSON.parse(document.getElementById("store-data").textContent);
   // «الرئيسية الحية» داخل تطبيق الآيفون (١٣ نوفمبر ٢٠٢٦): ?embed=1&blocks=promos,catoffers يعرض أقسام الرئيسية هذي بس،
   // والضغطات تروح للتطبيق (يفتح المنتج أو القسم بشاشاته)، فأي بنر أو قسم جديد يطلع في التطبيق بدون تحديث
-  var EMBED = /[?&]embed=1/.test(location.search), EMBED_BLOCKS = ((location.search.match(/[?&]blocks=([^&]*)/) || [])[1] || "promos,catoffers").split(",").map(decodeURIComponent);
+  // إعدادات الدمج تجي بالرابط (?…) أو بعد # (التطبيق الجديد يحطها بعد # عشان الصفحة نفسها تنحفظ بالكاش وتفتح أسرع)
+  function qp(k){ var m = (location.search + "&" + location.hash.replace(/^#/, "")).match(new RegExp("[?&]" + k + "=([^&]*)")); if (!m) return ""; try { return decodeURIComponent(m[1]); } catch(e){ return m[1]; } }
+  var EMBED = qp("embed") === "1", EMBED_BLOCKS = (qp("blocks") || "promos,catoffers").split(",");
   function toApp(m){ try { if (window.webkit && webkit.messageHandlers && webkit.messageHandlers.ohod) webkit.messageHandlers.ohod.postMessage(m); } catch(e){} }
   var LANG = "ar"; try { LANG = localStorage.getItem("ohod-lang") || (D.store && D.store.lang) || "ar"; } catch(e){ LANG = (D.store && D.store.lang) || "ar"; }
   if (LANG !== "en") LANG = "ar";
@@ -1689,11 +1691,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   /* ---------- cart ---------- */
   var cart = {}; try { cart = JSON.parse(localStorage.getItem("ohod-cart") || "{}") || {}; } catch(e) { cart = {}; }
   // داخل التطبيق: سلة التطبيق تجي بالرابط (cart=…)، وأي إضافة تروح للتطبيق (cart.add / cart.set) بدل سلة الموقع
-  var EMBED_PAGE = ((location.search.match(/[?&]page=([^&]*)/) || [])[1] || ""), EMBED_SLOT = ((location.search.match(/[?&]slot=([^&]*)/) || [])[1] || ""), EMBED_ID = ((location.search.match(/[?&]id=([^&]*)/) || [])[1] || "");
-  try { EMBED_PAGE = decodeURIComponent(EMBED_PAGE); EMBED_ID = decodeURIComponent(EMBED_ID); } catch(e){}
+  var EMBED_PAGE = qp("page"), EMBED_SLOT = qp("slot"), EMBED_ID = qp("id");
   // شاشة كاملة من الموقع داخل التطبيق (screen=home|cats|cat|product|search|cart|checkout|more): أي تعديل على الموقع يطلع في التطبيق بدون تحديث
-  var EMBED_SCREEN = ((location.search.match(/[?&]screen=([^&]*)/) || [])[1] || "");
-  if (EMBED) { try { cart = JSON.parse(decodeURIComponent((location.search.match(/[?&]cart=([^&]*)/) || [])[1] || "%7B%7D")) || {}; } catch(e) { cart = {}; } }
+  var EMBED_SCREEN = qp("screen");
+  if (EMBED) { try { cart = window.__APP_CART__ || JSON.parse(qp("cart") || "{}") || {}; } catch(e) { cart = {}; } }
   function saveCart(){ if (EMBED) { if (EMBED_SCREEN || EMBED_PAGE) toApp({ t: "cart.sync", cart: cart }); return; } try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} }
   // البيانات المدمجة بالصفحة قديمة (ما فيها أغلب المنتجات): ما ننظّف السلة المحفوظة إلا بعد ما ينحمّل data.json الحقيقي، وإلا الزبون يفقد سلته كل ما يفتح الموقع
   var dataReady = !GH;
@@ -2531,6 +2532,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
 
   function render(){
     timers.forEach(clearInterval); timers = [];
+    // داخل التطبيق: ما نعرض البيانات القديمة المدمجة بالصفحة، ننتظر ملف البيانات الجديد (التطبيق يعرض شاشته لين نجهز)
+    if (EMBED && !dataReady) { document.body.classList.add("is-embed"); app.innerHTML = EMBED_SCREEN || EMBED_PAGE ? '<div class="embed page"><div class="wrap" style="padding-top:40px;text-align:center;color:#888">' + tr("لحظة…", "Loading…") + '</div></div>' : ''; toApp({ t: "h", h: 0 }); return; }
     var h = screen === "home" ? homeHTML() : screen === "cats" ? catsHTML() : screen === "cat" ? catHTML() : screen === "product" ? productHTML() :
       screen === "search" ? searchHTML() : screen === "cart" ? cartHTML() : screen === "checkout" ? checkoutHTML() : screen === "sent" ? sentHTML() : moreHTML();
     var noNav = screen === "product" || screen === "checkout" || screen === "sent" || screen === "cart";
@@ -5570,19 +5573,23 @@ html.sp-on,html.sp-on body{overflow:hidden}
   if (EMBED && EMBED_SCREEN) { var sc = EMBED_SCREEN; if (sc === "cat") { openCat = EMBED_ID; openSub = ""; } if (sc === "product") { openProd = EMBED_ID; pdQty = stepOf(byId(EMBED_ID)); pdPack = -1; }
     screen = /^(home|cats|cat|product|search|cart|checkout|more)$/.test(sc) ? sc : "home"; if (screen === "checkout" && !totals().n) screen = "cart"; render(); }
   if (EMBED && /^g:[^:]+:./.test(EMBED_PAGE)) (function tryOpen(k){ var a = EMBED_PAGE.split(":"); if (grpById(a[1]) && dataReady) openGroupPicker(a[1], a[2]); else if (k < 40) setTimeout(function(){ tryOpen(k + 1); }, 150); })(0);
-  loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);
-  document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "store") loadStock(); });
+  // داخل التطبيق: الخانات الصغيرة ما تسأل عن المخزون (التطبيق عنده المخزون)، والشاشات الكاملة مرة وحدة
+  if (!EMBED) { loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000); } else if (EMBED_SCREEN || EMBED_PAGE) loadStock();
+  document.addEventListener("visibilitychange", function(){ if (!EMBED && !document.hidden && mode === "store") loadStock(); });
   if (location.hash === "#driver" || /[?&]app=driver/.test(location.search) || APP) openDriver();
   // داخل تطبيق المندوب: التطبيق للمندوب بس، ما يقدر يرجع للمتجر
   if (APP) { appLock = true; appUpdateCheck(); document.addEventListener("visibilitychange", function(){ if (!document.hidden) appUpdateCheck(); });
     window.addEventListener("popstate", function(){ if (mode !== "driver" || location.hash !== "#driver") openDriver(); }); }
-  window.addEventListener("hashchange", function(){ if ((location.hash === "#driver" || appLock) && mode !== "driver") openDriver(); });
+  // داخل التطبيق: التطبيق يغيّر الإعدادات بعد # (مثل السلة)، نعيد فتح الصفحة من الكاش بالإعدادات الجديدة
+  if (EMBED) window.addEventListener("hashchange", function(){ location.reload(); });
+  window.addEventListener("hashchange", function(){ if (EMBED) return; if ((location.hash === "#driver" || appLock) && mode !== "driver") openDriver(); });
   // نقاط البيع في المحل انشالت (البيع في المحل على برنامج الكاشير حق المحل): الرابط القديم يفتح المتجر
   if (location.hash === "#pos") { try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
-  if (GH) fetch("data.json?v=" + Date.now(), { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
+  // داخل التطبيق: نسخة البيانات من التطبيق (v) فالملف ينحفظ بالكاش ويفتح أسرع، والموقع العادي دايماً أحدث نسخة
+  if (GH) fetch("data.json?v=" + (EMBED && qp("v") ? qp("v") : Date.now()), EMBED && qp("v") ? {} : { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
     dataReady = true;
     if (nd && nd.store && nd.products && nd.imgs) { var hadApi = !!apiUrl(); applyData(nd); if (!hadApi) loadStock(); if (mode === "store" && screen !== "checkout") refresh(); }
-  }).catch(function(){ dataReady = true; });
+  }).catch(function(){ dataReady = true; if (EMBED) refresh(); });
   if (window.claude && claude.use) {
     claude.use("user").then(function(u){ return u ? u.canEdit() : false; }).then(function(ok){
       canEdit = !!ok; if (canEdit && startAdmin) go("admin");
