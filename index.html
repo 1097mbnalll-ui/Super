@@ -3,7 +3,7 @@
 <meta name="claude:viewport-fit-sides" content="cover" data-keep>
 <link rel="preconnect" href="https://fonts.googleapis.com" data-keep>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin data-keep>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" data-keep>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Lalezar&family=Tajawal:wght@700;800;900&family=Aref+Ruqaa:wght@700&display=swap" data-keep>
 <style data-keep>
 /* Layout: phone-first grocery app in RTL. Ink-teal brand, orange actions, each aisle on its own tinted plate. Screens: home, categories, aisle, product, search, cart, checkout (map + phone), sent, account. Admin console republishes data through the server. */
 :root{
@@ -984,6 +984,39 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-img img{width:78%;height:78%;object-fit:contain}
 .kq-img img.photo{width:92%;height:92%;object-fit:contain;mix-blend-mode:multiply}
 .kq-card.out .kq-img img{filter:grayscale(1);opacity:.45}
+/* البنرات الفنية */
+.kq-ban.artb{padding:0;display:block;min-height:max(176px,var(--banh,176px));color:inherit;isolation:isolate}
+.artb .abg{position:absolute;inset:0;z-index:-1}.artb .ah{font-family:Lalezar,'Readex Pro',sans-serif;font-weight:400;line-height:1.08}.artb .at{font:800 12.5px/1.45 Tajawal,'Readex Pro',sans-serif}
+.artb .abtn{position:absolute;font:800 13px Tajawal,'Readex Pro',sans-serif;border-radius:12px;padding:7px 14px;white-space:nowrap}
+.artb .kb-p.art{position:absolute;object-fit:contain;filter:drop-shadow(0 10px 12px rgba(0,0,0,.28));animation:none}.artb .kb-p.art.boxed{background:#fff;border-radius:14px;padding:5px}
+.artb .acookie{position:absolute;left:104px;top:10px;width:76px;height:76px;border-radius:50%;background:#D99A4E;box-shadow:inset -6px -6px 0 #B8752F;display:grid;place-items:center;text-align:center;font:400 15px/1.05 Lalezar;color:#3A1F12;transform:rotate(-10deg);animation:apop .6s ease-out}
+.artb .areceipt{position:absolute;left:16px;top:12px;width:150px;padding:10px 12px 14px;background:#fff;font:700 12px Tajawal;color:#444;box-shadow:0 8px 18px rgba(0,0,0,.12);transform:rotate(-4deg)}
+.artb .arow{display:flex;justify-content:space-between;gap:6px;border-bottom:1px dashed #ccc;padding:3px 0}.artb .arow.tot{border:0;margin-top:6px;font:400 19px Lalezar;color:#7C3AED}
+.artb .aslot{position:absolute;left:14px;top:28px;display:flex;gap:6px;background:#FDE68A;padding:8px;border-radius:16px;box-shadow:0 0 0 4px #F59E0B}.artb .aslot i{width:58px;height:84px;background:#fff;border-radius:10px;position:relative;overflow:hidden;display:block}
+.artb .atag{position:absolute;background:#fff;border:2.5px solid #1B1B1B;border-radius:10px 10px 10px 3px;padding:3px 10px;font:400 19px Lalezar;color:#E11D48;direction:ltr}
+.artb .aburst{position:absolute;left:18px;top:18px;width:120px;height:120px;background:#FACC15;clip-path:polygon(50% 0,61% 18%,82% 8%,80% 30%,100% 38%,84% 54%,96% 74%,74% 76%,70% 98%,52% 84%,32% 100%,28% 78%,6% 80%,16% 60%,0 44%,20% 32%,14% 10%,36% 18%);display:grid;place-items:center;text-align:center;font:400 25px/1 Lalezar;color:#DC2626;transform:rotate(-10deg);animation:aspin 2.6s ease-in-out infinite}
+.artb .aticket{-webkit-mask:radial-gradient(circle at 34% 0,transparent 14px,#000 14.5px) top/100% 51% no-repeat,radial-gradient(circle at 34% 100%,transparent 14px,#000 14.5px) bottom/100% 51% no-repeat}
+.artb .abar{position:absolute;right:18px;bottom:16px;width:110px;height:18px;background:repeating-linear-gradient(90deg,#fff 0 2px,transparent 2px 4px,#fff 4px 5px,transparent 5px 8px)}
+.artb .aold{font:400 26px Lalezar;color:#9CA3AF;position:relative;display:inline-block}.artb .aold:after{content:"";position:absolute;left:-4px;right:-4px;top:52%;height:4px;background:#FB7185;transform:rotate(-12deg);border-radius:4px}
+.artb .asave{display:inline-block;margin-top:8px;background:#16A34A;color:#fff;font:800 13px Tajawal;border-radius:999px;padding:4px 12px}
+.artb .acalc{position:absolute;left:14px;top:14px;width:148px;background:#1F2937;border-radius:18px;padding:10px;color:#A7F3D0}.artb .ascr{background:#064E3B;border-radius:8px;padding:6px 8px;font:700 13px Tajawal;text-align:left;direction:ltr}.artb .ascr b{font:400 21px Lalezar;color:#FDE047}
+.artb .akeys{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}.artb .akeys i{height:12px;border-radius:4px;background:#374151;display:block}
+.artb .aprice-tag{position:absolute;left:14px;top:12px;background:#fff;border:2px solid #78350F;border-radius:8px;padding:2px 10px;font:400 21px Lalezar;color:#B45309;transform:rotate(-4deg)}
+.artb .aroad{position:absolute;left:18px;right:18px;bottom:22px;height:14px;border-radius:99px;background:#fff;border:2px solid #064E3B;overflow:hidden}.artb .aroad i{position:absolute;right:0;top:0;bottom:0;border-radius:99px;background:repeating-linear-gradient(90deg,#10B981 0 14px,#34D399 14px 22px);transition:width .6s}
+.artb .amoto{position:absolute;bottom:32px;font-size:32px;transform:scaleX(-1);transition:right .6s}
+.artb .astamp{position:absolute;left:28px;top:22px;width:124px;height:124px;border-radius:50%;border:4px double #0369A1;color:#0369A1;display:grid;place-content:center;text-align:center;font:400 22px/1.05 Lalezar;transform:rotate(-14deg)}.artb .astamp small{font:800 10px Tajawal}
+.artb .aring{position:absolute;left:22px;top:22px;width:132px;height:132px;border-radius:50%;display:grid;place-items:center}.artb .aring>div{width:102px;height:102px;border-radius:50%;background:#111827;display:grid;place-content:center;text-align:center;color:#fff}
+.artb .achip{display:inline-block;font:800 12px Tajawal;border-radius:999px;padding:3px 10px}
+.artb .aboard{position:absolute;right:16px;top:18px;width:40%;background:#1F2937;border:5px solid #A16207;border-radius:10px;padding:10px;color:#F9FAFB;text-align:center;font:700 12px Tajawal}.artb .aboard b{display:block;font:700 22px 'Aref Ruqaa',Lalezar,serif;color:#FDE68A}
+.artb .aclock{position:absolute;left:22px;top:20px;width:128px;height:128px;border-radius:50%;background:#fff;border:6px solid #EF4444;box-shadow:0 10px 20px rgba(239,68,68,.25)}.artb .aclock i{position:absolute;left:50%;top:50%;transform-origin:bottom;border-radius:4px}
+.artb .aclock .hh{width:4px;height:40px;background:#111;transform:translate(-50%,-100%) rotate(40deg)}.artb .aclock .mm{width:3px;height:52px;background:#EF4444;animation:atick 60s linear infinite}
+.artb .asteam{position:absolute;width:14px;height:58px;border:3px solid rgba(255,255,255,.55);border-color:rgba(255,255,255,.55) transparent transparent rgba(255,255,255,.55);border-radius:50%;animation:asteam 3s ease-in-out infinite}
+.artb .acode{position:absolute;left:30px;top:44px;background:#7C3AED;color:#fff;border-radius:12px;padding:10px 14px;font:900 20px Tajawal;letter-spacing:2px;direction:ltr}
+.artb .astar{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff;animation:atw 2.4s ease-in-out infinite}.artb .astar:nth-child(odd){animation-delay:1.2s}
+@keyframes apop{0%{transform:scale(0) rotate(-40deg)}70%{transform:scale(1.12) rotate(-6deg)}100%{transform:scale(1) rotate(-10deg)}}
+@keyframes aspin{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(-2deg) scale(1.06)}}@keyframes atick{from{transform:translate(-50%,-100%) rotate(0)}to{transform:translate(-50%,-100%) rotate(360deg)}}
+@keyframes asteam{0%,100%{opacity:.25;translate:0 6px}50%{opacity:.8;translate:0 -4px}}@keyframes atw{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.artb *{animation:none!important}}
 .sarw{display:inline}svg.sar{width:.8em;height:.8em;fill:currentColor;vertical-align:-.08em;margin:0 .12em;display:inline-block;flex:none}
 .kq-badge.soon{background:#E8590C}.kq-now.soon,.price.soon{color:#E8590C;font-size:15px;font-weight:800}
 .kq-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;background:#E8394F;color:#fff;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:700;z-index:2}
@@ -1665,7 +1698,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function sToast(m){ var x = document.createElement("div"); x.className = "dv-toast"; x.setAttribute("role", "status"); x.textContent = m; document.body.appendChild(x); setTimeout(function(){ x.remove(); }, 2200); }
   function banOf(id){ var l = S.bans || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
   function idsToList(ids){ return (ids || []).map(byId).filter(function(p){ return avail(p); }); }
-  var LAYOUT_DEF = ["featured","promos","again","moment","catoffers","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["top","multi","daily","offers","deals","bakery"];
+  var LAYOUT_DEF = ["featured","promos","again","moment","catoffers","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["top","multi","daily","offers","deals","bakery","free","catdeal","night","veg","welcome"];
   function promoDefs(){ return PROMO_DEF.concat((S.bans || []).map(function(b){ return b.id; })); }
   function orderOf(list, defs){
     var out = [], seen = {};
@@ -2081,7 +2114,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     } catch(e){ CUT[key] = { src: SRC, boxed: true }; res(CUT[key]); } }; im.onerror = function(){ CUT[key] = { src: SRC, boxed: true }; res(CUT[key]); }; im.src = SRC; });
     return CUTQ[key];
   }
-  function applyCuts(root){ Array.prototype.forEach.call((root || document).querySelectorAll("img[data-cut]"), function(el){ var k = el.dataset.cut; if (!D.imgs[k]) return;
+  function applyCuts(root){ Array.prototype.forEach.call((root || document).querySelectorAll("img[data-cut]"), function(el){ var k = el.dataset.cut; if (!D.imgs[k] && !/^p\//.test(k)) return;
     cutImg(k).then(function(c){ if (el.getAttribute("src") !== c.src) el.setAttribute("src", c.src); el.classList.toggle("boxed", !!c.boxed); el.classList.add("ready"); }); }); }
   function banTarget(b){
     var tg = String(b.target || "");
@@ -2090,6 +2123,109 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (tg === "offers" || tg === "deals") return 'data-chip="' + tg + '"';
     return 'data-chip="b:' + esc(b.id) + '"';
   }
+  /* ---------- بنرات «فنية» (قرار المالك ١٣ نوفمبر ٢٠٢٦: اعتمد الـ ٢٤ تصميم كلها) ----------
+     كل نوع بنر له كذا تصميم يتبدّل كل يوم (أو المالك يثبّت واحد: store.banArt = {offers: 2})، والكلام والأسعار والصور من البيانات الحقيقية */
+  function aimg(id, st){ var p = byId(id); if (!p || !hasPic(p.img)) return ''; var c = CUT[p.img];
+    return '<img class="kb-p art' + (c && c.boxed ? ' boxed' : '') + '" src="' + (c ? c.src : picSrc(p.img)) + '" data-cut="' + esc(p.img) + '" alt="" style="' + st + '">'; }
+  function aH(t, px, st){ return '<div class="ah" style="font-size:' + px + 'px;' + (st || '') + '">' + t + '</div>'; }
+  function aT(t, st){ return '<div class="at" style="' + (st || '') + '">' + t + '</div>'; }
+  function aBtn(t, st){ return '<span class="abtn" style="' + st + '">' + t + '</span>'; }
+  function aBox(st, inner){ return '<div style="position:absolute;' + st + '">' + inner + '</div>'; }
+  var SR = " ر.س";
+  function artPick(id, n){ var f = S.banArt && S.banArt[id]; if (f != null && f !== "" && !isNaN(f)) return Math.max(0, Math.min(n - 1, Number(f) - 1));
+    var d = new Date(), day = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5); return (day + id.length) % n; }
+  var ART = {
+    featured: [
+      function(x){ return '<div class="abg" style="background:#5A3220;background-image:radial-gradient(#6E3F2A 2px,transparent 2.5px);background-size:18px 18px"></div>' +
+        aBox('right:18px;top:16px;width:55%;color:#FFF3E2', aT('اخلط النكهات', 'color:#F6C77B') + aH(x.line1 + '<br><em style="font-style:normal;color:#F6C77B">' + x.line2 + '</em>', 30) + aT(x.was, 'font-weight:500;opacity:.85')) +
+        aBtn(x.go + ' ←', 'right:18px;bottom:14px;background:#F6C77B;color:#3A1F12') +
+        x.ids.slice(0, 3).map(function(id, i){ return aimg(id, ['left:16px;bottom:10px;width:96px;transform:rotate(-8deg)', 'left:70px;bottom:34px;width:96px;transform:rotate(9deg)', 'left:24px;bottom:66px;width:90px;transform:rotate(-14deg)'][i]); }).join('') +
+        (x.save ? '<div class="acookie">' + tr('وفّر', 'Save') + '<br>' + num(x.save) + '</div>' : ''); },
+      function(x){ return '<div class="abg" style="background:#F3E8FF"></div><div class="areceipt">' + aT(tr('فاتورة', 'Receipt'), 'text-align:center;color:#111;margin-bottom:4px') +
+        x.ids.slice(0, 3).map(function(){ return '<div class="arow"><span>' + esc(x.short) + '</span><s>' + num(x.unit) + SR + '</s></div>'; }).join('') +
+        '<div class="arow tot"><span>' + tr('الكل', 'Total') + '</span><b>' + num(x.price) + SR + '</b></div></div>' +
+        aBox('right:18px;top:18px;width:48%;color:#3B0764', aT(esc(x.name), 'color:#7C3AED') + aH(x.n + ' ' + esc(x.w) + '<br>' + tr('بسعر مغري', 'for less'), 30) + aT(tr('اخلط النكهات', 'Mix flavours'), 'margin-top:4px')) + aBtn(x.go, 'right:18px;bottom:14px;background:#7C3AED;color:#fff'); },
+      function(x){ return '<div class="abg" style="background:#FFE4EC"></div>' + aH(num(x.n), 250, 'position:absolute;left:-6px;top:-40px;color:#FB7185;line-height:1') +
+        aimg(x.ids[0], 'left:36px;top:40px;width:96px;transform:rotate(-10deg)') + aimg(x.ids[1] || x.ids[0], 'left:92px;top:92px;width:90px;transform:rotate(8deg)') +
+        aBox('right:18px;top:22px;color:#881337', aH(esc(x.name), 20) + aH(num(x.price) + SR, 44, 'line-height:1') + aT(tr('بدل ', 'instead of ') + num(x.before) + SR, 'font-weight:600')) + aBtn(x.go, 'right:18px;bottom:14px;background:#881337;color:#fff'); },
+      function(x){ return '<div class="abg" style="background:linear-gradient(160deg,#1E1B4B,#4C1D95)"></div><div class="aslot">' + [0, 1, 2].map(function(i){ return '<i>' + aimg(x.ids[i] || x.ids[0], 'width:54px;left:2px;top:16px') + '</i>'; }).join('') + '</div>' +
+        aT('★ ★ ★ ' + tr('اخلطها مثل ما تبي', 'Mix as you like'), 'position:absolute;left:24px;bottom:16px;color:#FDE68A') +
+        aBox('right:16px;top:20px;width:40%;color:#fff', aT(esc(x.name), 'color:#FDE68A') + aH(x.line1 + '<br>' + x.line2, 28)) + aBtn(tr('جرّب حظك', 'Try it'), 'right:16px;bottom:14px;background:#F59E0B;color:#1E1B4B'); }
+    ],
+    offers: [
+      function(x){ return '<div class="abg" style="background:#FFD23F"></div>' + aBox('right:18px;top:14px;color:#1B1B1B;z-index:2', aT(tr('عروض الأسبوع · ', 'Weekly offers · ') + num(x.count) + tr(' منتج', ' items')) + aH(tr('خصم حتى<br>', 'Up to<br>') + num(x.pct) + '٪', 42, 'line-height:.95')) +
+        aBtn(tr('تسوّق العروض', 'Shop offers'), 'right:18px;bottom:14px;background:#1B1B1B;color:#FFD23F') +
+        x.pcts.slice(0, 4).map(function(v, i){ return '<span class="atag" style="' + ['left:22px;top:18px;transform:rotate(-12deg)', 'left:104px;top:58px;transform:rotate(9deg)', 'left:28px;top:100px;transform:rotate(6deg)', 'left:116px;top:122px;transform:rotate(-7deg)'][i] + '">-' + num(v) + '٪</span>'; }).join(''); },
+      function(x){ return '<div class="abg" style="background:#fff;box-shadow:inset 0 0 0 3px #DC2626;background-image:repeating-linear-gradient(0deg,transparent 0 22px,#FEE2E2 22px 23px)"></div>' +
+        aBox('right:16px;top:14px;color:#111', aT(tr('جريدة عروض ', 'Offers paper · ') + esc(sv('name')), 'color:#DC2626') + aH(tr('تنزيلات<br>الأسبوع', 'Weekly<br>deals'), 38, 'line-height:1')) +
+        '<div class="aburst">' + tr('حتى', 'Up to') + '<br>' + num(x.pct) + '٪</div>' + aBtn(tr('اقرأ العروض', 'See offers'), 'right:16px;bottom:14px;background:#DC2626;color:#fff'); },
+      function(x){ return '<div class="abg" style="background:#DBEAFE"></div>' + x.ids.slice(0, 4).map(function(id, i){ return aimg(id, ['left:16px;top:20px;width:62px;transform:rotate(-12deg)', 'left:82px;top:12px;width:72px;transform:rotate(10deg)', 'left:36px;top:94px;width:84px;transform:rotate(6deg)', 'left:124px;top:90px;width:60px;transform:rotate(-14deg)'][i] + ';filter:drop-shadow(3px 3px 0 #fff) drop-shadow(-3px -3px 0 #fff) drop-shadow(0 6px 8px rgba(0,0,0,.25))'); }).join('') +
+        aBox('right:18px;top:20px;color:#1E3A8A', aT(num(x.count) + tr(' منتج عليه خصم', ' items on sale')) + aH(tr('العروض<br>لزقت!', 'Deals<br>stick!'), 38, 'line-height:1')) + aBtn(tr('شوفها', 'See them'), 'right:18px;bottom:14px;background:#1E3A8A;color:#fff'); }
+    ],
+    top: [
+      function(x){ return '<div class="abg" style="background:#111827"></div><div style="position:absolute;left:18px;top:18px;width:140px;height:140px;border-radius:50%;background:radial-gradient(#3B4252,#111827 70%)"></div>' + aimg(x.id, 'left:34px;top:26px;width:110px;transform:rotate(-8deg)') +
+        aBox('right:18px;top:12px;color:#fff', aT('⚡ ' + tr('أقوى خصم اليوم', 'Top deal today'), 'color:#FB7185') + aT(esc(x.name), 'opacity:.85;max-width:190px') + '<span class="aold">' + num(x.old) + '</span>' + aH(num(x.price) + SR, 40, 'color:#FDE047;line-height:1')) +
+        aBtn('⏳ ' + tr('ينتهي الليلة', 'Ends tonight'), 'right:18px;bottom:12px;background:#FB7185;color:#fff'); },
+      function(x){ return '<div class="abg aticket" style="background:#F97316"></div><div style="position:absolute;left:34%;top:20px;bottom:20px;border-left:3px dashed rgba(255,255,255,.6)"></div>' + aimg(x.id, 'left:16px;top:28px;width:90px;transform:rotate(-8deg)') +
+        aBox('right:18px;top:18px;color:#fff', aT(tr('تذكرة خصم اليوم', 'Today\'s deal ticket'), 'opacity:.9') + aT(esc(x.name), 'max-width:190px') + aH(num(x.price) + SR, 42, 'line-height:1') + aT(tr('بدل ', 'was ') + '<s>' + num(x.old) + '</s>', 'opacity:.85')) +
+        '<div class="abar"></div>'; },
+      function(x){ return '<div class="abg" style="background:#fff"></div><div style="position:absolute;left:0;top:0;bottom:0;width:50%;background:#E5E7EB">' + aimg(x.id, 'left:28%;top:24px;width:44%;opacity:.5;filter:grayscale(1)') + aT(tr('أمس', 'Before'), 'position:absolute;top:10px;width:100%;text-align:center;color:#6B7280') + aH('<s>' + num(x.old) + SR + '</s>', 24, 'position:absolute;bottom:12px;width:100%;text-align:center;color:#6B7280') + '</div>' +
+        '<div style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#22C55E">' + aimg(x.id, 'left:24%;top:20px;width:52%;transform:rotate(6deg)') + aT(tr('اليوم ⚡', 'Today ⚡'), 'position:absolute;top:10px;width:100%;text-align:center;color:#fff') + aH(num(x.price) + SR, 32, 'position:absolute;bottom:10px;width:100%;text-align:center;color:#fff') + '</div>' +
+        '<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:42px;height:42px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center;font-weight:900">←</div>'; }
+    ],
+    multi: [
+      function(x){ return '<div class="abg" style="background:linear-gradient(135deg,#FFF7D6,#FFE8A3)"></div><div style="position:absolute;left:20px;bottom:10px;display:flex;align-items:flex-end">' + Array.apply(null, Array(Math.min(6, x.n))).map(function(){ return aimg(x.id, 'position:static;width:' + (x.n > 4 ? 40 : 54) + 'px;margin-left:-10px'); }).join('') + '</div>' +
+        aH('×' + num(x.n), 56, 'position:absolute;left:22px;top:6px;color:#F59E0B;transform:rotate(-8deg);text-shadow:3px 3px 0 #3B2A00') +
+        aBox('right:18px;top:16px;width:52%;color:#3B2A00', aH(esc(x.short) + '<br>' + x.title, 24, 'line-height:1.1') + (x.save ? '<span class="asave">' + tr('وفّر ', 'Save ') + num(x.save) + SR + '</span>' : '')) + aBtn(tr('خذ العرض', 'Get it'), 'right:18px;bottom:14px;color:#3B2A00;border-bottom:2px solid #3B2A00;border-radius:0;padding:2px 0'); },
+      function(x){ return '<div class="abg" style="background:#ECFDF5"></div><div class="acalc"><div class="ascr">' + num(x.n) + ' × ' + num(x.unit) + '<br><s>= ' + num(x.before) + '</s><br><b>= ' + num(x.price) + SR + '</b></div><div class="akeys">' + '<i></i>'.repeat(8) + '</div></div>' +
+        aimg(x.id, 'left:146px;top:60px;width:58px;transform:rotate(10deg)') + aBox('right:16px;top:20px;width:40%;color:#064E3B', aT(esc(x.short)) + aH(tr('احسبها<br>صح!', 'Do the<br>math!'), 30, 'line-height:1.05') + (x.save ? aT(tr('وفّر ', 'Save ') + num(x.save) + SR, 'color:#16A34A;margin-top:4px') : '')); },
+      function(x){ return '<div class="abg" style="background:linear-gradient(#FFFBEB,#FEF3C7)"></div><div style="position:absolute;left:0;right:0;bottom:30px;height:16px;background:linear-gradient(#B45309,#78350F);box-shadow:0 6px 10px rgba(0,0,0,.25)"></div>' +
+        Array.apply(null, Array(Math.min(6, x.n))).map(function(_, k){ return aimg(x.id, 'left:' + (10 + k * 30) + 'px;bottom:44px;width:44px'); }).join('') +
+        '<div class="aprice-tag">' + num(x.price) + SR + '</div>' + aBox('right:16px;top:18px;width:40%;color:#78350F', aH(x.title, 26, 'line-height:1.05') + aT(esc(x.short), 'margin-top:4px')); }
+    ],
+    free: [
+      function(x){ return '<div class="abg" style="background:#E8F7EF"></div>' + aBox('right:18px;top:16px;color:#064E3B', aH(tr('توصيلك مجاني<br>فوق ', 'Free delivery<br>over ') + num(x.min) + SR, 28, 'line-height:1.1') + aT(x.left > 0 ? tr('باقي ', '') + num(x.left) + SR + tr(' ويصير مجاني', ' to go') : tr('توصيلك صار مجاني 🎉', 'Free delivery unlocked 🎉'), 'margin-top:6px;opacity:.85')) +
+        '<div class="aroad"><i style="width:' + x.pct + '%"></i></div><span class="amoto" style="right:calc(' + x.pct + '% - 6px)">🛵</span><span style="position:absolute;left:12px;bottom:28px;font-size:28px">🏠</span>'; },
+      function(x){ return '<div class="abg" style="background:#F0F9FF;background-image:linear-gradient(90deg,transparent 48%,#BAE6FD 48% 52%,transparent 52%),linear-gradient(0deg,transparent 48%,#BAE6FD 48% 52%,transparent 52%);background-size:60px 60px"></div>' +
+        '<div class="astamp">' + tr('توصيل<br>مجاني', 'Free<br>delivery') + '<small>' + esc(sv('area') || '') + '</small></div>' + aBox('right:18px;top:24px;color:#0C4A6E', aH(tr('طلبك فوق<br>', 'Order over<br>') + num(x.min) + SR + '؟', 30, 'line-height:1.05') + aT(tr('التوصيل علينا 🛵', 'Delivery is on us 🛵'), 'margin-top:6px')); },
+      function(x){ return '<div class="abg" style="background:#111827"></div><div class="aring" style="background:conic-gradient(#34D399 0 ' + x.pct + '%,#374151 ' + x.pct + '%)"><div>' + aH(num(x.have) + SR, 22, 'line-height:1') + aT(tr('من ', 'of ') + num(x.min), 'color:#9CA3AF;font-size:11px') + '</div></div>' +
+        aBox('right:18px;top:30px;width:45%;color:#fff', aH(x.left > 0 ? tr('باقي ', '') + num(x.left) + SR + tr('<br>ويصير مجاني', '<br>to free delivery') : tr('توصيلك<br>مجاني 🎉', 'Free<br>delivery 🎉'), 26, 'line-height:1.1') + aT(tr('زيّد سلتك شوي', 'Add a little more'), 'color:#34D399;margin-top:6px')); }
+    ],
+    veg: [
+      function(x){ return '<div class="abg" style="background:#0F3D2E"></div>' + x.ids.slice(0, 4).map(function(id, i){ return aimg(id, ['left:6px;top:14px;width:92px', 'left:84px;top:4px;width:92px', 'left:30px;top:82px;width:92px', 'left:108px;top:80px;width:92px'][i]); }).join('') +
+        aBox('right:18px;top:20px;width:48%;color:#fff', '<span class="achip" style="background:#A3E635;color:#0F3D2E">' + tr('قريباً', 'Soon') + '</span>' + aH(esc(x.name) + '<br>' + tr('جاية طازة', 'coming fresh'), 28, 'line-height:1.05;margin-top:8px') + aT(tr('تابعنا، بنضيفها قريب', 'Stay tuned'), 'opacity:.8;margin-top:6px')); },
+      function(x){ return '<div class="abg" style="background:#ECFCCB"></div><div style="position:absolute;left:14px;bottom:0;width:190px;height:66px;background:repeating-linear-gradient(0deg,#A16207 0 20px,#854D0E 20px 23px);border-radius:8px 8px 0 0"></div>' +
+        x.ids.slice(0, 3).map(function(id, i){ return aimg(id, ['left:18px;bottom:48px;width:72px', 'left:74px;bottom:52px;width:72px', 'left:124px;bottom:48px;width:80px;transform:rotate(-10deg)'][i]); }).join('') +
+        '<div class="aboard"><b>' + tr('قريباً', 'Soon') + '</b><span>' + esc(x.name) + tr(' طازة كل يوم', ' fresh daily') + '</span></div>'; }
+    ],
+    daily: [
+      function(x){ return '<div class="abg" style="background:#FEF2F2"></div><div class="aclock"><i class="hh"></i><i class="mm"></i></div>' + aimg(x.id, 'left:92px;top:80px;width:92px') +
+        aBox('right:18px;top:16px;width:44%;color:#7F1D1D', aT('⏰ ' + tr('عرض اليوم بس', 'Today only'), 'color:#EF4444') + aH(esc(x.name), 18, 'line-height:1.15;max-height:44px;overflow:hidden') + aH(num(x.price) + SR, 34, 'line-height:1.1') + aT((x.old ? '<s>' + num(x.old) + '</s> · ' : '') + tr('ينتهي ١٢ الليل', 'Ends midnight'))); }
+    ],
+    bakery: [
+      function(x){ return '<div class="abg" style="background:radial-gradient(circle at 25% 80%,#FDBA74,#9A3412)"></div>' + [0, 1, 2, 3].map(function(k){ return '<i class="asteam" style="left:' + (50 + k * 26) + 'px;top:' + (18 + k % 2 * 8) + 'px;transform:rotate(' + (20 - k * 10) + 'deg)"></i>'; }).join('') +
+        (x.ids.length ? x.ids.slice(0, 2).map(function(id, i){ return aimg(id, ['left:20px;bottom:14px;width:100px', 'left:96px;bottom:20px;width:84px'][i]); }).join('') : '<div style="position:absolute;left:26px;bottom:18px;font-size:60px">🥖🥐</div>') +
+        aBox('right:18px;top:22px;color:#FFF7ED', aT(esc(x.name), 'color:#FED7AA') + aH(tr('حار<br>من الفرن', 'Hot from<br>the oven'), 32, 'line-height:1.05') + aT(tr('يوصلك وهو دافي', 'Arrives warm'), 'margin-top:4px')); }
+    ],
+    welcome: [
+      function(x){ return '<div class="abg" style="background:#F5F3FF"></div><div style="position:absolute;inset:12px;border:3px dashed #7C3AED;border-radius:18px;background:#fff"></div><div style="position:absolute;left:4px;top:2px;font-size:22px;transform:rotate(-30deg)">✂️</div>' +
+        '<div class="acode">' + esc(x.code) + '</div>' + aT(tr('اكتبه في السلة', 'Enter it in your cart'), 'position:absolute;left:32px;top:100px;color:#6D28D9;font-size:11px') +
+        aBox('right:30px;top:32px;color:#4C1D95', aT(tr('أول طلب لك؟', 'First order?')) + aH(tr('خصم ', '') + num(x.amount) + SR, 38, 'line-height:1') + (x.min ? aT(tr('على طلبك فوق ', 'on orders over ') + num(x.min) + SR) : '')); }
+    ],
+    night: [
+      function(x){ return '<div class="abg" style="background:linear-gradient(160deg,#0B1026,#1E2A5E)"></div>' + [[30, 20], [80, 40], [150, 16], [200, 60], [120, 96], [60, 130], [240, 20], [170, 140]].map(function(s){ return '<i class="astar" style="left:' + s[0] + 'px;top:' + s[1] + 'px"></i>'; }).join('') +
+        '<div style="position:absolute;right:150px;top:14px;width:40px;height:40px;border-radius:50%;box-shadow:-10px 6px 0 0 #FDE68A"></div>' + aimg(x.ids[0], 'left:18px;top:42px;width:88px;transform:rotate(-10deg)') + aimg(x.ids[1] || x.ids[0], 'left:100px;top:54px;width:56px;transform:rotate(8deg)') +
+        aBox('right:18px;top:40px;color:#fff', aH(tr('طلعات<br>السهرة 🌙', 'Late-night<br>snacks 🌙'), 30, 'line-height:1.05') + aT(tr('نوصلك لين ', 'We deliver till ') + esc(S.closeAt || ''), 'color:#A5B4FC;margin-top:6px')); }
+    ],
+    catdeal: [
+      function(x){ return '<div class="abg" style="background:#E0F2FE"></div><div style="position:absolute;left:-20px;bottom:-30px;width:240px;height:120px;background:#fff;border-radius:50% 60% 0 0/80% 90% 0 0"></div>' +
+        aimg(x.ids[0], 'left:26px;top:36px;width:72px;transform:rotate(-8deg)') + aimg(x.ids[1] || x.ids[0], 'left:92px;top:66px;width:96px;transform:rotate(6deg)') +
+        aBox('right:18px;top:24px;color:#0C4A6E', aT(tr('قسم ', '') + esc(x.name)) + aH(tr('خصم حتى<br>', 'Up to<br>') + num(x.pct) + '٪', 34, 'line-height:1')) + aBtn(tr('تسوّق ', 'Shop ') + esc(x.name), 'right:18px;bottom:14px;background:#0369A1;color:#fff'); }
+    ]
+  };
+  // البنر الفني: يرجع "" لو ما فيه تصميم أو البيانات ناقصة (فيرجع البنر القديم)
+  function artBan(id, x, act, tag){ var L = ART[id]; if (!L || !L.length || S.banArtOff) return ""; var h = ""; try { h = L[artPick(id, L.length)](x); } catch(e){ h = ""; } if (!h) return "";
+    tag = tag || "button"; return '<' + tag + (tag === "button" ? ' type="button"' : '') + ' class="kq-ban kb artb" data-bid="' + esc(id) + '" ' + act + '>' + h + '</' + tag + '>'; }
   function banners(){
     var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), bakery = catOf("bakery") || D.cats[0];
     var maxOff = offers.reduce(function(m, p){ var mo = multiOf(p), r = onSale(p) ? 1 - p.price / p.old : mo ? 1 - mo.price / (mo.n * p.price) : 0; return Math.max(m, Math.round(r * 100)); }, 0);
@@ -2124,6 +2260,23 @@ html.sp-on,html.sp-on body{overflow:hidden}
       go: tr("اطلبه حار", "Order it hot"), ids: pk("bakery", idsOf(D.products.filter(function(p){ return p.cat === bakery.id && avail(p) && hasPic(p.img); }))), chip: tr("يوصلك حار", "Arrives hot") }, E.bakery);
     if (offers.length) B.offers = banHTML("offers", { tag: "button", style: "hero", big: maxOff ? tr("حتى ", "Up to ") + num(maxOff) + tr("٪", "%") : "", act: 'data-chip="offers"', k: tr("عروض الأسبوع", "Weekly offers"), title: tr("خصومات على<br>", "Discounts on<br>") + num(offers.length) + tr(" منتج", " items"),
       go: tr("تسوّق العروض", "Shop offers"), ids: pk("offers", idsOf(offers)), chip: '<small>' + tr("خصم لين", "Up to") + '</small><b>' + num(maxOff) + tr("٪", "% off") + '</b>' }, E.offers);
+    // التصاميم الفنية: تحل محل القديمة (الكلام والصور والأسعار من البيانات)، وتتبدّل كل يوم
+    var sh = function(p){ return String(nm(p)).split(" ").slice(0, 3).join(" "); }, pctOf = function(p){ var mo = multiOf(p); return Math.round(onSale(p) ? (1 - p.price / p.old) * 100 : mo ? (1 - mo.price / (mo.n * p.price)) * 100 : 0); };
+    var picIds = function(l){ return l.filter(function(p){ return hasPic(p.img); }).map(function(p){ return p.id; }); };
+    if (B.offers) B.offers = artBan("offers", { pct: maxOff, count: offers.length, ids: pk("offers", picIds(offers)), pcts: offers.map(pctOf).filter(function(v){ return v > 0; }).sort(function(a, b){ return b - a; }).filter(function(v, i, a){ return a.indexOf(v) === i; }) }, 'data-chip="offers"') || B.offers;
+    if (topP && B.top && hasPic(topP.img)) B.top = artBan("top", { id: topP.id, name: nm(topP), price: topP.price, old: topP.old }, 'data-open="' + topP.id + '"') || B.top;
+    if (mulO && !mulM && B.multi && hasPic(mulP.img)) B.multi = artBan("multi", { id: mulP.id, n: mulO.n, price: mulO.price, unit: mulP.price, before: Math.round(mulO.n * mulP.price * 100) / 100, save: Math.round((mulO.n * mulP.price - mulO.price) * 100) / 100, short: sh(mulP), title: tr(pcs(mulO.n) + " بـ " + num(mulO.price), mulO.n + " for " + num(mulO.price)) }, 'data-open="' + mulP.id + '" data-openpack="' + mulO.i + '"') || B.multi;
+    if (dd && B.daily && hasPic(dd.p.img)) B.daily = artBan("daily", { id: dd.p.id, name: nm(dd.p), price: dd.price, old: dd.p.price > dd.price ? dd.p.price : 0 }, 'data-open="' + dd.p.id + '"', "div") || B.daily;
+    if (B.bakery) B.bakery = artBan("bakery", { name: tr("مخبز ", "Bakery · ") + sv("name"), ids: pk("bakery", picIds(D.products.filter(function(p){ return p.cat === bakery.id && avail(p); }))) }, 'data-opencat="' + bakery.id + '"') || B.bakery;
+    if (S.freeOver) { var fo = Number(S.freeOver), hv = Math.round(t.s * 100) / 100; B.free = artBan("free", { min: fo, have: hv, left: Math.max(0, Math.round((fo - hv) * 100) / 100), pct: Math.max(4, Math.min(100, Math.round(hv / fo * 100))) }, 'data-nav="cart"'); }
+    var cOff = {}; offers.forEach(function(p){ var v = pctOf(p); if (!cOff[p.cat]) cOff[p.cat] = { n: 0, pct: 0, ids: [] }; cOff[p.cat].n++; cOff[p.cat].pct = Math.max(cOff[p.cat].pct, v); if (hasPic(p.img)) cOff[p.cat].ids.push(p.id); });
+    var bestC = Object.keys(cOff).filter(function(k){ return cOff[k].ids.length >= 2 && catOf(k); }).sort(function(a, b){ return cOff[b].n - cOff[a].n; })[0];
+    if (bestC) B.catdeal = artBan("catdeal", { name: nm(catOf(bestC)), pct: cOff[bestC].pct, ids: cOff[bestC].ids }, 'data-chip="o:' + bestC + '"');
+    var hr = new Date().getHours(); if (hr >= 19 || hr < 2) { var snk = D.products.filter(function(p){ return avail(p) && hasPic(p.img) && (p.sub === "chips" || p.sub === "soft"); }).sort(shelfSort); var ch = snk.filter(function(p){ return p.sub === "chips"; })[0], so = snk.filter(function(p){ return p.sub === "soft"; })[0];
+      if (ch) B.night = artBan("night", { ids: [ch.id, (so || ch).id] }, 'data-opencat="' + ch.cat + '"'); }
+    var vc = D.cats.filter(function(c){ return catSoon(c) && c.id !== "print"; }).map(function(c){ return { c: c, ids: D.products.filter(function(p){ return p.cat === c.id && hasPic(p.img); }).map(function(p){ return p.id; }) }; }).filter(function(v){ return v.ids.length >= 3; })[0];
+    if (vc) B.veg = artBan("veg", { name: nm(vc.c), ids: vc.ids.slice(0, 6) }, 'data-opencat="' + vc.c.id + '"');
+    if (S.welcome && S.welcome.code) B.welcome = artBan("welcome", { code: S.welcome.code, amount: Number(S.welcome.amount) || 0, min: Number(S.welcome.min) || 0 }, 'data-nav="cart"');
     var list = orderOf(S.promos, promoDefs()).filter(function(x){ return x.on && B[x.id]; }).map(function(x){ return B[x.id]; });
     if (!list.length) return "";
     return '<div class="kq-bans" id="kqBans">' + list.join("") + '</div><div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
@@ -2152,7 +2305,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
     SEC.moment = ml.length >= 4 ? '<div class="wrap"><div class="kq-sec"><h2>' + mo2.e + ' ' + mo2.t + '</h2></div><div class="rail">' + ml.slice(0, 16).map(function(x){ return card(x); }).join("") + '</div></div>' : '';
     // بنر ثابت فوق للعرض المميز (store.groups أول مجموعة مفعّلة)، والبنرات تحته تتحرك
     var fg = (S.groups || []).filter(function(g){ return g && g.on !== false && g.top !== false && grpItems(g).length; })[0];
-    SEC.featured = fg ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + banHTML("featured", { tag: "button", style: "hero", act: 'data-chip="g:' + esc(fg.id) + '"', k: esc(fg.name || ""), title: esc(grpLine(fg)),
+    var fgArt = fg ? artBan("featured", { name: fg.name || "", n: fg.n, w: fg.w || tr("حبات", "pcs"), short: String(fg.name || "").split(" ")[0], price: Number(fg.price), unit: grpOld(fg), before: Math.round(fg.n * grpOld(fg) * 100) / 100, save: grpSave(fg),
+      line1: tr("أي " + num(fg.n) + " " + (fg.w || "حبات"), "Any " + fg.n), line2: tr("بـ ", "for ") + num(Number(fg.price)) + " ر.س", was: tr("كانت " + (fg.w1 || "الحبة") + " بـ " + num(grpOld(fg)) + " ر.س", "Was " + num(grpOld(fg)) + " SAR each"), go: tr("اختر نكهاتك", "Pick yours"),
+      ids: grpItems(fg).filter(function(p){ return hasPic(p.img); }).map(function(p){ return p.id; }) }, 'data-chip="g:' + esc(fg.id) + '"') : "";
+    SEC.featured = fg && fgArt ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + fgArt.replace('class="kq-ban', 'class="kq-ban featured') + '</div>' : fg ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + banHTML("featured", { tag: "button", style: "hero", act: 'data-chip="g:' + esc(fg.id) + '"', k: esc(fg.name || ""), title: esc(grpLine(fg)),
       sub: tr("كانت " + (fg.w1 || "الحبة") + " بـ ", "Was ") + num(grpOld(fg)) + (grpSave(fg) > 0 ? tr(" · توفّر ", " · save ") + num(grpSave(fg)) + tr(" ريال", " SAR") : ""), go: tr("أبغى العرض", "Get the offer"),
       ids: grpItems(fg).filter(function(p){ return hasPic(p.img); }).slice(0, 3).map(function(p){ return p.id; }) }, (S.banEdit || {}).featured).replace('class="kq-ban', 'class="kq-ban featured') + '</div>' : '';
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
@@ -3648,7 +3804,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function catOptions(sel){ return draft.cats.map(function(c){ return '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join(""); }
   function renderAFilter(){ $("aCat").innerHTML = '<option value="all">كل الأقسام</option>' + catOptions(aFilter.cat); }
   var LAY_LABEL = { featured: "البنر الثابت فوق (عرض المجموعة)", again: "اطلب مرة ثانية (للزبون اللي طلب قبل)", moment: "حسب وقت اليوم (فطور، غدا، عصرية، سهرة)", promos: "بنرات العروض", catoffers: "عروض الأقسام (مربعات)", free: "بطاقة التوصيل المجاني", catgrid: "الأقسام (مربعات الصور)", offers: "أفضل العروض (صف يتحرك)", deals: "منتجات السعر الرمزي (صف يتحرك)", grid: "الفلاتر والمنتجات" };
-  var PROMO_LABEL = { top: "أقوى خصم (تلقائي)", multi: "عرض الكمية (تلقائي)", daily: "عرض اليوم", offers: "عروض الأسبوع", deals: "منتجات السعر الرمزي", bakery: "بطاقة المخبز" };
+  var PROMO_LABEL = { top: "أقوى خصم (تلقائي)", multi: "عرض الكمية (تلقائي)", daily: "عرض اليوم", offers: "عروض الأسبوع", deals: "منتجات السعر الرمزي", bakery: "بطاقة المخبز", free: "التوصيل المجاني", catdeal: "عروض القسم (تلقائي)", night: "طلعات السهرة (المساء بس)", veg: "الخضار والفواكه (قريباً)", welcome: "كود الترحيب (store.welcome)" };
   function mvBtns(kind, id, ends){ return '<span class="mv">' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':-99" aria-label="لأول الصفحة">أول</button>' : '') + '<button type="button" data-mv="' + kind + ':' + id + ':-1" aria-label="فوق">' + ic("up") + '</button><button type="button" data-mv="' + kind + ':' + id + ':1" aria-label="تحت">' + ic("down") + '</button>' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':99" aria-label="لآخر الصفحة">آخر</button>' : '') + '</span>'; }
   function renderLayout(){
     var st = draft.store;
