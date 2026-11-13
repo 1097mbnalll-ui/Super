@@ -27,20 +27,20 @@
     "adminVisible": false
   },
   "scroll": {
-    "frames": 146,
-    "avgMs": 74.43,
-    "fps": 13.4,
+    "frames": 126,
+    "avgMs": 98.28,
+    "fps": 10.2,
     "over33ms": 84,
-    "over50ms": 77,
-    "worstMs": 400
+    "over50ms": 76,
+    "worstMs": 550
   },
   "account": {
     "deleteLink": true,
     "privacyLink": true
   },
   "bottomCheck": {
-    "linkBottom": 544.8869018554688,
-    "tabTop": 767.0714721679688,
+    "linkBottom": 547.5535545349121,
+    "tabTop": 764.9761962890625,
     "innerH": 839,
     "linkClear": true
   },

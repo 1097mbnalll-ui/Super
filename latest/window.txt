@@ -1,8 +1,8 @@
-  mCurrentFocus=Window{2df207c u0 sa.ohod.store/sa.ohod.store.MainActivity}
-        InsetsSource id=9a6a0000 type=statusBars frame=[0,0][1080,136] visible=true flags= sideHint=TOP boundingRects=null
-        InsetsSource id=59ab0001 type=navigationBars frame=[0,2337][1080,2400] visible=true flags=SUPPRESS_SCRIM|ANIMATE_RESIZING sideHint=BOTTOM boundingRects=null
-        InsetsSourceControl: {9a6a0000 mType=statusBars initiallyVisible mSurfacePosition=Point(0, 0) mInsetsHint=Insets{left=0, top=136, right=0, bottom=0}}
-        InsetsSourceControl: {59ab0001 mType=navigationBars initiallyVisible mSurfacePosition=Point(0, 2337) mInsetsHint=Insets{left=0, top=0, right=0, bottom=63}}
-        mSource=InsetsSource id=59ab0001 type=navigationBars frame=[0,2337][1080,2400] visible=true flags=SUPPRESS_SCRIM|ANIMATE_RESIZING sideHint=BOTTOM boundingRects=null
-        mControl=InsetsSourceControl mId=59ab0001 mType=navigationBars mLeash=Surface(name=Surface(name=a3c6e4a Taskbar)/@0xd9c030d - animation-leash of insets_animation)/@0xc9aa88e mInitiallyVisible=true mSurfacePosition=Point(0, 2337) mInsetsHint=Insets{left=0, top=0, right=0, bottom=63} mSkipAnimationOnce=false
-        mSource=InsetsSource id=9a6a0000 type=statusBars frame=[0,0][1080,136] visible=true flags= sideHint=TOP boundingRects=null
+  mCurrentFocus=Window{7dd09c8 u0 sa.ohod.store/sa.ohod.store.MainActivity}
+        InsetsSource id=a7a10001 type=navigationBars frame=[0,2337][1080,2400] visible=true flags=SUPPRESS_SCRIM|ANIMATE_RESIZING sideHint=BOTTOM boundingRects=null
+        InsetsSource id=4bf80000 type=statusBars frame=[0,0][1080,136] visible=true flags= sideHint=TOP boundingRects=null
+        InsetsSourceControl: {a7a10001 mType=navigationBars initiallyVisible mSurfacePosition=Point(0, 2337) mInsetsHint=Insets{left=0, top=0, right=0, bottom=63}}
+        InsetsSourceControl: {4bf80000 mType=statusBars initiallyVisible mSurfacePosition=Point(0, 0) mInsetsHint=Insets{left=0, top=136, right=0, bottom=0}}
+        mSource=InsetsSource id=4bf80000 type=statusBars frame=[0,0][1080,136] visible=true flags= sideHint=TOP boundingRects=null
+        mControl=InsetsSourceControl mId=4bf80000 mType=statusBars mLeash=Surface(name=Surface(name=de6bbe6 StatusBar)/@0x1b0b21f - animation-leash of insets_animation)/@0xe3f2b64 mInitiallyVisible=true mSurfacePosition=Point(0, 0) mInsetsHint=Insets{left=0, top=136, right=0, bottom=0} mSkipAnimationOnce=false
+        mSource=InsetsSource id=a7a10001 type=navigationBars frame=[0,2337][1080,2400] visible=true flags=SUPPRESS_SCRIM|ANIMATE_RESIZING sideHint=BOTTOM boundingRects=null
