@@ -1312,7 +1312,7 @@ function priceOrder(data, body) {
   const lines = [];
   let base = 0, dealSum = 0, count = 0;
   const dealLines = [];
-  const bund = {};
+  const bund = {}, grp = {};
   for (const [key, rawQty] of Object.entries(items)) {
     let qty = Math.floor(Number(rawQty));
     if (!(qty > 0 && qty <= 5000)) continue;   // الطباعة بالصفحة: ١٢٠ صفحة × ٣ نسخ = ٣٦٠ سطر واحد؛ الباقي أقصاه ٢٠٠ (تحت)
@@ -1332,6 +1332,9 @@ function priceOrder(data, body) {
     const p = kind === "r" && String(parts[0]).includes("~") ? packProduct(byId, parts[0]) : byId[parts.length > 1 ? parts[1] : parts[0]];
     if (!p || !p.stock) return { error: "unavailable", id: key };
     if (qty > (p.print ? 5000 : 200)) continue;
+    // عرض المجموعة (S.groups): أي N من منتجات المجموعة بسعر واحد (مثل «أي ٣ علب ديمة بـ ١١٫٩٥»)، لازم العدد يكون مضاعف N
+    if (kind === "r" && !p.base) { const g = (S.groups || []).find((x) => x && x.on !== false && Array.isArray(x.ids) && x.ids.includes(p.id));
+      if (g) { (grp[g.id] || (grp[g.id] = { g, q: [] })).q.push({ p, qty }); continue; } }
     // عرض الكمية الإجباري: المنتج ينباع بالمجموعة بس (المفتاح <id>~<الخيار>)، الحبة لحالها مرفوضة
     if (kind === "r" && !p.base && Array.isArray(p.packs) && p.packs.some((x) => x && x.must)) return { error: "pack_only", id: key };
     if (kind === "t") {
@@ -1357,6 +1360,21 @@ function priceOrder(data, body) {
       const extra = (q[id] || 0) - n;
       if (extra > 0) { lines.push({ p, qty: extra, price: Number(p.price), tag: "" }); base += extra * p.price; count += extra; }
     }
+  }
+  // المجموعات: المبلغ = عدد المجموعات × السعر، يتوزع على السطور بالهللة (السطر اللي ما يتقسم ينقسم سطرين)
+  for (const { g, q } of Object.values(grp)) {
+    const n = Math.max(2, Math.floor(Number(g.n) || 0)), U = q.reduce((a, x) => a + x.qty, 0);
+    if (U % n) return { error: "pack_only", id: g.id, n };
+    const cents = Math.round(Number(g.price) * 100) * (U / n), unit = Math.floor(cents / U); let extra = cents - unit * U;
+    q.sort((a, b) => a.qty - b.qty);
+    for (const { p, qty } of q) {
+      const tag = "عرض " + String(g.name || "").slice(0, 30);
+      if (extra >= qty) { lines.push({ p, qty, price: (unit + 1) / 100, tag }); extra -= qty; }
+      else if (extra > 0) { lines.push({ p, qty: qty - extra, price: unit / 100, tag }); lines.push({ p, qty: extra, price: (unit + 1) / 100, tag }); extra = 0; }
+      else lines.push({ p, qty, price: unit / 100, tag });
+      count += qty;
+    }
+    base += cents / 100;
   }
   if (DEAL && base >= Number(DEAL.min || 0)) for (const d of dealLines) { lines.push(d); dealSum += d.qty * d.price; count += d.qty; }
   // الحد لكل طلب بالحبات: الكرتون يحسب بعدد حباته
