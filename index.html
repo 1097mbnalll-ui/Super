@@ -2533,7 +2533,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function render(){
     timers.forEach(clearInterval); timers = [];
     // داخل التطبيق: ما نعرض البيانات القديمة المدمجة بالصفحة، ننتظر ملف البيانات الجديد (التطبيق يعرض شاشته لين نجهز)
-    if (EMBED && !dataReady) { document.body.classList.add("is-embed"); app.innerHTML = EMBED_SCREEN || EMBED_PAGE ? '<div class="embed page"><div class="wrap" style="padding-top:40px;text-align:center;color:#888">' + tr("لحظة…", "Loading…") + '</div></div>' : ''; toApp({ t: "h", h: 0 }); return; }
+    if (EMBED && !dataReady) { document.body.classList.add("is-embed"); app.innerHTML = EMBED_SCREEN || EMBED_PAGE ? '<div class="embed page"><div class="wrap" style="padding-top:40px;text-align:center;color:#888">' + tr("لحظة…", "Loading…") + '</div></div>' :
+      // أقسام الرئيسية: مكان البنر فاضي لين توصل البيانات (التطبيق يستنى ٨ ثواني بس، فما نخليه يحسب إن الصفحة ما فتحت)
+      EMBED_SLOT ? '' : '<div class="embed"><div class="wrap"><div style="height:' + (Number(S.banH) || 200) + 'px;border-radius:24px;background:linear-gradient(90deg,#f3f0fa,#ebe6f7,#f3f0fa)"></div></div></div>';
+      setTimeout(embedHeight, 0); return; }
     var h = screen === "home" ? homeHTML() : screen === "cats" ? catsHTML() : screen === "cat" ? catHTML() : screen === "product" ? productHTML() :
       screen === "search" ? searchHTML() : screen === "cart" ? cartHTML() : screen === "checkout" ? checkoutHTML() : screen === "sent" ? sentHTML() : moreHTML();
     var noNav = screen === "product" || screen === "checkout" || screen === "sent" || screen === "cart";
