@@ -48,7 +48,7 @@ _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shelf_offers.jso
 KEEP_OFFERS = '--keep-offers' in sys.argv
 _cp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'consumables.json')
 _cj = json.load(open(_cp, encoding='utf-8')) if os.path.exists(_cp) else {}
-CONSUM = set(_cj.get('cats', [])); CONSUM_SUB = set(_cj.get('subs', []))
+CONSUM = set(_cj.get('cats', [])); CONSUM_SUB = set(_cj.get('subs', [])); CONSUM_IDS = set(_cj.get('ids', []))
 SHELF = {k: v for k, v in json.load(open(_sp, encoding='utf-8')).items() if not k.startswith('_')} if os.path.exists(_sp) else {}
 
 def main(data_path, xlsx, dry=False):
@@ -89,7 +89,7 @@ def main(data_path, xlsx, dry=False):
             if UNIT.get(unit) in ('كرتون', 'شدّة') and p.get('unit') != UNIT[unit]: p['unit'] = UNIT[unit]; rep['unit'] += 1
             avail = qty > 0
             # الاستهلاكي (consumables.json): الملف ما يصفّره. صفر بالملف = يبقى متوفر وبدون عدد في الخادم (None = يمسح سطره من جدول stock)
-            if p.get('cat') in CONSUM or p.get('sub') in CONSUM_SUB:
+            if p.get('cat') in CONSUM or p.get('sub') in CONSUM_SUB or p['id'] in CONSUM_IDS:
                 # «لا توقفه أبداً»: بدون عدد في الخادم دايماً (ما يوقف لو خلصت الكمية بالطلبات)، والملف يشغّله بس
                 qty_of[p['id']] = None; rep['consumable_kept'] += 1
                 if avail and not p.get('stock'): p['stock'] = True; rep['stock_on'] += 1
