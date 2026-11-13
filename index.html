@@ -998,7 +998,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kb-p.boxed{background:#fff;border-radius:22px;padding:6%;box-sizing:border-box;filter:drop-shadow(0 8px 14px rgba(0,0,0,.18))}
 @media (prefers-reduced-motion:no-preference){.kb-p.ready{animation:kbFloat 5s ease-in-out infinite}}
 @keyframes kbFloat{50%{translate:0 -4px}}
-body.is-embed .embed.page{padding:12px 0 90px}body.is-embed .embed.page .kq-grid{display:grid}
+body.is-embed .embed.page{padding:12px 0 90px}body.is-embed.scr:not([data-screen=checkout]):not([data-screen=sent]) [data-nav="back"]{visibility:hidden}body.is-embed.scr{padding-bottom:90px!important}body.is-embed .embed.page .kq-grid{display:grid}
 body.is-embed{background:transparent!important;padding:0!important;margin:0}body.is-embed .embed{padding:0 0 4px}body.is-embed .embed .wrap{padding-left:16px;padding-right:16px}body.is-embed #splash{display:none}
 /* 0 hero (نمط المتاجر الكبيرة: لون قوي، رقم الخصم كبير، المنتجات على صحن) */
 .kb.s-hero{background:linear-gradient(135deg,var(--bc,#0B7A5A) 0%,color-mix(in srgb,var(--bc,#0B7A5A) 72%,#000) 100%);color:#fff}
@@ -1691,8 +1691,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // داخل التطبيق: سلة التطبيق تجي بالرابط (cart=…)، وأي إضافة تروح للتطبيق (cart.add / cart.set) بدل سلة الموقع
   var EMBED_PAGE = ((location.search.match(/[?&]page=([^&]*)/) || [])[1] || ""), EMBED_SLOT = ((location.search.match(/[?&]slot=([^&]*)/) || [])[1] || ""), EMBED_ID = ((location.search.match(/[?&]id=([^&]*)/) || [])[1] || "");
   try { EMBED_PAGE = decodeURIComponent(EMBED_PAGE); EMBED_ID = decodeURIComponent(EMBED_ID); } catch(e){}
+  // شاشة كاملة من الموقع داخل التطبيق (screen=home|cats|cat|product|search|cart|checkout|more): أي تعديل على الموقع يطلع في التطبيق بدون تحديث
+  var EMBED_SCREEN = ((location.search.match(/[?&]screen=([^&]*)/) || [])[1] || "");
   if (EMBED) { try { cart = JSON.parse(decodeURIComponent((location.search.match(/[?&]cart=([^&]*)/) || [])[1] || "%7B%7D")) || {}; } catch(e) { cart = {}; } }
-  function saveCart(){ if (EMBED) return; try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} }
+  function saveCart(){ if (EMBED) { if (EMBED_SCREEN || EMBED_PAGE) toApp({ t: "cart.sync", cart: cart }); return; } try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} }
   // البيانات المدمجة بالصفحة قديمة (ما فيها أغلب المنتجات): ما ننظّف السلة المحفوظة إلا بعد ما ينحمّل data.json الحقيقي، وإلا الزبون يفقد سلته كل ما يفتح الموقع
   var dataReady = !GH;
   function normalize(){
@@ -2152,9 +2154,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<button type="button" class="kq-filter" data-nav="cats" aria-label="' + tr("الأقسام", "Categories") + '">' + ic("filter") + '</button>' +
       chipList().map(function(c){ return '<button type="button" class="kq-chip" data-chip="' + c.id + '" aria-pressed="' + (chip === c.id) + '">' + (c.img ? imgTag(c.img, "") : ic(c.icon)) + esc(c.name) + '</button>'; }).join("") + '</div></div></div>' +
       '<div class="wrap"><div class="kq-grid" id="kqGrid">' + chipItems().join("") + '</div></div>';
-    if (EMBED && EMBED_PAGE) { chip = EMBED_PAGE.indexOf("g:") === 0 ? EMBED_PAGE.split(":").slice(0, 2).join(":") : EMBED_PAGE; return '<div class="embed page"><div class="wrap"><div class="kq-grid">' + chipItems().join("") + '</div></div></div>'; }
-    if (EMBED && EMBED_SLOT) return '<div class="embed">' + slotHTML(EMBED_SLOT, EMBED_ID) + '</div>';
-    if (EMBED) return '<div class="embed">' + EMBED_BLOCKS.map(function(id){ return SEC[id] || ""; }).join("") + '</div>';
+    if (EMBED && EMBED_PAGE && !EMBED_SCREEN) { chip = EMBED_PAGE.indexOf("g:") === 0 ? EMBED_PAGE.split(":").slice(0, 2).join(":") : EMBED_PAGE; return '<div class="embed page"><div class="wrap"><div class="kq-grid">' + chipItems().join("") + '</div></div></div>'; }
+    if (EMBED && EMBED_SLOT && !EMBED_SCREEN) return '<div class="embed">' + slotHTML(EMBED_SLOT, EMBED_ID) + '</div>';
+    if (EMBED && !EMBED_SCREEN) return '<div class="embed">' + EMBED_BLOCKS.map(function(id){ return SEC[id] || ""; }).join("") + '</div>';
     orderOf(S.layout, LAYOUT_DEF).forEach(function(x){ if (x.on && SEC[x.id]) h += SEC[x.id]; });
     return h;
   }
@@ -2534,7 +2536,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var noNav = screen === "product" || screen === "checkout" || screen === "sent" || screen === "cart";
     document.body.style.paddingBottom = noNav ? "0" : ""; document.body.setAttribute("data-screen", screen);
     app.innerHTML = h + (noNav || EMBED ? "" : navBar());
-    if (EMBED) { document.body.classList.add("is-embed"); setTimeout(embedHeight, 0); }
+    if (EMBED) { document.body.classList.add("is-embed"); if (EMBED_SCREEN) document.body.classList.add("scr"); setTimeout(embedHeight, 0); }
     if (screen === "home" && $("addAgain")) $("addAgain").addEventListener("click", function(){ var n = 0;
       histList().slice(0, 16).forEach(function(x){ var id = x.p.id, q = usualQty(x.h); if (cart[id]) return; var c = capOf(x.p, q); if (c > 0) q = Math.min(q, c); if (!canAddProduct(id, q)) return; cart[id] = q; n++; });
       saveCart(); refresh(); sToast(n ? tr("انضاف " + num(n) + " منتج من مشترياتك المعتادة", num(n) + " usual items added") : tr("منتجاتك المعتادة موجودة بالسلة", "Your usual items are already in the cart")); });
@@ -2588,7 +2590,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
   if (EMBED) { window.addEventListener("load", embedHeight); window.addEventListener("resize", embedHeight); try { new ResizeObserver(embedHeight).observe(document.body); } catch(e){}
     // الضغطات: نرسلها للتطبيق بدل ما نفتح شاشات الموقع
     document.addEventListener("click", function(e){ var a = e.target.closest("[data-act]");
-      if (a && !EMBED_PAGE) { e.preventDefault(); e.stopPropagation(); var L = lineOf(a.dataset.id), st = L ? stepOf(L.p) : 1; toApp({ t: "cart.add", key: a.dataset.id, qty: (a.dataset.act === "dec" ? -1 : 1) * st }); return; }
+      if (EMBED_SCREEN) { var nv = e.target.closest("[data-nav]");
+        // شاشة كاملة: السلة والطلب داخل الصفحة (وتنرسل للتطبيق)، والرجوع والتنقل بين الشاشات للتطبيق
+        if (a || (nv && /^(checkout|sent)$/.test(nv.dataset.nav))) return;
+        if (nv && nv.dataset.nav === "back") { e.preventDefault(); e.stopPropagation(); if (screen === "checkout" || screen === "sent") { show("cart"); return; } toApp({ t: "close" }); return; } }
+      if (a && !EMBED_PAGE && !EMBED_SCREEN) { e.preventDefault(); e.stopPropagation(); var L = lineOf(a.dataset.id), st = L ? stepOf(L.p) : 1; toApp({ t: "cart.add", key: a.dataset.id, qty: (a.dataset.act === "dec" ? -1 : 1) * st }); return; }
       if (a) return; // صفحة حية: السلة محلية وتنرسل عند «أضف»
       var t = e.target.closest("[data-open],[data-opencat],[data-chip],[data-addbund],[data-nav]"); if (!t) return;
       e.preventDefault(); e.stopPropagation();
@@ -2731,6 +2737,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
           if (j.track && PUSH_PREF && pushOn()) orderPush(null);
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
+          if (EMBED) toApp({ t: "order", no: String(j.orderNo), total: Number(j.total) || 0, phone: phone, pay: payload.pay, items: items, lat: payload.lat, lng: payload.lng, track: !!j.track });
           if(sentCart&&JSON.stringify(cart)===sentCart)cart={};saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; render(); loadStock(); window.scrollTo(0, 0); return;
         }
         var c = j.code;
@@ -5560,6 +5567,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var startAdmin = false; try { startAdmin = sessionStorage.getItem("ohod-mode") === "admin"; sessionStorage.removeItem("ohod-mode"); } catch(e){}
   go("store");
   // صفحة حية في التطبيق «g:<العرض>:<المنتج>»: تفتح نافذة الاختيار على طول والمنتج محطوط
+  if (EMBED && EMBED_SCREEN) { var sc = EMBED_SCREEN; if (sc === "cat") { openCat = EMBED_ID; openSub = ""; } if (sc === "product") { openProd = EMBED_ID; pdQty = stepOf(byId(EMBED_ID)); pdPack = -1; }
+    screen = /^(home|cats|cat|product|search|cart|checkout|more)$/.test(sc) ? sc : "home"; if (screen === "checkout" && !totals().n) screen = "cart"; render(); }
   if (EMBED && /^g:[^:]+:./.test(EMBED_PAGE)) (function tryOpen(k){ var a = EMBED_PAGE.split(":"); if (grpById(a[1]) && dataReady) openGroupPicker(a[1], a[2]); else if (k < 40) setTimeout(function(){ tryOpen(k + 1); }, 150); })(0);
   loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "store") loadStock(); });
