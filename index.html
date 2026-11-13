@@ -5680,7 +5680,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     foldAdminCard($('aTips'),'نصائح من أرقامك',false);
     var staff=box.querySelector('.staffask');var staffFold=foldAdminCard(staff,'اسم منفّذ التعديلات (اختياري)',false);if(staffFold)box.appendChild(staffFold);
     foldAdminCard(box.querySelector(':scope > .stats'),'ملخص المنتجات والأقسام',false);
-    var map=foldAdminCard($('aDrvLoc'),'وين المندوب الحين (على الخريطة)',true);if(map)map.ontoggle=function(){if(this.open)loadDrvLoc();else clearTimeout(admTimer);};
+    var map=foldAdminCard($('aDrvLoc'),'وين المندوب الحين (على الخريطة)',true);if(map){var lastO=Array.from(box.querySelectorAll(':scope > .card')).find(function(c){return c.querySelector('h2')&&c.querySelector('h2').textContent.indexOf('آخر الطلبات')>-1;});if(lastO&&lastO.nextSibling)box.insertBefore(map,lastO.nextSibling);}if(map)map.ontoggle=function(){if(this.open)loadDrvLoc();else clearTimeout(admTimer);};
     var quick=Array.from(box.querySelectorAll(':scope > .card')).find(function(c){return c.querySelector('h2')?.textContent==='اختصارات';});if(quick)foldAdminCard(quick,'إدارة المنتجات وشكل المتجر',false);
     box.querySelectorAll('[data-over-order]').forEach(function(b){b.onclick=function(){oState.q=b.dataset.overOrder;oState.f='all';oState.range=0;showTab('olist');};});
   }
