@@ -2059,13 +2059,118 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   // البحث: يتجاهل الهمزات والتاء المربوطة والتشكيل، وكل كلمة لازم تنوجد (حليب المراعي = المراعي حليب)، ويقبل الباركود
   function normAr(s){ return String(s || "").toLowerCase().replace(/[إأآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/ؤ/g, "و").replace(/ئ/g, "ي").replace(/[\u064B-\u0652\u0640]/g, ""); }
-  var searchIx = null, searchIxOf = null;
+  // البحث الذكي (١٣ نوفمبر ٢٠٢٦): يفهم اللهجة والمرادفات والإنجليزي، ويتسامح مع حرف غلط، ويشيل «ال»، ويرتّب الأقرب والمتوفر أول
+  var SYN_SRC = {
+    "بطاطس": "شيبس شبس تشيبس تشبس chips crisps شيبسي كرسبي",
+    "ماء": "موية مويه مويا مية مياه water",
+    "بيبسي": "ببسي pepsi بيبسى",
+    "كولا": "كوكا كوكاكولا coca cola كوك",
+    "عصير": "juice عصاير عصائر",
+    "حليب": "milk حليبب",
+    "لبن": "laban روب",
+    "زبادي": "yogurt يوغرت زبادى",
+    "جبن": "جبنه جبنة cheese اجبان",
+    "بيض": "eggs egg بيضه",
+    "خبز": "عيش bread صامولي تميس توست",
+    "رز": "ارز rice رزز",
+    "سكر": "sugar",
+    "زيت": "oil",
+    "شاي": "tea شاهي",
+    "قهوه": "coffee كوفي نسكافيه بن",
+    "شوكولاته": "شكولاته شوكولا شوكلت شوكلاته chocolate شوكو جالكسي سنيكرز كيت",
+    "بسكويت": "بسكوت biscuit biscuits كوكيز cookies",
+    "كيك": "cake كيكه",
+    "حلاوه": "حلويات حلوى حلاو candy",
+    "علك": "علكه لبان gum",
+    "ايسكريم": "ايس كريم icecream آيسكريم بوظه",
+    "تونه": "تونا tuna",
+    "دجاج": "chicken فراخ دجاجه",
+    "لحم": "meat لحوم",
+    "اندومي": "نودلز noodles indomie",
+    "مكرونه": "معكرونه باستا pasta اسباغيتي سباغيتي",
+    "كاتشب": "كتشب ketchup",
+    "مايونيز": "mayonnaise مايونيزه",
+    "مناديل": "كلينكس tissue محارم فاين",
+    "حفاضات": "حفاظ حفايض بامبرز pampers diapers",
+    "فوط": "فوط صحيه pads",
+    "صابون": "soap",
+    "شامبو": "shampoo",
+    "معجون": "toothpaste",
+    "مسحوق": "تايد اريال غسيل detergent",
+    "مبيض": "كلوركس clorox",
+    "معطر": "freshener",
+    "مشروب": "drinks drink مشروبات",
+    "غازي": "غازيه soda",
+    "مربى": "jam",
+    "عسل": "honey",
+    "تمر": "تمور dates",
+    "كريمه": "cream",
+    "قشطه": "قيمر",
+    "زبده": "butter",
+    "نسكويك": "nesquik",
+    "طماطم": "tomato بندوره",
+    "فول": "beans",
+    "حمص": "chickpeas",
+    "دقيق": "طحين flour",
+    "ملح": "salt",
+    "بهارات": "spices بهار",
+        "كرتون": "كرتونه كراتين شده شد",
+  };
+  var SYN = null;
+  function stripAl(w){ return w.length > 4 ? w.replace(/^(وال|بال|فال|كال|لل|ال)/, "") : w; }
+  function synOf(w){
+    if (!SYN) { SYN = {}; Object.keys(SYN_SRC).forEach(function(k){ var g = [k].concat(SYN_SRC[k].split(/\s+/).filter(Boolean)).map(function(x){ return stripAl(normAr(x)); }); g.forEach(function(x){ SYN[x] = (SYN[x] || []).concat(g.filter(function(y){ return y !== x; })); }); }); }
+    return SYN[w] || [];
+  }
+  // فرق حرف واحد (حرف زايد أو ناقص أو مختلف أو حرفين متبادلين)
+  function near1(a, b){
+    var la = a.length, lb = b.length; if (Math.abs(la - lb) > 1 || la < 4 || lb < 4) return false;
+    var i = 0, j = 0, d = 0;
+    while (i < la && j < lb) { if (a[i] === b[j]) { i++; j++; continue; }
+      if (++d > 1) return false;
+      if (la === lb) { if (a[i + 1] === b[j] && a[i] === b[j + 1]) { i += 2; j += 2; continue; } i++; j++; } else if (la > lb) i++; else j++; }
+    return d + (la - i) + (lb - j) <= 1;
+  }
+  var searchIx = null, searchNm = null, searchTok = null, searchIxOf = null;
   function searchProducts(text){
-    if (searchIxOf !== D.products) { searchIxOf = D.products; searchIx = D.products.map(function(p){ var c = catOf(p.cat); var pk = p.packs || []; return normAr([p.name, p.name_en, p.bc, c && c.name, c && c.name_en, p.unit, pk.map(function(x){ return x.u; }).join(" "), isCarton(p) ? "كرتون كرتونه شده شد كراتين جملة" : "", pk.length ? "كرتون كرتونه شده شد باكت علبه" : "", /(^|\s)(ماء|مياه)(\s|$)/.test(p.name) ? "موية مويه مويا مياه ماء" : ""].join(" ")); }); }
-    var words = normAr(text).split(/\s+/).filter(Boolean); if (!words.length) return [];
+    if (searchIxOf !== D.products) {
+      searchIxOf = D.products; var toks = {};
+      searchNm = D.products.map(function(p){ return " " + normAr(nm(p) + " " + (p.name_en || "")).split(/\s+/).map(stripAl).join(" ") + " "; });
+      searchIx = D.products.map(function(p, i){ var c = catOf(p.cat); var pk = p.packs || [];
+        var h = normAr(asciiDigits([p.name, p.name_en, p.bc, c && c.name, c && c.name_en, p.unit, pk.map(function(x){ return x.u; }).join(" "), isCarton(p) ? "كرتون كرتونه شده شد كراتين" : ""].join(" ")));
+        h.split(/\s+/).forEach(function(t){ if (t.length >= 4) toks[stripAl(t)] = 1; });
+        return " " + h + " " + h.split(/\s+/).map(stripAl).join(" ") + " "; });
+      searchTok = Object.keys(toks);
+    }
+    var words = normAr(asciiDigits(text)).split(/\s+/).filter(Boolean).map(stripAl); if (!words.length) return [];
+    // لكل كلمة: نفسها + مرادفاتها، ولو ما لها نتائج نجرب الكلمات القريبة بحرف واحد
+    var alts = words.map(function(w){
+      var a = [w].concat(synOf(w));
+      var hit = a.some(function(x){ for (var i = 0; i < searchIx.length; i++) if (searchIx[i].indexOf(x) > -1) return true; return false; });
+      if (!hit && w.length >= 4) searchTok.forEach(function(t){ if (near1(w, t)) a.push(t); });
+      return a;
+    });
+    // نية القسم: كلمة تطابق اسم قسم ترفع منتجاته
+    var catHit = {}; D.cats.forEach(function(c){ var n = " " + normAr(nm(c)).split(/\s+/).map(stripAl).join(" ") + " "; alts.forEach(function(a){ a.forEach(function(x){ if (x.length >= 3 && n.indexOf(x) > -1) catHit[c.id] = 1; }); }); });
     var out = [];
-    for (var i = 0; i < D.products.length; i++) { var h = searchIx[i], ok = true; for (var w = 0; w < words.length; w++) if (h.indexOf(words[w]) < 0) { ok = false; break; } if (ok && !D.products[i].print) out.push(D.products[i]); }
-    return out.sort(function(a, b){ return avail(b) - avail(a); });
+    for (var i = 0; i < D.products.length; i++) {
+      var h = searchIx[i], nmh = searchNm[i], p = D.products[i], sc = 0, ok = true;
+      if (p.print) continue;
+      for (var w = 0; w < alts.length; w++) {
+        var best = -1;
+        for (var k = 0; k < alts[w].length; k++) { var x = alts[w][k], s = -1;
+          if (nmh.indexOf(" " + x + " ") > -1) s = 6; else if (nmh.indexOf(" " + x) > -1) s = 4; else if (nmh.indexOf(x) > -1) s = 2; else if (h.indexOf(x) > -1) s = 1;
+          if (s > -1 && k > 0) s -= 0.5; // المرادف والتصحيح أقل من الكلمة نفسها
+          if (s > best) best = s; }
+        if (best < 0) { ok = false; break; } sc += best;
+      }
+      if (!ok) continue;
+      if (nmh.indexOf(" " + alts[0][0]) === 0) sc += 3; // اسم المنتج يبدأ بأول كلمة
+      if (catHit[p.cat]) sc += 3;
+      if (avail(p)) sc += 50; if (hasPic(p.img)) sc += 2; if (isOffer(p)) sc += 1;
+      out.push({ p: p, s: sc, l: String(p.name).length });
+    }
+    return out.sort(function(a, b){ return b.s - a.s || a.l - b.l; }).map(function(x){ return x.p; });
   }
   function searchHTML(){
     return '<div class="wrap"><div class="kq-stop"><button class="sq" type="button" data-nav="back" aria-label="' + tr("رجوع", "Back") + '">' + ic("back") + '</button>' +
@@ -3328,7 +3433,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (!L.length) return '<p class="hint">ما فيه أكواد للحين.</p>';
     return '<div class="codes-wrap"><table class="codes-tbl"><thead><tr><th>الكود</th><th>الخصم</th><th>أقل طلب</th><th>ينتهي</th><th>الاستخدام</th><th>اللي انخصم</th><th></th></tr></thead><tbody>' + L.map(function(c){
       var exp = c.until && Date.now() > c.until;
-      return '<tr' + (c.active && !exp ? '' : ' style="opacity:.55"') + '><td dir="ltr"><b>' + esc(c.code) + '</b>' + (c.note ? '<br><small>' + esc(c.note) + '</small>' : '') + '</td><td>' + (c.kind === "percent" ? num(c.value) + '٪' + (c.cap > 0 ? ' (حتى ' + num(c.cap) + ')' : '') : num(c.value) + ' ر.س') + '</td><td>' + (c.min ? num(c.min) : '—') + '</td><td>' + (c.until ? new Date(c.until).toLocaleDateString("ar-SA-u-nu-latn") + (exp ? ' (انتهى)' : '') : 'بدون') + '</td><td>' + num(c.used) + (c.maxUses ? ' / ' + num(c.maxUses) : '') + (c.perPhone ? '<br><small>' + num(c.perPhone) + ' لكل جوال</small>' : '') + '</td><td>' + num(c.given) + ' ر.س</td><td><button type="button" class="btn btn-soft" data-ctog="' + esc(c.code) + '">' + (c.active ? 'أوقف' : 'فعّل') + '</button> <button type="button" class="btn btn-ghost" data-cdel="' + esc(c.code) + '">احذف</button></td></tr>';
+      return '<tr' + (c.active && !exp ? '' : ' style="opacity:.55"') + '><td dir="ltr"><b>' + esc(c.code) + '</b>' + (c.note ? '<br><small>' + esc(c.note) + '</small>' : '') + '</td><td>' + (c.kind === "percent" ? num(c.value) + '٪' + (c.cap > 0 ? ' (حتى ' + num(c.cap) + ')' : '') : num(c.value) + ' ر.س') + '</td><td>' + (c.min ? num(c.min) : '—') + '</td><td>' + (c.until ? new Date(c.until).toLocaleDateString("ar-SA-u-nu-latn") + (exp ? ' (انتهى)' : '') : 'بدون') + '</td><td>' + num(c.used) + (c.maxUses ? ' / ' + num(c.maxUses) : '') + (c.perPhone ? '<br><small>' + num(c.perPhone) + ' لكل جوال</small>' : '') + '</td><td>' + num(c.given) + ' ر.س</td><td><button type="button" class="btn btn-ghost" data-cedit="' + esc(c.code) + '">عدّل</button> <button type="button" class="btn btn-soft" data-ctog="' + esc(c.code) + '">' + (c.active ? 'أوقف' : 'فعّل') + '</button> <button type="button" class="btn btn-ghost" data-cdel="' + esc(c.code) + '">احذف</button></td></tr>';
     }).join("") + '</tbody></table></div>';
   }
   var codesCache = [];
@@ -3351,9 +3456,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var save = function(body, st){ return api("/admin/promo-save", Object.assign({ pin: adminPin }, body)).then(function(j){ if (st) { st.textContent = j.ok ? "انحفظ ✓" : ({ bad_code: "الكود لازم ٣ إلى ٢٤ حرف أو رقم بدون مسافات", bad_value: "قيمة الخصم غلط (النسبة حدها ٩٠٪، والمبلغ ٥٠٠)", forbidden: "ما عندك صلاحية" }[j.code] || "ما انحفظ (" + esc(j.code || "?") + ")"); st.className = "status" + (j.ok ? "" : " err"); } if (j.ok) show(j); return j; }); };
     api("/admin/promos", { pin: adminPin }).then(show);
     $("codeForm").onsubmit = function(e){ e.preventDefault(); var u = $("cdUntil").value;
-      save({ code: $("cdCode").value, kind: $("cdKind").value, value: Number($("cdValue").value), cap: Number($("cdCap").value) || 0, min: Number($("cdMin").value) || 0, until: u ? Date.parse(u + "T23:59:59+03:00") : 0, perPhone: Number($("cdPer").value) || 0, maxUses: Number($("cdMax").value) || 0, note: $("cdNote").value }, $("cdStatus")).then(function(j){ if (j.ok) this.reset(); }.bind(this)); };
-    $("codesBox").onclick = function(e){ var t = e.target.closest("[data-ctog],[data-cdel]"); if (!t) return;
-      var c = codesCache.filter(function(x){ return x.code === (t.dataset.ctog || t.dataset.cdel); })[0]; if (!c) return;
+      save({ code: $("cdCode").value, kind: $("cdKind").value, value: Number($("cdValue").value), cap: Number($("cdCap").value) || 0, min: Number($("cdMin").value) || 0, until: u ? Date.parse(u + "T23:59:59+03:00") : 0, perPhone: Number($("cdPer").value) || 0, maxUses: Number($("cdMax").value) || 0, note: $("cdNote").value, active: this.dataset.active !== "0" }, $("cdStatus")).then(function(j){ if (j.ok) { this.reset(); $("cdCode").readOnly = false; delete this.dataset.active; } }.bind(this)); };
+    $("codesBox").onclick = function(e){ var t = e.target.closest("[data-ctog],[data-cdel],[data-cedit]"); if (!t) return;
+      var c = codesCache.filter(function(x){ return x.code === (t.dataset.ctog || t.dataset.cdel || t.dataset.cedit); })[0]; if (!c) return;
+      if (t.dataset.cedit) { // تعديل: نعبّي النموذج بقيم الكود، والحفظ يحدّث نفس الكود
+        $("cdCode").value = c.code; $("cdCode").readOnly = true; $("cdKind").value = c.kind; $("cdValue").value = c.value; $("cdCap").value = c.cap || ""; $("cdMin").value = c.min || "";
+        $("cdUntil").value = c.until ? new Date(c.until + 3 * 3600e3).toISOString().slice(0, 10) : ""; $("cdPer").value = c.perPhone; $("cdMax").value = c.maxUses; $("cdNote").value = c.note || "";
+        $("codeForm").dataset.active = c.active ? "1" : "0"; $("cdStatus").textContent = "تعدّل الكود " + c.code + " · غيّر اللي تبغاه واضغط احفظ"; $("cdStatus").className = "status"; $("codeForm").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
       if (t.dataset.cdel) { if (confirm("تحذف الكود " + c.code + "؟ الطلبات اللي استخدمته تبقى.")) save({ code: c.code, remove: true }); return; }
       save({ code: c.code, kind: c.kind, value: c.value, cap: c.cap, min: c.min, until: c.until, perPhone: c.perPhone, maxUses: c.maxUses, note: c.note, active: !c.active }); };
   }
