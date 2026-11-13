@@ -15,6 +15,7 @@ struct LiveBridge {
     let cart: Cart
     let catalog: CatalogStore
     var close: (() -> Void)? = nil
+    var orders: OrderCenter? = nil
 
     func handle(_ m: [String: Any]) {
         let t = m["t"] as? String ?? "", id = m["id"] as? String ?? ""
@@ -32,10 +33,26 @@ struct LiveBridge {
             else if id.hasPrefix("g:") { path.wrappedValue.append(Route.live(id)) }
         case "nav":
             if id == "cats" { tab?.wrappedValue = .categories } else if id == "search" { path.wrappedValue.append(Route.search) } else if id == "cart" { tab?.wrappedValue = .cart }
+            else if id == "home" { tab?.wrappedValue = .home } else if id == "account" || id == "more" { tab?.wrappedValue = .account } else if id == "offers" { tab?.wrappedValue = .offers }
         case "cart.add":
             if let key = m["key"] as? String, let q = CatalogParser.num(m["qty"]) { cart.add(key: key, delta: Int(q)); Haptics.added() }
         case "cart.set":
             if let set = m["set"] as? [String: Any] { for (k, v) in set { cart.set(k, Int(CatalogParser.num(v) ?? 0)) }; Haptics.added() }
+        case "cart.sync":
+            // شاشة الموقع غيّرت السلة: سلة التطبيق تصير نفسها بالضبط
+            if let set = m["cart"] as? [String: Any] {
+                var want: [String: Int] = [:]
+                for (k, v) in set { want[k] = Int(CatalogParser.num(v) ?? 0) }
+                for k in cart.snapshot.keys where want[k] == nil { cart.set(k, 0) }
+                for (k, q) in want { cart.set(k, q) }
+            }
+        case "order":
+            if let no = m["no"] as? String ?? (CatalogParser.num(m["no"]).map { String(Int($0)) }) {
+                var items: [String: Int] = [:]
+                for (k, v) in (m["items"] as? [String: Any]) ?? [:] { items[k] = Int(CatalogParser.num(v) ?? 0) }
+                orders?.adopt(no: no, total: CatalogParser.num(m["total"]) ?? 0, phone: m["phone"] as? String ?? "", pay: m["pay"] as? String ?? "cash",
+                              items: items, lat: CatalogParser.num(m["lat"]), lng: CatalogParser.num(m["lng"]))
+            }
         case "close": close?()
         default: break
         }
@@ -77,6 +94,30 @@ struct LiveHomeBlocks<Fallback: View>: View {
     }
 }
 
+/// التبويب الحالي عشان الشاشات الحية تنقل بين التبويبات
+private struct LiveTabKey: EnvironmentKey { static let defaultValue: Binding<AppTab>? = nil }
+extension EnvironmentValues {
+    var liveTab: Binding<AppTab>? { get { self[LiveTabKey.self] } set { self[LiveTabKey.self] = newValue } }
+}
+
+/// شاشة تنعرض من الموقع لو المالك فعّلها (store.app.web)، وإلا الشاشة الأصلية. لو الموقع ما فتح ترجع الأصلية
+struct RemoteScreen<Native: View>: View {
+    let key: String
+    var id: String = ""
+    /// صفحة من الموقع بدل شاشة (مثل offers أو b:<بنر>)
+    var page: String? = nil
+    var path: Binding<NavigationPath>? = nil
+    @ViewBuilder var native: () -> Native
+    @Environment(CatalogStore.self) private var catalog
+    @Environment(\.livePath) private var livePath
+
+    var body: some View {
+        if catalog.web(key) {
+            LiveScreen(page: page ?? "screen:\(key):\(id)", path: path ?? livePath ?? .constant(NavigationPath()), fallback: AnyView(native()))
+        } else { native() }
+    }
+}
+
 /// مسار التنقل الحالي (يحطه TabStack) عشان الخانات الحية تفتح المنتجات والصفحات
 private struct LivePathKey: EnvironmentKey { static let defaultValue: Binding<NavigationPath>? = nil }
 extension EnvironmentValues {
@@ -108,15 +149,20 @@ struct LiveSlot: View {
 struct LiveScreen: View {
     let page: String
     @Binding var path: NavigationPath
+    var fallback: AnyView? = nil
     @Environment(CatalogStore.self) private var catalog
     @Environment(Cart.self) private var cart
+    @Environment(OrderCenter.self) private var orders
+    @Environment(\.liveTab) private var liveTab
     @State private var height: CGFloat = 0
     @State private var failed = false
     @State private var url: URL? = nil
+    @State private var rev = -1
 
     var body: some View {
         Group {
-            if failed {
+            if failed, let fallback { fallback }
+            else if failed {
                 VStack(spacing: 10) {
                     Image(systemName: "wifi.exclamationmark").font(.system(size: 34)).foregroundStyle(Theme.muted)
                     Text("ما قدرنا نفتح الصفحة. تأكد من النت وجرّب مرة ثانية.").font(.ui(size: 14)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
@@ -124,17 +170,44 @@ struct LiveScreen: View {
                 }.padding(30)
             } else if let url {
                 LiveWeb(url: url, fit: false, height: $height, failed: $failed,
-                        onMessage: LiveBridge(path: $path, tab: nil, cart: cart, catalog: catalog, close: { if !path.isEmpty { path.removeLast() } }).handle)
+                        onMessage: LiveBridge(path: $path, tab: liveTab, cart: cart, catalog: catalog, close: { if !path.isEmpty { path.removeLast() } }, orders: orders).handle)
             } else { ProgressView() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.pageBG)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: failed) { if url == nil { url = LiveBridge.url([URLQueryItem(name: "page", value: page)], cart: cart, version: catalog.version) } }
+        .task(id: failed) { if url == nil { load() } }
+        // السلة تغيّرت من شاشة ثانية: نعيد فتح الصفحة بالسلة الجديدة لما ترجع لها
+        .onAppear { if rev != -1, rev != cart.revision { load() } }
+    }
+
+    private func load() {
+        rev = cart.revision
+        if page.hasPrefix("screen:") {
+            let p = page.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+            let key = p.count > 1 ? (p[1] == "account" ? "more" : p[1]) : "home"
+            url = LiveBridge.url([URLQueryItem(name: "screen", value: key), URLQueryItem(name: "id", value: p.count > 2 ? p[2] : "")], cart: cart, version: catalog.version)
+        } else {
+            url = LiveBridge.url([URLQueryItem(name: "page", value: page)], cart: cart, version: catalog.version)
+        }
     }
 
     private var title: String {
+        if page.hasPrefix("screen:") {
+            let p = page.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+            let key = p.count > 1 ? p[1] : "", id = p.count > 2 ? p[2] : ""
+            switch key {
+            case "cat": return catalog.category(id)?.name ?? ""
+            case "product": return catalog.product(id)?.name ?? ""
+            case "cart": return "السلة"
+            case "search": return "البحث"
+            case "cats": return "الأقسام"
+            case "account": return "حسابي"
+            default: return catalog.store.name
+            }
+        }
+        if page == "offers" { return "العروض" }
         if page.hasPrefix("g:"), let g = catalog.store.groups.first(where: { $0.id == page.split(separator: ":").dropFirst().first.map(String.init) }) { return "عرض " + g.name }
         return catalog.store.name
     }
@@ -201,6 +274,10 @@ private struct LiveWeb: UIViewRepresentable {
         // ما يفتح أي صفحة ثانية داخل المربع: بس صفحة المتجر نفسها
         func webView(_ w: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             let u = action.request.url
+            if let u, u.host != AppConfig.site.host, action.navigationType == .linkActivated || ["tel", "sms", "mailto", "whatsapp"].contains(u.scheme ?? "") {
+                // روابط الاتصال والواتساب والخرائط من صفحات الموقع تفتح برّا التطبيق
+                UIApplication.shared.open(u); decisionHandler(.cancel); return
+            }
             decisionHandler(u?.host == AppConfig.site.host && action.targetFrame?.isMainFrame != false ? .allow : .cancel)
         }
 

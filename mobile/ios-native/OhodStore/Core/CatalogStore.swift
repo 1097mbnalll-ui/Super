@@ -122,6 +122,9 @@ final class CatalogStore {
     func category(_ id: String) -> Category? { index?.categoriesById[id] }
     func products(in category: String) -> [Product] { index?.byCategory[category] ?? [] }
 
+    /// هل الشاشة تنعرض من الموقع (store.app.web)
+    func web(_ key: String) -> Bool { store.webScreens.contains("*") || store.webScreens.contains(key) }
+
     /// «قريباً»: منتج جديد بدون سعر أو في قسم قريباً، ينعرض بدون إضافة
     func isSoon(_ p: Product) -> Bool { !isAvailable(p) && (p.soon || category(p.cat)?.soon == true) }
 

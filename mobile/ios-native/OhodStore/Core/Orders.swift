@@ -165,6 +165,16 @@ final class OrderCenter {
     var current: SavedOrder? { orders.first(where: \.isActive) }
     var hasPendingAttempt: Bool { attempt != nil }
 
+    /// طلب انرسل من شاشة الموقع داخل التطبيق: نحفظه هنا عشان المتابعة والإشعارات وطلباتي
+    func adopt(no: String, total: Double, phone: String, pay: String, items: [String: Int], lat: Double?, lng: Double?) {
+        guard !no.isEmpty, !orders.contains(where: { $0.no == no }) else { return }
+        var o = SavedOrder(no: no.hasPrefix("#") ? no : "#" + no, total: total, phone: phone, pay: pay, at: Date(), status: "new",
+                           items: items, keys: Array(items.keys))
+        o.lat = lat; o.lng = lng; o.track = true
+        if !phone.isEmpty { self.phone = phone }
+        orders.insert(o, at: 0)
+    }
+
     func save(address: DeliveryAddress, phone: String, name: String) {
         self.address = address
         self.phone = Self.normalizedPhone(phone) ?? phone

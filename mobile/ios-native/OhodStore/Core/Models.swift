@@ -281,6 +281,9 @@ struct StoreInfo: Sendable {
     var liveCart = true
     /// تصرف الأزرار من الموقع (store.app.tap): «هالمنتج لما ينضغط يفتح صفحة كذا» بدون تحديث للتطبيق
     var tapRules: [TapRule] = []
+    /// شاشات التطبيق اللي تنعرض من الموقع (store.app.web): true = كل الشاشات، أو قائمة مثل ["home","cat","product","cart"].
+    /// المالك يقلبها من data.json فأي تعديل في الموقع يطلع في التطبيق بدون تحديث
+    var webScreens: Set<String> = []
     /// خدمة الطباعة (store.print): «قريباً»، وأقل طلب لو السلة طباعة بس
     var printSoon = false
     var printMinOrder: Double? = nil
@@ -406,6 +409,10 @@ enum CatalogParser {
         if let app = s["app"] as? [String: Any], let slots = app["slots"] as? [String: Any] {
             store.liveProduct = (slots["product"] as? Bool) ?? true
             store.liveCart = (slots["cart"] as? Bool) ?? true
+        }
+        if let app = s["app"] as? [String: Any] {
+            if (app["web"] as? Bool) == true { store.webScreens = ["*"] }
+            else if let l = app["web"] as? [Any] { store.webScreens = Set(l.compactMap { str($0) }) }
         }
         if let app = s["app"] as? [String: Any], let taps = app["tap"] as? [[String: Any]] {
             let set: (Any?) -> Set<String>? = { v in
