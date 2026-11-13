@@ -68,7 +68,7 @@ jobs:
           D=$RUNNER_TEMP/emu; rm -rf $D
           git clone -q --depth 1 -b emu-results "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" $D 2>/dev/null || { mkdir -p $D && cd $D && git init -q -b emu-results && git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"; cd -; }
           rm -rf $D/latest && mkdir -p $D/latest
-          for f in mobile/emu-out/*.png; do convert "$f" -resize 540x -quality 80 "$D/latest/$(basename "${f%.png}").jpg"; done
+          cp mobile/emu-out/*.png $D/latest/
           cp mobile/emu-out/report.json mobile/emu-out/window.txt $D/latest/ 2>/dev/null || true
           echo "${{ github.sha }} run ${{ github.run_id }}" > $D/latest/SOURCE.txt
           cd $D && git add -A latest && git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "emulator results ${{ github.run_number }}" && git push -q origin HEAD:emu-results || echo "nothing to push"
