@@ -617,7 +617,8 @@ private struct QuickChips: View {
                     Button { path.append(Route.banner(b.id)) } label: { Chip(title: "🎁 \(b.title.replacingOccurrences(of: "\n", with: " "))") }
                         .buttonStyle(PressableStyle())
                 }
-                ForEach(catalog.categories.filter { !$0.soon }) { c in
+                // قسم «قريباً» فيه منتجات (مثل أصناف مخبز جديدة): يطلع في الأزرار بشارته، بدون تحديث
+                ForEach(catalog.categories.filter { !$0.soon || !catalog.products(in: $0.id).isEmpty }) { c in
                     Button { path.append(Route.category(c.id)) } label: { Chip(title: "\(c.emoji) \(c.name)") }
                         .buttonStyle(PressableStyle())
                 }

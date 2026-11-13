@@ -95,7 +95,7 @@ private struct FlowChips: View {
     var body: some View {
         let columns = [GridItem(.adaptive(minimum: 140), spacing: 8, alignment: .leading)]
         LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
-            ForEach(catalog.categories.filter { !$0.soon }) { c in
+            ForEach(catalog.categories.filter { !$0.soon || !catalog.products(in: $0.id).isEmpty }) { c in
                 NavigationLink(value: Route.category(c.id)) {
                     Chip(title: "\(c.emoji) \(c.name)")
                         .frame(maxWidth: .infinity, alignment: .leading)
