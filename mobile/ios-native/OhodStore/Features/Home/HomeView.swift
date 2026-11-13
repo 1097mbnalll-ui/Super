@@ -35,20 +35,38 @@ struct HomeView: View {
     }
 
     private var sections: [String] {
-        let defaults = ["promos", "free", "catgrid", "offers", "deals", "grid"]
         let lay = catalog.store.layout
-        if lay.isEmpty { return ["promos", "free", "catgrid", "grid"] }   // العروض و٠٫٩٥ مخفية افتراضياً
-        var out = lay.filter { $0.on && defaults.contains($0.id) }.map(\.id)
+        if lay.isEmpty { return ["promos", "catoffers", "free", "catgrid", "grid"] }   // العروض و٠٫٩٥ مخفية افتراضياً
+        // الأقسام اللي التطبيق ما يعرفها (جديدة في الموقع، مثل «عروض الأقسام») تنعرض من الموقع مع البنرات (الرئيسية الحية)
+        var out = lay.filter { $0.on }.map(\.id)
         // اللي مو بالترتيب (جديد) ينضاف بعد، ما عدا العروض و٠٫٩٥
         for id in ["promos", "free", "catgrid", "grid"] where !lay.contains(where: { $0.id == id }) { out.append(id) }
+        // «عروض الأقسام» جديدة: لو ما هي في ترتيب المالك تنحط بعد البنرات (مثل الموقع)
+        if !lay.contains(where: { $0.id == "catoffers" }), let i = out.firstIndex(of: "promos") { out.insert("catoffers", at: i + 1) }
         return out
+    }
+
+    static let native: Set<String> = ["free", "catgrid", "offers", "deals", "grid"]
+    /// الأقسام اللي تنعرض من الموقع: كل مجموعة متتالية منها (بين أقسام التطبيق) في مربع حي واحد، بنفس ترتيب الإدارة
+    private func liveRun(startingAt id: String) -> [String]? {
+        let all = sections
+        guard let i = all.firstIndex(of: id), i == 0 || Self.native.contains(all[i - 1]) else { return nil }
+        var run: [String] = []
+        for x in all[i...] { if Self.native.contains(x) { break }; run.append(x) }
+        return run
     }
 
     @ViewBuilder private func section(_ id: String) -> some View {
         switch id {
-        case "promos":
-            BannerCarousel(path: $path)
-                .padding(.horizontal, 16).padding(.top, 16)
+        case _ where !Self.native.contains(id):
+            // الرئيسية الحية: كل أقسام الموقع المتتالية في مربع واحد مكان أولها
+            if let run = liveRun(startingAt: id) {
+                LiveHomeBlocks(blocks: run, tab: $tab, path: $path) {
+                    if run.contains("promos") {
+                        BannerCarousel(path: $path).padding(.horizontal, 16).padding(.top, 4)
+                    }
+                }
+            }
         case "free":
             if catalog.store.freeOver > 0 {
                 // كرت التوصيل المجاني (SEC.free في الموقع)

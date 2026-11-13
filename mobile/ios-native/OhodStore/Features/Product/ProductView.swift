@@ -8,6 +8,7 @@ struct ProductView: View {
     @State private var packIndex: Int? = nil   // nil = الحبة
     @State private var qty = 1
     @State private var justAdded = false
+    @Environment(\.livePath) private var livePath
 
     var body: some View {
         Group {
@@ -63,7 +64,8 @@ struct ProductView: View {
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        PriceLabel(price: unitPrice, old: pack == nil ? product.old : nil, size: 24)
+                        if catalog.isSoon(product) { Text("قريباً").font(.ui(size: 22, weight: .bold)).foregroundStyle(Theme.copper) }
+                        else { PriceLabel(price: unitPrice, old: pack == nil ? product.old : nil, size: 24) }
                         Text(tv: pack.map { "/ \($0.unit)" } ?? (product.packs.isEmpty ? "/ \(product.unit)" : "/ الحبة"))
                             .font(.ui(size: 14, weight: .semibold)).foregroundStyle(Theme.muted)
                     }
@@ -97,7 +99,7 @@ struct ProductView: View {
                         Text("الحد الأقصى \(m) لكل طلب").font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
                     }
                     if !available {
-                        Label("نفد من المحل حالياً", systemImage: "exclamationmark.circle")
+                        Label(catalog.isSoon(product) ? "قريباً إن شاء الله نوفّره، تابعنا." : "نفد من المحل حالياً", systemImage: catalog.isSoon(product) ? "clock" : "exclamationmark.circle")
                             .font(.ui(size: 14, weight: .semibold))
                             .foregroundStyle(Theme.copperInk)
                     }
@@ -112,6 +114,9 @@ struct ProductView: View {
                     PackPicker(product: product, selection: $packIndex)
                         .padding(.horizontal, 16)
                 }
+
+                // خانة حية من الموقع (عرض المجموعة، «ينشرى معه»، وأي ميزة جديدة لصفحة المنتج بدون تحديث)
+                if catalog.store.liveProduct { LiveSlot(slot: "product", id: product.id).padding(.top, 14) }
 
                 // «يحلى معه» من اختيار المالك (sugg)، وإلا «ممكن يعجبك» من نفس القسم
                 let picked = product.sugg.compactMap { catalog.product($0) }.filter { $0.id != product.id && catalog.isAvailable($0) }
@@ -136,7 +141,19 @@ struct ProductView: View {
         .scrollIndicators(.hidden)
         .background(Color.white)
         .safeAreaInset(edge: .bottom) {
-            if available {
+            if available, let live = catalog.tap("buy", product) {
+                // زر الشراء يفتح صفحة حية حسب الموقع (store.app.tap on=buy)، مثل نافذة اختيار عرض المجموعة
+                let g = catalog.group(for: product.id)
+                Button { livePath?.wrappedValue.append(Route.live(live.page)) } label: {
+                    HStack {
+                        Text(tv: live.label ?? "أضف للسلة"); Spacer()
+                        if let g { Text("\(g.count) بـ \(Money.plain(g.price))") } else { Text(tv: Money.sar(unitPrice)) }
+                    }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.horizontal, 16).padding(.vertical, 10)
+                .background(.bar)
+            } else if available {
                 // الشريط تحت يعدّل السلة نفسها: قبل الإضافة زر واحد، وبعدها عداد السلة ومجموع المنتج فيها
                 let line = cart.line(key)
                 let cap = cart.limit(for: key, in: catalog) ?? product.max

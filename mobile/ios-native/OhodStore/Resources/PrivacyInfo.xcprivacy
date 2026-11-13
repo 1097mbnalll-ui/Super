@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- بيان الخصوصية لآبل: ما فيه تتبع ولا إعلانات. نحفظ السلة والاسم والجوال في UserDefaults داخل الجهاز (CA92.1)،
+<!-- بيان الخصوصية لآبل: ما فيه تتبع ولا إعلانات. تحليل مجمّع بدون هوية (مشاهدات المنتجات والبحث، /ev) ورمز الجهاز للإشعارات. نحفظ السلة والاسم والجوال في UserDefaults داخل الجهاز (CA92.1)،
      ونرسل للخادم وقت الطلب بس: الاسم والجوال والعنوان وموقع التوصيل وأصناف الطلب (للوظيفة الأساسية). -->
 <plist version="1.0">
 <dict>
@@ -48,6 +48,24 @@
 			<key>NSPrivacyCollectedDataTypeLinked</key><true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key><false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key><array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key><string>NSPrivacyCollectedDataTypeDeviceID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key><true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key><false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key><array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key><string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key><false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key><false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key><array><string>NSPrivacyCollectedDataTypePurposeAnalytics</string></array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key><string>NSPrivacyCollectedDataTypeSearchHistory</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key><false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key><false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key><array><string>NSPrivacyCollectedDataTypePurposeAnalytics</string></array>
 		</dict>
 	</array>
 </dict>

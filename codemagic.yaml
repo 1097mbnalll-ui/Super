@@ -69,22 +69,7 @@ workflows:
     name: iOS Native Preview (simulator screenshots)
     instance_type: mac_mini_m2
     max_build_duration: 45
-    triggering:
-      events:
-        - push
-      branch_patterns:
-        - pattern: mobile-app
-          include: true
-          source: true
-      cancel_previous_builds: true
-    when:
-      changeset:
-        includes:
-          - 'mobile/ios-native/'
-        excludes:
-          - 'mobile/ios-native/design/'
-          - 'mobile/ios-native/research/'
-          - '**/*.md'
+    # يدوي فقط (قرار المالك ١٣ نوفمبر ٢٠٢٦): كان يشتغل مع كل دفعة ويصرف دقائق Codemagic
     environment:
       xcode: latest
     scripts:
@@ -116,26 +101,104 @@ workflows:
   ios-store-listing:
     name: App Store listing upload (metadata + screenshots)
     instance_type: mac_mini_m2
+    max_build_duration: 45
+    integrations:
+      app_store_connect: ohod
+    environment:
+      xcode: latest
+      vars:
+        FASTLANE_SKIP_UPDATE_CHECK: "1"
+        FASTLANE_OPT_OUT_USAGE: "1"
+        FASTLANE_DISABLE_COLORS: "1"
+        FASTLANE_HIDE_TIMESTAMP: "1"
+        CI: "true"
+    scripts:
+      - name: 1 - key and login
+        script: |
+          python3 - <<'PY'
+          import base64, glob, json, os, re, subprocess
+          E = os.environ
+          names = sorted(k for k in E if "APP_STORE" in k or k.startswith("ASC") or "PRIVATE_KEY" in k or "CM_APP_STORE" in k)
+          print("env names:", names)
+          def kind(v):
+              if not v: return "empty"
+              if "BEGIN" in v: return "pem(lines=%d,len=%d)" % (v.count("\n") + 1, len(v))
+              if os.path.exists(v.strip()): return "path-to-existing-file"
+              if v.strip().startswith("/"): return "path-missing"
+              return "other(len=%d)" % len(v)
+          for n in names:
+              if n != "APP_STORE_CONNECT_KEY_IDENTIFIER" and n != "APP_STORE_CONNECT_ISSUER_ID": print(" ", n, "=", kind(E[n]))
+          cands = []
+          for n in names:
+              v = E[n]
+              if not v: continue
+              if "BEGIN" in v: cands.append(("env:" + n, v.replace("\\n", "\n")))
+              elif os.path.exists(v.strip()) and os.path.isfile(v.strip()): cands.append(("file:" + n, open(v.strip()).read()))
+              else:
+                  try:
+                      d = base64.b64decode(v).decode()
+                      if "BEGIN" in d: cands.append(("b64:" + n, d))
+                  except Exception: pass
+          for pat in ["~/.appstoreconnect/private_keys/*.p8", "~/.private_keys/*.p8", "/Users/builder/clone/*.p8"]:
+              for f in glob.glob(os.path.expanduser(pat))[:5]:
+                  print("found key file:", f); cands.append(("file:" + f, open(f).read()))
+          print("candidates:", [c[0] for c in cands])
+          ok = None
+          for name, raw in cands:
+              body = re.sub(r"-----[^-]+-----|\s+", "", raw)
+              pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(body[i:i+64] for i in range(0, len(body), 64)) + "\n-----END PRIVATE KEY-----\n"
+              open("/tmp/AuthKey.p8", "w").write(pem)
+              r = subprocess.run(["openssl", "pkey", "-in", "/tmp/AuthKey.p8", "-noout"], capture_output=True)
+              print("try", name, "chars", len(body), "->", "OK" if r.returncode == 0 else "no")
+              if r.returncode == 0: ok = pem; break
+          if not ok: print("KEY_NOT_FOUND"); raise SystemExit(1)
+          json.dump({"key_id": E["APP_STORE_CONNECT_KEY_IDENTIFIER"], "issuer_id": E["APP_STORE_CONNECT_ISSUER_ID"], "key": ok, "in_house": False}, open("/tmp/asc.json", "w"))
+          PY
+          echo "KEY_PARSES_OK"
+          # تسجيل دخول تجريبي قبل الرفع (مهلة دقيقتين)
+          python3 mobile/ios-native/scripts/run_limited.py 120 ruby -e 'require "spaceship"; t = Spaceship::ConnectAPI::Token.from_json_file("/tmp/asc.json"); Spaceship::ConnectAPI.token = t; puts "LOGIN_OK apps=" + Spaceship::ConnectAPI::App.all.map(&:bundle_id).inspect'
+      - name: 2 - metadata only
+        script: |
+          cd mobile/ios-native
+          # ما نلمس معلومات المراجع ولا الحقوق ولا التصنيف (المالك عبّاها يدوي)، ولا نقدّم للمراجعة ولا نفعّل النشر التلقائي
+          python3 scripts/run_limited.py 600 fastlane deliver --api_key_path /tmp/asc.json --app_identifier sa.ohod.store --skip_binary_upload true \
+            --skip_screenshots true --force true --run_precheck_before_submit false \
+            --submit_for_review false --automatic_release false \
+            --metadata_path fastlane/metadata --ignore_language_directory_validation true --verbose
+      - name: 3 - screenshots only
+        script: |
+          cd mobile/ios-native
+          python3 scripts/run_limited.py 900 fastlane deliver --api_key_path /tmp/asc.json --app_identifier sa.ohod.store --skip_binary_upload true \
+            --skip_metadata true --overwrite_screenshots true --force true --run_precheck_before_submit false \
+            --submit_for_review false --automatic_release false \
+            --screenshots_path fastlane/screenshots --ignore_language_directory_validation true --verbose
+      - name: 4 - audit after upload
+        script: |
+          python3 mobile/ios-native/scripts/run_limited.py 300 ruby mobile/ios-native/scripts/asc_audit.rb || true
+
+  # ٧) فحص قراءة فقط لصفحة التطبيق في App Store Connect + precheck (ما يكتب شي)
+  ios-asc-audit:
+    name: App Store Connect audit (read only)
+    instance_type: mac_mini_m2
     max_build_duration: 30
     integrations:
       app_store_connect: ohod
     environment:
       xcode: latest
+      vars:
+        FASTLANE_SKIP_UPDATE_CHECK: "1"
+        FASTLANE_OPT_OUT_USAGE: "1"
+        FASTLANE_DISABLE_COLORS: "1"
+        CI: "true"
     scripts:
-      - name: Upload listing
+      - name: 1 - key
+        script: python3 mobile/ios-native/scripts/asc_key.py
+      - name: 2 - audit
+        script: python3 mobile/ios-native/scripts/run_limited.py 300 ruby mobile/ios-native/scripts/asc_audit.rb
+      - name: 3 - precheck
         script: |
-          env | grep -E "^APP_STORE_CONNECT" | sed -E 's/=.*/=<set>/' | sort
-          app-store-connect apps list --bundle-id-identifier sa.ohod.store 2>&1 | head -30 || true
-          if [ -z "$APP_STORE_CONNECT_PRIVATE_KEY" ]; then echo "NO_KEY_ENV"; exit 0; fi
-          python3 - <<'PY'
-          import json, os
-          json.dump({"key_id": os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"], "issuer_id": os.environ["APP_STORE_CONNECT_ISSUER_ID"],
-                     "key": os.environ["APP_STORE_CONNECT_PRIVATE_KEY"], "in_house": False}, open("/tmp/asc.json", "w"))
-          PY
           cd mobile/ios-native
-          fastlane deliver --api_key_path /tmp/asc.json --app_identifier sa.ohod.store --skip_binary_upload true \
-            --overwrite_screenshots true --force true --run_precheck_before_submit false --submit_for_review false \
-            --metadata_path fastlane/metadata --screenshots_path fastlane/screenshots --ignore_language_directory_validation true 2>&1 | tail -80
+          python3 scripts/run_limited.py 400 fastlane precheck --api_key_path /tmp/asc.json --app_identifier sa.ohod.store --default_rule_level warn --include_in_app_purchases false || true
 
   # ٤) التطبيق الأصلي: بناء موقّع ورفع لـ TestFlight. يشتغل لما ينرفع tag يبدأ بـ ios-native-
   ios-native-testflight:

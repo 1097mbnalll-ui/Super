@@ -27,7 +27,8 @@ struct ProductCard: View {
 
     var body: some View {
         let available = catalog.isAvailable(product)
-        NavigationLink(value: Route.product(product.id)) {
+        // الضغط على الكرت: صفحة المنتج، أو صفحة حية لو الموقع حدد (store.app.tap on=open)
+        NavigationLink(value: kind == nil ? catalog.tap("open", product).map { Route.live($0.page) } ?? Route.product(product.id) : Route.product(product.id)) {
             VStack(alignment: .leading, spacing: 3) {
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
@@ -54,7 +55,7 @@ struct ProductCard: View {
                             .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                     if !available {
-                        Text("نفد")
+                        Text(catalog.isSoon(product) ? "قريباً" : "نفد")
                             .font(.ui(size: 11, weight: .bold))
                             .foregroundStyle(Theme.muted)
                             .padding(.horizontal, 8).padding(.vertical, 3)
@@ -85,7 +86,9 @@ struct ProductCard: View {
                     .font(.ui(size: 12.5))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
-                if let pp = promoPrice {
+                if catalog.isSoon(product) {
+                    Text("قريباً").font(.ui(size: 15, weight: .bold)).foregroundStyle(Theme.copper)
+                } else if let pp = promoPrice {
                     PriceLabel(price: pp, old: product.price, size: 17)
                 } else if available, let q = product.quantityOffer {
                     // عرض الكمية مثل: ٥٫٨٠ ر.س  ~٦٫٠٠~  [العدد ٣]  ثم «🔥 وفّر ٠٫٢٠ ر.س بالعرض»
@@ -153,15 +156,19 @@ struct CardQuantityControl: View {
     let limit: Int?
     @Environment(Cart.self) private var cart
     @Environment(CatalogStore.self) private var catalog
+    @Environment(\.livePath) private var livePath
 
     var body: some View {
         let line = cart.line(key)
         let cap = cart.limit(for: key, in: catalog) ?? limit
+        // زر + يتصرف حسب الموقع (store.app.tap)، مثل منتج داخل عرض مجموعة: يفتح نافذة الاختيار الحية والمنتج محطوط فيها
+        let live = key.contains(":") || key.contains("~") ? nil : catalog.product(key).flatMap { catalog.tap("add", $0) }
         Group {
-            if line.qty == 0 {
+            if line.qty == 0 || live != nil {
                 HStack {
                     Spacer(minLength: 0)
                     Button {
+                        if let live, let lp = livePath { lp.wrappedValue.append(Route.live(live.page)); return }
                         cart.increment(key, limit: cap)
                     } label: {
                         // الزر متناسق مع حجم الكرت والسعر، ويكبر ويصغر مع الخط من «شكل التطبيق»

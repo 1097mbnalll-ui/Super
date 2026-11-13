@@ -37,6 +37,12 @@ struct RootView: View {
     @State private var previewPlaced: SavedOrder?
     @State private var previewDetails: SavedOrder?
     @State private var tab: AppTab = .home
+    @State private var seenSubs: Set<Int> = []
+    private struct PendingSub: Identifiable { let offer: SubOffer; let order: SavedOrder; var id: Int { offer.id } }
+    private var pendingSub: PendingSub? {
+        for o in orders.orders where o.isActive { if let s = (orders.subs[o.no] ?? []).first(where: { !seenSubs.contains($0.id) }) { return PendingSub(offer: s, order: o) } }
+        return nil
+    }
     @State private var homePath = NavigationPath()
     @State private var categoriesPath = NavigationPath()
     @State private var offersPath = NavigationPath()
@@ -46,20 +52,20 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            TabStack(path: $homePath) { HomeView(tab: $tab, path: $homePath) }
+            TabStack(path: $homePath) { RemoteScreen(key: "home", path: $homePath) { HomeView(tab: $tab, path: $homePath) } }
                 .tabItem { Label("الرئيسية", systemImage: icon("home", "house.fill")) }
                 .tag(AppTab.home)
-            TabStack(path: $categoriesPath) { CategoriesView(path: $categoriesPath) }
+            TabStack(path: $categoriesPath) { RemoteScreen(key: "cats", path: $categoriesPath) { CategoriesView(path: $categoriesPath) } }
                 .tabItem { Label("الأقسام", systemImage: icon("categories", "square.grid.2x2.fill")) }
                 .tag(AppTab.categories)
-            TabStack(path: $offersPath) { OffersView() }
+            TabStack(path: $offersPath) { RemoteScreen(key: "offers", page: "offers", path: $offersPath) { OffersView() } }
                 .tabItem { Label("العروض", systemImage: icon("offers", "tag.fill")) }
                 .tag(AppTab.offers)
-            TabStack(path: $cartPath) { CartView(tab: $tab) }
+            TabStack(path: $cartPath) { RemoteScreen(key: "cart", path: $cartPath) { CartView(tab: $tab) } }
                 .tabItem { Label("السلة", systemImage: icon("cart", "bag.fill")) }
                 .badge(cart.count)
                 .tag(AppTab.cart)
-            TabStack(path: $accountPath) { AccountView(tab: $tab) }
+            TabStack(path: $accountPath) { RemoteScreen(key: "account", path: $accountPath) { AccountView(tab: $tab) } }
                 .tabItem { Label("حسابي", systemImage: icon("account", "person.fill")) }
                 .badge(orders.pendingSubs)
                 .tag(AppTab.account)
@@ -67,6 +73,7 @@ struct RootView: View {
         // لما يتغير «شكل التطبيق» من الإدارة نعيد رسم الواجهة بالإعدادات الجديدة
         .id(catalog.lookVersion)
         .environment(\.zoomNamespace, zoom)
+        .environment(\.liveTab, $tab)
         .task {
             await catalog.load()
             applyLaunchArguments()
@@ -95,6 +102,15 @@ struct RootView: View {
                 await orders.refresh(catalog: catalog)
                 try? await Task.sleep(for: .seconds(orders.current?.status == "onway" ? 10 : 20))
             }
+        }
+        // بديل مقترح لمنتج ناقص: يطلع للزبون على طول وين ما كان (مو بس في «حسابي») عشان يوافق أو يرفض
+        .sheet(item: Binding(get: { pendingSub }, set: { if $0 == nil, let p = pendingSub { seenSubs.insert(p.offer.id) } })) { p in
+            NavigationStack {
+                ScrollView { SubOfferCard(offer: p.offer, order: p.order).padding(16) }
+                    .navigationTitle("بديل لمنتج في طلبك").navigationBarTitleDisplayMode(.inline)
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("بعدين") { seenSubs.insert(p.offer.id) } } }
+            }
+            .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $previewAddress) { AddressView() }
         .sheet(item: $previewDetails) { OrderDetailView(order: $0) }
@@ -180,15 +196,19 @@ struct TabStack<Root: View>: View {
             root()
                 .navigationDestination(for: Route.self) { route in
                     switch route {
-                    case .category(let id): CategoryView(categoryID: id)
-                    case .product(let id): ProductView(productID: id)
-                    case .search: SearchView()
-                    case .offers: OffersView()
-                    case .deals: DealsView()
+                    // كل شاشة تقدر تنعرض من الموقع بدل الأصلية (store.app.web) بدون تحديث للتطبيق
+                    case .category(let id): RemoteScreen(key: "cat", id: id, path: $path) { CategoryView(categoryID: id) }
+                    case .product(let id): RemoteScreen(key: "product", id: id, path: $path) { ProductView(productID: id) }
+                    case .search: RemoteScreen(key: "search", path: $path) { SearchView() }
+                    case .offers: RemoteScreen(key: "offers", page: "offers", path: $path) { OffersView() }
+                    case .deals: RemoteScreen(key: "deals", page: "deals", path: $path) { DealsView() }
                     case .daily: DailyDealView()
-                    case .banner(let id): BannerProductsView(bannerID: id)
+                    case .banner(let id): RemoteScreen(key: "banner", page: "b:" + id, path: $path) { BannerProductsView(bannerID: id) }
+                    case .live(let page): LiveScreen(page: page, path: $path)
                     }
                 }
+                .environment(\.livePath, $path)
         }
+        .environment(\.livePath, $path)
     }
 }

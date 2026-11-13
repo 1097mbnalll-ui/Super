@@ -57,7 +57,12 @@ struct CartTotals {
     var minOrder: Double = 0
     /// التوصيل مجاني وكان سعره كذا (يطلع مشطوب)
     var feeWas: Double = 0
-    var total: Double { subtotal + fee }
+    /// خصم من الخادم (كود خصم أو هدية) حسب /quote
+    var discount: Double = 0
+    /// الخادم يقول السلة ناقصة (مثل عرض مجموعة ما كمل): الرسالة ورقم المجموعة
+    var quoteError: String? = nil
+    var quoteGroup: String? = nil
+    var total: Double { subtotal + fee - discount }
     var freeRemaining: Double { freeOver > 0 ? max(0, freeOver - subtotal) : 0 }
     var freeProgress: Double { freeOver > 0 ? min(1, subtotal / freeOver) : 1 }
     var belowMinimum: Double? { minOrder > 0 && subtotal < minOrder ? minOrder - subtotal : nil }
@@ -75,6 +80,32 @@ final class Cart {
     @ObservationIgnored private var order: [String] = []
     /// يتغير مع كل تعديل: الإجمالي والشارة يراقبونه
     private(set) var revision = 0
+
+    /// كود الخصم المكتوب في الدفع (ينرسل مع الطلب، والخادم يتحقق منه)
+    var promoCode: String = UserDefaults.standard.string(forKey: "cart.promo") ?? "" {
+        didSet { UserDefaults.standard.set(promoCode, forKey: "cart.promo") }
+    }
+    /// تسعير الخادم (/quote) لآخر نسخة من السلة: أي قاعدة تسعير جديدة تطلع صح بدون تحديث التطبيق
+    struct Quote { let revision: Int; let ok: Bool; let subtotal: Double; let fee: Double; let gift: Double; let promo: Double; let promoCode: String; let code: String?; let group: String?; let n: Int }
+    private(set) var quote: Quote? = nil
+    @ObservationIgnored private var quoting = -1
+    func refreshQuote(_ catalog: CatalogStore, force: Bool = false) async {
+        let rev = revision, items = orderItems(catalog)
+        guard !items.isEmpty, !catalog.apiBase.isEmpty, force || quoting != rev else { if items.isEmpty { quote = nil }; return }
+        quoting = rev
+        var body: [String: Any] = ["items": items]
+        let code = promoCode.trimmingCharacters(in: .whitespaces)
+        if !code.isEmpty { body["promo"] = code }
+        let (status, j) = await API.post(catalog.apiBase, "/quote", body)
+        guard status > 0, rev == revision else { return }
+        let ok = j["ok"] as? Bool == true
+        quote = Quote(revision: rev, ok: ok, subtotal: CatalogParser.num(j["subtotal"]) ?? 0, fee: CatalogParser.num(j["fee"]) ?? 0,
+                      gift: CatalogParser.num(j["gift"]) ?? 0, promo: CatalogParser.num(j["promo"]) ?? 0, promoCode: j["promoCode"] as? String ?? "",
+                      code: ok ? nil : j["code"] as? String, group: j["id"] as? String, n: Int(CatalogParser.num(j["n"]) ?? 0))
+    }
+    /// السلة الحالية بمفاتيحها (للصفحات الحية من الموقع)
+    var snapshot: [String: Int] { _ = revision; var o: [String: Int] = [:]; for k in order { if let q = lines[k]?.qty, q > 0 { o[k] = q } }; return o }
+    func add(key: String, delta: Int) { set(key, Swift.max(0, line(key).qty + delta)) }
 
     /// «لو منتج ناقص» اختيار واحد عام فوق السلة (swap / remove / call)
     var substitution: String = UserDefaults.standard.string(forKey: "cart.sub2") ?? "call" {
@@ -220,6 +251,20 @@ final class Cart {
         t.subtotal = (t.subtotal * 100).rounded() / 100
         if t.count > 0 { t.fee = (store.freeOver > 0 && t.subtotal >= store.freeOver) ? 0 : store.fee }
         if t.count > 0, t.fee == 0, store.feeWas > 0 { t.feeWas = store.feeWas; t.savings += store.feeWas }
+        // تسعير الخادم لنفس نسخة السلة يغلب الحساب المحلي (مجموعات، أكواد، هدايا)
+        if let q = quote, q.revision == revision {
+            if q.ok {
+                let local = t.subtotal
+                t.subtotal = q.subtotal; t.fee = q.fee; t.discount = q.gift + q.promo
+                if local > q.subtotal + 0.009 { t.savings += local - q.subtotal }
+                t.savings += t.discount
+                if t.fee > 0 { if t.feeWas > 0 { t.savings -= t.feeWas }; t.feeWas = 0 }
+            } else if q.code == "pack_only" {
+                let g = catalog.store.groups.first { $0.id == q.group }
+                t.quoteError = g.map { "عرض \($0.name): لازم تختار \($0.count) أو مضاعفاتها. كمّل الاختيار." } ?? "فيه عرض ينباع بالمجموعة بس. كمّل الكمية."
+                t.quoteGroup = g?.id
+            }
+        }
         // السلة طباعة بس: أقل طلب حق الطباعة (minOrderNow في الموقع)
         if !t.rows.isEmpty, t.rows.allSatisfy(\.product.isPrint), let pm = store.printMinOrder { t.minOrder = pm }
         return t

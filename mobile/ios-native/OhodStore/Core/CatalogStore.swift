@@ -100,8 +100,33 @@ final class CatalogStore {
     var categories: [Category] { index?.catalog.categories ?? [] }
 
     func product(_ id: String) -> Product? { index?.byId[id] }
+    /// عرض المجموعة اللي فيه المنتج (store.groups)
+    func group(for productID: String) -> ProductGroup? { store.groups.first { $0.ids.contains(productID) } }
+
+    /// وين يروح الزر (store.app.tap من الموقع). nil = تصرف التطبيق الأصلي. منتج داخل عرض مجموعة: «أضف» يفتح نافذة الاختيار (افتراضي)
+    func tap(_ on: String, _ p: Product) -> (page: String, label: String?)? {
+        let g = group(for: p.id)
+        for r in store.tapRules where r.on.contains(on) {
+            if let ids = r.ids, !ids.contains(p.id) { continue }
+            if let cats = r.cats, !cats.contains(p.cat) { continue }
+            if let want = r.group, want != (g != nil) { continue }
+            if let want = r.offer, want != (p.old != nil) { continue }
+            if r.page.isEmpty || r.page == "native" { return nil }
+            let page = r.page.replacingOccurrences(of: "{id}", with: p.id).replacingOccurrences(of: "{group}", with: g?.id ?? "")
+                .replacingOccurrences(of: "{cat}", with: p.cat)
+            return (page, r.label)
+        }
+        if let g, on == "add" || on == "buy" { return ("g:\(g.id):\(p.id)", nil) }
+        return nil
+    }
     func category(_ id: String) -> Category? { index?.categoriesById[id] }
     func products(in category: String) -> [Product] { index?.byCategory[category] ?? [] }
+
+    /// هل الشاشة تنعرض من الموقع (store.app.web)
+    func web(_ key: String) -> Bool { store.webScreens.contains("*") || store.webScreens.contains(key) }
+
+    /// «قريباً»: منتج جديد بدون سعر أو في قسم قريباً، ينعرض بدون إضافة
+    func isSoon(_ p: Product) -> Bool { !isAvailable(p) && (p.soon || category(p.cat)?.soon == true) }
 
     func isAvailable(_ p: Product) -> Bool {
         guard p.inStock, category(p.cat)?.soon != true else { return false }
@@ -234,6 +259,8 @@ final class CatalogStore {
     }
 
     @ObservationIgnored private var lastRefresh = Date.distantPast
+    /// يزيد مع كل تحديث ناجح للمتجر (الرئيسية الحية تعيد التحميل)
+    private(set) var version = 0
 
     /// لما يرجع الزبون للتطبيق: نجيب آخر نسخة من المتجر (بنرات، أسعار، عروض) لو مر عليها أكثر من دقيقة
     func refreshIfStale() async {
@@ -254,6 +281,7 @@ final class CatalogStore {
             try await apply(data)
             Self.writeCache(data)
             failed = false
+            version += 1
         } catch {
             if index == nil { failed = true }
         }

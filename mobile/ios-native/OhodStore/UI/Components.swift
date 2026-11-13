@@ -13,6 +13,8 @@ enum Route: Hashable {
     case daily
     /// منتجات بنر (بدون هدف) أو باقة
     case banner(String)
+    /// صفحة حية من الموقع (page=…): مثل اختيار عرض المجموعة
+    case live(String)
 }
 
 private struct ZoomNamespaceKey: EnvironmentKey {

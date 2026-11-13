@@ -36,6 +36,8 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # آيفون فقط: لازم هنا على مستوى الهدف (XcodeGen يحط 1,2 للهدف وهو يغلب إعداد المشروع، وآبل تطلب لقطات آيباد 13 إنش لو البناء يدعم الآيباد)
+        TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO

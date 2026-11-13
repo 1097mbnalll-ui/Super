@@ -76,6 +76,8 @@ struct Product: Hashable, Sendable, Identifiable {
     var nameEN: String? = nil
     /// منتجات خدمة الطباعة (print): ما تطلع بالبحث
     var isPrint = false
+    /// منتج «قريباً» (soon في data.json): ينشاف بدون سعر ولا إضافة
+    var soon = false
 
     var imageURL: URL? { AppConfig.asset(image) }
     var hasPhoto: Bool { image?.hasPrefix("p/") == true }
@@ -272,9 +274,40 @@ struct StoreInfo: Sendable {
     var mapCenter: [Double]? = nil
     /// ترتيب أقسام الرئيسية (store.layout)
     var layout: [PromoSlot] = []
+    /// عروض المجموعات (store.groups): «أي ٣ علب بـ …» تنختار من صفحة حية من الموقع
+    var groups: [ProductGroup] = []
+    /// الخانات الحية (store.app.slots): صفحة المنتج والسلة تعرض أجزاء من الموقع (ميزات جديدة بدون تحديث). افتراضياً شغّالة
+    var liveProduct = true
+    var liveCart = true
+    /// تصرف الأزرار من الموقع (store.app.tap): «هالمنتج لما ينضغط يفتح صفحة كذا» بدون تحديث للتطبيق
+    var tapRules: [TapRule] = []
+    /// شاشات التطبيق اللي تنعرض من الموقع (store.app.web): true = كل الشاشات، أو قائمة مثل ["home","cat","product","cart"].
+    /// المالك يقلبها من data.json فأي تعديل في الموقع يطلع في التطبيق بدون تحديث
+    var webScreens: Set<String> = []
     /// خدمة الطباعة (store.print): «قريباً»، وأقل طلب لو السلة طباعة بس
     var printSoon = false
     var printMinOrder: Double? = nil
+}
+
+/// قاعدة تصرف زر (store.app.tap = [{on, ids, cat, group, page, label}]): أول قاعدة تطابق تفوز.
+/// on: add (زر + في الكرت) / open (الضغط على الكرت) / buy (زر صفحة المنتج). page: صفحة حية مثل «g:{group}:{id}»
+/// أو «o:{cat}»، ويتبدل فيها {id} {group} {cat}. page فاضي = التصرف الأصلي للتطبيق
+struct TapRule: Sendable, Hashable {
+    let on: Set<String>
+    let ids: Set<String>?
+    let cats: Set<String>?
+    let group: Bool?
+    let offer: Bool?
+    let page: String
+    let label: String?
+}
+
+struct ProductGroup: Sendable, Hashable {
+    let id: String
+    let name: String
+    let count: Int
+    let price: Double
+    let ids: [String]
 }
 
 struct Catalog: Sendable {
@@ -369,6 +402,29 @@ enum CatalogParser {
         store.layout = ((s["layout"] as? [[String: Any]]) ?? []).compactMap { x in
             str(x["id"]).map { PromoSlot(id: $0, on: (x["on"] as? Bool) ?? true) }
         }
+        store.groups = ((s["groups"] as? [[String: Any]]) ?? []).compactMap { g in
+            guard (g["on"] as? Bool) != false, let id = str(g["id"]), let pr = num(g["price"]), let ids = g["ids"] as? [String], !ids.isEmpty else { return nil }
+            return ProductGroup(id: id, name: str(g["name"]) ?? "", count: Int(num(g["n"]) ?? 3), price: pr, ids: ids)
+        }
+        if let app = s["app"] as? [String: Any], let slots = app["slots"] as? [String: Any] {
+            store.liveProduct = (slots["product"] as? Bool) ?? true
+            store.liveCart = (slots["cart"] as? Bool) ?? true
+        }
+        if let app = s["app"] as? [String: Any] {
+            if (app["web"] as? Bool) == true { store.webScreens = ["*"] }
+            else if let l = app["web"] as? [Any] { store.webScreens = Set(l.compactMap { str($0) }) }
+        }
+        if let app = s["app"] as? [String: Any], let taps = app["tap"] as? [[String: Any]] {
+            let set: (Any?) -> Set<String>? = { v in
+                if let a = v as? [Any] { return Set(a.compactMap { str($0) }) }
+                return str(v).map { Set([$0]) }
+            }
+            store.tapRules = taps.compactMap { t in
+                guard let on = set(t["on"]), !on.isEmpty else { return nil }
+                return TapRule(on: on, ids: set(t["ids"]), cats: set(t["cat"]), group: t["group"] as? Bool, offer: t["offer"] as? Bool,
+                               page: str(t["page"]) ?? "", label: str(t["label"]))
+            }
+        }
 
         let cats: [Category] = ((root["cats"] as? [[String: Any]]) ?? []).compactMap { c in
             guard let id = str(c["id"]), let name = str(en ? (c["name_en"] ?? c["name"]) : c["name"]) else { return nil }
@@ -395,7 +451,8 @@ enum CatalogParser {
                            image: str(p["img"]), inStock: (p["stock"] as? Bool) ?? true, packs: packs,
                            barcode: str(p["bc"]), max: num(p["max"]).map { Int($0) },
                            badge: str(en ? (p["badge_en"] ?? p["badge"]) : p["badge"]), sugg: (p["sugg"] as? [Any])?.compactMap { str($0) } ?? [],
-                           nameEN: str(en ? p["name"] : p["name_en"]), isPrint: p["print"] != nil && !(p["print"] is NSNull) && (p["print"] as? Bool) != false)
+                           nameEN: str(en ? p["name"] : p["name_en"]), isPrint: p["print"] != nil && !(p["print"] is NSNull) && (p["print"] as? Bool) != false,
+                           soon: (p["soon"] as? Bool) ?? false)
         }
         return Catalog(store: store, categories: cats, products: products)
     }
