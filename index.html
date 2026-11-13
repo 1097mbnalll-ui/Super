@@ -1003,14 +1003,17 @@ body.is-embed{background:transparent!important;padding:0!important;margin:0}body
 .kb.s-hero .kh-blob{position:absolute;width:70%;aspect-ratio:1;inset-inline-end:-18%;top:-38%;border-radius:50%;background:rgba(255,255,255,.10);z-index:0}
 .kb.s-hero .kh-dots{position:absolute;inset:0;z-index:0;opacity:.18;background-image:radial-gradient(#fff 1.2px,transparent 1.3px);background-size:14px 14px;-webkit-mask-image:linear-gradient(90deg,transparent 30%,#000 100%);mask-image:linear-gradient(90deg,transparent 30%,#000 100%)}
 [dir="rtl"] .kb.s-hero .kh-dots{-webkit-mask-image:linear-gradient(270deg,transparent 30%,#000 100%);mask-image:linear-gradient(270deg,transparent 30%,#000 100%)}
-.kb.s-hero .t{top:50%;transform:translateY(-50%);max-width:54%;gap:6px}
-.kb.s-hero .kh-k{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:700}
-.kb.s-hero h2{font-size:clamp(17px,calc(var(--banh,200px) / 8.6),28px);font-weight:800;letter-spacing:-.01em}
-.kb.s-hero .kh-big{font-family:var(--display);font-weight:800;line-height:1;color:#FFE14D;font-size:clamp(26px,calc(var(--banh,200px) / 5.2),46px);letter-spacing:-.02em;text-shadow:0 2px 0 rgba(0,0,0,.12)}
+.kb.s-hero .t{top:50%;transform:translateY(-50%);width:54%;max-width:54%;gap:3px}
+.kb.s-hero .t>*{max-width:100%}
+.kb.s-hero .t h2{display:-webkit-box!important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kb.s-hero p{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb.s-hero .kh-k{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb.s-hero h2{font-size:clamp(14px,calc(var(--banh,200px) / 11.5),21px);line-height:1.2;font-weight:800;letter-spacing:-.01em}
+.kb.s-hero .kh-big{font-family:var(--display);font-weight:800;line-height:1;color:#FFE14D;font-size:clamp(20px,calc(var(--banh,200px) / 6.8),34px);letter-spacing:-.02em;text-shadow:0 2px 0 rgba(0,0,0,.12);white-space:nowrap}
 .kb.s-hero p{opacity:.92}
-.kb.s-hero .go{background:#fff;color:color-mix(in srgb,var(--bc,#0B7A5A) 85%,#000);display:inline-flex;align-items:center;gap:6px;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.kb.s-hero .go{margin-top:2px;padding:6px 13px;font-size:12px;background:#fff;color:color-mix(in srgb,var(--bc,#0B7A5A) 85%,#000);display:inline-flex;align-items:center;gap:6px;box-shadow:0 6px 16px rgba(0,0,0,.18)}
 .kb.s-hero .go svg{width:14px;height:14px}
-.kb.s-hero .kh-plate{position:absolute;z-index:1;inset-inline-end:5%;top:50%;transform:translateY(-50%);width:min(40%,calc(var(--banh,200px) * .86));aspect-ratio:1;border-radius:50%;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.25),inset 0 -8px 0 rgba(0,0,0,.04)}
+.kb.s-hero .kh-plate{position:absolute;z-index:1;inset-inline-end:4%;top:50%;transform:translateY(-50%);width:min(36%,calc(var(--banh,200px) * .82));aspect-ratio:1;border-radius:50%;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.25),inset 0 -8px 0 rgba(0,0,0,.04)}
 .kb.s-hero .kb-p{z-index:2;filter:none;mix-blend-mode:multiply;animation:none}
 .kb.s-hero .h1.hn1{inset-inline-end:9%;top:16%;width:32%;height:68%}
 .kb.s-hero .h1.hn2,.kb.s-hero .h1.hn3{inset-inline-end:16%;top:12%;width:24%;height:62%;z-index:3}
@@ -1997,7 +2000,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var mulP = offers.filter(function(p){ return mustOf(p) && hasPic(p.img); })[0] || offers.filter(function(p){ return multiOf(p) && hasPic(p.img); })[0] || offers.filter(function(p){ return multiOf(p); })[0], mulO = mulP && multiOf(mulP);
     var mulM = mulP && mustOf(mulP), mulGrp = mulM ? offers.filter(function(p){ return mustOf(p) && hasPic(p.img) && String(p.name).split(" ")[0] === String(mulP.name).split(" ")[0]; }) : [];
     if (mulM) B.multi = banHTML("multi", { tag: "button", style: "hero", act: 'data-open="' + mulP.id + '"', k: esc(String(nm(mulP)).split(" ").slice(0, 2).join(" ")),
-      title: esc(mustLine(mulP, mulM)), sub: tr("كانت " + mustW(mulP, mulM).one + " بـ ", "Was ") + num(mulP.price), big: mustSave(mulP, mulM) > 0 ? tr("توفّر ", "Save ") + num(mustSave(mulP, mulM)) + tr(" ريال", " SAR") : "", go: tr("أبغى العرض", "Get the offer"),
+      title: esc(mustLine(mulP, mulM)), sub: tr("كانت " + mustW(mulP, mulM).one + " بـ ", "Was ") + num(mulP.price) + (mustSave(mulP, mulM) > 0 ? tr(" · توفّر ", " · save ") + num(mustSave(mulP, mulM)) + tr(" ريال", " SAR") : ""), go: tr("أبغى العرض", "Get the offer"),
       ids: pk("multi", idsOf(mulGrp.length ? mulGrp : [mulP])) }, E.multi);
     else if (mulO) B.multi = banHTML("multi", { tag: "button", style: "hero", big: tr("وفّر ", "Save ") + num(Math.round((mulO.n * mulP.price - mulO.price) * 100) / 100) + tr(" ر.س", " SAR"), act: 'data-open="' + mulP.id + '" data-openpack="' + mulO.i + '"', k: tr("عرض كمية", "Bulk offer"),
       title: tr(pcs(mulO.n) + " بـ " + num(mulO.price) + " ر.س", mulO.n + " for " + num(mulO.price) + " SAR"), sub: esc(nm(mulP)), go: tr("شوف العرض", "See offer"),
