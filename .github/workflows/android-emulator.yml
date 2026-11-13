@@ -40,7 +40,10 @@ jobs:
         working-directory: mobile
         env:
           ANDROID_LOCAL: '1'
-        run: npm run sync && cd android && ./gradlew --no-daemon assembleDebug
+        run: |
+          npm run sync
+          cd android
+          for i in 1 2 3; do ./gradlew --no-daemon assembleDebug && exit 0; echo "retry $i"; sleep 20; done; exit 1
       - name: run on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
