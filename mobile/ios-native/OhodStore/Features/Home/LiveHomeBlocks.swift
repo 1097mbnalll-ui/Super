@@ -58,11 +58,11 @@ struct LiveBridge {
         }
     }
 
-    static func url(_ items: [URLQueryItem], cart: Cart, version: Int) -> URL {
+    static func url(_ items: [URLQueryItem], cart: Cart, version: String) -> URL {
         var c = URLComponents(url: AppConfig.site, resolvingAgainstBaseURL: false)!
         let cj = (try? JSONSerialization.data(withJSONObject: cart.snapshot)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         // الصفحة نفسها ثابتة (embed + نسخة البيانات) فتنحفظ بالكاش وتفتح بسرعة، والباقي بعد # (الموقع يقراه من هناك)
-        c.queryItems = [URLQueryItem(name: "embed", value: "1"), URLQueryItem(name: "v", value: String(version))]
+        c.queryItems = [URLQueryItem(name: "embed", value: "1"), URLQueryItem(name: "v", value: version)]
         var f = URLComponents(); f.queryItems = items + [URLQueryItem(name: "cart", value: cj)]
         c.percentEncodedFragment = String((f.percentEncodedQuery ?? "").replacingOccurrences(of: "#", with: "%23"))
         return c.url!
@@ -84,16 +84,30 @@ struct LiveHomeBlocks<Fallback: View>: View {
         ZStack(alignment: .top) {
             if failed { fallback() }
             else {
-                LiveWeb(url: LiveBridge.url([URLQueryItem(name: "blocks", value: blocks.joined(separator: ","))], cart: cart, version: catalog.version),
+                LiveWeb(url: LiveBridge.url([URLQueryItem(name: "blocks", value: blocks.joined(separator: ","))], cart: cart, version: catalog.dataTag),
                         fit: true, height: $height, failed: $failed,
                         onMessage: LiveBridge(path: $path, tab: $tab, cart: cart, catalog: catalog).handle)
                     .frame(height: height > 0 ? height : 1)
                     .opacity(height > 0 ? 1 : 0)
-                if height == 0 { fallback() }
+                // وهو يحمّل: مكان فاضي بنفس حجم البنر، مو البنرات الأصلية القديمة (كانت تطلع «صفحة قديمة» أول ما ينفتح التطبيق)
+                if height == 0, blocks.contains("promos") { LiveLoading() }
             }
         }
         .padding(.top, 12)
         .task(id: catalog.version) { failed = false }
+    }
+}
+
+/// مكان البنرات وهي تحمّل من الموقع
+private struct LiveLoading: View {
+    @State private var on = false
+    var body: some View {
+        RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .fill(Theme.mint)
+            .frame(height: 170)
+            .opacity(on ? 0.55 : 1)
+            .padding(.horizontal, 16).padding(.top, 4)
+            .onAppear { withAnimation(.easeInOut(duration: 0.9).repeatForever()) { on = true } }
     }
 }
 
@@ -139,7 +153,7 @@ struct LiveSlot: View {
 
     var body: some View {
         if !failed {
-            LiveWeb(url: LiveBridge.url([URLQueryItem(name: "slot", value: slot), URLQueryItem(name: "id", value: id)], cart: cart, version: catalog.version &+ (slot == "cart" ? cart.revision : 0)),
+            LiveWeb(url: LiveBridge.url([URLQueryItem(name: "slot", value: slot), URLQueryItem(name: "id", value: id)], cart: cart, version: catalog.dataTag + (slot == "cart" ? "." + String(cart.revision) : "")),
                     fit: true, height: $height, failed: $failed,
                     onMessage: LiveBridge(path: livePath ?? .constant(NavigationPath()), tab: nil, cart: cart, catalog: catalog).handle)
                 .frame(height: height > 4 ? height : 0)
@@ -190,9 +204,9 @@ struct LiveScreen: View {
         if page.hasPrefix("screen:") {
             let p = page.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
             let key = p.count > 1 ? (p[1] == "account" ? "more" : p[1]) : "home"
-            url = LiveBridge.url([URLQueryItem(name: "screen", value: key), URLQueryItem(name: "id", value: p.count > 2 ? p[2] : "")], cart: cart, version: catalog.version)
+            url = LiveBridge.url([URLQueryItem(name: "screen", value: key), URLQueryItem(name: "id", value: p.count > 2 ? p[2] : "")], cart: cart, version: catalog.dataTag)
         } else {
-            url = LiveBridge.url([URLQueryItem(name: "page", value: page)], cart: cart, version: catalog.version)
+            url = LiveBridge.url([URLQueryItem(name: "page", value: page)], cart: cart, version: catalog.dataTag)
         }
     }
 
@@ -259,7 +273,7 @@ private struct LiveWeb: UIViewRepresentable {
             timer?.cancel()
             guard parent.fit else { return }
             timer = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(8))
+                try? await Task.sleep(for: .seconds(15))
                 guard let self, !Task.isCancelled, self.parent.height == 0 else { return }
                 self.parent.failed = true
             }

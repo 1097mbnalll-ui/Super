@@ -254,6 +254,7 @@ final class CatalogStore {
     func load() async {
         if index == nil, let cached = Self.readCache() {
             try? await apply(cached)
+            dataTag = await Task.detached(priority: .userInitiated) { Self.tag(cached) }.value
         }
         await refresh()
     }
@@ -261,6 +262,13 @@ final class CatalogStore {
     @ObservationIgnored private var lastRefresh = Date.distantPast
     /// يزيد مع كل تحديث ناجح للمتجر (الرئيسية الحية تعيد التحميل)
     private(set) var version = 0
+    /// بصمة نسخة البيانات: الصفحات الحية ما تعيد التحميل إلا لو المتجر تغيّر فعلاً (مو مع كل فتحة للتطبيق)
+    private(set) var dataTag = "0"
+    nonisolated private static func tag(_ d: Data) -> String {
+        var h: UInt64 = 1469598103934665603
+        for b in d { h = (h ^ UInt64(b)) &* 1099511628211 }
+        return String(h % 1_000_000_007, radix: 36)
+    }
 
     /// لما يرجع الزبون للتطبيق: نجيب آخر نسخة من المتجر (بنرات، أسعار، عروض) لو مر عليها أكثر من دقيقة
     func refreshIfStale() async {
@@ -278,10 +286,14 @@ final class CatalogStore {
             req.timeoutInterval = 20
             let (data, resp) = try await URLSession.shared.data(for: req)
             guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
-            try await apply(data)
-            Self.writeCache(data)
+            let t = await Task.detached(priority: .userInitiated) { Self.tag(data) }.value
+            if t != dataTag || index == nil {
+                try await apply(data)
+                Self.writeCache(data)
+                dataTag = t
+                version += 1
+            }
             failed = false
-            version += 1
         } catch {
             if index == nil { failed = true }
         }
