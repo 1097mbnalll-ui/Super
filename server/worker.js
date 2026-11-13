@@ -2703,6 +2703,8 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     const lines=safeJson(row.data).lines||[],checks={};let complete=true;
     lines.forEach((l,i)=>{const v=body.checks?.[String(i)];if(['picked','missing'].includes(v))checks[String(i)]=v;if(v!=='picked')complete=false;});
     if(body.stage==='ready'&&!complete)return fail('missing_items');
+    // بديل ينتظر رد الزبون: ما يطلع للمندوب لين يرد (أو ينسحب الاقتراح)
+    if(body.stage==='ready'){const pend=await P("SELECT COUNT(*) c FROM sub_offers WHERE no=? AND state='pending'",no).first();if(pend&&pend.c)return fail('pending_sub');}
     try{await env.DB.batch([P("SELECT CASE WHEN COALESCE((SELECT version FROM prep_orders WHERE no=?),0) != ? OR (SELECT status FROM orders WHERE no=?) NOT IN ('new','accepted') OR (SELECT updated FROM orders WHERE no=?) != ? THEN json('prep_conflict') ELSE 1 END",no,prior?.version||0,no,no,row.updated),P('INSERT INTO prep_orders(no,stage,checks,updated,who,version) VALUES(?,?,?,?,?,?) ON CONFLICT(no) DO UPDATE SET stage=excluded.stage,checks=excluded.checks,updated=excluded.updated,who=excluded.who,version=excluded.version',no,body.stage,JSON.stringify(checks),Date.now(),who,(prior?.version||0)+1),logStmt(env,who,'prep','#'+(1000+no),{stage:body.stage,missing:Object.values(checks).filter(v=>v==='missing').length})]);}catch{return fail('conflict',409);}
     if(body.stage==='ready'&&prior?.stage!=='ready'){const d=safeJson(row.data),drvId=(await P('SELECT drv FROM orders WHERE no=?',no).first())?.drv||null;
       later(notifyRole(env,'driver',drvId&&drvId!=='admin'?drvId:null,{title:'طلب جاهز للتوصيل #'+(1000+no),body:[d.name,d.details,money(d.total)].filter(Boolean).join(' · '),url:'./#driver',tag:'ready'+no}));}

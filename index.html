@@ -1023,6 +1023,7 @@ body.is-embed{background:transparent!important;padding:0!important;margin:0}body
 .kb.s-hero .kb-p.boxed{background:transparent;padding:0;border-radius:0;filter:none;mix-blend-mode:multiply}
 .kh-price{position:absolute;z-index:4;inset-inline-end:3%;bottom:7%;background:#FFE14D;color:#111;border-radius:14px;padding:5px 10px;line-height:1;display:grid;justify-items:center;rotate:-6deg;box-shadow:0 6px 14px rgba(0,0,0,.2)}
 .kh-price b{font-size:20px;font-weight:800}.kh-price small{font-size:10px;font-weight:700}.kh-price s{font-size:11px;opacity:.65}
+.pp-q{width:100%;box-sizing:border-box;margin:6px 0;padding:10px 12px;border:1px solid var(--line,#dfe3e8);border-radius:12px;font:inherit}.pp-qres{display:grid;gap:6px}
 /* نافذة اختيار المجموعة */
 .gp-sheet .panel{max-height:86vh;display:flex;flex-direction:column;gap:10px}
 .gp-sub{margin:0;color:#3A1784;font-weight:700;font-size:14px}
@@ -3118,8 +3119,12 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function dvSubs(o, id){
     var p = byId(id); if (!p) return [];
     var inOrder = {}; (o.lines || []).forEach(function(l){ inOrder[l.id] = 1; });
-    return D.products.filter(function(x){ return x.cat === p.cat && x.id !== id && !inOrder[x.id] && avail(x); })
-      .sort(function(a, b){ return (hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0) || Math.abs(a.price - p.price) - Math.abs(b.price - p.price); }).slice(0, 3);
+    // الأقرب: نفس القسم الفرعي (غازي مكان غازي)، وكلمات الاسم المشتركة (الماركة والحجم)، والسعر القريب، وبصورة
+    var toks = normAr(p.name).split(/\s+/).filter(function(w){ return w.length > 1; });
+    var sim = function(x){ var h = " " + normAr(x.name) + " ", n = 0; toks.forEach(function(w){ if (h.indexOf(w) > -1) n++; }); return n; };
+    return D.products.filter(function(x){ return x.cat === p.cat && x.id !== id && !inOrder[x.id] && avail(x) && !grpOf(x); })
+      .map(function(x){ return { x: x, s: (p.sub && x.sub === p.sub ? 10 : 0) + sim(x) * 3 + (hasPic(x.img) ? 2 : 0) - Math.min(5, Math.abs(x.price - p.price)) }; })
+      .sort(function(a, b){ return b.s - a.s; }).slice(0, 4).map(function(o){ return o.x; });
   }
   function dvDeliver(){
     var o = dOrder(drv.no); if (!o) { drv.view = "list"; return dvList(); }
@@ -5285,10 +5290,19 @@ html.sp-on,html.sp-on body{overflow:hidden}
             (last&&last.state==='rejected'?'<div class="pp-no">الزبون رفض البديل اللي قبل. اختر غيره أو شيله.</div>':'')+
             (subs.length?'<b class="lbl">بدائل من نفس القسم</b>'+subs.map(function(x){var d=lp?Math.round((x.price-lp)*l.qty*100)/100:0;
               return '<button type="button" class="pp-alt" data-psub="'+esc(x.id)+'" data-pid="'+esc(l.id)+'">'+dImg(x.id,'im',nm(x))+'<span class="t"><b>'+esc(nm(x))+'</b><span>'+esc(un(x))+' · '+num(x.price)+' ر.س</span><em>'+(d?(d>0?'+':'')+num(d)+' ر.س على الفاتورة':'نفس السعر')+'</em></span><span class="go">'+(direct?'بدّله':'اقترحه')+'</span></button>';}).join(''):'<p class="pp-pref">ما فيه بديل متوفر من نفس القسم.</p>'))+
+          // أي منتج ثاني من المحل (بحث بالاسم أو الباركود)
+          (pend?'':'<b class="lbl">أو اختر أي منتج ثاني</b><input class="pp-q" type="search" data-ppq="'+esc(l.id)+'" placeholder="ابحث بالاسم أو الباركود…" autocomplete="off"><div class="pp-qres" data-ppqres="'+esc(l.id)+'"></div>')+
           '<div class="acts">'+
           '<button type="button" class="btn pp-rm" data-prm="'+esc(l.id)+'">شيله من الطلب</button></div></div>';
       }).join('')+'<p class="pp-pref">لما الزبون يوافق أو يرفض، الطلب يتعدل لحاله ويطلع لك هنا. كمّل باقي الطلب لين يرد.</p></section>';
   }
+  function prepAltBtn(x,l,direct){var bp=byId(l.id),lp=bp?Number(bp.price)||0:0,d=lp?Math.round((x.price-lp)*l.qty*100)/100:0;
+    return '<button type="button" class="pp-alt" data-psub="'+esc(x.id)+'" data-pid="'+esc(l.id)+'">'+dImg(x.id,'im',nm(x))+'<span class="t"><b>'+esc(nm(x))+'</b><span>'+esc(un(x))+' · '+num(x.price)+' ر.س</span><em>'+(d?(d>0?'+':'')+num(d)+' ر.س على الفاتورة':'نفس السعر')+'</em></span><span class="go">'+(direct?'بدّله':'اقترحه')+'</span></button>';}
+  document.addEventListener('input',function(e){var q=e.target.closest&&e.target.closest('[data-ppq]');if(!q)return;var lid=q.dataset.ppq,box=document.querySelector('[data-ppqres="'+lid+'"]');if(!box)return;
+    var o=prepOpen&&prepSnapshot.find(function(x){return x.no===prepOpen;});var l=o&&o.lines.filter(function(x){return x.id===lid;})[0];if(!l){box.innerHTML='';return;}
+    var v=q.value.trim();if(v.length<2){box.innerHTML='';return;}
+    var res=searchProducts(v).filter(function(p){return avail(p)&&p.id!==lid&&!p.print;}).slice(0,8);
+    box.innerHTML=res.length?res.map(function(x){return prepAltBtn(x,l,o.sub==='swap');}).join(''):'<p class="pp-pref">ما لقينا منتج بهالاسم</p>';});
   function prepDraw(){var box=$('aPreparation');if(!box)return;var o=prepOpen&&prepSnapshot.find(function(x){return x.no===prepOpen;});if(prepOpen&&!o)prepOpen='';
     box.innerHTML='<div class="pp">'+(o?prepOrder(o):'<div class="pp-head"><div><b>الطلبات للتجهيز</b><span>تتحدث لحالها كل ١٠ ثواني، ويصير صوت لما يجي طلب جديد</span></div><button class="btn btn-soft" type="button" id="prepRefresh">تحديث</button></div><div class="pp-tools"><button class="btn btn-soft" type="button" id="prepSound" aria-pressed="'+prepSoundOn+'">'+(prepSoundOn?'🔔 الصوت شغّال':'🔕 الصوت مقفل')+'</button>'+(pushCan()&&!prepPushOn()?'<button class="btn btn-soft" type="button" id="prepPush">فعّل الإشعارات</button>':'')+'<span class="status" id="prepToolMsg"></span></div><div class="pp-list">'+prepList({orders:prepSnapshot})+'</div>')+'</div>';
     if($('prepRefresh'))$('prepRefresh').onclick=function(){renderPreparation(true);};
@@ -5310,7 +5324,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if((t=e.target.closest('[data-pwd]'))){t.disabled=true;api('/admin/prep-sub',{pin:adminPin,no:o.no,op:'withdraw',offer:Number(t.dataset.pwd)}).then(function(r){after(r,function(){return 'انسحب الاقتراح';});});return;}
     if((t=e.target.closest('[data-prm]'))){if(!confirm('تشيل المنتج من الطلب؟ الزبون يوصله إشعار والفاتورة تنقص.'))return;t.disabled=true;api('/admin/prep-sub',{pin:adminPin,no:o.no,op:'remove',id:t.dataset.prm}).then(function(r){after(r,function(){return 'انشال من الطلب، والزبون وصله إشعار';});});return;}
     if((t=e.target.closest('[data-psave]'))){var stage=t.dataset.psave;t.disabled=true;var checks={};o.lines.forEach(function(l){checks[l.key]=S.c[l.key]||'';});
-      api('/admin/prep-save',{pin:adminPin,no:o.no,version:o.version,orderUpdated:o.orderUpdated,stage:stage,checks:checks}).then(function(r){if(!r.ok){t.disabled=false;if($('prepMsg'))$('prepMsg').textContent=r.code==='conflict'?'الطلب تغيّر (عدّلته الإدارة أو مجهز ثاني). ارجع وافتحه من جديد.':r.code==='missing_items'?'كل المنتجات لازم تكون مأخوذة قبل «جاهز».':opError(r);return;}
+      api('/admin/prep-save',{pin:adminPin,no:o.no,version:o.version,orderUpdated:o.orderUpdated,stage:stage,checks:checks}).then(function(r){if(!r.ok){t.disabled=false;if($('prepMsg'))$('prepMsg').textContent=r.code==='conflict'?'الطلب تغيّر (عدّلته الإدارة أو مجهز ثاني). ارجع وافتحه من جديد.':r.code==='missing_items'?'كل المنتجات لازم تكون مأخوذة قبل «جاهز».':r.code==='pending_sub'?'فيه بديل ينتظر رد الزبون. انتظر رده أو اسحب الاقتراح، وبعدها «جاهز».':opError(r);return;}
         S.dirty=false;delete prepLocal[o.no];if(stage==='ready'){sToast('تمام، الطلب جاهز وانرسل للمندوب');prepOpen='';}else sToast('انحفظ');renderPreparation(true);if(stage==='ready')window.scrollTo(0,0);});}
   });
   function renderWalletAdmin(){var box=$('aWallets');if(!box)return;box.innerHTML='<div class="card"><h2>محافظ العملاء</h2><p class="hint">المحفظة رصيد داخلي بالريال، وليست بوابة دفع. لا تسجّل شحنًا إلا بعد استلام المبلغ أو توثيق سبب الرصيد. فعّل كلمة مرور العميل بعد التحقق من ملكيته للرقم خارج الموقع.</p><form id="walletSearch"><label>رقم العميل<input id="adminWalletPhone" type="tel" placeholder="05XXXXXXXX" required></label><button class="btn btn-soft" type="submit">عرض المحفظة</button></form><div id="walletResult"></div></div><details class="card admin-fold"><summary>إعدادات الكاش باك</summary><div id="cashbackSettings" class="admin-fold-body">جاري تحميل الإعدادات…</div></details>';
