@@ -15,6 +15,7 @@ node scripts/emulator-check.cjs "$OUT"; RC=$?
 adb shell dumpsys gfxinfo sa.ohod.store > "$OUT/gfxinfo.txt"
 grep -E "Total frames|Janky frames|percentile" "$OUT/gfxinfo.txt" | head -8
 adb shell dumpsys meminfo sa.ohod.store | grep -E "TOTAL PSS|TOTAL:" | head -2 > "$OUT/mem.txt"; cat "$OUT/mem.txt"
+adb shell dumpsys window | grep -iE "navigationMode|mCurrentFocus|InsetsSource.*(statusBars|navigationBars)" | head -8 > "$OUT/window.txt"; cat "$OUT/window.txt"
 adb logcat -d > "$OUT/logcat.txt"
 grep -iE "FATAL|AndroidRuntime|chromium.*Uncaught|Console.*error" "$OUT/logcat.txt" | head -20 || true
 exit $RC

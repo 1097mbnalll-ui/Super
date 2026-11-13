@@ -29,7 +29,10 @@ async function connect() {
     const p = document.createElement('div');
     p.style.cssText = 'position:fixed;padding:var(--sa-top) var(--sa-right) var(--sa-bottom) var(--sa-left)';
     document.body.appendChild(p); const cs = getComputedStyle(p);
-    const r = { top: cs.paddingTop, bottom: cs.paddingBottom, left: cs.paddingLeft, right: cs.paddingRight }; p.remove();
+    p.style.padding = 'env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)'; const envTop = getComputedStyle(p).paddingTop, envBottom = getComputedStyle(p).paddingBottom;
+    p.style.padding = 'var(--safe-area-inset-top,0px) 0 var(--safe-area-inset-bottom,0px)'; const capTop = getComputedStyle(p).paddingTop, capBottom = getComputedStyle(p).paddingBottom;
+    p.style.cssText = 'position:fixed;padding:var(--sa-top) var(--sa-right) var(--sa-bottom) var(--sa-left)';
+    const r = { envTop, envBottom, capTop, capBottom, top: cs.paddingTop, bottom: cs.paddingBottom, left: cs.paddingLeft, right: cs.paddingRight }; p.remove();
     const nav = [...document.querySelectorAll('[data-nav="more"]')].pop();
     const nb = nav && nav.closest('nav,div').getBoundingClientRect();
     return { insets: r, innerH: innerHeight, innerW: innerWidth, htmlClass: document.documentElement.className,
@@ -47,7 +50,7 @@ async function connect() {
   report.scroll = await page.evaluate(() => { const a = window.__fr.slice(2); window.__fr = a.slice(0, 0); const n = a.length, avg = a.reduce((s, x) => s + x, 0) / n;
     return { frames: n, avgMs: +avg.toFixed(2), fps: +(1000 / avg).toFixed(1), over33ms: a.filter((x) => x > 33.4).length, over50ms: a.filter((x) => x > 50).length, worstMs: +Math.max(...a).toFixed(1) }; });
   // تبويبات: الأقسام، العروض، السلة، حسابي
-  for (const [id, name] of [['cats', '03-categories'], ['cart', '04-cart'], ['more', '05-account']]) {
+  for (const [id, name] of [['cats', '03-categories'], ['more', '05-account']]) {
     await page.evaluate((id) => { const b = [...document.querySelectorAll(`[data-nav="${id}"]`)].pop(); if (b) b.click(); }, id);
     await wait(1500); shot(name);
   }
@@ -61,6 +64,9 @@ async function connect() {
   await page.evaluate(() => { const a = document.querySelector('a[href="delete-data.html"]'); if (a) a.click(); });
   await wait(2500); shot('08-delete-data');
   report.pages = await page.list();
+  // السلة آخر شي (شاشة السلة ما فيها شريط تبويبات)
+  await page.evaluate(() => { location.href = './'; }); await wait(3000);
+  await page.evaluate(() => { const b = [...document.querySelectorAll('[data-nav="cart"]')].pop(); if (b) b.click(); }); await wait(1500); shot('04-cart');
   fs.writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
   page.close();
