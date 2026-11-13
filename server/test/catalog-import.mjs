@@ -66,7 +66,8 @@ ok(sq.prepare('SELECT COUNT(*) n FROM pcost').get().n >= Object.keys(ap.costs).l
 const logs = sq.prepare("SELECT act, info FROM alog").all();
 ok(logs.length === 1 && logs[0].act === 'bulk_import' && JSON.parse(logs[0].info).added === ap.added.length, 'سجل العمليات: سطر ملخص واحد ' + JSON.stringify(logs.map((l) => l.act)));
 queries = 0; const s1 = await call('/stock', null, true); const s2 = await call('/stock', null, true);
-ok(s1.ok && Object.keys(s1.stock).length >= 2900 && queries <= 2, 'المخزون للزوار ينقرأ من الذاكرة المؤقتة: ' + queries + ' استعلام لطلبين');
+// /stock للزوار يرجع الكميات القليلة بس (≤١٠)، والكبيرة يتأكد منها الخادم وقت الطلب
+ok(s1.ok && Object.values(s1.stock).every((q) => q <= 10) && queries <= 2, 'المخزون للزوار ينقرأ من الذاكرة المؤقتة: ' + queries + ' استعلام لطلبين');
 
 // ٥) تحسينات الاستيراد (ملف حقيقي: بيض وخبز بأرقام قصيرة، وتسالي وليز بمخزون قليل)
 ok(C.catalogCat('تسالي شرقية 225 جرام') === 'sweets' && C.catalogCat('فصفص البستان مالح 230ج') === 'sweets' && C.catalogCat('لب سوبر ابو ريال 50ج') === 'sweets', 'التسالي والفصفص واللب تروح للسناكس مو للمنوعات');
