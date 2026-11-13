@@ -438,8 +438,10 @@ enum CatalogParser {
         }
 
         let products: [Product] = ((root["products"] as? [[String: Any]]) ?? []).compactMap { p in
-            guard let id = str(p["id"]), let name = str(en ? (p["name_en"] ?? p["name"]) : p["name"]), let price = num(p["price"]), price > 0,
-                  let cat = str(p["cat"]) else { return nil }
+            guard let id = str(p["id"]), let name = str(en ? (p["name_en"] ?? p["name"]) : p["name"]), let cat = str(p["cat"]) else { return nil }
+            // منتج «قريباً» بدون سعر (مثل الخضار) ينعرض بدون إضافة؛ غيره لازم سعر
+            let soon = (p["soon"] as? Bool) ?? false, price = num(p["price"]) ?? 0
+            guard price > 0 || soon else { return nil }
             // نفس ترقيم الخادم (packProduct): ما نشيل أي خيار عشان ما يتغير رقم «id~رقم»؛ الخيار بدون سعر يبقى مكانه ومخفي
             let packs: [Pack] = ((p["packs"] as? [[String: Any]]) ?? []).map { pk in
                 let pr = num(pk["price"]) ?? 0
@@ -452,7 +454,7 @@ enum CatalogParser {
                            barcode: str(p["bc"]), max: num(p["max"]).map { Int($0) },
                            badge: str(en ? (p["badge_en"] ?? p["badge"]) : p["badge"]), sugg: (p["sugg"] as? [Any])?.compactMap { str($0) } ?? [],
                            nameEN: str(en ? p["name"] : p["name_en"]), isPrint: p["print"] != nil && !(p["print"] is NSNull) && (p["print"] as? Bool) != false,
-                           soon: (p["soon"] as? Bool) ?? false)
+                           soon: soon)
         }
         return Catalog(store: store, categories: cats, products: products)
     }

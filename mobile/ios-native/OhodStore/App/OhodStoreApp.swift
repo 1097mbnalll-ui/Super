@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct OhodStoreApp: App {
@@ -38,6 +39,8 @@ struct RootView: View {
     @State private var previewDetails: SavedOrder?
     @State private var tab: AppTab = .home
     @State private var seenSubs: Set<Int> = []
+    /// أول فتحة للتطبيق: نطلب الإشعارات (الطلب والعروض) مثل أي تطبيق
+    @State private var askPush = false
     private struct PendingSub: Identifiable { let offer: SubOffer; let order: SavedOrder; var id: Int { offer.id } }
     private var pendingSub: PendingSub? {
         for o in orders.orders where o.isActive { if let s = (orders.subs[o.no] ?? []).first(where: { !seenSubs.contains($0.id) }) { return PendingSub(offer: s, order: o) } }
@@ -78,6 +81,24 @@ struct RootView: View {
             await catalog.load()
             applyLaunchArguments()
             Push.shared.resumePromo(api: catalog.apiBase)
+            if !UserDefaults.standard.bool(forKey: "push.asked") {
+                let st = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+                if st == .notDetermined || (st == .authorized && !Push.shared.promo) {
+                    try? await Task.sleep(for: .seconds(1.5))
+                    askPush = true
+                } else { UserDefaults.standard.set(true, forKey: "push.asked") }
+            }
+        }
+        .sheet(isPresented: $askPush, onDismiss: { UserDefaults.standard.set(true, forKey: "push.asked") }) {
+            PushAskView {
+                askPush = false
+                Task {
+                    await Push.shared.enablePromo(api: catalog.apiBase)
+                    for o in orders.orders where o.isActive { Push.shared.register(no: o.no, phone: o.phone, api: catalog.apiBase) }
+                }
+            } later: { askPush = false }
+            .presentationDetents([.medium])
+            .interactiveDismissDisabled(false)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { Analytics.shared.flush() }
@@ -217,5 +238,26 @@ struct TabStack<Root: View>: View {
                 .environment(\.livePath, $path)
         }
         .environment(\.livePath, $path)
+    }
+}
+
+/// طلب الإشعارات أول ما ينفتح التطبيق: نوضح للزبون وش بنرسل له، وبعدها يطلع سؤال آبل
+struct PushAskView: View {
+    let allow: () -> Void
+    let later: () -> Void
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "bell.badge.fill").font(.system(size: 44)).foregroundStyle(Theme.brand).padding(.top, 26)
+            Text("خلّنا نبلغك").font(.kufi(20, .bold)).foregroundStyle(Theme.ink)
+            Text("نرسل لك حالة طلبك ووصول المندوب، والعروض الجديدة أول ما تنزل (مرات قليلة، بدون إزعاج).")
+                .font(.ui(size: 14.5)).foregroundStyle(Theme.muted).multilineTextAlignment(.center).padding(.horizontal, 24)
+            Spacer(minLength: 4)
+            Button(action: allow) {
+                Text("فعّل الإشعارات").font(.ui(size: 16, weight: .bold)).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(Theme.brand, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }.padding(.horizontal, 20)
+            Button("مو الحين", action: later).font(.ui(size: 14.5)).foregroundStyle(Theme.muted).padding(.bottom, 18)
+        }
     }
 }
