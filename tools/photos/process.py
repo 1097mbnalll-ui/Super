@@ -12,6 +12,7 @@ from rembg import remove, new_session
 
 LID = 1.0  # --lid 0.55 للعلب المصورة من فوق
 BOX = False  # --box للكراتين: تعديل الزاوية لمستطيل مستقيم
+STUDIO = False
 HULL = False  # --hull للكراتين والعلب المستقيمة (القناع = الشكل الكامل)
 S = 1000; BOTTOM = 0.14; MAX_W = 0.84; MAX_H = 0.78; TARGET_L = 165; MIN_PX = 450
 
@@ -108,9 +109,19 @@ def sharpness(img, mask):
     return ImageStat.Stat(e, mask).var[0]
 
 def process(src, dst, sess):
-    im = ImageOps.exif_transpose(Image.open(src)).convert('RGB')
-    im.thumbnail((2000, 2000))
-    cut = remove(im, session=sess, alpha_matting=True, alpha_matting_foreground_threshold=240,
+    raw = ImageOps.exif_transpose(Image.open(src))
+    # صورة جاهزة بخلفية شفافة (من الشركة): نستخدم شفافيتها بدل القص
+    own = raw.mode in ('RGBA', 'LA') and raw.getchannel('A').getextrema()[0] < 20
+    if own:
+        raw = raw.convert('RGBA'); raw.thumbnail((2000, 2000))
+        im = Image.new('RGB', raw.size, 'white'); im.paste(raw, (0, 0), raw)
+    else:
+        im = raw.convert('RGB'); im.thumbnail((2000, 2000))
+    # صورة استوديو (شفافة أو خلفيتها بيضاء أصلاً): إضاءتها مضبوطة، ما نرفعها (ترفعها تبهّت الألوان الغامقة)
+    global STUDIO
+    W0, H0 = im.size; cs = [im.getpixel((x, y)) for x in (2, W0 - 3) for y in (2, H0 - 3)]
+    STUDIO = own or all(min(c) > 235 for c in cs)
+    cut = raw.copy() if own else remove(im, session=sess, alpha_matting=True, alpha_matting_foreground_threshold=240,
                  alpha_matting_background_threshold=20, alpha_matting_erode_size=8)
     a = cut.split()[-1].point(lambda v: 0 if v < 30 else v)
     a = fix_mask(a)
@@ -156,6 +167,7 @@ def finish(cut, _a, dst, src):
     import math
     k = max(0.85, min(1.4, TARGET_L / max(l0, 1)))
     g = max(0.5, min(1.15, math.log(TARGET_L / 255) / math.log(max(l0, 1) / 255)))
+    if STUDIO: g = 1.0
     lut = [round(255 * (i / 255) ** g) for i in range(256)]
     rgb = rgb.point(lut * 3)
     rgb = ImageEnhance.Contrast(rgb).enhance(1.06)
