@@ -226,4 +226,5 @@ KV: `pin` (رقم الإدارة مشفّر)، `driver_pin` (قديم)، `fail:<
 ### الرئيسية الحية في تطبيق الآيفون (١٣ نوفمبر ٢٠٢٦)
 - التطبيق يعرض البنرات و«عروض الأقسام» وأي قسم جديد في رئيسية الموقع (أي `id` في `store.layout` غير free/catgrid/offers/deals/grid) من الموقع نفسه: `index.html?embed=1&blocks=promos,catoffers,…` داخل WKWebView (`mobile/ios-native/OhodStore/Features/Home/LiveHomeBlocks.swift` على فرع mobile-app).
 - الضغطات ترجع للتطبيق (`webkit.messageHandlers.ohod`: product / category / chip / bundle / nav، و`h` = الارتفاع). لو الموقع ما فتح خلال ٨ ثواني يطلع البديل الأصلي.
-- **أي قسم جديد للرئيسية: أضفه في `SEC` و`LAYOUT_DEF` في index.html ويطلع في التطبيق بدون تحديث.** لا تكسر وضع `EMBED` ولا أسماء الرسائل.
+- **أي قسم جديد للرئيسية: أضفه في `SEC` و`LAYOUT_DEF` في index.html، وأضف معرّفه في `store.layout` في data.json (التطبيق يعرض اللي في الترتيب)، ويطلع في التطبيق بدون تحديث.**
+- خانات حية: `?embed=1&slot=product&id=…` و`slot=cart` (`slotHTML` في index.html)، وصفحات حية `?embed=1&page=…` (مثل `g:<id>` لاختيار المجموعة). الرسائل: `cart.add {key, qty}`، `cart.set {set}`، `group`، `page`، `close`. التطبيق يسعّر السلة من `/quote` (أي قاعدة تسعير جديدة تطلع صح بدون تحديث). تعطيل خانة: `store.app.slots.product/cart = false`. لا تكسر وضع `EMBED` ولا أسماء الرسائل.
