@@ -1436,6 +1436,19 @@ html.sp-on,html.sp-on body{overflow:hidden}
 @keyframes spUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes spBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+/* ===== تصميم أندرويد (يشتغل بس داخل تطبيق أندرويد: html.android). الموقع وآيفون ما يتأثرون أبداً ===== */
+html.android{--teal:#0E8A6A!important;--teal-deep:#086650!important;--sky:#DDF1EA!important;--sky-2:#C4E6DA!important;--mint:#DDF1EA!important;--orange:#EE7417!important;--orange-text:#C4560A!important;--orange-soft:#FFF1E4!important;--ink:#0D1420!important;--muted:#596171!important;--line:#E3E8E6!important;--tile:#F3F6F5!important;--display:"Noto Kufi Arabic","Readex Pro",Tahoma,sans-serif!important}
+html.android .kq-head{background:linear-gradient(180deg,#CBEBDF 0%,#E4F4EE 62%,#fff 100%)}
+html.android .kq-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 8px}
+html.android .kq-img{border-radius:14px;background:#F3F6F5}
+html.android .kq-card .kq-name,html.android .kq-card h3{font-size:11.5px;line-height:1.35}
+html.android .kq-price{gap:4px}html.android .kq-now{font-size:13px;font-family:var(--display);font-weight:700}html.android .kq-price s{font-size:10.5px}
+html.android .kq-badge{font-size:9.5px;padding:2px 6px;top:6px;left:6px;border-radius:6px;background:#EE7417}
+html.android .btn-teal,html.android .buybar .btn,html.android .bottomcta .btn{background:linear-gradient(135deg,#12A07C,#0B7A5E,#07604A);color:#fff;border:0}
+html.android .kq-nav button[aria-current="page"]{background:var(--mint);color:var(--teal-deep)}
+html.android .kq-nav .kq-mid{background:linear-gradient(135deg,#F08A2A,#E2661A,#C9501A);box-shadow:0 6px 16px rgba(226,102,26,.45)}
+html.android .kq-nav .kq-mid svg.i{color:#fff}
+html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.12)}
 </style>
 <div id="splash" aria-hidden="true"><div class="sp-in"><div class="sp-stage"><i class="sp-ring"></i><i class="sp-ring r2"></i><img class="sp-logo" src="icon-192.png" alt="" onerror="this.style.display='none'"></div><b class="sp-name">متاجر أحد</b><span class="sp-tag"></span><div class="sp-bar"><i></i></div></div></div>
 <script>(function(){var s=document.getElementById("splash");if(!s)return;var skip=false;try{skip=!!sessionStorage.getItem("ohod-sp")||location.hash==="#driver"||location.hash==="#pos"||/[?&]app=(driver|pos)/.test(location.search)||(window.matchMedia&&matchMedia("(prefers-reduced-motion:reduce)").matches);sessionStorage.setItem("ohod-sp","1")}catch(e){}if(skip){s.remove();return}var h=document.documentElement;h.classList.add("sp-on");var done=function(){s.classList.add("out");setTimeout(function(){s.remove();h.classList.remove("sp-on")},480)};setTimeout(done,2000);s.addEventListener("click",done)})();</script>
@@ -1474,7 +1487,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var APPQ = /[?&]app=android(?:&|$)/.test(location.search);
   if (APPQ && /[?&]fcm=1(?:&|$)/.test(location.search)) window.__FCM__ = true;
   var NATIVE = !!window.__NATIVE_STORE__ || APPQ || !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && !window.OhodApp), SITEB = String(window.__SITE__ || "");
-  if (NATIVE && (APPQ || (window.Capacitor && Capacitor.getPlatform && Capacitor.getPlatform() === "android"))) document.documentElement.classList.add("android");
+  if (NATIVE && (APPQ || (window.Capacitor && Capacitor.getPlatform && Capacitor.getPlatform() === "android"))) document.documentElement.classList.add("android"); (function(){ var l = document.createElement("link"); l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700&display=swap"; document.head.appendChild(l); var tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = "#DDF1EA"; })();
   // إحساس التطبيق الأصلي (داخل التطبيق بس): بدون تحديد نص أو ظل لمس، وانتقال ينزلق بين الصفحات مثل آيفون (View Transitions)
   if (NATIVE) { document.documentElement.classList.add("native"); var nst = document.createElement("style"); nst.textContent =
     "html.native{-webkit-tap-highlight-color:transparent}html.native body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}" +

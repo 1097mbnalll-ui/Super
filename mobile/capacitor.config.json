@@ -2,7 +2,7 @@
   "appId": "sa.ohod.store",
   "appName": "متاجر أحد",
   "webDir": "www",
-  "backgroundColor": "#DDF2EE",
+  "backgroundColor": "#DDF1EA",
   "server": {
     "androidScheme": "https",
     "allowNavigation": [
@@ -24,7 +24,7 @@
     },
     "StatusBar": {
       "style": "LIGHT",
-      "backgroundColor": "#DDF2EE",
+      "backgroundColor": "#DDF1EA",
       "overlaysWebView": true
     },
     "PushNotifications": {
