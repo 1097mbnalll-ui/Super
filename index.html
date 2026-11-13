@@ -1017,29 +1017,8 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 @keyframes aspin{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(-2deg) scale(1.06)}}@keyframes atick{from{transform:translate(-50%,-100%) rotate(0)}to{transform:translate(-50%,-100%) rotate(360deg)}}
 @keyframes asteam{0%,100%{opacity:.25;translate:0 6px}50%{opacity:.8;translate:0 -4px}}@keyframes atw{0%,100%{opacity:.25}50%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.artb *{animation:none!important}}
-.as-wrap{position:fixed;inset:0;z-index:9000;background:rgba(10,30,24,.45);backdrop-filter:blur(3px);display:grid;align-items:end;justify-items:center;opacity:0;transition:opacity .3s}
-.as-wrap.on{opacity:1}.as-card{position:relative;width:min(440px,100%);background:#fff;border-radius:30px 30px 0 0;padding:0 0 calc(18px + env(safe-area-inset-bottom,0px));overflow:hidden;transform:translateY(40px);transition:transform .45s cubic-bezier(.2,1.2,.3,1)}
-@media (min-width:600px){.as-wrap{align-items:center}.as-card{border-radius:30px}}
-.as-wrap.on .as-card{transform:none}.as-x{position:absolute;top:12px;left:12px;z-index:3;width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.85);font:700 14px inherit;color:#17212B;cursor:pointer}
-.as-art{position:relative;height:250px;background:linear-gradient(160deg,#0E9F7B,#0A6B53 70%);overflow:hidden}
-.as-glow{position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(#FF8A1F55,transparent 65%);left:50%;top:40%;transform:translate(-50%,-50%)}
-.as-phone{position:absolute;left:50%;top:26px;width:150px;height:300px;transform:translateX(-50%) rotate(-6deg);background:#111;border-radius:30px;padding:8px;box-shadow:0 30px 40px rgba(0,0,0,.35);animation:asFloat 4s ease-in-out infinite}
-.as-notch{position:absolute;top:12px;left:50%;width:44px;height:12px;border-radius:8px;background:#111;transform:translateX(-50%);z-index:2}
-.as-scr{height:100%;border-radius:23px;background:#F4FAF7;overflow:hidden;padding:26px 10px 10px;display:grid;gap:8px;align-content:start}
-.as-top{display:flex;align-items:center;gap:6px}.as-top img{width:24px;height:24px;border-radius:7px}.as-top b{font-size:12px;color:#0A6B53}
-.as-ban{border-radius:12px;padding:10px;background:linear-gradient(120deg,#7C3AED,#5B21B6);color:#fff;display:grid}.as-ban span{font-size:9px;opacity:.85}.as-ban b{font-size:15px}
-.as-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.as-grid i{height:34px;border-radius:8px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.06)}
-.as-cta{background:#0E9F7B;color:#fff;border-radius:10px;text-align:center;font-size:10px;font-weight:800;padding:7px}
-.as-chip{position:absolute;background:#fff;color:#17212B;border-radius:999px;padding:6px 11px;font-size:11.5px;font-weight:800;box-shadow:0 8px 18px rgba(0,0,0,.18);white-space:nowrap;animation:asPop .6s cubic-bezier(.2,1.4,.3,1) both}
-.as-chip.c1{right:14px;top:46px;animation-delay:.35s}.as-chip.c2{left:14px;top:110px;animation-delay:.55s}.as-chip.c3{right:22px;top:170px;animation-delay:.75s}
-.as-txt{padding:18px 22px 0;text-align:center;display:grid;gap:8px;justify-items:center}
-.as-k{display:inline-block;background:#FFF0E0;color:#B5530A;font-weight:800;font-size:12px;border-radius:999px;padding:4px 12px}
-.as-txt h2{font-size:24px;line-height:1.25;color:#17212B}.as-txt p{color:#5A6470;font-size:13.5px;line-height:1.7;max-width:340px}
-.as-go{margin-top:6px;width:100%;border:0;border-radius:16px;background:#0E9F7B;color:#fff;font:800 15px inherit;padding:14px;cursor:pointer;box-shadow:0 8px 18px rgba(14,159,123,.3)}
-.as-txt small{color:#8A939C;font-size:11.5px}
-@keyframes asFloat{0%,100%{transform:translateX(-50%) rotate(-6deg) translateY(0)}50%{transform:translateX(-50%) rotate(-4deg) translateY(-8px)}}
-@keyframes asPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.as-phone,.as-chip{animation:none}}
+.as-bar{position:fixed;left:50%;bottom:calc(98px + env(safe-area-inset-bottom,0px));z-index:9000;display:flex;align-items:center;gap:9px;max-width:calc(100% - 32px);padding:10px 14px 10px 12px;border:0;border-radius:999px;background:#111;color:#fff;font:600 13.5px inherit;box-shadow:0 10px 28px rgba(0,0,0,.25);cursor:pointer;opacity:0;transform:translate(-50%,16px);transition:opacity .3s,transform .35s cubic-bezier(.2,1.3,.3,1)}
+.as-bar.on{opacity:1;transform:translate(-50%,0)}.as-bar svg{width:17px;height:17px;fill:#fff;flex:none;margin-top:-2px}.as-bar span{white-space:nowrap}.as-bar b{font-weight:800}.as-bar i{font-style:normal;opacity:.55;font-size:11px;margin-inline-start:4px}
 .sarw{display:inline}.skel{background:linear-gradient(90deg,#F1F3F5 25%,#E7EBEF 50%,#F1F3F5 75%);background-size:200% 100%;animation:skel 1.2s linear infinite}@keyframes skel{to{background-position:-200% 0}}svg.sar{width:.8em;height:.8em;fill:currentColor;vertical-align:-.08em;margin:0 .12em;display:inline-block;flex:none}
 .kq-badge.soon{background:#E8590C}.kq-now.soon,.price.soon{color:#E8590C;font-size:15px;font-weight:800}
 .kq-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;background:#E8394F;color:#fff;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:700;z-index:2}
@@ -4044,25 +4023,17 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var appLock = false;
   var startAdmin = false; try { startAdmin = sessionStorage.getItem("ohod-mode") === "admin"; sessionStorage.removeItem("ohod-mode"); } catch(e){}
   go("store");
-  // «تطبيقنا جاي قريب» (طلب المالك ١٣ نوفمبر ٢٠٢٦): يطلع مرة وحدة لكل زائر بعد شاشة البداية، وما يطلع داخل التطبيقات ولا للإدارة والمندوب
+  // «التطبيق قريباً» (طلب المالك ١٣ نوفمبر ٢٠٢٦: بسيط جداً، يطلع كل ما يفتح الموقع، بشعار آبل، ومو إعلان رسمي): شريط صغير تحت، يختفي بعد ٨ ثواني أو بالضغط
   (function(){
     if (EMBED || /[?&]app=/.test(location.search) || location.hash === "#driver" || (S.appSoon && S.appSoon.off)) return;
-    try { if (localStorage.getItem("ohod-app-soon") === "1") return; } catch(e){ return; }
     setTimeout(function(){
       if (mode !== "store" || $("appSoon")) return;
-      var w = document.createElement("div"); w.id = "appSoon"; w.className = "as-wrap"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true"); w.setAttribute("aria-label", "تطبيق متاجر أحد قريباً");
-      w.innerHTML = '<div class="as-card"><button class="as-x" type="button" data-asclose aria-label="إغلاق">✕</button>' +
-        '<div class="as-art"><span class="as-glow"></span><div class="as-phone"><i class="as-notch"></i><div class="as-scr">' +
-          '<div class="as-top"><img src="' + (D.imgs && D.imgs.logo ? D.imgs.logo : "icon-192.png") + '" alt=""><b>' + esc(sv("name") || "متاجر أحد") + '</b></div>' +
-          '<div class="as-ban"><span>عروض</span><b>كل يوم</b></div><div class="as-grid"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="as-cta">أضف للسلة</div>' +
-        '</div></div><span class="as-chip c1">🛵 تتبع المندوب</span><span class="as-chip c2">🔔 إشعارات العروض</span><span class="as-chip c3">⚡ طلب بضغطة</span></div>' +
-        '<div class="as-txt"><span class="as-k">قريباً على آب ستور</span><h2>تطبيق ' + esc(sv("name") || "متاجر أحد") + '<br>جاي في الطريق</h2>' +
-        '<p>كل اللي تحبه في الموقع، أسرع وأسهل: اطلب بضغطة، تابع المندوب لين بابك، وتوصلك العروض أول بأول.</p>' +
-        '<button class="as-go" type="button" data-asclose>تمام، كمّل التسوّق</button><small>وإلى ذاك الوقت، اطلب من الموقع عادي 💚</small></div></div>';
+      var w = document.createElement("button"); w.type = "button"; w.id = "appSoon"; w.className = "as-bar"; w.setAttribute("aria-label", "تطبيق متاجر أحد للآيفون قريباً");
+      w.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.37 12.77c-.03-2.69 2.2-3.98 2.3-4.04-1.25-1.83-3.2-2.08-3.9-2.11-1.66-.17-3.24.98-4.08.98-.84 0-2.14-.96-3.52-.93-1.81.03-3.48 1.05-4.41 2.67-1.88 3.26-.48 8.09 1.35 10.73.89 1.29 1.96 2.75 3.36 2.7 1.35-.05 1.86-.87 3.49-.87 1.63 0 2.09.87 3.51.84 1.45-.02 2.37-1.32 3.26-2.62 1.03-1.5 1.45-2.95 1.47-3.02-.03-.01-2.82-1.08-2.85-4.28zM13.69 4.86c.74-.9 1.24-2.15 1.11-3.39-1.07.04-2.36.71-3.13 1.61-.69.79-1.29 2.06-1.13 3.27 1.19.09 2.41-.61 3.15-1.49z"/></svg><span><b>تطبيقنا العصري للآيفون</b> قريباً</span><i aria-hidden="true">✕</i>';
       document.body.appendChild(w); requestAnimationFrame(function(){ w.classList.add("on"); });
-      var close = function(){ try { localStorage.setItem("ohod-app-soon", "1"); } catch(e){} w.classList.remove("on"); setTimeout(function(){ w.remove(); }, 350); };
-      w.addEventListener("click", function(e){ if (e.target === w || e.target.closest("[data-asclose]")) close(); });
-    }, 2600);
+      var close = function(){ w.classList.remove("on"); setTimeout(function(){ w.remove(); }, 350); };
+      w.addEventListener("click", close); setTimeout(close, 8000);
+    }, 2400);
   })();
   // صفحة حية في التطبيق «g:<العرض>:<المنتج>»: تفتح نافذة الاختيار على طول والمنتج محطوط
   if (EMBED && EMBED_SCREEN) { var sc = EMBED_SCREEN; if (sc === "cat") { openCat = EMBED_ID; openSub = ""; } if (sc === "product") { openProd = EMBED_ID; pdQty = stepOf(byId(EMBED_ID)); pdPack = -1; }
