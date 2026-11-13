@@ -187,8 +187,11 @@ struct TabStack<Root: View>: View {
                     case .deals: DealsView()
                     case .daily: DailyDealView()
                     case .banner(let id): BannerProductsView(bannerID: id)
+                    case .live(let page): LiveScreen(page: page, path: $path)
                     }
                 }
+                .environment(\.livePath, $path)
         }
+        .environment(\.livePath, $path)
     }
 }

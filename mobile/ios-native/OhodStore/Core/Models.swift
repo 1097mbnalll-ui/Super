@@ -272,9 +272,22 @@ struct StoreInfo: Sendable {
     var mapCenter: [Double]? = nil
     /// ترتيب أقسام الرئيسية (store.layout)
     var layout: [PromoSlot] = []
+    /// عروض المجموعات (store.groups): «أي ٣ علب بـ …» تنختار من صفحة حية من الموقع
+    var groups: [ProductGroup] = []
+    /// الخانات الحية (store.app.slots): صفحة المنتج والسلة تعرض أجزاء من الموقع (ميزات جديدة بدون تحديث). افتراضياً شغّالة
+    var liveProduct = true
+    var liveCart = true
     /// خدمة الطباعة (store.print): «قريباً»، وأقل طلب لو السلة طباعة بس
     var printSoon = false
     var printMinOrder: Double? = nil
+}
+
+struct ProductGroup: Sendable, Hashable {
+    let id: String
+    let name: String
+    let count: Int
+    let price: Double
+    let ids: [String]
 }
 
 struct Catalog: Sendable {
@@ -368,6 +381,14 @@ enum CatalogParser {
         store.mapCenter = point(s["mapCenter"])
         store.layout = ((s["layout"] as? [[String: Any]]) ?? []).compactMap { x in
             str(x["id"]).map { PromoSlot(id: $0, on: (x["on"] as? Bool) ?? true) }
+        }
+        store.groups = ((s["groups"] as? [[String: Any]]) ?? []).compactMap { g in
+            guard (g["on"] as? Bool) != false, let id = str(g["id"]), let pr = num(g["price"]), let ids = g["ids"] as? [String], !ids.isEmpty else { return nil }
+            return ProductGroup(id: id, name: str(g["name"]) ?? "", count: Int(num(g["n"]) ?? 3), price: pr, ids: ids)
+        }
+        if let app = s["app"] as? [String: Any], let slots = app["slots"] as? [String: Any] {
+            store.liveProduct = (slots["product"] as? Bool) ?? true
+            store.liveCart = (slots["cart"] as? Bool) ?? true
         }
 
         let cats: [Category] = ((root["cats"] as? [[String: Any]]) ?? []).compactMap { c in

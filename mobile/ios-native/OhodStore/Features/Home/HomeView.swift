@@ -47,16 +47,22 @@ struct HomeView: View {
     }
 
     static let native: Set<String> = ["free", "catgrid", "offers", "deals", "grid"]
-    /// الأقسام اللي تنعرض من الموقع: البنرات وأي قسم جديد، بنفس ترتيب الإدارة
-    private var liveBlocks: [String] { sections.filter { !Self.native.contains($0) } }
+    /// الأقسام اللي تنعرض من الموقع: كل مجموعة متتالية منها (بين أقسام التطبيق) في مربع حي واحد، بنفس ترتيب الإدارة
+    private func liveRun(startingAt id: String) -> [String]? {
+        let all = sections
+        guard let i = all.firstIndex(of: id), i == 0 || Self.native.contains(all[i - 1]) else { return nil }
+        var run: [String] = []
+        for x in all[i...] { if Self.native.contains(x) { break }; run.append(x) }
+        return run
+    }
 
     @ViewBuilder private func section(_ id: String) -> some View {
         switch id {
         case _ where !Self.native.contains(id):
-            // الرئيسية الحية: كلها في مربع واحد مكان أول واحد منها
-            if id == liveBlocks.first {
-                LiveHomeBlocks(blocks: liveBlocks, tab: $tab, path: $path) {
-                    if liveBlocks.contains("promos") {
+            // الرئيسية الحية: كل أقسام الموقع المتتالية في مربع واحد مكان أولها
+            if let run = liveRun(startingAt: id) {
+                LiveHomeBlocks(blocks: run, tab: $tab, path: $path) {
+                    if run.contains("promos") {
                         BannerCarousel(path: $path).padding(.horizontal, 16).padding(.top, 4)
                     }
                 }

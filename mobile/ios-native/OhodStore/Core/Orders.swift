@@ -209,6 +209,8 @@ final class OrderCenter {
             "pay": cart.payment == "card" ? "card" : "cash", "sub": cart.substitution,
             "lat": (address.lat * 1e6).rounded() / 1e6, "lng": (address.lng * 1e6).rounded() / 1e6, "walletAmount": walletUse,
         ]
+        let promo = cart.promoCode.trimmingCharacters(in: .whitespaces)
+        if !promo.isEmpty { body["promo"] = promo }
         let signature = Self.signature(body)
         var resendingOld = false
         // محاولة قديمة ما تأكدنا منها: بعد ٢٠ دقيقة ما نرسلها (لا ترسل سلة قديمة بدل الجديدة)
@@ -306,6 +308,11 @@ final class OrderCenter {
             await catalog.refreshStock(force: true)
             await catalog.refresh()
             return .failure(.message("فيه منتج في سلتك نفد للتو. راجع السلة وأرسل مرة ثانية."))
+        case "pack_only":
+            return .failure(.message("فيه عرض ينباع بالمجموعة بس (مثل ٣ علب). كمّل الاختيار من السلة وأرسل مرة ثانية."))
+        case "promo_invalid", "promo_expired", "promo_used", "promo_limit", "promo_min":
+            cart.promoCode = ""
+            return .failure(.message(["promo_invalid": "كود الخصم غير صحيح.", "promo_expired": "كود الخصم انتهى.", "promo_used": "استخدمت هالكود قبل.", "promo_limit": "الكود خلص عدد استخداماته.", "promo_min": "الكود يحتاج مبلغ أعلى."][json["code"] as? String ?? ""]! + " شلناه، اضغط «أرسل الطلب» مرة ثانية."))
         case "item_limit":
             return .failure(.message("تجاوزت الحد المسموح لأحد المنتجات. قلّل الكمية وأرسل مرة ثانية."))
         case "closed":

@@ -8,6 +8,7 @@ struct ProductView: View {
     @State private var packIndex: Int? = nil   // nil = الحبة
     @State private var qty = 1
     @State private var justAdded = false
+    @Environment(\.livePath) private var livePath
 
     var body: some View {
         Group {
@@ -113,6 +114,9 @@ struct ProductView: View {
                         .padding(.horizontal, 16)
                 }
 
+                // خانة حية من الموقع (عرض المجموعة، «ينشرى معه»، وأي ميزة جديدة لصفحة المنتج بدون تحديث)
+                if catalog.store.liveProduct { LiveSlot(slot: "product", id: product.id).padding(.top, 14) }
+
                 // «يحلى معه» من اختيار المالك (sugg)، وإلا «ممكن يعجبك» من نفس القسم
                 let picked = product.sugg.compactMap { catalog.product($0) }.filter { $0.id != product.id && catalog.isAvailable($0) }
                 let suggestions = picked.isEmpty
@@ -136,7 +140,15 @@ struct ProductView: View {
         .scrollIndicators(.hidden)
         .background(Color.white)
         .safeAreaInset(edge: .bottom) {
-            if available {
+            if available, let g = catalog.group(for: product.id) {
+                // عرض المجموعة: الاختيار من صفحة حية (أي ٣ من أي نوع)
+                Button { livePath?.wrappedValue.append(Route.live("g:" + g.id)) } label: {
+                    HStack { Text("اختر \(g.count) من أي نوع"); Spacer(); Text("\(g.count) بـ \(Money.plain(g.price))") }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.horizontal, 16).padding(.vertical, 10)
+                .background(.bar)
+            } else if available {
                 // الشريط تحت يعدّل السلة نفسها: قبل الإضافة زر واحد، وبعدها عداد السلة ومجموع المنتج فيها
                 let line = cart.line(key)
                 let cap = cart.limit(for: key, in: catalog) ?? product.max

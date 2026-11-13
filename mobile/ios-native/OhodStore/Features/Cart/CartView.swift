@@ -38,6 +38,16 @@ struct CartView: View {
                         if catalog.store.isClosedNow {
                             ClosedNotice(message: catalog.store.closedNowMessage)
                         }
+                        if let err = totals.quoteError {
+                            // الخادم يقول العرض ناقص (مثل «اختر ٣ علب»): زر يكمّل من الصفحة الحية
+                            HStack(spacing: 10) {
+                                Label(err, systemImage: "exclamationmark.circle").font(.ui(size: 13.5, weight: .semibold)).foregroundStyle(Theme.copperInk)
+                                if let g = totals.quoteGroup { Spacer(minLength: 0); NavigationLink("كمّل", value: Route.live("g:" + g)).font(.ui(size: 13.5, weight: .bold)) }
+                            }
+                            .padding(12).background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                        // خانة حية من الموقع (أضف واحد وتوصيلك مجاني، وأي ميزة جديدة للسلة بدون تحديث)
+                        if catalog.store.liveCart { LiveSlot(slot: "cart") }
                         if !catalog.dealProducts.isEmpty {
                             NavigationLink(value: Route.deals) { DealLockBox(totals: totals) }
                                 .buttonStyle(PressableStyle(scale: 0.98))
@@ -67,6 +77,8 @@ struct CartView: View {
 
                         SubstitutionPicker()
 
+                        PromoCodeBox(discount: totals.discount)
+
                         CheckoutWalletBox(total: totals.total)
 
                         SummaryCard(totals: totals)
@@ -76,6 +88,11 @@ struct CartView: View {
                 }
                 .scrollIndicators(.hidden)
                 .background(Theme.pageBG)
+                .task(id: cart.revision) {
+                    // تسعير الخادم بعد ثانية من آخر تعديل
+                    try? await Task.sleep(for: .milliseconds(700))
+                    if !Task.isCancelled { await cart.refreshQuote(catalog) }
+                }
                 .safeAreaInset(edge: .bottom) {
                     CheckoutBar(totals: totals, sending: orders.sending, closed: catalog.store.isClosedNow) { checkout() }
                 }
@@ -353,6 +370,7 @@ private struct SummaryCard: View {
             } else {
                 row("التوصيل", totals.fee == 0 ? "مجاني" : Money.sar(totals.fee), highlight: totals.fee == 0)
             }
+            if totals.discount > 0.009 { row("الخصم", "−" + Money.sar(totals.discount), highlight: true) }
             Divider()
             HStack {
                 Text("الإجمالي").font(.kufi(15, .bold))
@@ -436,5 +454,42 @@ private struct CheckoutBar: View {
         .background(.bar)
     }
 
-    private var blocked: Bool { totals.belowMinimum != nil || totals.count == 0 || closed }
+    private var blocked: Bool { totals.belowMinimum != nil || totals.count == 0 || closed || totals.quoteError != nil }
+}
+
+/// كود الخصم (مثل الموقع): الخادم يتأكد منه ويحسب الخصم في الإجمالي، والطلب ينرسل معه
+private struct PromoCodeBox: View {
+    let discount: Double
+    @Environment(Cart.self) private var cart
+    @Environment(CatalogStore.self) private var catalog
+    @State private var text = ""
+    @State private var note: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("كود الخصم (إذا عندك)").font(.kufi(14, .bold))
+            HStack {
+                TextField("اكتب الكود", text: $text)
+                    .textInputAutocapitalization(.characters).autocorrectionDisabled()
+                    .padding(10)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.line))
+                Button(cart.promoCode.isEmpty ? "طبّق" : "شيل") {
+                    if !cart.promoCode.isEmpty { cart.promoCode = ""; text = ""; note = nil; Task { await cart.refreshQuote(catalog, force: true) }; return }
+                    cart.promoCode = text.trimmingCharacters(in: .whitespaces).uppercased()
+                    Task { await cart.refreshQuote(catalog, force: true)
+                        let c = cart.quote?.promoCode ?? ""
+                        if c.hasPrefix("!") { note = ["!promo_invalid": "الكود غير صحيح", "!promo_expired": "الكود انتهى", "!promo_used": "استخدمت هالكود قبل", "!promo_limit": "الكود خلص", "!promo_min": "الكود يحتاج مبلغ أعلى"][c] ?? "ما قدرنا نطبق الكود"; cart.promoCode = "" }
+                        else if !c.isEmpty { note = "تم تطبيق الكود ✓" }
+                    }
+                }
+                .font(.ui(size: 14, weight: .semibold))
+            }
+            if let note { Text(tv: note).font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(note.contains("✓") ? Theme.brandDeep : Theme.copperInk) }
+        }
+        .padding(14)
+        .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.line))
+        .onAppear { text = cart.promoCode }
+    }
 }

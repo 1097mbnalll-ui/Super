@@ -100,6 +100,8 @@ final class CatalogStore {
     var categories: [Category] { index?.catalog.categories ?? [] }
 
     func product(_ id: String) -> Product? { index?.byId[id] }
+    /// عرض المجموعة اللي فيه المنتج (store.groups)
+    func group(for productID: String) -> ProductGroup? { store.groups.first { $0.ids.contains(productID) } }
     func category(_ id: String) -> Category? { index?.categoriesById[id] }
     func products(in category: String) -> [Product] { index?.byCategory[category] ?? [] }
 
