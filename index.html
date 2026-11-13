@@ -1625,7 +1625,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   applyTheme(S.theme);
   var GH = /\.github\.io$/.test(location.hostname);
   var GHREPO = GH ? { owner: location.hostname.split(".")[0], repo: location.pathname.split("/")[1] || "" } : null;
-  function applyData(nd){ D = nd; S = D.store; DEAL = S.deal95 || null; DAILY = S.daily || null; applyTheme(S.theme); }
+  function applyData(nd){ D = nd; if (typeof preCuts === "function") try { preCuts(); } catch(e){} S = D.store; DEAL = S.deal95 || null; DAILY = S.daily || null; applyTheme(S.theme); }
   function byId(id){ for (var i=0;i<D.products.length;i++) if (D.products[i].id === id) return D.products[i]; var t = String(id || "").split("~"); return t.length === 2 ? packOf(byId(t[0]), t[1]) : null; }
   // خيار بيع ثاني لنفس المنتج (شدّة، كرتون): منتج مشتق بسعره ووحدته، والمخزون من المنتج الأساسي بعدد الحبات
   function packOf(base, k){
@@ -1780,6 +1780,21 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // الحد والمخزون بالحبات: الكرتون يحسب بعدد حباته من نفس المنتج
   function cartProductQty(id){return Object.keys(cart).reduce(function(sum,key){var line=lineOf(key);return sum+(line&&(line.p.base||line.p.id)===id?(Number(cart[key])||0)*(line.p.per||1):0);},0);}
   function canAddProduct(id,qty){var p=byId(id);if(!p)return false;var b=byId(p.base||p.id),total=cartProductQty(b.id)+qty*(p.per||1),remaining=left(b),max=Number(b.max)||0;return (!max||total<=max)&&(remaining==null||total<=remaining);}
+  // «+» و«−» بسرعة (طلب المالك ١٣ نوفمبر ٢٠٢٦: «الموقع ثقيل»): بدل ما نعيد بناء الصفحة كاملة، نحدّث زر المنتج وشريط السلة بس.
+  // الحالات اللي تأثر على أشياء كثيرة (السلة والطلب، العروض المقفولة، الكرتون، الباقات) تعيد الرسم كامل مثل قبل
+  function fastCart(id, un0){
+    if (EMBED || !/^(home|cat|search)$/.test(screen)) return false;
+    var kind = /^[dt]:/.test(id) ? id.charAt(0) : "", pid = kind ? id.slice(2) : id;
+    if (kind === "d" || /[~:]/.test(pid)) return false;
+    var p = byId(pid); if (!p) return false;
+    if (dealOn() && totals().unlocked !== un0) return false;
+    var html = control(p, kind), els = document.querySelectorAll('.ctl[data-for="' + id.replace(/"/g, "") + '"]');
+    if (!els.length) return false;
+    Array.prototype.forEach.call(els, function(el){ el.outerHTML = html; });
+    Array.prototype.forEach.call(app.querySelectorAll(":scope > .cartbar, :scope > .kq-nav"), function(el){ el.remove(); });
+    app.insertAdjacentHTML("beforeend", navBar());
+    return true;
+  }
   function control(p, kind){
     if (!avail(p)) return '';
     var key = kind ? kind + ":" + p.id : p.id, L = lineOf(key), n = cart[key] || 0;
@@ -2092,9 +2107,14 @@ html.sp-on,html.sp-on body{overflow:hidden}
     return '<' + M.tag + (M.tag === "button" ? ' type="button"' : '') + ' class="' + cls + '"' + st + ' data-bid="' + esc(id) + '" ' + M.act + '>' + body + '</' + M.tag + '>';
   }
   // يشيل الخلفية البيضاء من صورة المنتج (مرة وحدة لكل صورة)
-  var CUT = {}, CUTQ = {};
+  var CUT = {}, CUTQ = {}; setTimeout(function(){ try { preCuts(); } catch(e){} }, 0);
+  // صور البنرات المقصوصة جاهزة من الخادم (pc/<id>.webp، tools/photos/cutouts.py): ما يحتاج الجوال يقصها وقت الفتح
+  function preCuts(){ (D.products || []).forEach(function(p){ if (p.pc && p.img && !CUT[p.img]) CUT[p.img] = { src: "pc/" + p.id + ".webp", boxed: false }; }); }
   function cutImg(key){
+    if (!CUT[key]) preCuts();
     if (CUT[key] || CUTQ[key]) return CUTQ[key] || Promise.resolve(CUT[key]);
+    // صورة ما لها نسخة مقصوصة جاهزة: تنعرض على إطار أبيض بدل ما الجوال يقصها (القص كان أثقل شي وقت الفتح). الإدارة بس تقص (معاينة الصور المرفوعة)
+    if (mode !== "admin") { CUT[key] = { src: picSrc(key), boxed: true }; return Promise.resolve(CUT[key]); }
     var SRC = picSrc(key);
     CUTQ[key] = new Promise(function(res){ var im = new Image(); im.onload = function(){ try {
       var w = im.naturalWidth, h = im.naturalHeight, c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(im, 0, 0);
@@ -2949,7 +2969,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
       if (L0 && inc && !canAddProduct(L0.p.id,stp)){sToast(tr("وصلت للحد المسموح من هذا المنتج","This product reached its purchase limit"));return;}
       if (!L0 || (inc && L0.limit && n > L0.limit) || (inc && L0.kind === "d" && !totals().unlocked)) return;
       if (inc) evAdd("c", L0.p.id);
-      if (n <= 0) delete cart[id]; else cart[id] = n; saveCart(); refresh(); return;
+      var un0 = dealOn() && totals().unlocked;
+      if (n <= 0) delete cart[id]; else cart[id] = n; saveCart();
+      if (!fastCart(id, un0)) refresh(); return;
     }
     if ((t = e.target.closest("[data-pq]"))) { var cur = pdPack >= 0 ? openProd + "~" + pdPack : openProd, p = byId(cur), dd = daily(), lim = lineOf((dd && dd.p.id === cur ? "t:" : "") + cur).limit;
       var stq = pdPack < 0 ? stepOf(p) : 1; pdQty = Math.max(stq, pdQty + Number(t.dataset.pq) * stq); if (lim) pdQty = Math.min(pdQty, lim);
@@ -5765,7 +5787,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // نقاط البيع في المحل انشالت (البيع في المحل على برنامج الكاشير حق المحل): الرابط القديم يفتح المتجر
   if (location.hash === "#pos") { try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
   // داخل التطبيق: نسخة البيانات من التطبيق (v) فالملف ينحفظ بالكاش ويفتح أسرع، والموقع العادي دايماً أحدث نسخة
-  if (GH) fetch("data.json?v=" + (EMBED && qp("v") ? qp("v") : Date.now()), EMBED && qp("v") ? {} : { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
+  // الموقع: نفس الرابط كل مرة والمتصفح يسأل «تغيّر؟» (ETag) فلو ما تغيّر ما ينزل الملف من جديد (٢ ميقا). داخل التطبيق: نسخة التطبيق (v)
+  if (GH) fetch(EMBED && qp("v") ? "data.json?v=" + qp("v") : "data.json", EMBED && qp("v") ? {} : { cache: "no-cache" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
     dataReady = true;
     if (nd && nd.store && nd.products && nd.imgs) { var hadApi = !!apiUrl(); applyData(nd); if (!hadApi) loadStock(); if (mode === "store" && screen !== "checkout") refresh(); }
   }).catch(function(){ dataReady = true; if (EMBED) refresh(); });
