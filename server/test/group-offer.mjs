@@ -1,4 +1,4 @@
-// عرض المجموعة (S.groups): أي ٣ من منتجات المجموعة بـ ١١٫٩٥، التوزيع بالهللة، ورفض العدد الناقص. التشغيل: node server/test/group-offer.mjs
+// عرض المجموعة (S.groups): أي ٣ من منتجات المجموعة بـ ١١٫٩٥، التوزيع بالهللة، والزايد بسعره العادي (العرض اختياري). التشغيل: node server/test/group-offer.mjs
 
 import { githubMock } from './support/github.mjs'; import { DatabaseSync } from 'node:sqlite'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -32,10 +32,14 @@ ok(r.ok && r.subtotal === 11.95 && sum(rec(r.orderNo)) === 11.95, '٣ من نف�
 r = await call('/order', { items: { pantry0: 4, pantry1: 2 }, phone: '0557000003', lat: 24.84, lng: 46.83 });
 ok(r.ok && r.subtotal === 23.9 && sum(rec(r.orderNo)) === 23.9, '٦ = ٢٣٫٩٠: ' + r.subtotal);
 r = await call('/order', { items: { pantry0: 2 }, phone: '0557000004', lat: 24.84, lng: 46.83 });
-ok(r.code === 'pack_only', 'علبتين مرفوضة: ' + r.code);
-ok(sq.prepare("SELECT qty FROM stock WHERE id='pantry0'").get().qty === 50 - 1 - 3 - 4, 'المخزون نقص صح');
+ok(r.ok && r.subtotal === 26 && sum(rec(r.orderNo)) === 26, 'علبتين بدون العرض = ٢٦ (العرض اختياري): ' + r.subtotal);
+r = await call('/order', { items: { pantry0: 3, pantry1: 1 }, phone: '0557000005', lat: 24.84, lng: 46.83 });
+ok(r.ok && r.subtotal === 24.95 && sum(rec(r.orderNo)) === 24.95, '٤ علب = عرض + علبة بـ١٣ = ٢٤٫٩٥: ' + r.subtotal);
+ok(sq.prepare("SELECT qty FROM stock WHERE id='pantry0'").get().qty === 50 - 1 - 3 - 4 - 2 - 3, 'المخزون نقص صح');
 let qq = await call('/quote', { items: { pantry0: 2, pantry1: 1 } });
 ok(qq.ok && qq.subtotal === 11.95 && qq.total === 11.95 + qq.fee, 'التسعير للتطبيق (/quote): ' + JSON.stringify([qq.subtotal, qq.fee, qq.total]));
-qq = await call('/quote', { items: { pantry0: 2 } }); ok(!qq.ok && qq.code === 'pack_only' && qq.n === 3, 'التسعير يقول ناقص: ' + qq.code);
+qq = await call('/quote', { items: { pantry0: 1 } }); ok(qq.ok && qq.subtotal === 13, 'علبة وحدة بسعرها (لا شكراً): ' + qq.subtotal);
+data.store.groups[0].must = true; ok((await call('/save', { ...A, data })).ok, 'حفظ إجباري');
+qq = await call('/quote', { items: { pantry0: 2 } }); ok(!qq.ok && qq.code === 'pack_only' && qq.n === 3, 'لو العرض إجباري (must) الناقص مرفوض: ' + qq.code);
 const v = await call('/admin/verify', A); ok(v.ok && v.clean, 'التحليل مطابق');
 console.log(fails ? fails + ' فشل' : 'كل الفحوص نجحت'); process.exit(fails ? 1 : 0);

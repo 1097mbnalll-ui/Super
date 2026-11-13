@@ -1374,11 +1374,17 @@ function priceOrder(data, body, quote) {
     }
   }
   // المجموعات: المبلغ = عدد المجموعات × السعر، يتوزع على السطور بالهللة (السطر اللي ما يتقسم ينقسم سطرين)
-  for (const { g, q } of Object.values(grp)) {
+  for (let { g, q } of Object.values(grp)) {
     const n = Math.max(2, Math.floor(Number(g.n) || 0)), U = q.reduce((a, x) => a + x.qty, 0);
-    if (U % n) return { error: "pack_only", id: g.id, n };
-    const cents = Math.round(Number(g.price) * 100) * (U / n), unit = Math.floor(cents / U); let extra = cents - unit * U;
-    q.sort((a, b) => a.qty - b.qty);
+    // العرض اختياري: كل N بسعر العرض، والزايد (أقل من N) بسعر الحبة العادي. g.must = العرض إجباري (يرفض الناقص)
+    let rest = U % n;
+    if (rest && g.must) return { error: "pack_only", id: g.id, n };
+    q.sort((a, b) => b.qty - a.qty);
+    for (const x of q) { if (!rest) break; const t = Math.min(rest, x.qty); lines.push({ p: x.p, qty: t, price: Number(x.p.price), tag: "" }); base += t * x.p.price; count += t; x.qty -= t; rest -= t; }
+    const G = q.filter((x) => x.qty > 0), S2 = U - (U % n);
+    if (!S2) continue;
+    const cents = Math.round(Number(g.price) * 100) * (S2 / n), unit = Math.floor(cents / S2); let extra = cents - unit * S2;
+    q = G; q.sort((a, b) => a.qty - b.qty);
     for (const { p, qty } of q) {
       const tag = "عرض " + String(g.name || "").slice(0, 30);
       if (extra >= qty) { lines.push({ p, qty, price: (unit + 1) / 100, tag }); extra -= qty; }

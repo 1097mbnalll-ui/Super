@@ -1778,24 +1778,30 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function grpOld(g){ var p = byId((g.ids || [])[0]); return p ? Number(p.price) : 0; }
   function grpSave(g){ return Math.floor(g.n * grpOld(g) - Number(g.price) + 1e-9); }
   var GP = null; // نافذة اختيار المجموعة: { g, pick: {id: qty} }
-  function openGroupPicker(gid){ var g = grpById(gid); if (!g) return; GP = { g: g, pick: {} }; (g.ids || []).forEach(function(id){ if (cart[id]) GP.pick[id] = cart[id]; }); if (!grpCount(g)) GP.pick = {}; drawGroupPicker(); }
+  function openGroupPicker(gid, pre){ var g = grpById(gid); if (!g) return; GP = { g: g, pick: {}, pre: "" }; (g.ids || []).forEach(function(id){ if (cart[id]) GP.pick[id] = cart[id]; });
+    // ضغط «أضف» على منتج من العرض: تنحط علبة منه وتطلع الأنواع عشان يكمّل العرض، أو «لا شكراً» ياخذ علبة وحدة بس
+    if (pre && (g.ids || []).indexOf(pre) > -1 && avail(byId(pre)) && canAddProduct(pre, 1)) { GP.pick[pre] = (GP.pick[pre] || 0) + 1; GP.pre = pre; } drawGroupPicker(); }
+  // سعر اختيار المجموعة: كل N بسعر العرض، والزايد بسعر الحبة العادي (العرض اختياري)
+  function grpPrice(g, pick){ var u = 0, reg = 0; Object.keys(pick).forEach(function(id){ var p = byId(id), q = Number(pick[id]) || 0; if (p) { u += q; reg += q * Number(p.price); } }); if (!u) return 0; var sets = Math.floor(u / g.n); return Math.round((sets * Number(g.price) + (u - sets * g.n) * (reg / u)) * 100) / 100; }
   function drawGroupPicker(){
     var old = $("gpSheet"); if (old) old.remove(); if (!GP) return; var g = GP.g, c = Object.keys(GP.pick).reduce(function(a, k){ return a + GP.pick[k]; }, 0), ok = c > 0 && c % g.n === 0, need = c % g.n ? g.n - c % g.n : 0;
     var w = document.createElement("div"); w.id = "gpSheet"; w.className = "sheet gp-sheet";
     w.innerHTML = '<div class="panel" role="dialog" aria-modal="true" aria-label="' + esc(g.name || "") + '"><div class="panel-head"><h2>' + tr("اختر ", "Pick ") + num(g.n) + " " + esc(g.w || "حبات") + tr(" من أي نوع", " of any kind") + '</h2><button class="btn btn-ghost" type="button" data-gpclose>' + tr("إغلاق", "Close") + '</button></div>' +
       '<p class="gp-sub">' + esc(grpLine(g)) + tr(" · كانت " + (g.w1 || "الحبة") + " بـ " + num(grpOld(g)), "") + '</p>' +
       '<div class="gp-list">' + grpItems(g).map(function(p){ var q = GP.pick[p.id] || 0; return '<div class="gp-row">' + imgTag(p.img, "") + '<b>' + esc(nm(p)) + '</b><span class="stepper"><button type="button" data-gpq="' + p.id + '" data-d="-1" aria-label="' + tr("نقص", "Less") + '"' + (q ? '' : ' disabled') + '>' + ic("minus") + '</button><b>' + q + '</b><button type="button" data-gpq="' + p.id + '" data-d="1" aria-label="' + tr("زيادة", "More") + '">' + ic("plus") + '</button></span></div>'; }).join("") + '</div>' +
-      '<div class="gp-foot"><div class="gp-count">' + (c ? tr("اخترت ", "Picked ") + num(c) + (need ? tr(" · باقي " + num(need) + " وتكمل العرض", " · " + need + " more") : tr(" ✓", " ✓")) : tr("اختر " + num(g.n) + " " + (g.w || "حبات"), "Pick " + g.n)) + '</div>' +
-      '<button class="btn btn-ink" type="button" data-gpok' + (ok || (!c && grpCount(g)) ? '' : ' disabled') + '>' + (c ? tr("أضف للسلة · ", "Add · ") + rial(c / g.n * Number(g.price)) : tr("شيل من السلة", "Remove from cart")) + '</button></div></div>';
+      '<div class="gp-foot"><div class="gp-count">' + (c ? (need ? tr("أضف " + num(need) + " وتحصل على العرض: " + grpLine(g), "Add " + need + " more to get the offer") : tr("اخترت " + num(c) + " · عليها العرض ✓", "Picked " + c + " ✓")) : tr("اختر " + num(g.n) + " " + (g.w || "حبات"), "Pick " + g.n)) + '</div>' +
+      '<button class="btn btn-ink" type="button" data-gpok' + (ok || (c && !GP.pre) || (!c && grpCount(g)) ? '' : ' disabled') + '>' + (c ? (ok || !GP.pre ? tr("أضف للسلة · ", "Add · ") + rial(grpPrice(g, GP.pick)) : tr("اختر " + num(need) + " بعد", "Pick " + need + " more")) : tr("شيل من السلة", "Remove from cart")) + '</button>' +
+      (GP.pre && !ok ? '<button class="btn btn-ghost" type="button" data-gpno>' + tr("لا شكراً، أضف " + (g.w1 || "الحبة").replace(/^ال/, "") + " وحدة بس · ", "No thanks, add one · ") + rial(Number(byId(GP.pre).price)) + '</button>' : '') + '</div></div>';
     document.body.appendChild(w);
   }
   document.addEventListener("click", function(e){ var t;
-    if ((t = e.target.closest("[data-gpick]"))) { e.preventDefault(); e.stopPropagation(); if (EMBED && !EMBED_PAGE) toApp({ t: "group", id: t.dataset.gpick }); else openGroupPicker(t.dataset.gpick); return; }
+    if ((t = e.target.closest("[data-gpick]"))) { e.preventDefault(); e.stopPropagation(); if (EMBED && !EMBED_PAGE) toApp({ t: "page", id: "g:" + t.dataset.gpick + (t.dataset.gpre ? ":" + t.dataset.gpre : "") }); else openGroupPicker(t.dataset.gpick, t.dataset.gpre); return; }
     if (!GP) return;
     if ((t = e.target.closest("[data-gpq]"))) { var id = t.dataset.gpq, v = (GP.pick[id] || 0) + Number(t.dataset.d), p = byId(id); if (v < 0) v = 0; if (Number(t.dataset.d) > 0 && p && !canAddProduct(id, v - (cart[id] || 0))) { sToast(tr("وصلت للكمية المتاحة", "Reached available quantity")); return; } if (v) GP.pick[id] = v; else delete GP.pick[id]; drawGroupPicker(); return; }
     if (e.target.closest("[data-gpok]")) { if (EMBED) { var set = {}; (GP.g.ids || []).forEach(function(id){ set[id] = GP.pick[id] || 0; }); toApp({ t: "cart.set", set: set, msg: tr("انضاف العرض للسلة", "Offer added") }); GP = null; drawGroupPicker(); toApp({ t: "close" }); return; }
       (GP.g.ids || []).forEach(function(id){ if (GP.pick[id]) cart[id] = GP.pick[id]; else delete cart[id]; }); var c2 = Object.keys(GP.pick).length; GP = null; drawGroupPicker(); saveCart(); refresh(); sToast(c2 ? tr("انضاف العرض للسلة", "Offer added to cart") : tr("انشال العرض من السلة", "Offer removed")); return; }
-    if (e.target.closest("[data-gpclose]") || e.target.id === "gpSheet") { GP = null; drawGroupPicker(); }
+    if (e.target.closest("[data-gpno]")) { var pre = GP.pre; GP = null; drawGroupPicker(); if (EMBED) { toApp({ t: "cart.add", key: pre, qty: 1 }); toApp({ t: "close" }); return; } if (pre && canAddProduct(pre, 1)) { cart[pre] = (cart[pre] || 0) + 1; saveCart(); refresh(); sToast(tr("انضافت للسلة", "Added to cart")); } return; }
+    if (e.target.closest("[data-gpclose]") || e.target.id === "gpSheet") { GP = null; drawGroupPicker(); if (EMBED && EMBED_PAGE.split(":")[2]) toApp({ t: "close" }); }
   }, true);
   // عرض الكمية الإجباري (pack.must): المنتج ينباع بالمجموعة بس («3 علب بـ 11 ريال و95 هللة»). الكلام بسيط يفهمه أي زبون
   function mustOf(p){ var mo = multiOf(p); return mo && p.packs[mo.i].must ? mo : null; }
@@ -1844,7 +1850,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
     var gq = !kind && grpOf(p);
     if (gq) return '<article class="kq-card must' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + '<span class="kq-badge must">' + num(gq.n) + tr(" بـ ", " for ") + num(gq.price) + '</span>' + low +
-      (avail(p) ? '<span class="ctl"><button class="add wide" type="button" data-gpick="' + esc(gq.id) + '">' + ic("plus") + tr("اختر ", "Pick ") + num(gq.n) + '</button></span>' : '') + '</div>' +
+      (avail(p) ? '<span class="ctl"><button class="add wide" type="button" data-gpick="' + esc(gq.id) + '" data-gpre="' + p.id + '">' + ic("plus") + tr("أضف", "Add") + '</button></span>' : '') + '</div>' +
       '<div class="kq-price must"><span class="kq-now sale">' + esc(grpLine(gq)) + '</span></div><span class="kq-was">' + tr("كانت " + (gq.w1 || "الحبة") + " بـ ", "Was ") + '<s>' + num(p.price) + '</s></span>' +
       (grpSave(gq) > 0 ? '<span class="kq-save">🔥 ' + tr("توفّر ", "Save ") + num(grpSave(gq)) + tr(" ريال", " SAR") + '</span>' : '') +
       '<b class="kq-name">' + esc(nm(p)) + '</b>' + (inCart ? '<span class="kq-size">' + num(inCart) + tr(" بالسلة", " in cart") + '</span>' : '') + '</article>';
@@ -2123,7 +2129,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<button type="button" class="kq-filter" data-nav="cats" aria-label="' + tr("الأقسام", "Categories") + '">' + ic("filter") + '</button>' +
       chipList().map(function(c){ return '<button type="button" class="kq-chip" data-chip="' + c.id + '" aria-pressed="' + (chip === c.id) + '">' + (c.img ? imgTag(c.img, "") : ic(c.icon)) + esc(c.name) + '</button>'; }).join("") + '</div></div></div>' +
       '<div class="wrap"><div class="kq-grid" id="kqGrid">' + chipItems().join("") + '</div></div>';
-    if (EMBED && EMBED_PAGE) { chip = EMBED_PAGE; return '<div class="embed page"><div class="wrap"><div class="kq-grid">' + chipItems().join("") + '</div></div></div>'; }
+    if (EMBED && EMBED_PAGE) { chip = EMBED_PAGE.indexOf("g:") === 0 ? EMBED_PAGE.split(":").slice(0, 2).join(":") : EMBED_PAGE; return '<div class="embed page"><div class="wrap"><div class="kq-grid">' + chipItems().join("") + '</div></div></div>'; }
     if (EMBED && EMBED_SLOT) return '<div class="embed">' + slotHTML(EMBED_SLOT, EMBED_ID) + '</div>';
     if (EMBED) return '<div class="embed">' + EMBED_BLOCKS.map(function(id){ return SEC[id] || ""; }).join("") + '</div>';
     orderOf(S.layout, LAYOUT_DEF).forEach(function(x){ if (x.on && SEC[x.id]) h += SEC[x.id]; });
@@ -2245,7 +2251,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (avail(p) && ((lf != null && lf <= lowAt()) || Number(p.max) > 0) ? '<div class="pd-lims">' + (lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '') + (Number(p.max) > 0 ? '<span>' + tr("الحد الأقصى ", "Max ") + Number(p.max) + tr(" لكل طلب", " per order") + '</span>' : '') + '</div>' : '') +
       (pairs.length ? '<div class="pd-sugg"><b>' + (p.sugg && p.sugg.length ? tr("يحلى معه", "Goes well with") : tr("ينشرى معه عادة", "Often bought with")) + '</b><div class="rail">' + pairs.map(function(x){ return card(x); }).join("") + '</div></div>' : '') +
       '</div></div></div>' +
-      (avail(p) && grpOf(packBase) ? '<div class="buybar"><button class="btn btn-ink go" type="button" data-gpick="' + esc(grpOf(packBase).id) + '">' + tr("اختر " + num(grpOf(packBase).n) + " " + (grpOf(packBase).w || "حبات") + " من أي نوع", "Pick " + grpOf(packBase).n) + '</button></div>' :
+      (avail(p) && grpOf(packBase) ? '<div class="buybar"><button class="btn btn-ink go" type="button" data-gpick="' + esc(grpOf(packBase).id) + '" data-gpre="' + packBase.id + '">' + tr("أضف للسلة", "Add to cart") + '</button></div>' :
       avail(p) ? tr('<div class="buybar"><div class="qtybig"><button type="button" data-pq="-1" aria-label="نقص">', '<div class="buybar"><div class="qtybig"><button type="button" data-pq="-1" aria-label="Decrease">') + ic("minus") + '</button><b id="pq">' + pdQty + tr('</b><button type="button" data-pq="1" aria-label="زيادة">', '</b><button type="button" data-pq="1" aria-label="Increase">') + ic("plus") + '</button></div>' +
         '<button class="btn btn-ink go" type="button" data-addprod="' + p.id + '" data-kind="' + (isDaily ? "t" : "") + tr('">أضف للسلة<span id="pqTotal">', '">Add to cart<span id="pqTotal">') + rial(price * pdQty) + '</span></button></div>' : '');
   }
@@ -2424,8 +2430,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var minO = minOrderNow(), short = minO && t.s < minO;
     if (isClosed()) h = h.replace('<div class="lines">', '<div class="alert">' + tr("المحل مقفل الحين، وما نستقبل طلبات. ", "The store is closed and not taking orders right now. ") + esc(closedMsgNow()) + '</div><div class="lines">');
     else if (short) h = h.replace('<div class="lines">', '<div class="alert soft">' + tr("أقل مبلغ للطلب ", "Minimum order is ") + rial(minO) + tr("، باقي لك ", ", add ") + rial(minO - t.s) + tr("", " more") + '</div><div class="lines">');
-    if (t.gshort) h = h.replace('<div class="lines">', '<div class="alert soft">' + tr("عرض " + esc(t.gshort.g.name || "") + ": باقي " + num(t.gshort.need) + " وتكمل العرض. ", "Pick " + t.gshort.need + " more to complete the offer. ") + '<button type="button" class="btn btn-soft" data-gpick="' + esc(t.gshort.g.id) + '">' + tr("كمّل", "Complete") + '</button></div><div class="lines">');
-    h += '<div class="bottomcta"><button class="btn btn-teal" type="button" data-nav="checkout"' + (t.n && !isClosed() && !short && !t.gshort ? '' : ' disabled') + tr('>كمّل الطلب', '>Continue to checkout') + ic("fwd") + '</button></div>';
+    if (t.gshort) h = h.replace('<div class="lines">', '<div class="alert soft">' + tr("أضف " + num(t.gshort.need) + " وتحصل على عرض " + esc(t.gshort.g.name || "") + " (" + esc(grpLine(t.gshort.g)) + "). ", "Add " + t.gshort.need + " more to get the offer. ") + '<button type="button" class="btn btn-soft" data-gpick="' + esc(t.gshort.g.id) + '">' + tr("اختر", "Pick") + '</button></div><div class="lines">');
+    h += '<div class="bottomcta"><button class="btn btn-teal" type="button" data-nav="checkout"' + (t.n && !isClosed() && !short ? '' : ' disabled') + tr('>كمّل الطلب', '>Continue to checkout') + ic("fwd") + '</button></div>';
     return h;
   }
   function checkoutHTML(){
@@ -2549,7 +2555,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       var gw = goesWith(p, 10); if (gw.length) h += '<div class="wrap"><div class="kq-sec"><h2>' + tr("ينشرى معه عادة", "Often bought with") + '</h2></div><div class="rail">' + gw.map(function(x){ return card(x); }).join("") + '</div></div>';
       return h; }
     if (slot === "cart") { var t = totals(), h2 = "";
-      if (t.gshort) h2 += '<div class="wrap"><div class="alert soft">' + tr("عرض " + esc(t.gshort.g.name || "") + ": باقي " + num(t.gshort.need) + " وتكمل العرض. ", "") + '<button type="button" class="btn btn-soft" data-gpick="' + esc(t.gshort.g.id) + '">' + tr("كمّل", "Complete") + '</button></div></div>';
+      if (t.gshort) h2 += '<div class="wrap"><div class="alert soft">' + tr("أضف " + num(t.gshort.need) + " وتحصل على عرض " + esc(t.gshort.g.name || "") + " (" + esc(grpLine(t.gshort.g)) + "). ", "") + '<button type="button" class="btn btn-soft" data-gpick="' + esc(t.gshort.g.id) + '">' + tr("كمّل", "Complete") + '</button></div></div>';
       var gap = S.freeOver && t.fee ? Math.round((S.freeOver - t.s) * 100) / 100 : 0;
       if (gap > 0 && gap <= 25) { var inC = {}; Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (L) inC[L.p.base || L.p.id] = 1; });
         var fl = D.products.filter(function(p){ return avail(p) && !inC[p.id] && !p.print && hasPic(p.img) && p.price >= gap && p.price <= gap + 6; }).sort(function(a, b){ return (a.price - gap) - (b.price - gap) || shelfScore(b) - shelfScore(a); }).slice(0, 10);
@@ -5532,6 +5538,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var appLock = false;
   var startAdmin = false; try { startAdmin = sessionStorage.getItem("ohod-mode") === "admin"; sessionStorage.removeItem("ohod-mode"); } catch(e){}
   go("store");
+  // صفحة حية في التطبيق «g:<العرض>:<المنتج>»: تفتح نافذة الاختيار على طول والمنتج محطوط
+  if (EMBED && /^g:[^:]+:./.test(EMBED_PAGE)) (function tryOpen(k){ var a = EMBED_PAGE.split(":"); if (grpById(a[1]) && dataReady) openGroupPicker(a[1], a[2]); else if (k < 40) setTimeout(function(){ tryOpen(k + 1); }, 150); })(0);
   loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "store") loadStock(); });
   if (location.hash === "#driver" || /[?&]app=driver/.test(location.search) || APP) openDriver();
