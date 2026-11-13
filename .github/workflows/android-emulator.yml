@@ -4,9 +4,7 @@
 name: android-emulator
 
 on:
-  push:
-    branches: [mobile-app]
-    paths: ['mobile/**', 'index.html', 'privacy.html', 'delete-data.html', '.github/workflows/android-emulator.yml']
+  # يدوي فقط (دقائق البناء مدفوعة): شغّله من تبويب Actions لما تحتاجه
   workflow_dispatch:
 
 concurrency:

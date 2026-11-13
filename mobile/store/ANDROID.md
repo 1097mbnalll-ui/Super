@@ -43,3 +43,15 @@ App ID `sa.ohod.store` (cannot change after publishing). minSdk 24, target/compi
 - **Before the first Play release:** the live site must already include the `mobile-app` changes to index.html (`?app=android` detection, `--sa-*` safe areas, delete-data.html). Otherwise the app shows the plain website. That deploy needs the owner's explicit «نزّله».
 - Data deletion: `delete-data.html` (also linked from the account page and privacy.html). Use this URL in Play Console → Data safety → "Delete account URL / data deletion".
 - Emulator check: workflow `android-emulator` (API 35) uploads screenshots, a scroll-smoothness report, gfxinfo, and logcat.
+
+## Handoff checklist (ANDROID-DESIGN.md, 13 Nov)
+- ✅ 1. System bars: `--sky` #DDF2EE, dark icons (StatusBar LIGHT, SystemBars css insets); content padded by `--sa-*`; verified on Android 15 emulator (edge-to-edge).
+- ✅ 2. Splash #0E9F7B + adaptive icon (already in project).
+- ✅ 3. Back button: goes back inside the site; on Home press twice to exit (hint shown).
+- ✅ 4. offline.html in site identity (sky gradient, teal button «جرّب مرة ثانية»).
+- ✅ 5. Haptics on add to cart and a success haptic when an order is sent.
+- ⏳ 6. FCM push: waiting for `google-services.json` from the owner.
+- ✅ 7. External links: `tel:` / `wa.me` / maps leave the app (Capacitor opens non-allowlisted hosts externally); the site itself stays inside.
+- ⏳ 8. Emulator: Home/Categories/Account/Delete-data/Cart opened OK, no crash. NOT yet tested on a real phone: banners animation, order placing, order tracking, offline mode, frame rate (the emulator has no GPU).
+- ⏳ 9. Performance: no `no-cache` forced by the wrapper; WebView cache default. Not measured on a real device.
+- Cloud builds (`mobile-build`, `android-emulator`) are now manual only, they cost the owner minutes.

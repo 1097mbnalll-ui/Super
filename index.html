@@ -2359,7 +2359,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
           if (j.track && PUSH_PREF && pushOn()) orderPush(null);
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
-          if(sentCart&&JSON.stringify(cart)===sentCart)cart={};saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; render(); loadStock(); window.scrollTo(0, 0); return;
+          if(sentCart&&JSON.stringify(cart)===sentCart)cart={};saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; try { var hp = nativePlug("Haptics"); if (hp && hp.notification) hp.notification({ type: "SUCCESS" }); } catch(e){} render(); loadStock(); window.scrollTo(0, 0); return;
         }
         var c = j.code;
         if((c==='network'||c==='timeout'||j.status>=500)&&checkoutAttempt){checkoutAttempt.uncertain=true;saveCheckoutAttempt(checkoutAttempt);}
@@ -5148,7 +5148,12 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (AppP && AppP.addListener) AppP.addListener("backButton", function(){
       var bk = document.querySelector('[data-nav="back"]'); if (bk) { bk.click(); return; }
       if (document.body.getAttribute("data-screen") !== "home") { var hm = document.querySelector('[data-nav="home"]'); if (hm) { hm.click(); return; } }
-      if (AppP.exitApp) AppP.exitApp();
+      var nw = Date.now();
+      if (window.__bkAt && nw - window.__bkAt < 2200) { if (AppP.exitApp) AppP.exitApp(); return; }
+      window.__bkAt = nw;
+      var tt = document.createElement("div"); tt.textContent = LANG === "en" ? "Press back again to exit" : "اضغط رجوع مرة ثانية للخروج";
+      tt.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + var(--sa-bottom));z-index:99;background:#17212B;color:#fff;padding:10px 18px;border-radius:22px;font:600 13px/1.4 inherit;max-width:80%;text-align:center";
+      document.body.appendChild(tt); setTimeout(function(){ tt.remove(); }, 2000);
     });
     if (HapP && HapP.impact) document.addEventListener("click", function(e){ if (e.target.closest && e.target.closest('[data-addprod],[data-act="inc"],[data-act="dec"]')) { try { HapP.impact({ style: "LIGHT" }); } catch(x){} } }, true);
     // سحب من طرف الشاشة للرجوع (مثل آيفون): من اليمين بالعربي، ومن اليسار بالإنجليزي

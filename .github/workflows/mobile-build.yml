@@ -6,9 +6,7 @@
 name: mobile-build
 
 on:
-  push:
-    branches: [mobile-app]
-    paths: ['mobile/**', 'index.html', 'privacy.html', 'cat/**', '.github/workflows/mobile-build.yml']
+  # يدوي فقط (دقائق البناء مدفوعة): شغّله من تبويب Actions لما تحتاجه
   workflow_dispatch:
 
 concurrency:
