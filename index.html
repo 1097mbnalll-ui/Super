@@ -4056,7 +4056,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   if (APP) { appLock = true; appUpdateCheck(); document.addEventListener("visibilitychange", function(){ if (!document.hidden) appUpdateCheck(); });
     window.addEventListener("popstate", function(){ if (mode !== "driver" || location.hash !== "#driver") openDriver(); }); }
   // داخل التطبيق: التطبيق يغيّر الإعدادات بعد # (مثل السلة)، نعيد فتح الصفحة من الكاش بالإعدادات الجديدة
-  if (EMBED) window.addEventListener("hashchange", function(){ location.reload(); });
+  // التطبيق يغيّر السلة بالرابط (#…cart=): لو اللي تغيّر السلة بس نعيد الرسم بدون تحميل الصفحة كلها من جديد (كانت تثقل الرئيسية مع كل «+»)
+  if (EMBED) { var embedKey = function(){ return ["blocks", "slot", "id", "page", "screen"].map(qp).join("|"); }, embedWas = embedKey();
+    window.addEventListener("hashchange", function(){ if (embedKey() !== embedWas) { location.reload(); return; } try { cart = JSON.parse(qp("cart") || "{}") || {}; } catch(e) { cart = {}; } refresh(); }); }
   window.addEventListener("hashchange", function(){ if (EMBED) return; if ((location.hash === "#driver" || appLock) && mode !== "driver") openDriver(); });
   // نقاط البيع في المحل انشالت (البيع في المحل على برنامج الكاشير حق المحل): الرابط القديم يفتح المتجر
   if (location.hash === "#pos") { try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
