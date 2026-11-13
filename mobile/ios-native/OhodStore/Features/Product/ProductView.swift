@@ -142,8 +142,8 @@ struct ProductView: View {
         .safeAreaInset(edge: .bottom) {
             if available, let g = catalog.group(for: product.id) {
                 // عرض المجموعة: الاختيار من صفحة حية (أي ٣ من أي نوع)
-                Button { livePath?.wrappedValue.append(Route.live("g:" + g.id)) } label: {
-                    HStack { Text("اختر \(g.count) من أي نوع"); Spacer(); Text("\(g.count) بـ \(Money.plain(g.price))") }
+                Button { livePath?.wrappedValue.append(Route.live("g:" + g.id + ":" + product.id)) } label: {
+                    HStack { Text("أضف للسلة"); Spacer(); Text("\(g.count) بـ \(Money.plain(g.price))") }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .padding(.horizontal, 16).padding(.vertical, 10)

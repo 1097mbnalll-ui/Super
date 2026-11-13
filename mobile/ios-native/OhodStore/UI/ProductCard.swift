@@ -158,14 +158,14 @@ struct CardQuantityControl: View {
     var body: some View {
         let line = cart.line(key)
         let cap = cart.limit(for: key, in: catalog) ?? limit
-        // منتج داخل عرض مجموعة: + يفتح صفحة الاختيار الحية (أي ٣ من أي نوع)
+        // منتج داخل عرض مجموعة: + يفتح نافذة الاختيار الحية والمنتج محطوط فيها («أضف ٢ وتحصل على العرض» أو «لا شكراً»)
         let grp = key.contains(":") || key.contains("~") ? nil : catalog.group(for: key)
         Group {
             if line.qty == 0 || grp != nil {
                 HStack {
                     Spacer(minLength: 0)
                     Button {
-                        if let grp, let lp = livePath { lp.wrappedValue.append(Route.live("g:" + grp.id)); return }
+                        if let grp, let lp = livePath { lp.wrappedValue.append(Route.live("g:" + grp.id + ":" + key)); return }
                         cart.increment(key, limit: cap)
                     } label: {
                         // الزر متناسق مع حجم الكرت والسعر، ويكبر ويصغر مع الخط من «شكل التطبيق»

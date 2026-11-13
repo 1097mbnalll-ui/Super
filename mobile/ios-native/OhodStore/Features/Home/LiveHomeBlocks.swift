@@ -135,7 +135,7 @@ struct LiveScreen: View {
     }
 
     private var title: String {
-        if page.hasPrefix("g:"), let g = catalog.store.groups.first(where: { $0.id == String(page.dropFirst(2)) }) { return "عرض " + g.name }
+        if page.hasPrefix("g:"), let g = catalog.store.groups.first(where: { $0.id == page.split(separator: ":").dropFirst().first.map(String.init) }) { return "عرض " + g.name }
         return catalog.store.name
     }
 }
