@@ -1795,7 +1795,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     document.body.appendChild(w);
   }
   document.addEventListener("click", function(e){ var t;
-    if ((t = e.target.closest("[data-gpick]"))) { e.preventDefault(); e.stopPropagation(); if (EMBED && !EMBED_PAGE) toApp({ t: "page", id: "g:" + t.dataset.gpick + (t.dataset.gpre ? ":" + t.dataset.gpre : "") }); else openGroupPicker(t.dataset.gpick, t.dataset.gpre); return; }
+    if ((t = e.target.closest("[data-gpick]"))) { e.preventDefault(); e.stopImmediatePropagation(); if (EMBED && !EMBED_PAGE) toApp({ t: "page", id: "g:" + t.dataset.gpick + (t.dataset.gpre ? ":" + t.dataset.gpre : "") }); else openGroupPicker(t.dataset.gpick, t.dataset.gpre); return; }
     if (!GP) return;
     if ((t = e.target.closest("[data-gpq]"))) { var id = t.dataset.gpq, v = (GP.pick[id] || 0) + Number(t.dataset.d), p = byId(id); if (v < 0) v = 0; if (Number(t.dataset.d) > 0 && p && !canAddProduct(id, v - (cart[id] || 0))) { sToast(tr("وصلت للكمية المتاحة", "Reached available quantity")); return; } if (v) GP.pick[id] = v; else delete GP.pick[id]; drawGroupPicker(); return; }
     if (e.target.closest("[data-gpok]")) { if (EMBED) { var set = {}; (GP.g.ids || []).forEach(function(id){ set[id] = GP.pick[id] || 0; }); toApp({ t: "cart.set", set: set, msg: tr("انضاف العرض للسلة", "Offer added") }); GP = null; drawGroupPicker(); toApp({ t: "close" }); return; }
@@ -1818,6 +1818,24 @@ html.sp-on,html.sp-on body{overflow:hidden}
     rice: ["chicken", "spices", "oil", "canned"], chicken: ["rice", "spices", "sauces"], beef: ["rice", "spices", "sauces"], processed: ["flour", "sauces", "cheese"], fish: ["rice", "spices"],
     oil: ["rice", "spices"], flour: ["cheese", "eggs", "milk"], canned: ["flour", "sauces", "rice"], pasta: ["sauces", "cheese", "chicken"], spices: ["rice", "chicken"], sauces: ["pasta", "processed", "chips"], breakfast: ["flour", "cheese", "milk"],
     laundry: ["surfaces", "bags"], dishes: ["surfaces", "bags", "paper"], surfaces: ["dishes", "paper"], bags: ["dishes", "surfaces"], paper: ["surfaces", "bags"], baby: ["paper", "body"], hair: ["body", "deo"], body: ["hair", "oral"], oral: ["body", "hair"] };
+  // «أضف واحد منها وتوصيلك مجاني»: منتجات لها علاقة باللي في السلة (ينشرى معه، نفس النوع، نفس القسم) وسعرها يكمّل الباقي
+  function fillFor(gap){
+    var inC = {}, rel = {}, subs = {}, cats = {};
+    Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (!L) return; var p = byId(L.p.base || L.p.id) || L.p; inC[p.id] = 1;
+      (p.pair || []).forEach(function(id, i){ rel[id] = Math.max(rel[id] || 0, 60 - i * 5); }); (p.sugg || []).forEach(function(id){ rel[id] = Math.max(rel[id] || 0, 45); });
+      if (p.sub) subs[p.cat + "/" + p.sub] = 1; cats[p.cat] = 1; });
+    var score = function(p){ return (rel[p.id] || 0) + (p.sub && subs[p.cat + "/" + p.sub] ? 25 : 0) + (cats[p.cat] ? 12 : 0); };
+    // أول شي: اللي لها علاقة بالسلة (حتى لو أرخص من الباقي)، واللي يكمّل المبلغ لحاله يتقدّم بينها. بدون علاقة: الأقرب للباقي
+    var base = D.products.filter(function(p){ return avail(p) && !inC[p.id] && !p.print && hasPic(p.img) && !grpOf(p) && p.price <= gap + 8; });
+    var rl = base.filter(function(p){ return score(p) >= 25; }).sort(function(a, b){ return score(b) - score(a) || (b.price >= gap) - (a.price >= gap) || shelfScore(b) - shelfScore(a); });
+    // نوزّعها بالتناوب على أنواع السلة (مشروب، سناك...) عشان ما يطلع نوع واحد بس
+    var bk = {}, ord = []; rl.forEach(function(p){ var k = p.cat + "/" + (p.sub || ""); if (!bk[k]) { bk[k] = []; ord.push(k); } bk[k].push(p); });
+    rl = []; for (var i = 0; rl.length < 40 && ord.some(function(k){ return bk[k][i]; }); i++) ord.forEach(function(k){ if (bk[k][i]) rl.push(bk[k][i]); });
+    if (rl.length >= 4) return rl.slice(0, 10);
+    var far = base.filter(function(p){ return score(p) < 25 && p.price >= gap; }).sort(function(a, b){ return score(b) - score(a) || (a.price - gap) - (b.price - gap) || shelfScore(b) - shelfScore(a); });
+    return rl.concat(far).slice(0, 10);
+  }
+  function fillTitle(l, gap){ return l.every(function(p){ return p.price >= gap; }) ? tr("أضف واحد منها وتوصيلك مجاني", "Add one for free delivery") : tr("يناسب سلتك · باقي ", "Goes with your cart · ") + rial(gap) + tr(" للتوصيل المجاني", " to free delivery"); }
   function goesWith(p, n){
     var out = [], seen = {}; seen[p.id] = 1;
     (p.pair || []).forEach(function(id){ var x = byId(id); if (x && avail(x) && !seen[x.id]) { seen[x.id] = 1; out.push(x); } });
@@ -2400,8 +2418,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var h = head + '<div style="display:grid;gap:12px;margin-top:16px">';
     // «باقي X وتوصيلك مجاني»: منتجات تكمّل المبلغ (سعرها قريب من الباقي)
     var gap = S.freeOver && t.fee ? Math.round((S.freeOver - t.s) * 100) / 100 : 0, fillL = [];
-    if (gap > 0 && gap <= 25) { var inC2 = {}; Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (L) inC2[L.p.base || L.p.id] = 1; });
-      fillL = D.products.filter(function(p){ return avail(p) && !inC2[p.id] && !p.print && hasPic(p.img) && p.price >= gap && p.price <= gap + 6; }).sort(function(a, b){ return (a.price - gap) - (b.price - gap) || shelfScore(b) - shelfScore(a); }).slice(0, 10); }
+    if (gap > 0 && gap <= 25) fillL = fillFor(gap);
     if (S.freeOver) h += '<div class="darkbar"><div class="r"><span style="display:flex;gap:8px;align-items:center">' + ic("truck") + (t.fee ? tr('باقي ', 'Add ') + rial(S.freeOver - t.s) + tr(' وتوصيلك مجاني', ' more for free delivery') : tr('توصيلك مجاني', 'Free delivery unlocked')) + '</span><span>' + num(t.s) + ' / ' + num(S.freeOver) + '</span></div><div class="meter"><i style="width:' + Math.min(100, t.s / S.freeOver * 100) + '%"></i></div></div>';
     if (dealOn() && dealsList().length) h += '<div class="box lockbox' + (t.unlocked ? ' on' : '') + '"><span class="ic">' + ic(t.unlocked ? "unlock" : "lock") + '</span><span class="t"><div><b>' + (t.unlocked ? tr('عروض ', '') + num(DEAL.price) + tr(' ر.س مفتوحة لك', ' SAR offers unlocked') : tr('باقي ', 'Add ') + rial(t.left) + tr(' وتفتح عروض ', ' more to unlock items for ') + num(DEAL.price) + tr(' ر.س', ' SAR')) + '</b></div>' + (t.unlocked ? '' : '<div class="meter"><i style="width:' + Math.min(100, t.base / Number(DEAL.min || 1) * 100) + '%"></i></div>') + '</span></div>';
     var bseen = {};
@@ -2418,7 +2435,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
         aoL ? (aoL.miss && !aoL.b ? '<span class="ltag miss">' + tr('زود ' + num(aoL.miss) + ' وتحصل على عرض ' + num(aoL.mo.n) + ' بـ ' + num(aoL.mo.price), 'Add ' + aoL.miss + ' for ' + aoL.mo.n + ' at ' + num(aoL.mo.price)) + '</span>' : '<span class="ltag ok">' + tr('✓ عرض ' + num(aoL.mo.n) + ' بـ ' + num(aoL.mo.price) + ' انطبق', '✓ Offer applied') + '</span>') : '';
       return '<div class="line' + (off ? ' off' : '') + '"><span class="plate" style="background:' + tint(p.cat) + '">' + imgTag(p.img, "") + '</span><span class="nm"><b>' + esc(nm(p)) + tag + '</b><span>' + esc(un(p)) + '</span><span class="price' + (L.kind !== "r" ? ' sale' : '') + '" style="font-size:14px">' + (off ? tr('مقفول', 'Locked') : aoL && aoL.b ? rial(aoL.total) + ' <s style="color:var(--muted);font-weight:400;font-size:12px">' + rial(aoL.regular) + '</s>' : rial(L.price * cart[k])) + '</span></span>' +
         '<span class="stepper"><button type="button" data-act="dec" data-id="' + k + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button><b>' + cart[k] + '</b><button type="button" data-act="inc" data-id="' + k + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full || off ? ' disabled' : '') + '>' + ic("plus") + '</button></span></div>'; }).join("") + '</div>';
-    if (fillL.length) h += '<div class="kq-sec" style="margin-top:4px"><h2>' + ic("truck") + tr("أضف واحد منها وتوصيلك مجاني", "Add one for free delivery") + '</h2></div><div class="rail cart-rail">' + fillL.map(function(p){ return card(p); }).join("") + '</div>';
+    if (fillL.length) h += '<div class="kq-sec" style="margin-top:4px"><h2>' + ic("truck") + fillTitle(fillL, gap) + '</h2></div><div class="rail cart-rail">' + fillL.map(function(p){ return card(p); }).join("") + '</div>';
     // «ممكن نسيت؟»: منتج تشتريه عادة (طلبته مرتين أو أكثر) وما هو بالسلة. الزبون الجديد يشوف «أضف قبل لا تطلب» (أشياء صغيرة مطلوبة)
     var inCart = {}; Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (L) inCart[L.p.base || L.p.id] = 1; });
     var forgot = histList().filter(function(x){ return x.h.n >= 2 && !inCart[x.p.id]; }).slice(0, 10).map(function(x){ return x.p; }), fTitle = tr("ممكن نسيت؟", "Forgot something?");
@@ -2557,9 +2574,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (slot === "cart") { var t = totals(), h2 = "";
       if (t.gshort) h2 += '<div class="wrap"><div class="alert soft">' + tr("أضف " + num(t.gshort.need) + " وتحصل على عرض " + esc(t.gshort.g.name || "") + " (" + esc(grpLine(t.gshort.g)) + "). ", "") + '<button type="button" class="btn btn-soft" data-gpick="' + esc(t.gshort.g.id) + '">' + tr("اختر", "Pick") + '</button></div></div>';
       var gap = S.freeOver && t.fee ? Math.round((S.freeOver - t.s) * 100) / 100 : 0;
-      if (gap > 0 && gap <= 25) { var inC = {}; Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (L) inC[L.p.base || L.p.id] = 1; });
-        var fl = D.products.filter(function(p){ return avail(p) && !inC[p.id] && !p.print && hasPic(p.img) && p.price >= gap && p.price <= gap + 6; }).sort(function(a, b){ return (a.price - gap) - (b.price - gap) || shelfScore(b) - shelfScore(a); }).slice(0, 10);
-        if (fl.length) h2 += '<div class="wrap"><div class="kq-sec"><h2>' + tr("أضف واحد منها وتوصيلك مجاني", "Add one for free delivery") + '</h2></div><div class="rail">' + fl.map(function(p){ return card(p); }).join("") + '</div></div>'; }
+      if (gap > 0 && gap <= 25) { var fl = fillFor(gap);
+        if (fl.length) h2 += '<div class="wrap"><div class="kq-sec"><h2>' + fillTitle(fl, gap) + '</h2></div><div class="rail">' + fl.map(function(p){ return card(p); }).join("") + '</div></div>'; }
       return h2; }
     return "";
   }
