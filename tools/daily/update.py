@@ -46,10 +46,14 @@ HIDDEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hidden.json')
 # عروض الرف من المالك (السعر العادي والعرض)، ما يغيّرها ملف الكاشير
 _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shelf_offers.json')
 KEEP_OFFERS = '--keep-offers' in sys.argv
+_cp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'consumables.json')
+CONSUM = set(json.load(open(_cp, encoding='utf-8')).get('cats', [])) if os.path.exists(_cp) else set()
 SHELF = {k: v for k, v in json.load(open(_sp, encoding='utf-8')).items() if not k.startswith('_')} if os.path.exists(_sp) else {}
 
 def main(data_path, xlsx, dry=False):
     d = json.load(open(data_path))
+    global KEEP_ON
+    KEEP_ON = {p['id'] for p in d['products'] if p.get('stock')}
     pmap = {k: v for k, v in json.load(open(PACKS)).items() if k != '_'} if os.path.exists(PACKS) else {}
     hidden = {x['bc'] for x in json.load(open(HIDDEN)).get('items', [])} if os.path.exists(HIDDEN) else set()
     gone = {'x' + k for k in pmap} | {'x' + b for b in hidden}
@@ -83,7 +87,11 @@ def main(data_path, xlsx, dry=False):
             # الكرتون والشدّة من عمود «الوحدة» (قرار المالك ١٢ نوفمبر): الوحدة تتبع الملف، فيطلع المنتج في قسم «الكراتين والشدّات»
             if UNIT.get(unit) in ('كرتون', 'شدّة') and p.get('unit') != UNIT[unit]: p['unit'] = UNIT[unit]; rep['unit'] += 1
             avail = qty > 0
-            if bool(p.get('stock')) != avail: p['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
+            # الاستهلاكي (consumables.json): الملف ما يصفّره. صفر بالملف = يبقى متوفر وبدون عدد في الخادم (None = يمسح سطره من جدول stock)
+            if p.get('cat') in CONSUM and not avail:
+                qty_of[p['id']] = None; rep['consumable_kept'] += 1
+                if not p.get('stock') and p['id'] in KEEP_ON: p['stock'] = True
+            elif bool(p.get('stock')) != avail: p['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
             # سعر الملف = السعر الأساسي. المنتج اللي عليه عرض (old): العرض يبقى، و«السعر قبل» يصير سعر الملف.
             # لو سعر الملف صار أقل من سعر العرض أو يساويه، العرض ما له معنى فينشال ويصير السعر سعر الملف.
             if p['id'] in SHELF:  # عرض رف من المالك: السعر العادي والعرض ثابتين لين ينحذف من shelf_offers.json

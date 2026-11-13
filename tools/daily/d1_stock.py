@@ -13,7 +13,10 @@ def q(sql, params=None):
     return r['result'][0]
 
 stock = json.load(open(sys.argv[1]))
-items = list(stock.items())
+# None = منتج استهلاكي الملف قال صفر: نمسح سطره (بدون حد في الخادم) بدل ما نصفّره
+free = [k for k, v in stock.items() if v is None]
+if free: q("DELETE FROM stock WHERE id IN (SELECT value FROM json_each(?))", [json.dumps(free)])
+items = [(k, v) for k, v in stock.items() if v is not None]
 for i in range(0, len(items), 2500):
     part = dict(items[i:i + 2500])
     q("INSERT INTO stock (id, qty) SELECT key, value FROM json_each(?) WHERE true ON CONFLICT(id) DO UPDATE SET qty = excluded.qty", [json.dumps(part)])
@@ -21,4 +24,4 @@ for i in range(0, len(items), 2500):
 q("INSERT INTO stock_snap (k, v) SELECT 'low', COALESCE(json_group_object(id, qty), '{}') FROM stock WHERE qty <= 10 ON CONFLICT(k) DO UPDATE SET v = excluded.v")
 q("INSERT INTO alog (at, who, act, ref, info) VALUES (?, ?, ?, ?, ?)",
   [int(time.time() * 1000), 'Claude (ملف التحديث اليومي)', 'bulk_import', 'stock', json.dumps({'n': len(items)}, ensure_ascii=False)])
-print('stock rows written', len(items), q("SELECT COUNT(*) n, SUM(qty=0) zero FROM stock")['results'])
+print('stock rows written', len(items), 'freed', len(free), q("SELECT COUNT(*) n, SUM(qty=0) zero FROM stock")['results'])
