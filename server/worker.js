@@ -934,6 +934,7 @@ async function ensureSchema(env) {
   await env.DB.batch([
     "CREATE TABLE IF NOT EXISTS orders (no INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER NOT NULL, updated INTEGER NOT NULL, status TEXT NOT NULL, phone TEXT NOT NULL, data TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS stock (id TEXT PRIMARY KEY, qty INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS stock_snap (k TEXT PRIMARY KEY, v TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS promo_codes (code TEXT PRIMARY KEY, kind TEXT NOT NULL, value REAL NOT NULL, min REAL NOT NULL DEFAULT 0, cap REAL NOT NULL DEFAULT 0, until INTEGER NOT NULL DEFAULT 0, max_uses INTEGER NOT NULL DEFAULT 0, per_phone INTEGER NOT NULL DEFAULT 1, active INTEGER NOT NULL DEFAULT 1, note TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL, who TEXT NOT NULL DEFAULT '')",
     "CREATE TABLE IF NOT EXISTS subs (endpoint TEXT NOT NULL, role TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', p256dh TEXT NOT NULL, auth TEXT NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (endpoint, role, ref))",
     "CREATE TABLE IF NOT EXISTS st_day (day TEXT PRIMARY KEY, orders INTEGER NOT NULL, revenue REAL NOT NULL)",
@@ -1033,6 +1034,7 @@ async function dbInsertOrder(env, rec, need, now, force, log, opt = {}) {
     st.push(P("SELECT CASE WHEN qty < ? THEN json('stock') ELSE 1 END x FROM stock WHERE id = ?", need[id], id));
     st.push(P("UPDATE stock SET qty = qty - ? WHERE id = ?", need[id], id));
   }
+  st.push(...snapStmts(env, Object.keys(need)));
   if (opt.checkout) st.push(P(`INSERT INTO checkout_keys(request_id,no,fingerprint) VALUES(?,${NO},?)`,opt.checkout.id,opt.checkout.fingerprint));
   if (rec.walletCents) {
     st.push(P(`INSERT INTO wallet_order_keys(request_id,no) VALUES(?,${NO})`,rec.walletRequestId));
@@ -1091,6 +1093,7 @@ async function changeStatus(env, n, st, now = Date.now(), who = "", actor = null
     const back = st === "canceled";
     const need = needOf(rec), cur = await readStock(env, Object.keys(needOf(rec)));
     for (const id of Object.keys(need)) if (cur[id] != null) stmts.push(P("UPDATE stock SET qty = MAX(qty + ?, 0) WHERE id = ?", (back ? 1 : -1) * need[id], id));
+    stmts.push(...snapStmts(env, Object.keys(need).filter((id) => cur[id] != null)));
     if (counted) stmts.push(...statsStmts(env, rec, day, hour, back ? -1 : 1, back ? 1 : -1));
   }
   const dl = (sign, ms) => P("INSERT INTO st_day (day, orders, revenue, deliv_n, deliv_ms, deliv_rev) VALUES (?, 0, 0, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET deliv_n = deliv_n + excluded.deliv_n, deliv_ms = deliv_ms + excluded.deliv_ms, deliv_rev = deliv_rev + excluded.deliv_rev", day, sign, sign * ms, round2(sign * Number(rec.total || 0)));
@@ -1218,6 +1221,7 @@ async function editOrder(env, data, body, who) {
     const d = (b[id] || 0) - (a[id] || 0);
     if (d && cur[id] != null) stmts.push(P("UPDATE stock SET qty = MAX(qty - ?, 0) WHERE id = ?", d, id));
   }
+  stmts.push(...snapStmts(env, [...new Set(Object.keys(a).concat(Object.keys(b)))].filter((id) => cur[id] != null)));
   await env.DB.batch(stmts);
   return { order: { ...nr, no: "#" + (1000 + n), status: old.status, created: old.created } };
 }
@@ -1561,12 +1565,19 @@ function needOf(rec) {
 let stockCache = { at: 0, body: "" };
 // للزبائن: بس الكميات القليلة (≤ STOCK_SHOW). الكمية الكبيرة ما تحد السلة، والخادم يتأكد وقت الطلب ويرجع الباقي لو ما كفى
 const STOCK_SHOW = 10;
+// «صورة» المخزون القليل في سطر واحد (stock_snap): الزائر يقرأ سطر واحد بدل آلاف الصفوف.
+// كل تعديل على المخزون يحدّث في نفس الدفعة بس المنتجات اللي تغيّرت (snapStmts)، والاستيراد الجماعي يعيد بناءها كاملة (snapRebuild)
+const SNAP_REBUILD = "INSERT INTO stock_snap (k, v) SELECT 'low', COALESCE(json_group_object(id, qty), '{}') FROM stock WHERE qty <= " + STOCK_SHOW + " ON CONFLICT(k) DO UPDATE SET v = excluded.v";
+function snapStmts(env, ids) {
+  return [...new Set(ids.map(String))].map((id) => env.DB.prepare(
+    "UPDATE stock_snap SET v = CASE WHEN (SELECT qty FROM stock WHERE id = ?1) <= " + STOCK_SHOW +
+    " THEN json_set(v, '$.\"' || ?1 || '\"', (SELECT qty FROM stock WHERE id = ?1)) ELSE json_remove(v, '$.\"' || ?1 || '\"') END WHERE k = 'low'").bind(id));
+}
 async function readShownStock(env) {
   await ensureSchema(env);
-  const rs = await env.DB.prepare("SELECT id, qty FROM stock WHERE qty <= ?").bind(STOCK_SHOW).all();
-  const out = {};
-  for (const r of rs.results || []) out[r.id] = r.qty;
-  return out;
+  let r = await env.DB.prepare("SELECT v FROM stock_snap WHERE k = 'low'").first();
+  if (!r) { await env.DB.prepare(SNAP_REBUILD).run(); r = await env.DB.prepare("SELECT v FROM stock_snap WHERE k = 'low'").first(); }
+  try { return JSON.parse(r && r.v || "{}"); } catch { return {}; }
 }
 async function readStock(env, ids) {
   await ensureSchema(env);
@@ -1581,7 +1592,7 @@ async function moveStock(env, need, sign, known) {
   const cur = known || (await readStock(env, Object.keys(need)));
   const st = Object.keys(need).filter((id) => cur[id] != null)
     .map((id) => env.DB.prepare("UPDATE stock SET qty = MAX(qty + ?, 0) WHERE id = ?").bind(sign * need[id], id));
-  if (st.length) await env.DB.batch(st);
+  if (st.length) await env.DB.batch([...st, ...snapStmts(env, Object.keys(need).filter((id) => cur[id] != null))]);
 }
 async function setStock(env, map) {
   await ensureSchema(env);
@@ -1596,7 +1607,7 @@ async function setStock(env, map) {
   }
   // كل القيم في جملة وحدة (استيراد ٣٠٠٠ صنف = استعلام واحد بدل ٣٠٠٠)
   if (Object.keys(put).length) st.push(env.DB.prepare("INSERT INTO stock (id, qty) SELECT key, value FROM json_each(?) WHERE true ON CONFLICT(id) DO UPDATE SET qty = excluded.qty").bind(JSON.stringify(put)));
-  if (st.length) await env.DB.batch(st);
+  if (st.length) await env.DB.batch([...st, env.DB.prepare(SNAP_REBUILD)]);
 }
 
 // وضع «المندوب للتوصيل بس»: الطلب يوصل المندوب بعد ما يعلّمه المجهز «جاهز».
