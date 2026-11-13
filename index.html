@@ -2555,7 +2555,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       var gw = goesWith(p, 10); if (gw.length) h += '<div class="wrap"><div class="kq-sec"><h2>' + tr("ينشرى معه عادة", "Often bought with") + '</h2></div><div class="rail">' + gw.map(function(x){ return card(x); }).join("") + '</div></div>';
       return h; }
     if (slot === "cart") { var t = totals(), h2 = "";
-      if (t.gshort) h2 += '<div class="wrap"><div class="alert soft">' + tr("أضف " + num(t.gshort.need) + " وتحصل على عرض " + esc(t.gshort.g.name || "") + " (" + esc(grpLine(t.gshort.g)) + "). ", "") + '<button type="button" class="btn btn-soft" data-gpick="' + esc(t.gshort.g.id) + '">' + tr("كمّل", "Complete") + '</button></div></div>';
+      if (t.gshort) h2 += '<div class="wrap"><div class="alert soft">' + tr("أضف " + num(t.gshort.need) + " وتحصل على عرض " + esc(t.gshort.g.name || "") + " (" + esc(grpLine(t.gshort.g)) + "). ", "") + '<button type="button" class="btn btn-soft" data-gpick="' + esc(t.gshort.g.id) + '">' + tr("اختر", "Pick") + '</button></div></div>';
       var gap = S.freeOver && t.fee ? Math.round((S.freeOver - t.s) * 100) / 100 : 0;
       if (gap > 0 && gap <= 25) { var inC = {}; Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (L) inC[L.p.base || L.p.id] = 1; });
         var fl = D.products.filter(function(p){ return avail(p) && !inC[p.id] && !p.print && hasPic(p.img) && p.price >= gap && p.price <= gap + 6; }).sort(function(a, b){ return (a.price - gap) - (b.price - gap) || shelfScore(b) - shelfScore(a); }).slice(0, 10);
