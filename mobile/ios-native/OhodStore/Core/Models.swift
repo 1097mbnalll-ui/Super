@@ -277,9 +277,24 @@ struct StoreInfo: Sendable {
     /// الخانات الحية (store.app.slots): صفحة المنتج والسلة تعرض أجزاء من الموقع (ميزات جديدة بدون تحديث). افتراضياً شغّالة
     var liveProduct = true
     var liveCart = true
+    /// تصرف الأزرار من الموقع (store.app.tap): «هالمنتج لما ينضغط يفتح صفحة كذا» بدون تحديث للتطبيق
+    var tapRules: [TapRule] = []
     /// خدمة الطباعة (store.print): «قريباً»، وأقل طلب لو السلة طباعة بس
     var printSoon = false
     var printMinOrder: Double? = nil
+}
+
+/// قاعدة تصرف زر (store.app.tap = [{on, ids, cat, group, page, label}]): أول قاعدة تطابق تفوز.
+/// on: add (زر + في الكرت) / open (الضغط على الكرت) / buy (زر صفحة المنتج). page: صفحة حية مثل «g:{group}:{id}»
+/// أو «o:{cat}»، ويتبدل فيها {id} {group} {cat}. page فاضي = التصرف الأصلي للتطبيق
+struct TapRule: Sendable, Hashable {
+    let on: Set<String>
+    let ids: Set<String>?
+    let cats: Set<String>?
+    let group: Bool?
+    let offer: Bool?
+    let page: String
+    let label: String?
 }
 
 struct ProductGroup: Sendable, Hashable {
@@ -389,6 +404,17 @@ enum CatalogParser {
         if let app = s["app"] as? [String: Any], let slots = app["slots"] as? [String: Any] {
             store.liveProduct = (slots["product"] as? Bool) ?? true
             store.liveCart = (slots["cart"] as? Bool) ?? true
+        }
+        if let app = s["app"] as? [String: Any], let taps = app["tap"] as? [[String: Any]] {
+            let set: (Any?) -> Set<String>? = { v in
+                if let a = v as? [Any] { return Set(a.compactMap { str($0) }) }
+                return str(v).map { Set([$0]) }
+            }
+            store.tapRules = taps.compactMap { t in
+                guard let on = set(t["on"]), !on.isEmpty else { return nil }
+                return TapRule(on: on, ids: set(t["ids"]), cats: set(t["cat"]), group: t["group"] as? Bool, offer: t["offer"] as? Bool,
+                               page: str(t["page"]) ?? "", label: str(t["label"]))
+            }
         }
 
         let cats: [Category] = ((root["cats"] as? [[String: Any]]) ?? []).compactMap { c in

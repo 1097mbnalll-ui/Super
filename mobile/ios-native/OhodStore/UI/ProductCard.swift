@@ -27,7 +27,8 @@ struct ProductCard: View {
 
     var body: some View {
         let available = catalog.isAvailable(product)
-        NavigationLink(value: Route.product(product.id)) {
+        // الضغط على الكرت: صفحة المنتج، أو صفحة حية لو الموقع حدد (store.app.tap on=open)
+        NavigationLink(value: kind == nil ? catalog.tap("open", product).map { Route.live($0.page) } ?? Route.product(product.id) : Route.product(product.id)) {
             VStack(alignment: .leading, spacing: 3) {
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
@@ -158,14 +159,14 @@ struct CardQuantityControl: View {
     var body: some View {
         let line = cart.line(key)
         let cap = cart.limit(for: key, in: catalog) ?? limit
-        // منتج داخل عرض مجموعة: + يفتح نافذة الاختيار الحية والمنتج محطوط فيها («أضف ٢ وتحصل على العرض» أو «لا شكراً»)
-        let grp = key.contains(":") || key.contains("~") ? nil : catalog.group(for: key)
+        // زر + يتصرف حسب الموقع (store.app.tap)، مثل منتج داخل عرض مجموعة: يفتح نافذة الاختيار الحية والمنتج محطوط فيها
+        let live = key.contains(":") || key.contains("~") ? nil : catalog.product(key).flatMap { catalog.tap("add", $0) }
         Group {
-            if line.qty == 0 || grp != nil {
+            if line.qty == 0 || live != nil {
                 HStack {
                     Spacer(minLength: 0)
                     Button {
-                        if let grp, let lp = livePath { lp.wrappedValue.append(Route.live("g:" + grp.id + ":" + key)); return }
+                        if let live, let lp = livePath { lp.wrappedValue.append(Route.live(live.page)); return }
                         cart.increment(key, limit: cap)
                     } label: {
                         // الزر متناسق مع حجم الكرت والسعر، ويكبر ويصغر مع الخط من «شكل التطبيق»

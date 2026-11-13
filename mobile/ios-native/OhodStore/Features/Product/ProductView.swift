@@ -140,10 +140,14 @@ struct ProductView: View {
         .scrollIndicators(.hidden)
         .background(Color.white)
         .safeAreaInset(edge: .bottom) {
-            if available, let g = catalog.group(for: product.id) {
-                // عرض المجموعة: الاختيار من صفحة حية (أي ٣ من أي نوع)
-                Button { livePath?.wrappedValue.append(Route.live("g:" + g.id + ":" + product.id)) } label: {
-                    HStack { Text("أضف للسلة"); Spacer(); Text("\(g.count) بـ \(Money.plain(g.price))") }
+            if available, let live = catalog.tap("buy", product) {
+                // زر الشراء يفتح صفحة حية حسب الموقع (store.app.tap on=buy)، مثل نافذة اختيار عرض المجموعة
+                let g = catalog.group(for: product.id)
+                Button { livePath?.wrappedValue.append(Route.live(live.page)) } label: {
+                    HStack {
+                        Text(tv: live.label ?? "أضف للسلة"); Spacer()
+                        if let g { Text("\(g.count) بـ \(Money.plain(g.price))") } else { Text(tv: Money.sar(unitPrice)) }
+                    }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .padding(.horizontal, 16).padding(.vertical, 10)
