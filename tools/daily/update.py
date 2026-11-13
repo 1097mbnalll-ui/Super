@@ -47,7 +47,8 @@ HIDDEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hidden.json')
 _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shelf_offers.json')
 KEEP_OFFERS = '--keep-offers' in sys.argv
 _cp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'consumables.json')
-CONSUM = set(json.load(open(_cp, encoding='utf-8')).get('cats', [])) if os.path.exists(_cp) else set()
+_cj = json.load(open(_cp, encoding='utf-8')) if os.path.exists(_cp) else {}
+CONSUM = set(_cj.get('cats', [])); CONSUM_SUB = set(_cj.get('subs', []))
 SHELF = {k: v for k, v in json.load(open(_sp, encoding='utf-8')).items() if not k.startswith('_')} if os.path.exists(_sp) else {}
 
 def main(data_path, xlsx, dry=False):
@@ -88,9 +89,11 @@ def main(data_path, xlsx, dry=False):
             if UNIT.get(unit) in ('كرتون', 'شدّة') and p.get('unit') != UNIT[unit]: p['unit'] = UNIT[unit]; rep['unit'] += 1
             avail = qty > 0
             # الاستهلاكي (consumables.json): الملف ما يصفّره. صفر بالملف = يبقى متوفر وبدون عدد في الخادم (None = يمسح سطره من جدول stock)
-            if p.get('cat') in CONSUM and not avail:
+            if p.get('cat') in CONSUM or p.get('sub') in CONSUM_SUB:
+                # «لا توقفه أبداً»: بدون عدد في الخادم دايماً (ما يوقف لو خلصت الكمية بالطلبات)، والملف يشغّله بس
                 qty_of[p['id']] = None; rep['consumable_kept'] += 1
-                if not p.get('stock') and p['id'] in KEEP_ON: p['stock'] = True
+                if avail and not p.get('stock'): p['stock'] = True; rep['stock_on'] += 1
+                elif not avail and not p.get('stock') and p['id'] in KEEP_ON: p['stock'] = True
             elif bool(p.get('stock')) != avail: p['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
             # سعر الملف = السعر الأساسي. المنتج اللي عليه عرض (old): العرض يبقى، و«السعر قبل» يصير سعر الملف.
             # لو سعر الملف صار أقل من سعر العرض أو يساويه، العرض ما له معنى فينشال ويصير السعر سعر الملف.
@@ -134,6 +137,9 @@ def main(data_path, xlsx, dry=False):
         o = next((x for x in pk if int(x.get('n') or 0) == int(m['n'])), None)
         if not o: o = {'u': m['u'], 'n': int(m['n']), 'price': price}; pk.append(o); rep['pack_added'] += 1
         elif abs(float(o.get('price') or 0) - price) >= 0.01: changed.append((b['name'] + ' · ' + o['u'], o['price'], price)); o['price'] = price; rep['pack_price'] += 1
+        if b['id'] in qty_of and qty_of[b['id']] is None:  # استهلاكي: بدون عدد، والكرتون يشغّله بس
+            if qty > 0 and not b.get('stock'): b['stock'] = True; rep['stock_on'] += 1
+            rep['pack_rows'] += 1; continue
         qty_of[b['id']] = qty_of.get(b['id'], 0) + max(0, int(qty)) * int(m['n'])
         avail = qty_of[b['id']] > 0
         if bool(b.get('stock')) != avail: b['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
