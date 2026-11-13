@@ -100,6 +100,19 @@ S['misc'] = [
   ('home', 'مستلزمات المنزل', rx('شمع|فواحه|علاقه|علاقة|مشجب|ستاره|مرآه|مراه|سله|سلة|صندوق|تخزين|منظم|ساعة حائط|مفرش|بطانيه|مخده|وساده|شرشف|فراش|زهور|ورد صناعي|ديكور')),
 ]
 
+# ترتيب العرض للزبون («رحلة المقاضي»): الأكثر طلباً والمرتبط ببعض جنب بعض (يختلف عن ترتيب قواعد التصنيف)
+SHOW = {
+  'drinks': ['water', 'soft', 'juice', 'energy', 'icedtea', 'tea'],
+  'sweets': ['chips', 'chocolate', 'biscuits', 'cakes', 'candy', 'icecream', 'nuts', 'gum'],
+  'dairy': ['milk', 'laban', 'eggs', 'cheese', 'cream'],
+  'pantry': ['rice', 'oil', 'flour', 'canned', 'pasta', 'breakfast', 'sugar', 'sauces', 'spices', 'frozen'],
+  'meat': ['chicken', 'beef', 'processed', 'fish'],
+  'clean': ['laundry', 'dishes', 'surfaces', 'bags', 'paper', 'fresh', 'insects'],
+  'care': ['paper', 'baby', 'hair', 'oral', 'body', 'deo', 'women', 'shave', 'tools'],
+}
+# ترتيب الأقسام الرئيسية: الأساسيات أول، والمشروبات ثم السناكس جنب بعض، و«قريباً» آخر شي
+CAT_ORDER = ['dairy', 'drinks', 'sweets', 'pantry', 'meat', 'cartons', 'clean', 'care', 'misc', 'bakery', 'cheese', 'veg', 'roast', 'print']
+
 def run(path, apply=False):
     d = json.load(open(path, encoding='utf-8'))
     cats = {c['id']: c for c in d['cats']}
@@ -120,6 +133,8 @@ def run(path, apply=False):
     for cid, rules in S.items():
         c = cats[cid]; used = {s for (cc, s) in cnt if cc == cid}
         allr = [(k, MISC_NAMES[k]) for k in MISC_KEEP] + [(sid, nm) for sid, nm, _ in rules] if cid == 'misc' else [(sid, nm) for sid, nm, _ in rules]
+        order = SHOW.get(cid)
+        if order: allr = sorted(allr, key=lambda x: order.index(x[0]) if x[0] in order else 99)
         c['subs'] = [{'id': sid, 'name': nm} for sid, nm in allr if sid in used]
     print('انتقلت لقسمها الصحيح:', len(moved))
     for m in moved[:40]: print('   ', m[1], '→', m[2], '|', m[0])
@@ -129,6 +144,7 @@ def run(path, apply=False):
         print(f"\n## {cats[cid]['name']} ({tot} متوفر)")
         for sid, nm in ([(k, MISC_NAMES[k]) for k in MISC_KEEP] if cid == 'misc' else []) + [(sid, nm) for sid, nm, _ in rules]: print(f"   {nm}: {av.get((cid, sid), 0)}")
         print(f"   أخرى: {av.get((cid, None), 0)}", ('· مثال: ' + ' | '.join(other[cid][:12])) if other[cid] else '')
+    d['cats'].sort(key=lambda c: CAT_ORDER.index(c['id']) if c['id'] in CAT_ORDER else 50)
     if apply:
         open(path, 'w', encoding='utf-8').write(json.dumps(d, ensure_ascii=False, separators=(',', ':')))
         print('\nانحفظ')

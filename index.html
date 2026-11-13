@@ -1599,7 +1599,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function savedRow(t){ return t.saved > 0.009 ? '<div class="saved"><span>' + tr("وفّرت على هالطلب", "You saved") + '</span><span>' + rial(t.saved) + '</span></div>' : ''; }
   // ترتيب العرض: المتوفر أول، وبعده اللي له صورة (عشان أول ما يشوفه الزبون يكون بصور)
-  function shelfSort(a, b){ return (avail(b) - avail(a)) || ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)); }
+  // «الرف الذهبي»: المتوفر أول، ثم المنتج بصورة، ثم الأهم (rk: المبيعات والسلة والأساسيات، tools/daily/popularity.py) مع دفعة للعروض
+  function shelfScore(p){ return (Number(p.rk) || 0) + (isOffer(p) ? 120 : 0); }
+  function shelfSort(a, b){ return (avail(b) - avail(a)) || ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)) || (shelfScore(b) - shelfScore(a)); }
   function isOffer(p){ return onSale(p) || !!multiOf(p); }
   /* ---------- live stock ---------- */
   var LIVE = {};
@@ -1631,7 +1633,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function sToast(m){ var x = document.createElement("div"); x.className = "dv-toast"; x.setAttribute("role", "status"); x.textContent = m; document.body.appendChild(x); setTimeout(function(){ x.remove(); }, 2200); }
   function banOf(id){ var l = S.bans || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
   function idsToList(ids){ return (ids || []).map(byId).filter(function(p){ return avail(p); }); }
-  var LAYOUT_DEF = ["promos","catoffers","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["top","multi","daily","offers","deals","bakery"];
+  var LAYOUT_DEF = ["promos","again","catoffers","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["top","multi","daily","offers","deals","bakery"];
   function promoDefs(){ return PROMO_DEF.concat((S.bans || []).map(function(b){ return b.id; })); }
   function orderOf(list, defs){
     var out = [], seen = {};
@@ -1769,6 +1771,14 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var lastOrder = null, pdQty = 1, pdPack = -1;
   try { lastOrder = JSON.parse(localStorage.getItem("ohod-last") || "null"); } catch(e){}
   function saveLast(){ try { localStorage.setItem("ohod-last", JSON.stringify(lastOrder)); } catch(e){} }
+  // سجل مشتريات الجهاز (للزبون نفسه بس، ما يطلع من جواله): كم طلب فيه المنتج، ومجموع الكمية، وآخر مرة
+  var HIST = {}; try { HIST = JSON.parse(localStorage.getItem("ohod-hist") || "{}") || {}; } catch(e){}
+  function recordHist(items){ var now = Date.now(); Object.keys(items).forEach(function(k){ var L = lineOf(k); if (!L || L.p.print) return; var id = L.p.base || L.p.id, q = items[k] * (Number(L.p.per) || 1);
+      var h = HIST[id] || (HIST[id] = { n: 0, q: 0, at: 0 }); if (h.at !== now) h.n++; h.q += q; h.at = now; });
+    try { localStorage.setItem("ohod-hist", JSON.stringify(HIST)); } catch(e){} }
+  function histList(){ return Object.keys(HIST).map(function(id){ var p = byId(id); return p && avail(p) ? { p: p, h: HIST[id] } : null; }).filter(Boolean)
+    .sort(function(a, b){ return b.h.n - a.h.n || b.h.at - a.h.at; }); }
+  function usualQty(h){ return Math.max(1, Math.round(h.q / Math.max(1, h.n))); }
   function activeOrder(){ return lastOrder && lastOrder.track && Date.now() - lastOrder.at < 12 * 3600e3 && lastOrder.status !== "delivered" && lastOrder.status !== "canceled"; }
   var trackTimer = null;
   function trackPoll(){
@@ -1989,6 +1999,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
       var pic = l.filter(function(p){ return hasPic(p.img); })[0]; return { c: c, n: l.length, mx: mx, pic: pic }; }).filter(Boolean).sort(function(a, b){ return b.n - a.n; }).slice(0, 8);
     SEC.catoffers = co.length > 1 ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("tag") + tr("عروض الأقسام", "Deals by aisle") + '</h2><button type="button" data-chip="offers">' + tr("كل العروض", "All offers") + ic("fwd") + '</button></div><div class="kq-cof">' +
       co.map(function(x){ return '<button type="button" class="cof" style="--ct:' + tint(x.c.id) + '" data-chip="o:' + esc(x.c.id) + '"><span class="cof-t"><b>' + tr("عروض ", "") + esc(nm(x.c)) + tr("", " deals") + '</b>' + (x.mx ? '<em>' + tr("حتى ", "Up to ") + num(x.mx) + tr("٪", "%") + '</em>' : '') + '<small>' + num(x.n) + tr(" منتج", " items") + '</small></span>' + (x.pic ? kbImg(x.pic.id, "cof-p") : '') + '</button>'; }).join("") + '</div></div>' : '';
+    // «اطلب مرة ثانية»: منتجاتك المعتادة (من طلباتك على هالجهاز) وزر يضيفها كلها بكمياتها المعتادة
+    var hl = EMBED ? [] : histList().slice(0, 16);
+    SEC.again = hl.length ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("cart") + tr("اطلب مرة ثانية", "Order again") + '</h2><button type="button" id="addAgain">' + tr("أضف المعتاد كله", "Add all usuals") + ic("plus") + '</button></div><div class="rail">' +
+      hl.map(function(x){ return card(x.p); }).join("") + '</div></div>' : '';
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
     SEC.free = S.freeOver ? '<div class="wrap kq-sec-wrap"><button type="button" class="kq-free" data-chip="for"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("احصل على توصيلك المجاني!", "Get free delivery!") + ' <em>' + tr("مجاني", "Free") + '</em></b><span>' + tr("لطلباتك فوق ", "On orders over ") + rial(S.freeOver) + '</span></span>' + ic("fwd") + '</button></div>' : '';
     SEC.catgrid = '<div class="wrap"><div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-nav="cats">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div></div>';
@@ -2080,7 +2094,14 @@ html.sp-on,html.sp-on body{overflow:hidden}
     }
     return '<div class="aisle-head" style="background:' + tint(c.id) + '">' + imgTag(catPhoto(c), "") + tr('<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + tr('</button><button class="sq" type="button" data-nav="search" aria-label="بحث" style="background:rgba(255,255,255,.75)">', '</button><button class="sq" type="button" data-nav="search" aria-label="Search" style="background:rgba(255,255,255,.75)">') + ic("search") + '</button></div>' +
       '<h1>' + esc(nm(c)) + '</h1><p>' + (isPrint ? tr("اطبع أوراقك وتوصلك", "Print your papers, delivered") : catSoon(c) && c.id !== "print" ? tr("قريباً", "Coming soon") : items.length + tr(' منتج · التوصيل ', ' products · delivery ') + esc(sv("eta") || "")) + '</p></div></div>' +
-      (isPrint ? printHTML() : catSoon(c) && !items.some(avail) ? catSoonBox(c) : subBar + '<div class="wrap" style="margin-top:' + (subBar ? 4 : 16) + 'px"><div class="grid">' + pagedCards(shown, "cat:" + c.id + (openSub ? "|" + openSub : "")).join("") + '</div></div>');
+      (isPrint ? printHTML() : catSoon(c) && !items.some(avail) ? catSoonBox(c) : subBar + (subs.length && !openSub && items.length > 24 ? aisleRows(subs, items, known, other) : '<div class="wrap" style="margin-top:' + (subBar ? 4 : 16) + 'px"><div class="grid">' + pagedCards(shown, "cat:" + c.id + (openSub ? "|" + openSub : "")).join("") + '</div></div>'));
+  }
+  // «الكل» في القسم الكبير: صف لكل قسم فرعي بترتيب الرحلة (أهم ١٢ منتج + «عرض الكل»)، مثل المتاجر الكبيرة
+  function aisleRows(subs, items, known, other){
+    var rows = subs.filter(function(s){ return known[s.id]; }).map(function(s){ return { id: s.id, name: nm(s), list: items.filter(function(p){ return p.sub === s.id; }) }; });
+    if (other) rows.push({ id: "_other", name: tr("أخرى", "Other"), list: items.filter(function(p){ return !(p.sub && known[p.sub] != null); }) });
+    return rows.map(function(r){ return '<div class="wrap"><div class="kq-sec"><h2>' + esc(r.name) + '</h2><button type="button" data-catsub="' + esc(r.id) + '">' + tr("عرض الكل", "See all") + ' (' + num(r.list.length) + ')' + ic("fwd") + '</button></div><div class="rail">' +
+      r.list.slice(0, 12).map(function(p){ return card(p); }).join("") + '</div></div>'; }).join("");
   }
   function productHTML(){
     var p = byId(openProd); if (!p) return catsHTML();
@@ -2222,7 +2243,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       if (!ok) continue;
       if (nmh.indexOf(" " + alts[0][0]) === 0) sc += 3; // اسم المنتج يبدأ بأول كلمة
       if (catHit[p.cat]) sc += 3;
-      if (avail(p)) sc += 50; if (hasPic(p.img)) sc += 2; if (isOffer(p)) sc += 1;
+      if (avail(p)) sc += 50; if (hasPic(p.img)) sc += 2; if (isOffer(p)) sc += 1; sc += Math.min(3, (Number(p.rk) || 0) / 60);
       out.push({ p: p, s: sc, l: String(p.name).length });
     }
     return out.sort(function(a, b){ return b.s - a.s || a.l - b.l; }).map(function(x){ return x.p; });
@@ -2268,6 +2289,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
         aoL ? (aoL.miss && !aoL.b ? '<span class="ltag miss">' + tr('زود ' + num(aoL.miss) + ' وتحصل على عرض ' + num(aoL.mo.n) + ' بـ ' + num(aoL.mo.price), 'Add ' + aoL.miss + ' for ' + aoL.mo.n + ' at ' + num(aoL.mo.price)) + '</span>' : '<span class="ltag ok">' + tr('✓ عرض ' + num(aoL.mo.n) + ' بـ ' + num(aoL.mo.price) + ' انطبق', '✓ Offer applied') + '</span>') : '';
       return '<div class="line' + (off ? ' off' : '') + '"><span class="plate" style="background:' + tint(p.cat) + '">' + imgTag(p.img, "") + '</span><span class="nm"><b>' + esc(nm(p)) + tag + '</b><span>' + esc(un(p)) + '</span><span class="price' + (L.kind !== "r" ? ' sale' : '') + '" style="font-size:14px">' + (off ? tr('مقفول', 'Locked') : aoL && aoL.b ? rial(aoL.total) + ' <s style="color:var(--muted);font-weight:400;font-size:12px">' + rial(aoL.regular) + '</s>' : rial(L.price * cart[k])) + '</span></span>' +
         '<span class="stepper"><button type="button" data-act="dec" data-id="' + k + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button><b>' + cart[k] + '</b><button type="button" data-act="inc" data-id="' + k + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full || off ? ' disabled' : '') + '>' + ic("plus") + '</button></span></div>'; }).join("") + '</div>';
+    // «ممكن نسيت؟»: منتج تشتريه عادة (طلبته مرتين أو أكثر) وما هو بالسلة. الزبون الجديد يشوف «أضف قبل لا تطلب» (أشياء صغيرة مطلوبة)
+    var inCart = {}; Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (L) inCart[L.p.base || L.p.id] = 1; });
+    var forgot = histList().filter(function(x){ return x.h.n >= 2 && !inCart[x.p.id]; }).slice(0, 10).map(function(x){ return x.p; }), fTitle = tr("ممكن نسيت؟", "Forgot something?");
+    if (!forgot.length) { fTitle = tr("أضف قبل لا تطلب", "Add before you order");
+      forgot = D.products.filter(function(p){ return avail(p) && !inCart[p.id] && !p.print && p.price > 0 && p.price <= 5 && hasPic(p.img) && (Number(p.rk) || 0) >= 60; })
+        .sort(function(a, b){ return shelfScore(b) - shelfScore(a); }).slice(0, 10); }
+    if (forgot.length) h += '<div class="kq-sec" style="margin-top:4px"><h2>' + ic("spark") + fTitle + '</h2></div><div class="rail cart-rail">' + forgot.map(function(p){ return card(p); }).join("") + '</div>';
     h += tr('<div class="box totals"><div><span>المنتجات</span><span>', '<div class="box totals"><div><span>Items</span><span>') + rial(t.s) + tr('</span></div><div><span>التوصيل</span><span>', '</span></div><div><span>Delivery</span><span>') + feeCell(t) + '</span></div>' + giftRow(t) + savedRow(t) + tr('<div class="grand"><b>الإجمالي</b><span class="price">', '<div class="grand"><b>Total</b><span class="price">') + num(t.all) + tr(' <small>ر.س</small></span></div></div></div></div>', ' <small>SAR</small></span></div></div></div></div>');
     var minO = minOrderNow(), short = minO && t.s < minO;
     if (isClosed()) h = h.replace('<div class="lines">', '<div class="alert">' + tr("المحل مقفل الحين، وما نستقبل طلبات. ", "The store is closed and not taking orders right now. ") + esc(closedMsgNow()) + '</div><div class="lines">');
@@ -2354,6 +2382,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
     document.body.style.paddingBottom = noNav ? "0" : ""; document.body.setAttribute("data-screen", screen);
     app.innerHTML = h + (noNav || EMBED ? "" : navBar());
     if (EMBED) { document.body.classList.add("is-embed"); setTimeout(embedHeight, 0); }
+    if (screen === "home" && $("addAgain")) $("addAgain").addEventListener("click", function(){ var n = 0;
+      histList().slice(0, 16).forEach(function(x){ var id = x.p.id, q = usualQty(x.h); if (cart[id]) return; var c = capOf(x.p, q); if (c > 0) q = Math.min(q, c); if (!canAddProduct(id, q)) return; cart[id] = q; n++; });
+      saveCart(); refresh(); sToast(n ? tr("انضاف " + num(n) + " منتج من مشترياتك المعتادة", num(n) + " usual items added") : tr("منتجاتك المعتادة موجودة بالسلة", "Your usual items are already in the cart")); });
     if (screen === "home") { timers.push(setInterval(function(){ var el = $("cd"); if (el) el.textContent = countdown(); }, 1000)); kqBanners(); kqPlaceholder(); applyCuts($("kqBans")); }
     if (screen === "search") { renderSearch(); var qi = $("q"); qi.focus(); qi.addEventListener("input", function(){ q = this.value.trim(); renderSearch(); }); qi.addEventListener("change", function(){ var v = this.value.trim(); if (v) { recent = [v].concat(recent.filter(function(r){ return r !== v; })).slice(0, 8); try { localStorage.setItem("ohod-recent", JSON.stringify(recent)); } catch(e){} } }); }
     if (screen === "checkout") initCheckout();
@@ -2525,6 +2556,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       .then(function(j){
         btn.disabled = false; btn.firstChild.textContent = tr("أرسل الطلب", "Place order");
         if (j.ok) {
+          if (!j.repeated) recordHist(items);
           lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, printText: pnote, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast();
           if (j.track && PUSH_PREF && pushOn()) orderPush(null);
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
@@ -3408,7 +3440,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function field(id, label, val, type){ return '<label for="' + id + '">' + label + '<input id="' + id + '" type="' + (type || "text") + '" value="' + esc(val) + '"' + (type === "number" ? ' min="0" step="0.5" inputmode="decimal"' : '') + '></label>'; }
   function catOptions(sel){ return draft.cats.map(function(c){ return '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join(""); }
   function renderAFilter(){ $("aCat").innerHTML = '<option value="all">كل الأقسام</option>' + catOptions(aFilter.cat); }
-  var LAY_LABEL = { promos: "بنرات العروض", catoffers: "عروض الأقسام (مربعات)", free: "بطاقة التوصيل المجاني", catgrid: "الأقسام (مربعات الصور)", offers: "أفضل العروض (صف يتحرك)", deals: "منتجات السعر الرمزي (صف يتحرك)", grid: "الفلاتر والمنتجات" };
+  var LAY_LABEL = { again: "اطلب مرة ثانية (للزبون اللي طلب قبل)", promos: "بنرات العروض", catoffers: "عروض الأقسام (مربعات)", free: "بطاقة التوصيل المجاني", catgrid: "الأقسام (مربعات الصور)", offers: "أفضل العروض (صف يتحرك)", deals: "منتجات السعر الرمزي (صف يتحرك)", grid: "الفلاتر والمنتجات" };
   var PROMO_LABEL = { top: "أقوى خصم (تلقائي)", multi: "عرض الكمية (تلقائي)", daily: "عرض اليوم", offers: "عروض الأسبوع", deals: "منتجات السعر الرمزي", bakery: "بطاقة المخبز" };
   function mvBtns(kind, id, ends){ return '<span class="mv">' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':-99" aria-label="لأول الصفحة">أول</button>' : '') + '<button type="button" data-mv="' + kind + ':' + id + ':-1" aria-label="فوق">' + ic("up") + '</button><button type="button" data-mv="' + kind + ':' + id + ':1" aria-label="تحت">' + ic("down") + '</button>' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':99" aria-label="لآخر الصفحة">آخر</button>' : '') + '</span>'; }
   function renderLayout(){
