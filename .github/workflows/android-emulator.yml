@@ -1,0 +1,60 @@
+# تجربة تطبيق أندرويد على محاكي حقيقي (Android 15, API 35) بعد كل تعديل على فرع mobile-app.
+# يبني من ملفات الفرع (ANDROID_LOCAL=1)، يشغّل التطبيق، يصوّر الشاشات، يقيس سلاسة التمرير،
+# ويتأكد إن المحتوى ما ينغطى بأشرطة النظام. النتائج في artifact اسمه android-emulator-results.
+name: android-emulator
+
+on:
+  push:
+    branches: [mobile-app]
+    paths: ['mobile/**', 'index.html', 'privacy.html', 'delete-data.html', '.github/workflows/android-emulator.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: android-emulator-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: npm ci + playwright-core
+        working-directory: mobile
+        run: npm ci && npm i --no-save playwright-core@1.49.1
+      - name: build (local files)
+        working-directory: mobile
+        env:
+          ANDROID_LOCAL: '1'
+        run: npm run sync && cd android && ./gradlew --no-daemon assembleDebug
+      - name: run on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: mobile
+          script: ./scripts/emulator-check.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-emulator-results
+          path: mobile/emu-out
+          retention-days: 14
