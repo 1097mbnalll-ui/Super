@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreText
 
 // الألوان المعتمدة (mobile/ios-native/DESIGN.md): أخضر الشعار، النحاسي، الزيتوني، والخلفية النعناعية
 extension Color {
@@ -77,6 +78,14 @@ enum Money {
     /// أرقام إنجليزية بخانتين (قرار المالك): 2.00
     static func plain(_ value: Double) -> String { String(format: "%.2f", value) }
     static func sar(_ value: Double) -> String { "\(plain(value)) \(AppLang.english ? "SAR" : "ر.س")" }
+    /// رمز الريال السعودي الجديد (U+20C1) لو خطوط الجوال تدعمه، وإلا «ر.س». النصوص تتحول تلقائياً في Text(tv:)
+    static let sym: String = {
+        let base = UIFont.systemFont(ofSize: 17) as CTFont
+        let f = CTFontCreateForString(base, "\u{20C1}" as CFString, CFRange(location: 0, length: 1))
+        var ch: [UniChar] = [0x20C1], g: [CGGlyph] = [0]
+        let name = CTFontCopyPostScriptName(f) as String
+        return CTFontGetGlyphsForCharacters(f, &ch, &g, 1) && g[0] != 0 && !name.contains("LastResort") ? "\u{20C1}" : "ر.س"
+    }()
     /// للنصوص (حد التوصيل المجاني، أقل طلب): 30 ر.س بدل 30.00
     static func short(_ value: Double) -> String {
         value == value.rounded() ? "\(Int(value)) \(AppLang.english ? "SAR" : "ر.س")" : sar(value)
