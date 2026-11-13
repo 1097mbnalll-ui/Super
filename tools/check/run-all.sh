@@ -15,6 +15,7 @@ node -e '
 const fs=require("fs");const h=fs.readFileSync("index.html","utf8");let n=0,bad=0;
 for(const m of h.matchAll(/<script(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)){n++;try{new Function(m[1])}catch(e){bad++;console.log("    سكربت "+n+": "+e.message)}}
 process.exit(bad?1:0)' >"$OUT/js" 2>&1 && ok "سكربتات الواجهة سليمة (بدون أخطاء صياغة)" || { bad "خطأ صياغة في index.html"; cat "$OUT/js"; }
+node -e 'try{new Function(require("fs").readFileSync("admin.js","utf8"));const a=require("fs").readFileSync("admin.js","utf8");if(!/ADMX = \{/.test(a))throw Error("no ADMX export")}catch(e){console.log(e.message);process.exit(1)}' >"$OUT/adm" 2>&1 && ok "لوحة الإدارة (admin.js) سليمة" || { bad "خطأ في admin.js"; cat "$OUT/adm"; }
 python3 -c "import json;json.load(open('data.json'))" && ok "data.json سليم" || bad "data.json خربان"
 python3 - <<'PY' && ok "كل صور المنتجات موجودة كملفات" || bad "صور مفقودة"
 import json,os,sys
