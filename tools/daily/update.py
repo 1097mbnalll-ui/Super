@@ -86,7 +86,11 @@ def main(data_path, xlsx, dry=False):
             # سعر الملف = السعر الأساسي. المنتج اللي عليه عرض (old): العرض يبقى، و«السعر قبل» يصير سعر الملف.
             # لو سعر الملف صار أقل من سعر العرض أو يساويه، العرض ما له معنى فينشال ويصير السعر سعر الملف.
             if p['id'] in SHELF:  # عرض رف من المالك: السعر العادي والعرض ثابتين لين ينحذف من shelf_offers.json
-                p['old'] = SHELF[p['id']]['old']; p['price'] = SHELF[p['id']]['price']; continue
+                v = SHELF[p['id']]; p['price'] = v['price']
+                if v.get('old') is not None: p['old'] = v['old']
+                else: p.pop('old', None)
+                if 'packs' in v: p['packs'] = v['packs']
+                continue
             if p.get('old') is not None:
                 if price > float(p['price']) + 0.009:
                     if abs(float(p['old']) - price) >= 0.01: p['old'] = price; rep['offer_before'] += 1

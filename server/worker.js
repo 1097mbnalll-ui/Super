@@ -1325,6 +1325,8 @@ function priceOrder(data, body) {
     const p = kind === "r" && String(parts[0]).includes("~") ? packProduct(byId, parts[0]) : byId[parts.length > 1 ? parts[1] : parts[0]];
     if (!p || !p.stock) return { error: "unavailable", id: key };
     if (qty > (p.print ? 5000 : 200)) continue;
+    // عرض الكمية الإجباري: المنتج ينباع بالمجموعة بس (المفتاح <id>~<الخيار>)، الحبة لحالها مرفوضة
+    if (kind === "r" && !p.base && Array.isArray(p.packs) && p.packs.some((x) => x && x.must)) return { error: "pack_only", id: key };
     if (kind === "t") {
       if (!daily || daily.id !== p.id) { lines.push({ p, qty, price: Number(p.price), tag: "" }); base += qty * p.price; count += qty; continue; }
       const lim = Number(DAILY.limit || 0);

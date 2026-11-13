@@ -53,7 +53,7 @@ if not95: warn.append(f'{len(not95)} عرض سعره رقم صحيح (القاع
 for pid, v in shelf.items():
     p = by.get(pid)
     if not p: warn.append(f'عرض رف لمنتج مو موجود: {pid}'); continue
-    if abs(float(p['price']) - v['price']) > 0.001 or abs(float(p.get('old') or 0) - v['old']) > 0.001:
+    if abs(float(p['price']) - v['price']) > 0.001 or abs(float(p.get('old') or 0) - float(v.get('old') or 0)) > 0.001:
         warn.append(f"عرض الرف تغيّر: {p['name']} ({p.get('old')}/{p['price']} بدل {v['old']}/{v['price']})")
     if not p.get('stock'): warn.append(f"عرض رف ومنتجه نافد: {p['name']}")
 big = [p for p in sale if (float(p['old']) - float(p['price'])) / float(p['old']) > 0.5]
