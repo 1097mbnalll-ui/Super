@@ -43,6 +43,9 @@ def read_rows(path):
 
 PACKS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'packs_map.json')
 HIDDEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hidden.json')
+# عروض الرف من المالك (السعر العادي والعرض)، ما يغيّرها ملف الكاشير
+_sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shelf_offers.json')
+SHELF = {k: v for k, v in json.load(open(_sp, encoding='utf-8')).items() if not k.startswith('_')} if os.path.exists(_sp) else {}
 
 def main(data_path, xlsx, dry=False):
     d = json.load(open(data_path))
@@ -82,6 +85,8 @@ def main(data_path, xlsx, dry=False):
             if bool(p.get('stock')) != avail: p['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
             # سعر الملف = السعر الأساسي. المنتج اللي عليه عرض (old): العرض يبقى، و«السعر قبل» يصير سعر الملف.
             # لو سعر الملف صار أقل من سعر العرض أو يساويه، العرض ما له معنى فينشال ويصير السعر سعر الملف.
+            if p['id'] in SHELF:  # عرض رف من المالك: السعر العادي والعرض ثابتين لين ينحذف من shelf_offers.json
+                p['old'] = SHELF[p['id']]['old']; p['price'] = SHELF[p['id']]['price']; continue
             if p.get('old') is not None:
                 if price > float(p['price']) + 0.009:
                     if abs(float(p['old']) - price) >= 0.01: p['old'] = price; rep['offer_before'] += 1
