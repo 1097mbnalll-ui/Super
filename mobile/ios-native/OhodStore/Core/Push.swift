@@ -18,7 +18,15 @@ final class PushDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCen
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         [.banner, .sound, .list]
     }
+    /// ضغط الزبون على الإشعار: لو فيه وجهة (?go=offers أو o:<قسم>) نفتحها
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard let url = response.notification.request.content.userInfo["url"] as? String,
+              let go = URLComponents(string: url)?.queryItems?.first(where: { $0.name == "go" })?.value, !go.isEmpty else { return }
+        await MainActor.run { NotificationCenter.default.post(name: .ohodGo, object: go) }
+    }
 }
+
+extension Notification.Name { static let ohodGo = Notification.Name("ohod.go") }
 
 /// إشعارات حالة الطلب (نفس الموقع: /push/order بـ {native:"ios", token}). الخادم يرسل لآبل لما تتغير الحالة
 @MainActor
@@ -57,6 +65,27 @@ final class Push {
         token = t
         let list = pending; pending = []
         for p in list { send(no: p.no, phone: p.phone, api: p.api, token: t) }
+        if promo, let api = UserDefaults.standard.string(forKey: "push.promoApi"), !api.isEmpty { Task { _ = await API.post(api, "/push/promo", ["sub": ["native": "ios", "token": t]]) } }
+    }
+
+    /// إشعارات العروض (يرسلها المالك من الإدارة): الزبون يشترك أو يوقفها من «حسابي»
+    private(set) var promo = UserDefaults.standard.bool(forKey: "push.promo")
+    func enablePromo(api: String) async {
+        guard !api.isEmpty, await enable() else { return }
+        promo = true
+        UserDefaults.standard.set(true, forKey: "push.promo"); UserDefaults.standard.set(api, forKey: "push.promoApi")
+        if let t = token { _ = await API.post(api, "/push/promo", ["sub": ["native": "ios", "token": t]]) } else { UIApplication.shared.registerForRemoteNotifications() }
+    }
+    func disablePromo() {
+        promo = false
+        UserDefaults.standard.set(false, forKey: "push.promo")
+        if let t = token, let api = UserDefaults.standard.string(forKey: "push.promoApi"), !api.isEmpty { Task { _ = await API.post(api, "/push/promo", ["sub": ["native": "ios", "token": t], "off": true]) } }
+    }
+    /// عند فتح التطبيق: لو الزبون مشترك نحدّث رمز جهازه (يتغير أحياناً)
+    func resumePromo(api: String) {
+        guard promo, !api.isEmpty else { return }
+        UserDefaults.standard.set(api, forKey: "push.promoApi")
+        UIApplication.shared.registerForRemoteNotifications()
     }
     func failed() { pending = [] }
 

@@ -77,6 +77,7 @@ struct RootView: View {
         .task {
             await catalog.load()
             applyLaunchArguments()
+            Push.shared.resumePromo(api: catalog.apiBase)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background { Analytics.shared.flush() }
@@ -89,6 +90,12 @@ struct RootView: View {
             }
         }
         .onChange(of: catalog.dataVersion) { _, _ in cart.normalize(catalog) }
+        // ضغط على إشعار عروض: العروض أو قسم معيّن
+        .onReceive(NotificationCenter.default.publisher(for: .ohodGo)) { n in
+            guard let go = n.object as? String else { return }
+            if go == "offers" { tab = .offers }
+            else if go.hasPrefix("o:") || go.hasPrefix("c:") { tab = .categories; categoriesPath.append(Route.category(String(go.dropFirst(2)))) }
+        }
         .task(id: scenePhase == .active) {
             // المخزون الحي كل دقيقة والتطبيق مفتوح (مثل الموقع)
             while !Task.isCancelled, scenePhase == .active {
