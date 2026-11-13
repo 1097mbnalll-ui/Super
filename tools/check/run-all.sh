@@ -35,7 +35,7 @@ T=900 run "اختبار الصلاحيات (موظف ما يوصل للي مو �
 
 echo "## ٣) الاختبارات"
 T=900 run "اختبارات التشغيل والكاشير والاعتمادية" node --test server/test/operations.mjs server/test/pos.mjs server/test/reliability.mjs
-for t in group-offer must-pack stock-snap staff-and-pos packs ops-features prep-mode unified-login native-push promo-codes apology-gift catalog-import hours print; do
+for t in group-offer must-pack stock-snap staff-and-pos packs ops-features prep-mode unified-login native-push promo-codes promo-push apology-gift catalog-import hours print; do
   [ -f server/test/$t.mjs ] && run "اختبار $t" node server/test/$t.mjs
 done
 

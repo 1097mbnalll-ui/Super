@@ -2714,6 +2714,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
       '<div class="actions"><a class="btn btn-teal" href="tel:' + esc(S.phone) + '">' + ic("phone") + tr('اتصل</a>', 'Call</a>') + (waNumber() ? '<a class="btn btn-soft" href="https://wa.me/' + waNumber() + tr('" target="_blank" rel="noopener">واتساب</a>', '" target="_blank" rel="noopener">WhatsApp</a>') : '') + '</div></div>' +
       (apiUrl() ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("الإشعارات", "Notifications") + '</b><span>' + (PUSH_PREF && pushOn() ? tr("مفعّلة. بيوصلك تنبيه مع كل تغيير في حالة طلباتك.", "On. You will be notified about every change to your orders.") : tr("فعّلها عشان يوصلك تنبيه لما طلبك ينقبل ولما المندوب يطلع لك.", "Turn them on to be alerted when your order is accepted and when the driver is on the way.")) + '</span><span class="pushmsg" id="pushPrefMsg"' + (isIOS() && !isApp() ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</span></span>' +
         (PUSH_PREF && pushOn() ? '<span class="on">' + ic("check") + '</span>' : '<button class="btn btn-teal" type="button" id="pushPref">' + tr("فعّل", "Turn on") + '</button>') + '</div>' : '') +
+      (apiUrl() && pushCan() && !EMBED ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("tag") + '</span><span class="t"><b>' + tr("إشعارات العروض", "Offer alerts") + '</b><span>' + (PROMO_ON ? tr("مفعّلة. بنبلغك لما ننزّل عروض جديدة.", "On. We will tell you about new offers.") : tr("بلّغني لما تنزل عروض جديدة (مرات قليلة، بدون إزعاج).", "Tell me about new offers (a few times, no spam).")) + '</span><span class="pushmsg" id="promoMsg" hidden></span></span>' +
+        (PROMO_ON ? '<button class="btn btn-soft" type="button" id="promoOff">' + tr("إيقاف", "Turn off") + '</button>' : '<button class="btn btn-teal" type="button" id="promoOn">' + tr("فعّل", "Turn on") + '</button>') + '</div>' : '') +
       tr('<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">الدخول</b><p class="hint">للإدارة والموظفين والمناديب: كل واحد يدخل بكلمة السر حقته، ويفتح له قسمه.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">', '<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">Sign in</b><p class="hint">For the owner, staff and drivers: everyone signs in with their own password.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">') + ic("lock") + tr('الدخول</button></div>', 'Sign in</button></div>') +
       '<div class="box" style="margin-top:12px"><b>محفظتي والكاش باك</b><p class="hint">رصيدك وسجل حركاتك. تفعيل الدخول من الإدارة بعد التحقق من رقمك.</p><button class="btn btn-soft" type="button" data-walletcustomer>افتح المحفظة</button></div>' +
       tr('<p class="credit">صور بعض الخضار والفواكه من مجموعة Fruits-360 لـ Mihai Oltean (رخصة MIT). الخريطة © مساهمو OpenStreetMap.</p></div>', '<p class="credit">Some fruit and vegetable photos are from the Fruits-360 collection by Mihai Oltean (MIT license). Map © OpenStreetMap contributors.</p></div>');
@@ -2742,6 +2744,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if ($("toAdmin")) $("toAdmin").addEventListener("click", function(){ if (canEdit) go("admin"); else openPin(); });
     if ($("toDriver")) $("toDriver").addEventListener("click", openDriver);
     if (screen === "sent") { bindSent(); trkMapInit(); trackPoll(); if ($("pushMe")) $("pushMe").addEventListener("click", function(){ orderPush(this); }); }
+    if ($("promoOn")) $("promoOn").addEventListener("click", function(){ var b = this, m = $("promoMsg"); b.disabled = true;
+      pushSub().then(function(sub){ return fetchJSON(apiUrl() + "/push/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub }) }); })
+        .then(function(j){ if (!j.ok) throw j; PROMO_ON = true; try { localStorage.setItem("ohod-promo", "1"); } catch(e){} render(); }).catch(function(e){ b.disabled = false; m.hidden = false; m.textContent = pushErrText(e); }); });
+    if ($("promoOff")) $("promoOff").addEventListener("click", function(){ this.disabled = true; var done = function(){ PROMO_ON = false; try { localStorage.removeItem("ohod-promo"); } catch(e){} render(); };
+      navigator.serviceWorker.ready.then(function(r){ return r.pushManager.getSubscription(); }).then(function(sub){ return sub ? fetchJSON(apiUrl() + "/push/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub.toJSON(), off: true }) }) : null; }).then(done, done); });
     if ($("pushPref")) $("pushPref").addEventListener("click", function(){ var b = this, m = $("pushPrefMsg"); b.disabled = true;
       pushSub().then(function(){ b.disabled = false; render(); }).catch(function(e){ b.disabled = false; m.hidden = false; m.textContent = pushErrText(e); }); });
     if ($("emptyCart")) $("emptyCart").addEventListener("click", function(){ if (this.dataset.c !== "1") { this.dataset.c = "1"; this.style.background = "var(--sale)"; this.style.color = "#fff"; return; } cart = {}; saveCart(); render(); });
@@ -3008,6 +3015,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
 
 
   /* ---------- push notifications ---------- */
+  var PROMO_ON = false; try { PROMO_ON = localStorage.getItem("ohod-promo") === "1"; } catch(e){}
   var PUSH_PREF = false; try { PUSH_PREF = localStorage.getItem("ohod-push") === "1"; } catch(e){}
   function isIOS(){ return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
   function isApp(){ return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
@@ -4056,6 +4064,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   if (GH || LIVEDATA) fetch(EMBED && qp("v") ? "data.json?v=" + qp("v") : "data.json", EMBED && qp("v") ? {} : { cache: "no-cache" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
     dataReady = true;
     if (nd && nd.store && nd.products && nd.imgs) { var hadApi = !!apiUrl(); applyData(nd); if (!hadApi) loadStock(); if (mode === "store" && screen !== "checkout") refresh(); }
+    // رابط من إشعار (?go=offers أو o:<قسم>): يفتح العروض أو القسم مرة وحدة
+    try { var gp = (location.search.match(/[?&]go=([^&]+)/) || [])[1]; if (gp && !EMBED && mode === "store") { gp = decodeURIComponent(gp); history.replaceState(null, "", location.pathname + location.hash);
+      if (gp === "offers") { chip = "offers"; show("home"); } else if (/^[oc]:/.test(gp) && catOf(gp.slice(2))) { openCat = gp.slice(2); openSub = ""; show("cat"); } } } catch(e){}
   }).catch(function(){ dataReady = true; if (EMBED) refresh(); });
   if (window.claude && claude.use) {
     claude.use("user").then(function(u){ return u ? u.canEdit() : false; }).then(function(ok){

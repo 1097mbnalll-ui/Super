@@ -832,7 +832,8 @@
   function publish(){
     var st = $("aStatus"), btn = $("aSave");
     if(!catalogSaveAvailable()){recoverAdminSave(true);return;}
-    var bad = draft.products.filter(function(p){ return !p.name.trim() || !(p.price > 0); });
+    // منتجات «قريباً» (الخضار والفواكه): بدون سعر عمداً، ما نعتبرها خطأ
+    var bad = draft.products.filter(function(p){ return !p.name.trim() || (!(p.price > 0) && !p.soon); });
     if (bad.length) { st.className = "status err"; st.textContent = "فيه " + num(bad.length) + " منتج بدون اسم أو سعره صفر. صحّحها وبعدين احفظ."; return; }
     var dyl = (draft.store.daily && draft.store.daily.list) || [];
     if (dyl.some(function(x){ return !dById(x.id) || !(x.price > 0); })) { st.className = "status err"; st.textContent = "فيه يوم في عرض اليوم بدون منتج أو سعره صفر."; return; }
@@ -1165,7 +1166,50 @@
         .catch(function(e){ b.disabled = false; m.className = "status err"; m.textContent = e && e.code === "not_found" ? "حدّث كود الخادم في Cloudflare أول (الدليل، القسم ٨)." : pushErrText(e); }); });
     $("pushTest").addEventListener("click", function(){ var m = $("pushMsgA"); m.className = "status"; m.textContent = "جاري الإرسال…";
       api("/push/test", { pin: adminPin }).then(function(j){ m.className = j.ok && j.sent ? "status" : "status err"; m.textContent = j.ok ? (j.sent ? "انرسل لـ " + j.sent + " جهاز." : "ما فيه جهاز إدارة مفعّل الإشعارات. اضغط «فعّل» أول.") : "ما انرسل (" + (j.code || "?") + ")."; }); });
-    pushStat();
+    pushStat(); promoPushUI(box);
+  }
+  /* ---------- إشعار للزبائن (العروض وغيرها) بعبارات جاهزة (طلب المالك ١٣ نوفمبر ٢٠٢٦) ---------- */
+  function promoPhrases(){
+    var offs = D.products.filter(function(p){ return p.stock && p.old && Number(p.old) > Number(p.price); }), mx = offs.reduce(function(m, p){ return Math.max(m, Math.round((1 - p.price / p.old) * 100)); }, 0);
+    var g = (D.store.groups || [])[0], fo = D.store.freeOver ? num(D.store.freeOver) : "30", nm = D.store.name || "متاجر أحد";
+    return [
+      ["عروض الأسبوع", "عروض الأسبوع نزلت", "خصم حتى " + (mx ? num(mx) : "٣٠") + "٪ على منتجات مختارة. شوفها قبل لا تخلص.", "offers"],
+      g ? ["عرض " + (g.name || "المجموعة"), (g.name || "عرض") + ": أي " + num(g.n) + " بـ " + num(g.price), "اخلط النكهات اللي تعجبك. العرض لفترة محدودة.", ""] : null,
+      ["توصيل مجاني", "توصيلك مجاني اليوم", "على أي طلب فوق " + fo + " ر.س. اطلب الحين ونوصّله لين بابك.", ""],
+      ["كود خصم", "كود خصم لك", "اكتب الكود في السلة وخذ خصمك على طلبك. (غيّر الكود قبل الإرسال)", ""],
+      ["منتجات جديدة", "وصلتنا أصناف جديدة", "تصفّح المنتجات الجديدة في " + nm + " واطلب مقاضيك.", ""],
+      ["الخبز والمخبز", "الخبز الحار جاهز", "اطلبه الحين ويوصلك وهو دافي.", ""],
+      ["وقت الغدا", "وش على غداك اليوم؟", "اطلب مقاضيك من " + nm + " ونوصّلها لك بسرعة.", ""],
+      ["السهرة", "جهّز سهرتك", "سناكس ومشروبات وكل اللي تحتاجه. نوصلك لين آخر الليل.", ""],
+      ["فتحنا", "فتحنا، حيّاك الله", "اطلب الحين، نستقبل طلباتك من الساعة ١٢ الظهر.", ""],
+      ["اعتذار", "نعتذر عن التأخير", "واجهنا ضغط في الطلبات. شكراً لصبرك، ونرجع لخدمتك بأسرع وقت.", ""],
+      ["التطبيق نزل", "تطبيق " + nm + " صار على آب ستور", "حمّله الحين واطلب بضغطة، وتابع مندوبك لين بابك.", ""]
+    ].filter(Boolean);
+  }
+  function promoPushUI(box){
+    var wrap = document.createElement("div"); wrap.id = "promoPush"; wrap.style.marginTop = "18px";
+    var ph = promoPhrases();
+    wrap.innerHTML = '<h2>إشعار للزبائن (التطبيق والموقع)</h2><p class="hint">يوصل للزبائن اللي فعّلوا إشعارات العروض من التطبيق أو الموقع. اختر عبارة جاهزة، عدّلها لو تبي، وجرّبها على جوالك أول. الحد ٤ إرسالات في اليوم عشان ما نزعج الزبون.</p>' +
+      '<div class="pp-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">' + ph.map(function(x, i){ return '<button type="button" class="btn btn-soft" data-ppph="' + i + '" style="padding:6px 12px;font-size:12.5px">' + esc(x[0]) + '</button>'; }).join("") + '</div>' +
+      '<div class="fields" style="max-width:460px"><label>العنوان (٦٠ حرف)<input id="ppT" maxlength="60" placeholder="مثال: عروض الأسبوع نزلت"></label><label>النص (١٨٠ حرف)<textarea id="ppB" maxlength="180" rows="3" placeholder="نص قصير يشجع الزبون يفتح التطبيق"></textarea></label>' +
+      '<label>لما يضغط عليه<select id="ppG"><option value="">يفتح الرئيسية</option><option value="offers">يفتح العروض</option>' + D.cats.filter(function(c){ return !c.soon; }).map(function(c){ return '<option value="o:' + esc(c.id) + '">يفتح قسم ' + esc(c.name) + '</option>'; }).join("") + '</select></label></div>' +
+      '<div class="push-stat" id="ppStat">جاري الفحص…</div><div class="actions"><button class="btn btn-soft" type="button" id="ppTest">جرّبها على جوالي</button><button class="btn btn-brand" type="button" id="ppSend">' + ic("bell") + 'أرسل للزبائن</button></div><p class="status" id="ppMsg" style="white-space:pre-line"></p>';
+    box.appendChild(wrap);
+    var T = $("ppT"), B = $("ppB"), G = $("ppG"), M = $("ppMsg");
+    api("/push/status", { pin: adminPin }).then(function(j){ var e = $("ppStat"); if (e) e.innerHTML = '<span class="pchip">' + ic("bell") + 'مشتركين بإشعارات العروض: <b>' + num(j.promo || 0) + '</b></span>'; });
+    wrap.addEventListener("click", function(e){ var b = e.target.closest("[data-ppph]"); if (!b) return; var x = ph[Number(b.dataset.ppph)]; T.value = x[1]; B.value = x[2]; G.value = x[3] || ""; M.textContent = ""; });
+    var send = function(test){
+      if (!T.value.trim() || !B.value.trim()) { M.className = "status err"; M.textContent = "اكتب العنوان والنص، أو اختر عبارة جاهزة."; return; }
+      var body = { pin: adminPin, title: T.value, body: B.value, go: G.value, test: !!test };
+      var go = function(offset, sent){ body.offset = offset || 0; return api("/admin/promo-push", body).then(function(j){
+        if (!j.ok) { M.className = "status err"; M.textContent = j.code === "daily_limit" ? "وصلت الحد اليومي (٤ إرسالات). جرّب بكرة." : j.code === "bad_message" ? "العنوان والنص مطلوبين." : j.code === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : "ما انرسل (" + (j.code || "?") + ")."; return; }
+        if (test) { M.className = "status"; M.textContent = j.sent ? "وصلتك التجربة على " + num(j.sent) + " جهاز." : "ما فيه جهاز إدارة مفعّل الإشعارات. فعّلها من فوق (فعّل الإشعارات على هذا الجهاز) وجرّب."; return; }
+        sent += j.sent || 0; if (j.next) return go(j.next, sent);
+        M.className = "status"; M.textContent = "انرسل لـ " + num(sent) + " جهاز من " + num(j.total) + " مشترك."; }); };
+      return go(0, 0).catch(function(){ M.className = "status err"; M.textContent = "تعذّر الاتصال، جرّب مرة ثانية."; });
+    };
+    $("ppTest").addEventListener("click", function(){ M.className = "status"; M.textContent = "جاري الإرسال…"; send(true); });
+    $("ppSend").addEventListener("click", function(){ if (!T.value.trim() || !B.value.trim()) return send(false); if (!confirm("ترسل «" + T.value + "» لكل مشتركين العروض؟ ما تقدر تتراجع.")) return; M.className = "status"; M.textContent = "جاري الإرسال…"; send(false); });
   }
   function pushStat(){
     api("/push/status", { pin: adminPin }).then(function(j){ var el = $("pushStat"); if (!el) return;

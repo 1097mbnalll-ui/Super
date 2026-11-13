@@ -284,6 +284,15 @@ export default {
       later(pushTo(env, [normSub(body.sub)], { title: "تم تفعيل الإشعارات", body: "بنبلغك أول ما تتغير حالة طلبك #" + (1000 + n), url: "./", tag: "order" + n }));
       return reply(200, { ok: true });
     }
+    // الزبون يشترك في إشعارات العروض (الموقع أو التطبيق): {sub, off?}. بدون حذف تلقائي مثل اشتراكات الطلب
+    if (path === "/push/promo") {
+      if (!env.DB || !env.LOCKS) return reply(404, { ok: false, code: "no_push" });
+      if (await rateHit(env, "promosub:" + ip, 20, 3600)) return reply(429, { ok: false, code: "slow_down" });
+      await ensureSchema(env);
+      if (body.off) { const sb = normSub(body.sub); if (sb && sb.endpoint) await env.DB.prepare("DELETE FROM subs WHERE endpoint = ? AND role = 'promo'").bind(String(sb.endpoint)).run(); return reply(200, { ok: true, off: true }); }
+      if (!(await saveSub(env, body.sub, "promo", ""))) return reply(400, { ok: false, code: "bad_sub" });
+      return reply(200, { ok: true });
+    }
     if (path === "/push/unsub") {
       if (env.DB && body.endpoint) { await ensureSchema(env); await env.DB.prepare("DELETE FROM subs WHERE endpoint = ?").bind(String(body.endpoint)).run(); }
       return reply(200, { ok: true });
@@ -653,7 +662,7 @@ export default {
       return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
     }
 
-    if (['/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/wallet', '/admin/promos', '/admin/promo-save', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
+    if (['/admin/promo-push','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/wallet', '/admin/promos', '/admin/promo-save', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
       if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
       await ensureSchema(env);
       const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner', later);
@@ -1880,7 +1889,7 @@ function normSub(sub) {
 async function saveSub(env, sub0, role, ref) {
   const sub = normSub(sub0);
   if (!sub || typeof sub !== "object") return false;
-  if (sub.native && role !== "customer") return false;   // التطبيق الأصلي للزبائن بس (الإدارة والمندوب والمجهز ما فيهم)
+  if (sub.native && role !== "customer" && role !== "promo") return false;   // التطبيق الأصلي للزبائن بس (الإدارة والمندوب والمجهز ما فيهم)
   if (!sub.native && !sub.keys) return false;
   const ep = String(sub.endpoint || ""), p = String((sub.keys || {}).p256dh || ""), a = String((sub.keys || {}).auth || "");
   if (!sub.native && (!/^https:\/\/[^\s]{10,900}$/.test(ep) || !/^[\w-]{80,100}$/.test(p) || !/^[\w-]{16,30}$/.test(a))) return false;
@@ -2666,6 +2675,24 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     const snapshotGuard=P("SELECT CASE WHEN (SELECT COALESCE(SUM(COALESCE(p.cash,CASE WHEN o.pay='cash' THEN CAST(ROUND(o.total*100) AS INTEGER) ELSE 0 END)),0) FROM orders o LEFT JOIN payment_splits p ON p.no=o.no LEFT JOIN delivery_times d ON d.no=o.no WHERE o.status='delivered' AND date((COALESCE(d.at,o.updated)+10800000)/1000,'unixepoch')=?) != ? OR (SELECT CAST(ROUND(COALESCE(SUM(amount),0)*100) AS INTEGER) FROM cash WHERE day=?) != ? THEN json('closure_conflict') ELSE 1 END",day,report.cash,day,report.received);
     try{await env.DB.batch([snapshotGuard,P('INSERT INTO day_closures(day,at,who,expected,actual,cash_total,card_total,wallet_total,sales,orders,note) VALUES(?,?,?,?,?,?,?,?,?,?,?)',day,Date.now(),who,report.outstanding,actual,report.cash,report.card,report.wallet,report.sales,report.count,note),...receipts]);}catch{return fail('conflict',409);}
     return {ok:true,difference:actual-report.outstanding};
+  }
+  // إرسال إشعار عروض للزبائن المشتركين (التطبيق والموقع). test: لأجهزة الإدارة بس. الحد: ٤ إرسالات في اليوم، وكل نداء يرسل لين ٨٠٠ جهاز (offset للباقي)
+  if(path==='/admin/promo-push'){
+    if(!['owner','admin','manager'].includes(role))return fail('forbidden',403);
+    const title=String(body.title||'').trim().slice(0,60),text=String(body.body||'').trim().slice(0,180);
+    if(!title||!text)return fail('bad_message');
+    const go=String(body.go||'').replace(/[^\w:.\-]/g,'').slice(0,60),msg={title,body:text,url:go?'./?go='+go:'./',tag:'promo'};
+    const total=((await P("SELECT COUNT(*) n FROM subs WHERE role='promo'").first())||{}).n||0;
+    if(body.test)return {ok:true,test:true,sent:await notifyRole(env,'admin',null,msg),total};
+    const dayStart=Date.now()-((Date.now()+3*3600e3)%864e5);
+    const done=((await P("SELECT COUNT(*) n FROM alog WHERE act='promo_push' AND at>=?",dayStart).first())||{}).n||0;
+    const offset=Math.max(0,Math.floor(Number(body.offset)||0));
+    if(!offset&&done>=4)return {ok:false,code:'daily_limit',limit:4,status:429};
+    const rs=await P("SELECT endpoint,p256dh,auth FROM subs WHERE role='promo' ORDER BY created,endpoint LIMIT 800 OFFSET ?",offset).all();
+    const list=(rs.results||[]).map((r)=>({endpoint:r.endpoint,keys:{p256dh:r.p256dh,auth:r.auth}}));
+    const sent=await pushTo(env,list,msg);
+    if(!offset)await logStmt(env,who,'promo_push',title,{total,body:text,go}).run();
+    return {ok:true,sent,tried:list.length,total,next:offset+list.length<total?offset+list.length:null};
   }
   if(path==='/admin/promos'||path==='/admin/promo-save'){
     if(!['owner','admin','manager'].includes(role))return fail('forbidden',403);
