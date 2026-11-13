@@ -221,3 +221,8 @@ KV: `pin` (رقم الإدارة مشفّر)، `driver_pin` (قديم)، `fail:<
 - **صور المنتجات:** معيار ثابت في `tools/photos/STANDARD.md` و`process.py` (اعتمده المالك). الملفات `p/<id>-std.webp` (٤٨٠×٤٨٠).
 - لو الصنف مكرر بالملف (نفس الباركود أو الاسم) **المعتمد آخر سطر** (قرار المالك).
 - الكميات بالعدد للخادم: `update.py ... --stock-out=stock.json` ثم `python3 tools/daily/d1_stock.py stock.json` (يكتب جدول `stock` في D1 عبر Cloudflare API، المالك أعطى التوكن صلاحية D1 Edit في ١١ نوفمبر). خذ نسخة من الجدول قبل الكتابة.
+
+### الرئيسية الحية في تطبيق الآيفون (١٣ نوفمبر ٢٠٢٦)
+- التطبيق يعرض البنرات و«عروض الأقسام» وأي قسم جديد في رئيسية الموقع (أي `id` في `store.layout` غير free/catgrid/offers/deals/grid) من الموقع نفسه: `index.html?embed=1&blocks=promos,catoffers,…` داخل WKWebView (`mobile/ios-native/OhodStore/Features/Home/LiveHomeBlocks.swift` على فرع mobile-app).
+- الضغطات ترجع للتطبيق (`webkit.messageHandlers.ohod`: product / category / chip / bundle / nav، و`h` = الارتفاع). لو الموقع ما فتح خلال ٨ ثواني يطلع البديل الأصلي.
+- **أي قسم جديد للرئيسية: أضفه في `SEC` و`LAYOUT_DEF` في index.html ويطلع في التطبيق بدون تحديث.** لا تكسر وضع `EMBED` ولا أسماء الرسائل.
