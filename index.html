@@ -3092,7 +3092,10 @@ html.sp-on,html.sp-on body{overflow:hidden}
   /* ----- تتبع المندوب: موقعه يتشارك بس وفيه طلب «في الطريق»، وينقطع أول ما يخلص ----- */
   var geo = { watch: null, pos: null, sentAt: 0, sentPos: null, st: "", wake: null, admin: false, share: false, busy: false };
   function geoMeters(a, b){ var r = Math.PI / 180, x = (b.lng - a.lng) * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r; return Math.sqrt(x * x + y * y) * 6371000; }
-  function geoNeed(){ return !APP && mode === "driver" && !!drv.pin && drvGroups().way.length > 0 && (!geo.admin || geo.share); }
+  // «أنا في الدوام» (طلب المالك ١٣ نوفمبر ٢٠٢٦): المندوب يشارك موقعه مع الإدارة طول الدوام، مو بس وهو يوصّل. الزبون ما يشوفه إلا وطلبه في الطريق
+  var DUTY = false; try { DUTY = localStorage.getItem("ohod-duty") === "1"; } catch(e){}
+  function setDuty(v){ DUTY = !!v; try { localStorage.setItem("ohod-duty", DUTY ? "1" : "0"); } catch(e){} geoSync(); }
+  function geoNeed(){ return !APP && mode === "driver" && !!drv.pin && (drvGroups().way.length > 0 || (DUTY && !geo.admin)) && (!geo.admin || geo.share); }
   function appState(){ try { return JSON.parse(OhodApp.state()); } catch(e){ return {}; } }
   function geoSync(){
     if (APP) {   // التطبيق يرسل الموقع بنفسه حتى والشاشة مقفلة
@@ -3124,7 +3127,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function geoSend(force){
     if (!geo.pos || geo.busy || !geoNeed()) return;
     var now = Date.now(), moved = geo.sentPos ? geoMeters(geo.sentPos, geo.pos) : 1e9, gap = now - geo.sentAt;
-    if (!force && !(gap >= 15000 || (gap >= 4000 && moved >= 8))) return;
+    // في الدوام بدون توصيل: كل دقيقة، أو كل ٢٠ ثانية لو تحرك ٥٠ متر (نخفف الكتابة على القاعدة)
+    var idle = !drvGroups().way.length;
+    if (!force && !(idle ? (gap >= 60000 || (gap >= 20000 && moved >= 50)) : (gap >= 15000 || (gap >= 4000 && moved >= 8)))) return;
     geo.busy = true; var p = geo.pos;
     api("/driver/loc", { pin: drv.pin, lat: p.lat, lng: p.lng, acc: p.acc, share: geo.share }).then(function(j){
       geo.busy = false;
@@ -3143,7 +3148,11 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   function geoBar(){
     var old = $("dvGeo"); if (old) old.remove();
-    var box = $("dv"); if (mode !== "driver" || !box || !box.firstElementChild || !drvGroups().way.length) return;
+    var box = $("dv"); if (mode !== "driver" || !box || !box.firstElementChild) return;
+    if (!drvGroups().way.length) { if (APP || geo.admin || drv.view !== "list") return;
+      box.firstElementChild.insertAdjacentHTML("afterend", DUTY ? '<div class="dv-geo ' + (geo.st === "denied" ? "bad" : "ok") + '" id="dvGeo" role="status"><i></i><span><b>' + (geo.st === "denied" ? tr("اسمح بالموقع عشان الإدارة تشوفك", "Allow location so the store can see you") : tr("أنت في الدوام · الإدارة تشوف موقعك", "On shift · the store can see your location")) + '</b><span>' + tr("الزبون ما يشوفك إلا وطلبه في الطريق", "Customers only see you while their order is on the way") + '</span></span><button class="btn btn-soft" type="button" data-dutyoff>' + tr("انهِ الدوام", "End shift") + '</button></div>'
+        : '<div class="dv-geo mid" id="dvGeo" role="status"><i></i><span><b>' + tr("بديت الدوام؟", "Starting your shift?") + '</b><span>' + tr("شارك موقعك مع الإدارة طول الدوام", "Share your location with the store during your shift") + '</span></span><button class="btn btn-brand" type="button" data-dutyon>' + tr("أنا في الدوام", "I\'m on shift") + '</button></div>');
+      return; }
     var h, cls = "", btn = "";
     if (geo.admin && !geo.share) { cls = "mid"; h = [tr("داخل برقم الإدارة، فموقعك ما يتشارك", "Signed in as admin, your location is not shared"), tr("لو أنت اللي توصّل الحين، شاركه عشان الزبون يتابعك", "If you are delivering now, share it so the customer can follow")]; btn = '<button type="button" data-geoshare>' + tr("شارك موقعي", "Share my location") + '</button>'; }
     else if (geo.st === "on") { cls = "ok"; h = [tr("الزبون يشوفك على الخريطة الحين", "The customer can see you on the map"), tr("خلّ الصفحة مفتوحة لين توصّل", "Keep this page open until you deliver")]; }
@@ -3155,6 +3164,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
   }
   document.addEventListener("click", function(e){
     if (mode !== "driver") return;
+    if (e.target.closest("[data-dutyon]")) { setDuty(true); return; }
+    if (e.target.closest("[data-dutyoff]")) { setDuty(false); return; }
     if (e.target.closest("[data-geoshare]")) { geo.share = true; appCall("share", true); geo.st = ""; geoSync(); return; }
     if (e.target.closest("[data-georetry]")) { geo.st = ""; if (APP) appCall("askPermissions"); geoSync(); }
   });
@@ -3776,7 +3787,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       if (!j.ok) { t.textContent = j.code === "not_found" ? "حدّث الخادم في Cloudflare عشان يشتغل التتبع." : "ما قدرنا نجيب موقع المندوب."; return; }
       var locs = (j.locs || (j.loc ? [Object.assign({ name: "المندوب" }, j.loc)] : [])).filter(function(l){ return j.now - l.at < 10 * 60e3; });
       var agoT = function(at){ var a = Math.round((j.now - at) / 1000); return a < 20 ? "الحين" : a < 60 ? "قبل " + a + " ثانية" : "قبل " + Math.round(a / 60) + " دقيقة"; };
-      if (!locs.length) { t.textContent = j.onway.length ? "فيه " + j.onway.length + " طلب في الطريق، بس ما فيه مندوب يشارك موقعه (يمكن قافل الصفحة أو ما سمح بالموقع)." : "مكان المندوب يطلع هنا بس لما يكون معه طلب «في الطريق»."; m.hidden = true; }
+      if (!locs.length) { t.textContent = j.onway.length ? "فيه " + j.onway.length + " طلب في الطريق، بس ما فيه مندوب يشارك موقعه (يمكن قافل الصفحة أو ما سمح بالموقع)." : "ما فيه مندوب يشارك موقعه الحين. يطلع هنا لما يضغط «أنا في الدوام» في صفحة المندوب، أو لما يكون معه طلب في الطريق."; m.hidden = true; }
       else {
         t.textContent = locs.map(function(l){ var n = j.onway.filter(function(o){ return (o.drv || "admin") === l.drv; }).length; return l.name + ": " + agoT(l.at) + (n ? " · معه " + n + " طلب" : ""); }).join("  ·  ");
         m.hidden = false;
@@ -5669,7 +5680,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     foldAdminCard($('aTips'),'نصائح من أرقامك',false);
     var staff=box.querySelector('.staffask');var staffFold=foldAdminCard(staff,'اسم منفّذ التعديلات (اختياري)',false);if(staffFold)box.appendChild(staffFold);
     foldAdminCard(box.querySelector(':scope > .stats'),'ملخص المنتجات والأقسام',false);
-    var map=foldAdminCard($('aDrvLoc'),'مواقع المناديب على الخريطة',false);if(map)map.ontoggle=function(){if(this.open)loadDrvLoc();else clearTimeout(admTimer);};
+    var map=foldAdminCard($('aDrvLoc'),'وين المندوب الحين (على الخريطة)',true);if(map)map.ontoggle=function(){if(this.open)loadDrvLoc();else clearTimeout(admTimer);};
     var quick=Array.from(box.querySelectorAll(':scope > .card')).find(function(c){return c.querySelector('h2')?.textContent==='اختصارات';});if(quick)foldAdminCard(quick,'إدارة المنتجات وشكل المتجر',false);
     box.querySelectorAll('[data-over-order]').forEach(function(b){b.onclick=function(){oState.q=b.dataset.overOrder;oState.f='all';oState.range=0;showTab('olist');};});
   }
