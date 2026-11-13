@@ -72,3 +72,9 @@ jobs:
           cp mobile/emu-out/report.json mobile/emu-out/window.txt $D/latest/ 2>/dev/null || true
           echo "${{ github.sha }} run ${{ github.run_id }}" > $D/latest/SOURCE.txt
           cd $D && git add -A latest && git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "emulator results ${{ github.run_number }}" && git push -q origin HEAD:emu-results || echo "nothing to push"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ohod-store-android-test-apk
+          path: mobile/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
