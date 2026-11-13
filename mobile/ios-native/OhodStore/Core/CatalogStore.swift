@@ -122,6 +122,9 @@ final class CatalogStore {
     func category(_ id: String) -> Category? { index?.categoriesById[id] }
     func products(in category: String) -> [Product] { index?.byCategory[category] ?? [] }
 
+    /// «قريباً»: منتج جديد بدون سعر أو في قسم قريباً، ينعرض بدون إضافة
+    func isSoon(_ p: Product) -> Bool { !isAvailable(p) && (p.soon || category(p.cat)?.soon == true) }
+
     func isAvailable(_ p: Product) -> Bool {
         guard p.inStock, category(p.cat)?.soon != true else { return false }
         if let left = liveStock[p.id] { return left > 0 }

@@ -64,7 +64,8 @@ struct ProductView: View {
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        PriceLabel(price: unitPrice, old: pack == nil ? product.old : nil, size: 24)
+                        if catalog.isSoon(product) { Text("قريباً").font(.ui(size: 22, weight: .bold)).foregroundStyle(Theme.copper) }
+                        else { PriceLabel(price: unitPrice, old: pack == nil ? product.old : nil, size: 24) }
                         Text(tv: pack.map { "/ \($0.unit)" } ?? (product.packs.isEmpty ? "/ \(product.unit)" : "/ الحبة"))
                             .font(.ui(size: 14, weight: .semibold)).foregroundStyle(Theme.muted)
                     }
@@ -98,7 +99,7 @@ struct ProductView: View {
                         Text("الحد الأقصى \(m) لكل طلب").font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
                     }
                     if !available {
-                        Label("نفد من المحل حالياً", systemImage: "exclamationmark.circle")
+                        Label(catalog.isSoon(product) ? "قريباً إن شاء الله نوفّره، تابعنا." : "نفد من المحل حالياً", systemImage: catalog.isSoon(product) ? "clock" : "exclamationmark.circle")
                             .font(.ui(size: 14, weight: .semibold))
                             .foregroundStyle(Theme.copperInk)
                     }

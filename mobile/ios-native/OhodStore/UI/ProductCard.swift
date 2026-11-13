@@ -55,7 +55,7 @@ struct ProductCard: View {
                             .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                     if !available {
-                        Text("نفد")
+                        Text(catalog.isSoon(product) ? "قريباً" : "نفد")
                             .font(.ui(size: 11, weight: .bold))
                             .foregroundStyle(Theme.muted)
                             .padding(.horizontal, 8).padding(.vertical, 3)
@@ -86,7 +86,9 @@ struct ProductCard: View {
                     .font(.ui(size: 12.5))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
-                if let pp = promoPrice {
+                if catalog.isSoon(product) {
+                    Text("قريباً").font(.ui(size: 15, weight: .bold)).foregroundStyle(Theme.copper)
+                } else if let pp = promoPrice {
                     PriceLabel(price: pp, old: product.price, size: 17)
                 } else if available, let q = product.quantityOffer {
                     // عرض الكمية مثل: ٥٫٨٠ ر.س  ~٦٫٠٠~  [العدد ٣]  ثم «🔥 وفّر ٠٫٢٠ ر.س بالعرض»

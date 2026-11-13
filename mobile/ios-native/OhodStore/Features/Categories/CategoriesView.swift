@@ -133,7 +133,7 @@ struct CategoryView: View {
         let products = sub.map { s in s == "_other" ? all.filter { $0.sub.map { !known.contains($0) } ?? true } : all.filter { $0.sub == s } } ?? all
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if let category, category.soon {
+                if let category, category.soon, all.isEmpty {
                     ContentUnavailableView("قريباً", systemImage: "clock",
                                            description: Text("نجهّز قسم \(category.name)، ويوصلك قريب إن شاء الله."))
                         .padding(.top, 60)
