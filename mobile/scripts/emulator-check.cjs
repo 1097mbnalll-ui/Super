@@ -1,16 +1,26 @@
-// فحص التطبيق على محاكي أندرويد (يشتغل في GitHub Actions): يتصل بالـ WebView عبر DevTools،
+// فحص التطبيق على محاكي أندرويد (يشتغل في GitHub Actions): يتصل بالـ WebView عبر DevTools مباشرة،
 // يتأكد إن المحتوى ما ينغطى بشريط الحالة/التنقل، يقيس سلاسة التمرير، ويصوّر الشاشات.
-const { chromium } = require('playwright-core');
 const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const out = process.argv[2] || 'emu-out';
 const sh = (c) => execSync(c, { encoding: 'utf8' });
 const shot = (n) => fs.writeFileSync(`${out}/${n}.png`, execSync('adb exec-out screencap -p'));
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// صفحة CDP صغيرة: evaluate(fn, arg) زي Playwright
+async function connect() {
+  const list = await (await fetch('http://127.0.0.1:9222/json')).json();
+  const t = list.find((x) => x.type === 'page' && /^(https?|capacitor):/.test(x.url)) || list[0];
+  const ws = new WebSocket(t.webSocketDebuggerUrl); let id = 0; const pend = new Map();
+  await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
+  ws.onmessage = (m) => { const d = JSON.parse(m.data); if (d.id && pend.has(d.id)) { pend.get(d.id)(d); pend.delete(d.id); } };
+  const send = (method, params) => new Promise((r) => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+  return { url: () => t.url, close: () => ws.close(), list: async () => (await (await fetch('http://127.0.0.1:9222/json')).json()).map((x) => x.url),
+    evaluate: async (fn, arg) => { const d = await send('Runtime.evaluate', { expression: `(${fn})(${JSON.stringify(arg)})`, awaitPromise: true, returnByValue: true });
+      if (d.result && d.result.exceptionDetails) throw new Error(JSON.stringify(d.result.exceptionDetails).slice(0, 400)); return d.result && d.result.result && d.result.result.value; } };
+}
 (async () => {
   const report = {};
-  const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
-  const page = browser.contexts()[0].pages().find((p) => !p.url().startsWith('devtools')) || browser.contexts()[0].pages()[0];
+  const page = await connect();
   report.url = page.url();
   const dens = parseFloat((sh('adb shell wm density').match(/(\d+)\s*$/) || [, '420'])[1]) / 160;
   const sz = sh('adb shell wm size').match(/(\d+)x(\d+)/);
@@ -50,8 +60,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   shot('07-account-bottom');
   await page.evaluate(() => { const a = document.querySelector('a[href="delete-data.html"]'); if (a) a.click(); });
   await wait(2500); shot('08-delete-data');
-  report.deletePage = await browser.contexts()[0].pages().map((p) => p.url());
+  report.pages = await page.list();
   fs.writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
-  await browser.close().catch(() => {});
+  page.close();
 })().catch((e) => { console.error('FAIL', e); try { shot('99-error'); } catch {} process.exit(1); });

@@ -33,9 +33,9 @@ jobs:
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
-      - name: npm ci + playwright-core
+      - name: npm ci
         working-directory: mobile
-        run: npm ci && npm i --no-save playwright-core@1.49.1
+        run: npm ci
       - name: build (local files)
         working-directory: mobile
         env:
