@@ -234,6 +234,8 @@ final class CatalogStore {
     }
 
     @ObservationIgnored private var lastRefresh = Date.distantPast
+    /// يزيد مع كل تحديث ناجح للمتجر (الرئيسية الحية تعيد التحميل)
+    private(set) var version = 0
 
     /// لما يرجع الزبون للتطبيق: نجيب آخر نسخة من المتجر (بنرات، أسعار، عروض) لو مر عليها أكثر من دقيقة
     func refreshIfStale() async {
@@ -254,6 +256,7 @@ final class CatalogStore {
             try await apply(data)
             Self.writeCache(data)
             failed = false
+            version += 1
         } catch {
             if index == nil { failed = true }
         }
