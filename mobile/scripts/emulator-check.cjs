@@ -4,7 +4,7 @@ const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const out = process.argv[2] || 'emu-out';
 const sh = (c) => execSync(c, { encoding: 'utf8' });
-const shot = (n) => fs.writeFileSync(`${out}/${n}.png`, execSync('adb exec-out screencap -p'));
+const shot = (n) => fs.writeFileSync(`${out}/${n}.png`, execSync('adb exec-out screencap -p', { maxBuffer: 64 * 1024 * 1024 }));
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // صفحة CDP صغيرة: evaluate(fn, arg) زي Playwright
 async function connect() {
