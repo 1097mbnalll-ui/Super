@@ -1872,7 +1872,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function mustOf(p){ var mo = multiOf(p); return mo && p.packs[mo.i].must ? mo : null; }
   function stepOf(p){ var m = p && mustOf(p); return m ? m.n : 1; }
   function words(v){ var r = Math.floor(v + 1e-9), h = Math.round((v - r) * 100); if (LANG === "en") return num(v) + " SAR";
-    return (r ? num(r) + " ريال" : "") + (h ? (r ? " و" : "") + num(h) + (h <= 10 ? " هللات" : " هللة") : ""); }
+    // قرار المالك ١٣ نوفمبر ٢٠٢٦: السعر رقم (11.95) مع رمز الريال، مو كتابة «11 ريال و95 هللة»
+    return num(v) + " ر.س"; }
   function mustW(p, mo){ var x = p.packs[mo.i]; return { many: x.w || (mo.n === 2 ? "" : "حبات"), one: x.w1 || "الحبة" }; }
   function mustLine(p, mo){ var w = mustW(p, mo); return mo.n === 2 && !p.packs[mo.i].w ? tr("حبتين بـ ", "2 for ") + words(mo.price) : num(mo.n) + " " + w.many + tr(" بـ ", " for ") + words(mo.price); }
   function mustSave(p, mo){ return Math.floor(mo.n * p.price - mo.price + 1e-9); }
