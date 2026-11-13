@@ -45,6 +45,7 @@ PACKS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'packs_map.json
 HIDDEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hidden.json')
 # عروض الرف من المالك (السعر العادي والعرض)، ما يغيّرها ملف الكاشير
 _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shelf_offers.json')
+KEEP_OFFERS = '--keep-offers' in sys.argv
 SHELF = {k: v for k, v in json.load(open(_sp, encoding='utf-8')).items() if not k.startswith('_')} if os.path.exists(_sp) else {}
 
 def main(data_path, xlsx, dry=False):
@@ -60,7 +61,7 @@ def main(data_path, xlsx, dry=False):
     names = {key(p['name']) for p in ps}
     by_name = {}
     for p in ps: by_name.setdefault(key(p['name']), p)
-    rep = collections.Counter(); changed = []; seen = set(); qty_of = {}; pack_rows = {}
+    rep = collections.Counter(); changed = []; kept_diff = []; seen = set(); qty_of = {}; pack_rows = {}
     # الملف فيه أحياناً نفس الباركود (أو نفس الاسم) أكثر من سطر: المعتمد آخر سطر (قرار المالك)
     best = {}
     for row in read_rows(xlsx):
@@ -90,6 +91,11 @@ def main(data_path, xlsx, dry=False):
                 if v.get('old') is not None: p['old'] = v['old']
                 else: p.pop('old', None)
                 if 'packs' in v: p['packs'] = v['packs']
+                continue
+            # --keep-offers (طلب المالك ١٣ نوفمبر ٢٠٢٦ «لا تلمس أسعار العروض»): أي منتج عليه خصم (old) أو عرض كمية: ما نلمس سعره ولا «السعر قبل» ولا خيارات العرض، والمخزون بس يتحدث
+            if KEEP_OFFERS and (p.get('old') is not None or any(re.match(r'^(عرض|حبتين)', str(k.get('u') or '')) for k in p.get('packs', []))):
+                rep['offer_kept'] += 1
+                if abs(price - float(p['price'])) >= 0.01: kept_diff.append((p['name'], p['price'], p.get('old'), price))
                 continue
             if p.get('old') is not None:
                 if price > float(p['price']) + 0.009:
@@ -130,6 +136,7 @@ def main(data_path, xlsx, dry=False):
     if out: json.dump(qty_of, open(out, 'w'))
     print(dict(rep))
     for n, a, b in changed[:40]: print('  سعر:', n, a, '→', b)
+    for n, a, o, b in kept_diff[:60]: print('  عرض ما انلمس:', n, 'سعره', a, '(قبل', o, ') والملف', b)
     return rep
 
 if __name__ == '__main__':
