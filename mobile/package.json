@@ -5,7 +5,7 @@
   "description": "تطبيق متاجر أحد للزبائن (آيفون وأندرويد) — غلاف Capacitor حول صفحة المتجر",
   "scripts": {
     "www": "node scripts/build-www.mjs",
-    "sync": "node scripts/build-www.mjs && cap sync",
+    "sync": "node scripts/build-www.mjs && cap sync && node scripts/android-remote.mjs",
     "check": "node scripts/check-www.mjs"
   },
   "dependencies": {
