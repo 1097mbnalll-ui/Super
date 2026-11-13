@@ -72,5 +72,5 @@ final class Translator: @unchecked Sendable {
 
 extension Text {
     /// نص مبني وقت التشغيل (بدل Text(tv:)) ويترجم للإنجليزي
-    init(tv s: String) { self.init(verbatim: tr(s)) }
+    init(tv s: String) { let t = tr(s); self.init(verbatim: Money.sym == "ر.س" ? t : t.replacingOccurrences(of: "ر.س", with: Money.sym)) }
 }

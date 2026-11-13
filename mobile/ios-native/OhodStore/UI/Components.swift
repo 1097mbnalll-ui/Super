@@ -180,7 +180,7 @@ struct PriceLabel: View {
                 .font(.kufi(size, .bold, relativeTo: .headline))
                 .foregroundStyle(old == nil ? Theme.ink : Theme.copperInk)
                 .contentTransition(.numericText(value: price))
-            Text("ر.س").font(.ui(size: size * 0.72, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text(verbatim: AppLang.english ? "SAR" : Money.sym).font(.ui(size: size * 0.72, weight: .semibold)).foregroundStyle(Theme.ink)
             if let old {
                 Text(tv: Money.plain(old))
                     .font(.ui(size: size * 0.68))
