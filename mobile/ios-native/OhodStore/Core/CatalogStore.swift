@@ -42,7 +42,9 @@ struct CatalogIndex: Sendable {
             if water?.firstMatch(in: p.name, range: NSRange(p.name.startIndex..., in: p.name)) != nil { text += " موية مويه مويا مياه ماء" }
             return (id: p.id, text: ArabicSearch.normalize(text), barcode: p.barcode ?? "")
         }
-        let offers = catalog.products.filter { $0.inStock && ($0.discount != nil || $0.quantityOffer != nil) }
+        // منتجات «اختر من أي نوع» (ديمة) عروض بعد، تطلع في تبويب العروض
+        let inGroup = Set(catalog.store.groups.flatMap(\.ids))
+        let offers = catalog.products.filter { $0.inStock && ($0.discount != nil || $0.quantityOffer != nil || inGroup.contains($0.id)) }
             .sorted { ($0.hasPhoto ? 0 : 1, -($0.discount ?? 0)) < ($1.hasPhoto ? 0 : 1, -($1.discount ?? 0)) }
         // مختارات الرئيسية: العروض اللي لها صور، ثم منتجات بصور من أهم الأقسام بالتناوب
         var featured = offers.filter(\.hasPhoto)

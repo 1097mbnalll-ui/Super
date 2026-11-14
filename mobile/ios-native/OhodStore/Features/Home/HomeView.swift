@@ -106,7 +106,7 @@ struct HomeView: View {
         case "deals":
             let deals = catalog.dealProducts
             if !deals.isEmpty {
-                SectionHeader(title: "كل منتج بـ \(Money.plain(catalog.store.deal95.price)) ر.س", emoji: "🔒", actionTitle: "عرض الكل") { path.append(Route.deals) }
+                SectionHeader(title: "كل منتج بـ \(Money.plain(catalog.store.deal95.price)) \(Money.sym)", emoji: "🔒", actionTitle: "عرض الكل") { path.append(Route.deals) }
                     .padding(.top, 18).padding(.bottom, 8)
                 ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 8) {
@@ -397,28 +397,28 @@ private struct BannerCarousel: View {
         if let top = offers.filter({ $0.discountPercent != nil }).max(by: { ($0.discountPercent ?? 0, $0.hasPhoto ? 1 : 0) < ($1.discountPercent ?? 0, $1.hasPhoto ? 1 : 0) }),
            let pct = top.discountPercent, let old = top.old {
             built["top"] = make("top", kicker: "أقوى خصم اليوم · خصم \(pct)٪", title: top.name,
-                                subtitle: "كان \(Money.plain(old)) وصار \(Money.plain(top.price)) ر.س", button: "اطلبه الحين",
+                                subtitle: "كان \(Money.plain(old)) وصار \(Money.plain(top.price)) \(Money.sym)", button: "اطلبه الحين",
                                 style: .calm, products: [top], route: .product(top.id))
         }
         // عرض كمية
         if let q = offers.first(where: { $0.quantityOffer != nil && $0.hasPhoto }) ?? offers.first(where: { $0.quantityOffer != nil }),
            let qo = q.quantityOffer {
-            built["multi"] = make("multi", kicker: "عرض كمية", title: "\(Product.pieces(qo.count)) بـ \(Money.plain(qo.price)) ر.س",
+            built["multi"] = make("multi", kicker: "عرض كمية", title: "\(Product.pieces(qo.count)) بـ \(Money.plain(qo.price)) \(Money.sym)",
                                   subtitle: "\(q.name)\nبدل \(Money.plain(qo.before)) · وفّر \(Money.plain(qo.before - qo.price))",
                                   button: "شوف العرض", style: .custom(Color(hex: 0x17407A)), products: [q], route: .product(q.id))
         }
         // عرض اليوم (store.daily): منتج واحد لين نص الليل
         if let dd = catalog.dailyDeal {
             built["daily"] = make("daily", kicker: "🔥 عرض اليوم · ينتهي نص الليل", title: dd.product.name,
-                                  subtitle: "\(Money.plain(dd.price)) ر.س بدل \(Money.plain(dd.product.price))", button: "اطلبه الحين",
+                                  subtitle: "\(Money.plain(dd.price)) \(Money.sym) بدل \(Money.plain(dd.product.price))", button: "اطلبه الحين",
                                   style: .calm, products: [dd.product], route: .daily)
         }
         // كل منتج بـ ٠٫٩٥ (store.deal95)
         let deals = catalog.dealProducts
         if !deals.isEmpty {
             let d = store.deal95
-            built["deals"] = make("deals", kicker: "🔒 عروض مقفولة", title: "كل منتج بـ \(Money.plain(d.price)) ر.س",
-                                  subtitle: "تنفتح لطلبك فوق \(Money.plain(d.min)) ر.س", button: "شوف المنتجات",
+            built["deals"] = make("deals", kicker: "🔒 عروض مقفولة", title: "كل منتج بـ \(Money.plain(d.price)) \(Money.sym)",
+                                  subtitle: "تنفتح لطلبك فوق \(Money.plain(d.min)) \(Money.sym)", button: "شوف المنتجات",
                                   style: .night, products: deals, route: .deals)
         }
         // كل العروض
@@ -459,7 +459,7 @@ private struct BannerCarousel: View {
             if route == nil, products.count > 1 { route = .banner(b.id) }
             let from = products.map(\.price).min()
             built[b.id] = HomeBanner(id: b.id, kicker: b.kicker ?? (catID.flatMap { catalog.category($0)?.name } ?? ""), title: b.title,
-                                     subtitle: b.subtitle.isEmpty ? (bundle.map { "الباقة بـ \(Money.plain($0.price)) بدل \(Money.plain($0.sum)) ر.س" } ?? from.map { "تبدأ من \(Money.plain($0)) ر.س" } ?? "") : b.subtitle,
+                                     subtitle: b.subtitle.isEmpty ? (bundle.map { "الباقة بـ \(Money.plain($0.price)) بدل \(Money.plain($0.sum)) \(Money.sym)" } ?? from.map { "تبدأ من \(Money.plain($0)) \(Money.sym)" } ?? "") : b.subtitle,
                                      button: b.noGo ? "" : (b.go ?? (bundle != nil ? "أضف الباقة" : "تسوّق الحين")), style: style(b.style, color: b.color, fallback: .light),
                                      images: Array(products.prefix(3).compactMap(\.imageURL)), route: route,
                                      color2: Color(hexString: b.color2), darkText: b.dark,
@@ -610,7 +610,7 @@ private struct QuickChips: View {
                         .buttonStyle(PressableStyle())
                 }
                 if !catalog.dealProducts.isEmpty {
-                    Button { path.append(Route.deals) } label: { Chip(title: "🔒 بـ \(Money.plain(catalog.store.deal95.price)) ر.س") }
+                    Button { path.append(Route.deals) } label: { Chip(title: "🔒 بـ \(Money.plain(catalog.store.deal95.price)) \(Money.sym)") }
                         .buttonStyle(PressableStyle())
                 }
                 ForEach(catalog.store.banners.filter { catalog.bundle($0) != nil }) { b in

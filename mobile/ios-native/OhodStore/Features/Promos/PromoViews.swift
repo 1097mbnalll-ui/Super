@@ -26,7 +26,7 @@ struct DealsView: View {
         }
         .scrollIndicators(.hidden)
         .background(Theme.pageBG)
-        .navigationTitle("كل منتج بـ \(Money.plain(d.price)) ر.س")
+        .navigationTitle("كل منتج بـ \(Money.plain(d.price)) \(Money.sym)")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -44,7 +44,7 @@ struct DealLockBox: View {
                 Image(systemName: totals.dealUnlocked ? "lock.open.fill" : "lock.fill")
                     .foregroundStyle(totals.dealUnlocked ? Theme.brand : Theme.copper)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(tv: totals.dealUnlocked ? "عروض \(Money.plain(d.price)) ر.س انفتحت لك 🎉" : "كل منتج بـ \(Money.plain(d.price)) ر.س")
+                    Text(tv: totals.dealUnlocked ? "عروض \(Money.plain(d.price)) \(Money.sym) انفتحت لك 🎉" : "كل منتج بـ \(Money.plain(d.price)) \(Money.sym)")
                         .font(.kufi(15, .bold))
                     Text(tv: totals.dealUnlocked ? "ضيف اللي تبغاه من المنتجات المختارة"
                          : "تنفتح لطلبك فوق \(Money.sar(d.min)) · باقي \(Money.sar(totals.dealLeft))")

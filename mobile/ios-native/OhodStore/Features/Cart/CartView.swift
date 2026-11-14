@@ -316,7 +316,7 @@ private struct CartRowView: View {
 extension CartRowView {
     var promoTag: String? {
         switch row.promo {
-        case .deal: return row.locked ? "🔒 مقفول: يفتح لطلبك فوق \(Money.plain(catalog.store.deal95.min)) ر.س" : "🔓 عرض \(Money.plain(catalog.store.deal95.price)) ر.س"
+        case .deal: return row.locked ? "🔒 مقفول: يفتح لطلبك فوق \(Money.plain(catalog.store.deal95.min)) \(Money.sym)" : "🔓 عرض \(Money.plain(catalog.store.deal95.price)) \(Money.sym)"
         case .daily: return "🔥 عرض اليوم"
         case .bundle: return "🎁 ضمن باقة \(row.bannerID.flatMap { catalog.banner($0)?.title.replacingOccurrences(of: "\n", with: " ") } ?? "")"
         default: return nil
