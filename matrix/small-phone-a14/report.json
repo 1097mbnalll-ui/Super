@@ -1,0 +1,51 @@
+{
+  "url": "https://localhost/",
+  "screenPx": [
+    1080,
+    1920
+  ],
+  "density": 2.625,
+  "env": {
+    "insets": {
+      "envTop": "0px",
+      "envBottom": "0px",
+      "capTop": "0px",
+      "capBottom": "0px",
+      "top": "0px",
+      "bottom": "0px",
+      "left": "0px",
+      "right": "0px"
+    },
+    "innerH": 684,
+    "innerW": 412,
+    "htmlClass": "android native",
+    "platform": "android",
+    "native": true,
+    "tabBarBottom": 668.1904907226562,
+    "tabBarTop": 602.1904907226562,
+    "ua": "Mozilla/5.0 (Linux; Android 14; sdk_gphone64_x86_64 Build/UE1A.230829.050; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/113.0.5672.136 Mobile Safari/537.36",
+    "adminVisible": false
+  },
+  "scroll": {
+    "frames": 416,
+    "avgMs": 20.07,
+    "fps": 49.8,
+    "over33ms": 17,
+    "over50ms": 17,
+    "worstMs": 183.3
+  },
+  "account": {
+    "deleteLink": true,
+    "privacyLink": true
+  },
+  "bottomCheck": {
+    "linkBottom": 389.83929443359375,
+    "tabTop": 612.0238037109375,
+    "innerH": 684,
+    "linkClear": true
+  },
+  "pages": [
+    "https://localhost/delete-data.html"
+  ],
+  "problems": []
+}

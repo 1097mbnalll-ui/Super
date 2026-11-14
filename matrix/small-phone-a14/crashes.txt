@@ -1,0 +1,3 @@
+11-14 08:10:52.488   522  5309 E ActivityManager: ANR in sa.ohod.store (sa.ohod.store/.MainActivity)
+11-14 08:11:53.755   522  6613 E ActivityManager: ANR in sa.ohod.store (sa.ohod.store/.MainActivity)
+11-14 08:11:53.759  6477  6498 W Monkey  : ANR in sa.ohod.store (sa.ohod.store/.MainActivity)
