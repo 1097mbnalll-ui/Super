@@ -52,7 +52,7 @@ export default {
     if (request.method === "GET" && (path === "" || path === "/ping")) return reply(200, { ok: true, service: "ohod-admin" });
     // المخزون للزبائن: كم باقي من كل منتج عليه عدّ
     // أي عملية ممكن تغيّر المخزون (طلب، تعديل، إلغاء، حفظ) تفضّي ذاكرة المخزون؛ الاستعلامات الدورية (التتبع، قائمة المندوب…) ما تفضيها
-    if (request.method === "POST" && !/^\/(?:track|ev|stats|driver\/(?:orders|pending|loc|loc-off|cash|login|push)|admin\/(?:orders|alerts|today|stats|log|team|prep|pos-orders|openitems|driver-loc|staff|cash|day-report|settlement-requests))$/.test(path)) stockCache.at = 0;
+    if (request.method === "POST" && !/^\/(?:track|rate|ev|stats|driver\/(?:orders|pending|loc|loc-off|cash|login|push)|admin\/(?:orders|alerts|today|stats|log|team|prep|pos-orders|openitems|driver-loc|staff|cash|day-report|settlement-requests))$/.test(path)) stockCache.at = 0;
     if (request.method === "GET" && path === "/stock") {
       // كل زائر يسأل عن المخزون كل دقيقة؛ مع آلاف المنتجات نخزن النتيجة ١٥ ثانية بدل ما نقرأ القاعدة كل مرة
       if (!stockCache.body || Date.now() - stockCache.at > 15000) stockCache = { at: Date.now(), body: JSON.stringify({ ok: true, stock: env.DB ? await readShownStock(env) : {} }) };
@@ -204,6 +204,8 @@ export default {
         }
       }
       if (row.status === "onway") { try { out.driver = await driverFor(env, n, safeJson(row.data), row.drv); } catch { /* التتبع إضافة، ما يوقف الحالة */ } }
+      // تقييم الطلب بعد التوصيل: التقييم المحفوظ (لو فيه) وهل يقدر يقيّم أو يعدّل الحين
+      if (row.status === "delivered") { try { const rt = await env.DB.prepare("SELECT * FROM ratings WHERE no = ?").bind(n).first(); out.rating = rt ? ratingOut(rt) : null; out.canRate = rateOpen(rt, row.updated, Date.now()); } catch { /* التقييم إضافة */ } }
       return reply(200, out);
     }
 
@@ -264,6 +266,32 @@ export default {
       await env.DB.prepare("UPDATE sub_offers SET state = ?, answered = ? WHERE id = ?").bind(done ? "accepted" : "rejected", Date.now(), oid).run();
       later(notifyRole(env, "admin", null, { title: (done ? "الزبون وافق على البديل" : "الزبون رفض البديل") + " · #" + (1000 + n), body: done ? `«${line.name}» ← «${toP.name}»` : `«${line.name}» انشال من الطلب`, url: "./", tag: "sub" + n }));
       return reply(200, { ok: true, order: { total: r.order.total } });
+    }
+
+    // الزبون يقيّم طلبه بعد التوصيل (رقم الطلب + نفس الجوال): نجوم ١–٥ + اختيارات سريعة + ملاحظة قصيرة.
+    // تقييم واحد لكل طلب، ويقدر يعدّله خلال ٢٤ ساعة من أول تقييم. التقييم ٢ أو أقل يوصل تنبيه للإدارة.
+    if (path === "/rate") {
+      if (!env.DB) return reply(404, { ok: false, code: "no_tracking" });
+      const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000, phone = normPhone(body.phone), stars = body.stars;
+      if (!(n > 0) || !phone || typeof stars !== "number" || !Number.isInteger(stars) || stars < 1 || stars > 5) return reply(400, { ok: false, code: "bad_request" });
+      if (await rateHit(env, "rate:" + ip, 10, 600)) return reply(429, { ok: false, code: "slow_down" });
+      await ensureSchema(env);
+      const row = await env.DB.prepare("SELECT status, updated, drv FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
+      if (!row) return reply(404, { ok: false, code: "not_found" });
+      if (row.status !== "delivered") return reply(409, { ok: false, code: "not_delivered", status: row.status });
+      const now = Date.now(), old = await env.DB.prepare("SELECT * FROM ratings WHERE no = ?").bind(n).first();
+      if (!rateOpen(old, row.updated, now)) return reply(409, { ok: false, code: old ? "locked" : "too_old", rating: old ? ratingOut(old) : null });
+      const tags = [...new Set((Array.isArray(body.tags) ? body.tags : []).map(String).filter((t) => RATE_TAGS.includes(t)))].slice(0, RATE_TAGS.length);
+      const note = String(body.note || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 300);
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO ratings (no, stars, tags, note, created, updated, drv, edits) VALUES (?, ?, ?, ?, ?, ?, ?, 0) ON CONFLICT(no) DO UPDATE SET stars = excluded.stars, tags = excluded.tags, note = excluded.note, updated = excluded.updated, edits = edits + 1")
+          .bind(n, stars, JSON.stringify(tags), note, now, now, row.drv || null),
+        logStmt(env, "الزبون", "rate_order", "#" + (1000 + n), { stars, tags, from: old ? old.stars : null }),
+      ]);
+      const saved = await env.DB.prepare("SELECT * FROM ratings WHERE no = ?").bind(n).first();
+      // تقييم منخفض (جديد، أو نزل من فوق ٢): ننبه الإدارة بالإشعار وتيليجرام
+      if (stars <= 2 && (!old || old.stars > 2)) later(lowRatingAlert(env, n, saved));
+      return reply(200, { ok: true, rating: ratingOut(saved), canRate: rateOpen(saved, row.updated, now) });
     }
 
     // تحليل التصفح: مشاهدات المنتجات، الإضافة للسلة، البحث (بدون أي بيانات شخصية)
@@ -702,6 +730,22 @@ export default {
       }
       return reply(200, { ok: true, ...(await readCash(env)) });
     }
+    // تقييمات الزبائن: المتوسط والتوزيع وأكثر الملاحظات، والقائمة (مع فلتر التقييم المنخفض ٢ أو أقل)
+    if (path === "/admin/ratings") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const days = Math.min(365, Math.max(1, Math.floor(Number(body.days) || 30))), cut = Date.now() - days * 864e5, low = body.low === true;
+      const sm = await env.DB.prepare("SELECT COUNT(*) n, ROUND(AVG(stars), 2) avg, SUM(stars <= 2) low, SUM(stars = 1) s1, SUM(stars = 2) s2, SUM(stars = 3) s3, SUM(stars = 4) s4, SUM(stars = 5) s5 FROM ratings WHERE created >= ?").bind(cut).first() || {};
+      const prev = await env.DB.prepare("SELECT COUNT(*) n, ROUND(AVG(stars), 2) avg FROM ratings WHERE created >= ? AND created < ?").bind(cut - days * 864e5, cut).first() || {};
+      const deliv = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE status = 'delivered' AND updated >= ?").bind(cut).first() || {};
+      const tagRows = (await env.DB.prepare("SELECT j.value t, COUNT(*) n FROM ratings r, json_each(r.tags) j WHERE r.created >= ? GROUP BY j.value ORDER BY n DESC").bind(cut).all()).results || [];
+      const byDrv = (await env.DB.prepare("SELECT r.drv id, s.name, COUNT(*) n, ROUND(AVG(r.stars), 2) avg, SUM(r.stars <= 2) low FROM ratings r LEFT JOIN staff s ON s.id = r.drv WHERE r.created >= ? AND r.drv IS NOT NULL GROUP BY r.drv ORDER BY n DESC").bind(cut).all()).results || [];
+      const rows = (await env.DB.prepare(`SELECT r.no, r.stars, r.tags, r.note, r.created, r.updated, r.edits, r.drv, s.name drvName, o.total, o.anon, o.phone, json_extract(o.data, '$.name') name
+        FROM ratings r LEFT JOIN orders o ON o.no = r.no LEFT JOIN staff s ON s.id = r.drv
+        WHERE r.created >= ? AND (? = 0 OR r.stars <= 2) ORDER BY r.created DESC LIMIT 300`).bind(cut, low ? 1 : 0).all()).results || [];
+      const list = rows.map((r) => ({ no: "#" + (1000 + r.no), stars: r.stars, tags: rateTags(r), note: r.note, at: r.created, updated: r.updated, edits: r.edits, drv: r.drv, drvName: r.drvName || "", total: r.total, name: r.anon ? "" : (r.name || ""), phone: r.anon ? "" : (r.phone || "") }));
+      return reply(200, { ok: true, days, low, summary: { n: sm.n || 0, avg: sm.avg || 0, low: sm.low || 0, dist: [sm.s1 || 0, sm.s2 || 0, sm.s3 || 0, sm.s4 || 0, sm.s5 || 0], delivered: deliv.n || 0, prevN: prev.n || 0, prevAvg: prev.avg || 0 }, tags: tagRows, drivers: byDrv, list });
+    }
     // زبائن ما رجعوا: قائمة للمراسلة بالواتساب، ومتابعة مين رجع بعد الرسالة
     if (path === "/admin/winback") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
@@ -978,6 +1022,8 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS pcost (id TEXT PRIMARY KEY, cost REAL NOT NULL)",
     "CREATE TABLE IF NOT EXISTS sub_offers (id INTEGER PRIMARY KEY AUTOINCREMENT, no INTEGER NOT NULL, line_id TEXT NOT NULL, to_id TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('pending','accepted','rejected','withdrawn')), created INTEGER NOT NULL, answered INTEGER, who TEXT NOT NULL DEFAULT '')",
     "CREATE INDEX IF NOT EXISTS sub_offers_no ON sub_offers (no, state)",
+    "CREATE TABLE IF NOT EXISTS ratings (no INTEGER PRIMARY KEY, stars INTEGER NOT NULL CHECK(stars BETWEEN 1 AND 5), tags TEXT NOT NULL DEFAULT '[]', note TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL, updated INTEGER NOT NULL, drv TEXT, edits INTEGER NOT NULL DEFAULT 0)",
+    "CREATE INDEX IF NOT EXISTS ratings_created ON ratings (created)",
     "CREATE TABLE IF NOT EXISTS opex (id INTEGER PRIMARY KEY CHECK(id = 1), data TEXT NOT NULL, updated INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS winback (ch TEXT PRIMARY KEY, at INTEGER NOT NULL, who TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 1)",
     "CREATE TABLE IF NOT EXISTS alog (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, who TEXT NOT NULL, act TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', info TEXT NOT NULL DEFAULT '{}')",
@@ -2150,6 +2196,23 @@ function costOf(rec) { return round2((rec.lines || []).reduce((s, l) => s + Numb
 // ---------- سجل العمليات ----------
 function staff(body) { return String((body && body.by) || "").trim().slice(0, 30) || "الإدارة"; }
 function safeJson(t) { try { return JSON.parse(t); } catch { return {}; } }
+// ---------- تقييم الطلبات ----------
+// اختيارات التقييم السريعة (نفس المفاتيح في الموقع والتطبيق)
+const RATE_TAGS = ["driver", "fast", "fresh", "packing", "late", "missing", "wrong", "damaged"];
+const RATE_TAG_AR = { driver: "المندوب ممتاز", fast: "وصل بسرعة", fresh: "المنتجات طازجة", packing: "تغليف مرتب", late: "تأخر", missing: "منتج ناقص", wrong: "منتج غلط", damaged: "منتج تالف" };
+const RATE_EDIT_MS = 24 * 3600e3, RATE_WINDOW_MS = 7 * 864e5;
+const rateTags = (r) => { const a = safeJson(r && r.tags); return Array.isArray(a) ? a : []; };
+function ratingOut(r) { return { stars: r.stars, tags: rateTags(r), note: r.note || "", at: r.created, updated: r.updated, until: r.created + RATE_EDIT_MS }; }
+// أول تقييم: خلال ٧ أيام من التوصيل. التعديل: خلال ٢٤ ساعة من أول تقييم
+function rateOpen(r, deliveredAt, now) { return r ? now < r.created + RATE_EDIT_MS : now - Number(deliveredAt || 0) < RATE_WINDOW_MS; }
+async function lowRatingAlert(env, n, r) {
+  const tags = rateTags(r).map((t) => RATE_TAG_AR[t] || t).join("، ");
+  const title = "تقييم منخفض " + "★".repeat(r.stars) + " · #" + (1000 + n);
+  const text = [tags, r.note].filter(Boolean).join(" · ") || "بدون ملاحظة";
+  await notifyRole(env, "admin", null, { title, body: text.slice(0, 140), url: "./", tag: "rate" + n }).catch(() => {});
+  const chat = env.TELEGRAM_BOT_TOKEN && env.LOCKS ? await env.LOCKS.get("tg_chat") : null;
+  if (chat) await tgSend(env, chat, "⚠️ <b>" + esc(title) + "</b>\n" + esc(text)).catch(() => {});
+}
 function logStmt(env, who, act, ref, info) {
   return env.DB.prepare("INSERT INTO alog (at, who, act, ref, info) VALUES (?, ?, ?, ?, ?)").bind(Date.now(), String(who || "").slice(0, 30), act, ref || "", JSON.stringify(info || {}));
 }

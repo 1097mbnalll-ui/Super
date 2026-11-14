@@ -23,7 +23,7 @@
     if (staffAuth && staffAuth.user.role === "preparer") { preparerShell(); return; }
     if (ordersOnly()) { ordersShell(); return; }
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
-    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
+    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["rates","تقييمات الطلبات","spark"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
       '<aside class="adm-side"><div class="adm-brand"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b>' + esc(D.store.name) + '</b><span>لوحة الإدارة</span></div></div>' +
       '<nav class="adm-nav" aria-label="أقسام الإدارة">' + TABS.map(function(x){ return '<button type="button" data-atab="' + x[0] + '"' + (x[0] === aTab ? ' aria-current="page"' : '') + '>' + ic(x[2]) + '<span>' + x[1] + '</span>' + (x[0] === "prods" ? '<em class="n">' + draft.products.length + '</em>' : x[0] === "cats" ? '<em class="n">' + draft.cats.length + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
@@ -35,6 +35,7 @@
       '<section class="adm-panel" data-panel="olist" id="aOList"></section>' +
       '<section class="adm-panel" data-panel="log" id="aLog"></section>' +
       '<section class="adm-panel" data-panel="cust" id="aCust"></section>' +
+      '<section class="adm-panel" data-panel="rates" id="aRates"></section>' +
       '<section class="adm-panel" data-panel="sign" id="aSign"></section>' +
       '<section class="adm-panel" data-panel="bans" id="aBans"></section>' +
       '<section class="adm-panel" data-panel="prods"><div class="card" id="aImport"></div><div class="card" id="openItems" hidden></div><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث بالاسم أو الباركود…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-soft" type="button" id="offProds">🔥 منتجات العروض</button><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
@@ -170,6 +171,7 @@
     if (id === "olist") { if (!staffCache && apiUrl()) loadStaff(function(){ if (aTab === "olist") renderOList(); }); renderOList(); }
     if (id === "log") renderLog();
     if (id === "cust") renderWinback();
+    if (id === "rates") renderRatings(true);
     if (id === "sign") renderSign();
     if (id === "orders") { renderCash(); renderStaff(); if ($("apkCopy")) $("apkCopy").onclick = function(){ var u = new URL("driver-app.apk", location.href).href, m = $("apkMsg"); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function(){ m.className = "status"; m.textContent = "اننسخ الرابط. أرسله للمندوب بالواتساب."; }, function(){ m.className = "status"; m.textContent = u; }); }; }
     if (id === "bans") renderBans();
@@ -1754,6 +1756,42 @@
     if ((t = e.target.closest("[data-wbf]"))) { var k = t.dataset.wbf.split(":"); wb[k[0]] = k[0] === "days" ? Number(k[1]) : k[1]; wb.data = null; renderWinback(); return; }
     if ((t = e.target.closest("[data-wbsend]"))) { var ch = t.dataset.wbsend; api("/admin/winback-mark", { pin: adminPin, ch: ch, tail: t.dataset.tail });
       (wb.data && wb.data.list || []).forEach(function(c){ if (c.ch === ch) { c.cat = Date.now(); c.cwho = STAFF || ""; } }); setTimeout(function(){ if (aTab === "cust") renderWinback(); }, 300); }
+  });
+
+  /* ---------- تقييمات الطلبات (الزبون يقيّم بعد التوصيل) ---------- */
+  var rt = { days: 30, low: false, data: null, loading: false };
+  var RT_TAG = { driver: "المندوب ممتاز", fast: "وصل بسرعة", fresh: "المنتجات طازجة", packing: "تغليف مرتب", late: "تأخر", missing: "منتج ناقص", wrong: "منتج غلط", damaged: "منتج تالف" };
+  function rtStars(n){ var h = ""; for (var i = 1; i <= 5; i++) h += '<i class="' + (i <= n ? "on" : "") + '">★</i>'; return '<span class="rt-st" role="img" aria-label="' + num(n) + ' من ٥">' + h + '</span>'; }
+  function renderRatings(force){
+    var box = $("aRates"); if (!box) return;
+    if (!apiUrl()) { box.innerHTML = '<div class="card"><p class="hint">هذي الميزة تحتاج خادم الطلبات.</p></div>'; return; }
+    if ((!rt.data || force) && !rt.loading) { rt.loading = true; api("/admin/ratings", { pin: adminPin, days: rt.days, low: rt.low }).then(function(j){ rt.loading = false; rt.data = j; if (aTab === "rates") renderRatings(); }); }
+    var seg = function(arr, key){ return '<div class="pays seg mini" role="group">' + arr.map(function(x){ return '<button type="button" data-rtf="' + key + ':' + x[0] + '" aria-pressed="' + (String(rt[key]) === String(x[0])) + '">' + x[1] + '</button>'; }).join("") + '</div>'; };
+    var h = '<div class="card"><h2>تقييمات الطلبات</h2><p class="hint">بعد ما يوصل الطلب، الزبون يقيّمه من ١ لـ ٥ نجوم ويختار ملاحظة سريعة. التقييم ٢ أو أقل يوصلك تنبيه على طول (الإشعارات وتيليجرام).</p>' +
+      '<div class="wb-f">' + seg([[7, "آخر أسبوع"], [30, "آخر شهر"], [90, "آخر ٣ شهور"]], "days") + seg([["false", "كل التقييمات"], ["true", "المنخفضة بس (٢ أو أقل)"]], "low") + '</div></div>';
+    var j = rt.data;
+    if (!j) { box.innerHTML = h + '<div class="card"><p class="hint">جاري التحميل…</p></div>'; return; }
+    if (!j.ok) { box.innerHTML = h + '<div class="card"><p class="status err">' + (j.code === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : j.code === "forbidden" ? "ما عندك صلاحية تشوف التقييمات." : "ما قدرنا نجيب التقييمات (" + esc(j.code || "?") + ").") + '</p></div>'; return; }
+    var S2 = j.summary || {}, dist = S2.dist || [0, 0, 0, 0, 0], mx = Math.max(1, Math.max.apply(null, dist));
+    var trend = S2.prevN ? (S2.avg > S2.prevAvg + 0.05 ? '<em class="up">أحسن من قبل (' + num(S2.prevAvg) + ')</em>' : S2.avg < S2.prevAvg - 0.05 ? '<em class="down">أقل من قبل (' + num(S2.prevAvg) + ')</em>' : '<em>نفس الفترة اللي قبل</em>') : '';
+    h += '<div class="card"><div class="wb-res"><div><b>' + (S2.n ? num(S2.avg) + ' ★' : '—') + '</b><span>متوسط التقييم ' + trend + '</span></div><div><b>' + num(S2.n || 0) + '</b><span>تقييم' + (S2.delivered ? ' من ' + num(S2.delivered) + ' طلب وصل (' + num(Math.round((S2.n || 0) / S2.delivered * 100)) + '٪)' : '') + '</span></div><div class="' + (S2.low ? 'bad' : 'ok') + '"><b>' + num(S2.low || 0) + '</b><span>تقييم منخفض (٢ أو أقل)</span></div></div>' +
+      '<div class="rt-dist">' + [5, 4, 3, 2, 1].map(function(k){ var n = dist[k - 1] || 0; return '<div><span>' + num(k) + ' ★</span><i><b style="width:' + Math.round(n / mx * 100) + '%"></b></i><span>' + num(n) + '</span></div>'; }).join("") + '</div>' +
+      ((j.tags || []).length ? '<p class="hint" style="margin-top:10px">أكثر الملاحظات</p><div class="rt-tags">' + j.tags.map(function(t){ return '<span class="' + (["late", "missing", "wrong", "damaged"].indexOf(t.t) > -1 ? 'bad' : '') + '">' + esc(RT_TAG[t.t] || t.t) + ' <b>' + num(t.n) + '</b></span>'; }).join("") + '</div>' : '') +
+      ((j.drivers || []).length > 1 || ((j.drivers || [])[0] && (j.drivers[0].name || "")) ? '<p class="hint" style="margin-top:10px">حسب المندوب</p><div class="rt-tags">' + j.drivers.map(function(d){ return '<span><b>' + esc(d.name || (d.id === "admin" ? "الإدارة" : "مندوب")) + '</b>: ' + num(d.avg) + '★ من ' + num(d.n) + ' تقييم' + (d.low ? '، منها ' + num(d.low) + ' منخفض' : '') + '</span>'; }).join("") + '</div>' : '') + '</div>';
+    h += '<div class="card"><div class="sec-head" style="margin:0"><b>' + num(j.list.length) + (j.low ? ' تقييم منخفض' : ' تقييم') + '</b><button class="btn btn-soft" type="button" id="rtRef">تحديث</button></div>' +
+      (j.list.length ? '<div class="wbl">' + j.list.map(function(r){ var d = new Date(r.at);
+        return '<div class="wbr rtr' + (r.stars <= 2 ? ' bad' : '') + '"><span class="t">' + rtStars(r.stars) + '<b>طلب ' + esc(r.no) + (r.name ? ' · ' + esc(r.name) : '') + (r.total != null ? ' · ' + num(r.total) + ' ر.س' : '') + '</b>' +
+          ((r.tags || []).length ? '<span>' + r.tags.map(function(t){ return esc(RT_TAG[t] || t); }).join(" · ") + '</span>' : '') + (r.note ? '<span class="rt-note">«' + esc(r.note) + '»</span>' : '') +
+          '<span>' + esc(d.toLocaleDateString("ar-SA-u-nu-latn", { weekday: "long", day: "numeric", month: "long" })) + ' ' + esc(d.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" })) + (r.drvName ? ' · المندوب: ' + esc(r.drvName) : '') + (r.edits ? ' · عدّله الزبون' : '') + '</span>' +
+          (r.stars <= 2 && r.phone ? contactButtons(r.phone) : '') + '</span></div>'; }).join("") + '</div>'
+        : '<p class="empty">' + (j.low ? 'ما فيه تقييمات منخفضة بهالفترة 👌' : 'ما فيه تقييمات بهالفترة للحين.') + '</p>') + '</div>';
+    box.innerHTML = h;
+    if ($("rtRef")) $("rtRef").onclick = function(){ rt.data = null; renderRatings(true); };
+  }
+  document.addEventListener("click", function(e){
+    if (mode !== "admin" || !draft) return;
+    var t = e.target.closest("[data-rtf]"); if (!t) return;
+    var k = t.dataset.rtf.split(":"); rt[k[0]] = k[0] === "days" ? Number(k[1]) : k[1] === "true"; rt.data = null; renderRatings(true);
   });
 
   /* ---------- printable in-store offer sign ---------- */
