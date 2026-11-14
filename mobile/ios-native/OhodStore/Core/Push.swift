@@ -22,6 +22,8 @@ final class PushDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCen
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         guard let url = response.notification.request.content.userInfo["url"] as? String,
               let go = URLComponents(string: url)?.queryItems?.first(where: { $0.name == "go" })?.value, !go.isEmpty else { return }
+        // التطبيق كان مقفل: نحفظ الوجهة وتنفتح بعد ما يجهز (الإشعار يوصل قبل ما الشاشة تسمع)
+        UserDefaults.standard.set(go, forKey: "push.go")
         await MainActor.run { NotificationCenter.default.post(name: .ohodGo, object: go) }
     }
 }

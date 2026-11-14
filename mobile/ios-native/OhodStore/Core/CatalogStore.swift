@@ -129,7 +129,7 @@ final class CatalogStore {
     func isSoon(_ p: Product) -> Bool { !isAvailable(p) && (p.soon || category(p.cat)?.soon == true) }
 
     func isAvailable(_ p: Product) -> Bool {
-        guard p.inStock, category(p.cat)?.soon != true else { return false }
+        guard p.inStock, !p.soon, category(p.cat)?.soon != true else { return false }
         if let left = liveStock[p.id] { return left > 0 }
         return true
     }
@@ -253,8 +253,10 @@ final class CatalogStore {
 
     func load() async {
         if index == nil, let cached = Self.readCache() {
+            // البصمة قبل ما تنرسم الرئيسية، عشان الصفحة الحية ما تنفتح مرتين (مرة بنسخة 0 ومرة بالبصمة)
+            let t = await Task.detached(priority: .userInitiated) { Self.tag(cached) }.value
             try? await apply(cached)
-            dataTag = await Task.detached(priority: .userInitiated) { Self.tag(cached) }.value
+            dataTag = t
         }
         await refresh()
     }

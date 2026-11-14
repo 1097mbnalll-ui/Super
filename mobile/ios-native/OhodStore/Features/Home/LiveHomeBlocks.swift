@@ -60,7 +60,7 @@ struct LiveBridge {
 
     static func url(_ items: [URLQueryItem], cart: Cart, version: String) -> URL {
         var c = URLComponents(url: AppConfig.site, resolvingAgainstBaseURL: false)!
-        let cj = (try? JSONSerialization.data(withJSONObject: cart.snapshot)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        let cj = (try? JSONSerialization.data(withJSONObject: cart.snapshot, options: [.sortedKeys])).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         // الصفحة نفسها ثابتة (embed + نسخة البيانات) فتنحفظ بالكاش وتفتح بسرعة، والباقي بعد # (الموقع يقراه من هناك)
         c.queryItems = [URLQueryItem(name: "embed", value: "1"), URLQueryItem(name: "v", value: version)]
         var f = URLComponents(); f.queryItems = items + [URLQueryItem(name: "cart", value: cj)]

@@ -79,6 +79,7 @@ struct RootView: View {
             await catalog.load()
             applyLaunchArguments()
             Push.shared.resumePromo(api: catalog.apiBase)
+            if let go = UserDefaults.standard.string(forKey: "push.go") { openGo(go) }
         }
         // قرار المالك ١٤ نوفمبر ٢٠٢٦: أول فتحة يطلع سؤال آبل مباشرة، ولو وافق نرسل له كل الإشعارات (الطلب والعروض)
         .task {
@@ -105,8 +106,7 @@ struct RootView: View {
         // ضغط على إشعار عروض: العروض أو قسم معيّن
         .onReceive(NotificationCenter.default.publisher(for: .ohodGo)) { n in
             guard let go = n.object as? String else { return }
-            if go == "offers" { tab = .offers }
-            else if go.hasPrefix("o:") || go.hasPrefix("c:") { tab = .categories; categoriesPath.append(Route.category(String(go.dropFirst(2)))) }
+            openGo(go)
         }
         .task(id: scenePhase == .active) {
             // المخزون الحي كل دقيقة والتطبيق مفتوح (مثل الموقع)
@@ -145,6 +145,13 @@ struct RootView: View {
     }
 
     /// للتصوير الآلي على المحاكي (Codemagic): -screen home|categories|category:<id>|product:<id>|cart|offers|account|address|placed و -seed-cart و -seed-order
+    /// وجهة إشعار العروض: العروض أو قسم معيّن
+    private func openGo(_ go: String) {
+        UserDefaults.standard.removeObject(forKey: "push.go")
+        if go == "offers" { tab = .offers }
+        else if go.hasPrefix("o:") || go.hasPrefix("c:") { tab = .categories; categoriesPath = NavigationPath(); categoriesPath.append(Route.category(String(go.dropFirst(2)))) }
+    }
+
     private func applyLaunchArguments() {
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-seed-promos") { catalog.previewPromos = true }
