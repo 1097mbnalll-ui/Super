@@ -1074,6 +1074,46 @@ body.is-embed{background:transparent!important;padding:0!important;margin:0}body
 .kq-ban.featured{width:100%;margin-top:6px}
 /* عرض الكمية الإجباري */
 .kq-badge.must{background:#6B2FD6}
+.fav{position:absolute;top:6px;right:6px;z-index:3;width:32px;height:32px;padding:0;border-radius:50%;border:0;background:rgba(255,255,255,.94);color:#8A94A0;display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 4px rgba(15,42,46,.14)}
+[dir="ltr"] .fav{right:auto;left:6px}
+.fav svg.i{width:17px;height:17px}
+.fav[aria-pressed="true"]{color:#E8394F}.fav[aria-pressed="true"] svg.i{fill:currentColor}
+.fav.big{position:static;width:44px;height:44px;background:#fff}.fav.big svg.i{width:22px;height:22px}
+.fav.pop svg.i{animation:favpop .35s ease}@keyframes favpop{50%{transform:scale(1.35)}}
+.kq-card.out .fav{opacity:1}
+body[data-screen="fav"] .kq-card.out .txtimg,body[data-screen="fav"] .kq-card.out .kq-price{opacity:.5;filter:grayscale(1)}
+.pd-tr{display:flex;align-items:center;gap:8px}
+.favtop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 0 4px}
+.favtop p{margin:0;color:var(--muted);font-size:12.5px}
+.favempty{margin-top:18px;text-align:center;display:grid;gap:8px;justify-items:center;padding:22px 16px}
+.favempty .big-ic{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:#FFE6EA;color:#E8394F}
+.favempty .big-ic svg.i{width:28px;height:28px;fill:currentColor}
+.acct-links{margin-top:12px;padding:0;overflow:hidden}
+.acct-links button{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:0 14px;border:0;background:none;font:inherit;color:var(--ink);cursor:pointer;text-align:start}
+.acct-links button+button{border-top:1px solid var(--line)}
+.acct-links .ic{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--mint);color:var(--teal-deep);flex:none}
+.acct-links .ic.h{background:#FFE6EA;color:#E8394F}
+.acct-links b{flex:1;font-size:14px}.acct-links span.v{color:var(--muted);font-size:12.5px}
+.acct-links svg.i.flip{opacity:.5}
+.apick{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.apick::-webkit-scrollbar{display:none}
+.apick button{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.apick button svg.i{width:15px;height:15px}
+.apick button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
+.apick button.new{border-style:dashed;color:var(--teal-deep)}
+.apick button.new[aria-pressed="true"]{border-style:solid;color:#fff}
+.pays.lbls{grid-template-columns:repeat(3,minmax(0,1fr))}
+.alist{display:grid;gap:10px;margin-top:14px}
+.aitem{display:grid;gap:10px}
+.aitem .row{display:flex;align-items:center;gap:12px}
+.aitem .row .ic{width:38px;height:38px;border-radius:13px;background:var(--mint);color:var(--teal-deep);display:grid;place-items:center;flex:none}
+.aitem.on .row .ic{background:var(--teal);color:#fff}
+.aitem .t{flex:1;display:grid;min-width:0;line-height:1.4}
+.aitem .t b{font-size:14px}.aitem .t span{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aitem .atag{font-size:10.5px;font-weight:700;color:var(--teal-deep);background:var(--mint);border-radius:999px;padding:3px 9px}
+.aitem .acts{display:flex;gap:8px;flex-wrap:wrap}
+.aitem .acts button{min-height:36px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.aitem .acts button.del[data-c="1"]{background:var(--sale);border-color:var(--sale);color:#fff}
 .kq-price.must .kq-now{font-size:14px;line-height:1.3}
 .kq-was{display:block;font-size:12px;color:#5B6474}.kq-was s{color:#98A1AD}
 .kq-card .add.wide{width:auto;padding:0 12px;gap:4px;border-radius:999px;font:inherit;font-weight:800;font-size:13px;display:inline-flex;align-items:center}
@@ -1509,7 +1549,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   .prod .sheet-b .wrap{padding-left:28px;padding-right:28px}
   .buybar{left:auto;right:auto;transform:none;inset-inline-end:max(48px,calc((100vw - 1180px) / 2 + 48px));width:min(500px,42vw);bottom:24px;border-radius:24px;padding:12px 16px;box-shadow:0 12px 32px rgba(23,33,43,.16)}
   .bottomcta{width:min(680px,calc(100% - 64px));bottom:24px;border-radius:24px;padding:12px 16px;box-shadow:0 12px 32px rgba(23,33,43,.16)}
-  body[data-screen="checkout"] .bottomcta{left:auto;right:auto;transform:none;inset-inline-end:max(32px,calc((100vw - 1180px) / 2 + 32px));width:min(560px,calc(50% - 44px))}
+  body[data-screen="checkout"] .bottomcta,body[data-screen="addr"] .bottomcta{left:auto;right:auto;transform:none;inset-inline-end:max(32px,calc((100vw - 1180px) / 2 + 32px));width:min(560px,calc(50% - 44px))}
   .co-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;max-width:1180px;margin:0 auto;padding:0 32px 120px;align-items:start}
   .co-grid .mapwrap{height:calc(100vh - 130px);min-height:480px;border-radius:28px;position:sticky;top:96px}
   .co-grid .co{margin-top:0;border-radius:28px;min-height:0;padding:24px 0 30px;box-shadow:var(--shadow);border:1px solid var(--line)}
@@ -1669,7 +1709,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>', target:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
     gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 14.1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.1V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.1a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     tag:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>',
-    trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'
+    trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+    heart:'<path d="M12 20s-7.2-4.4-8.9-9C1.9 7.6 4 4.5 7.3 4.5c2 0 3.5 1.1 4.7 2.8 1.2-1.7 2.7-2.8 4.7-2.8 3.3 0 5.4 3.1 4.2 6.5-1.7 4.6-8.9 9-8.9 9z"/>'
   };
   var ic = function(n){ return '<svg class="i' + (n === "back" || n === "fwd" ? ' flip' : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + IC[n] + '</svg>'; };
   var TINTS = ["#FFEBD6","#E4F1FF","#E1F6EC","#FFE6EA","#EEE9FF","#DFF5F8","#FFE8F2","#E8EEFF","#FFF5D6","#EEF0F3"];
@@ -2009,17 +2050,17 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     // المنتج بدون صورة: بطاقة نصية بلون القسم بدل أيقونة الكيس، عشان الصفحة ما تبين فاضية
     var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
     var gq = !kind && grpOf(p);
-    if (gq) return '<article class="kq-card must' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + '<span class="kq-badge must">' + num(gq.n) + tr(" بـ ", " for ") + num(gq.price) + '</span>' + low +
+    if (gq) return '<article class="kq-card must' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + '<span class="kq-badge must">' + num(gq.n) + tr(" بـ ", " for ") + num(gq.price) + '</span>' + low + favBtn(p) +
       (avail(p) ? '<span class="ctl"><button class="add wide" type="button" data-gpick="' + esc(gq.id) + '" data-gpre="' + p.id + '">' + ic("plus") + tr("أضف", "Add") + '</button></span>' : '') + '</div>' +
       '<div class="kq-price must"><span class="kq-now sale">' + esc(grpLine(gq)) + '</span></div><span class="kq-was">' + tr("كانت " + (gq.w1 || "الحبة") + " بـ ", "Was ") + '<s>' + num(p.price) + '</s></span>' +
       (grpSave(gq) > 0 ? '<span class="kq-save">🔥 ' + tr("توفّر ", "Save ") + num(grpSave(gq)) + tr(" ر.س", " SAR") + '</span>' : '') +
       '<b class="kq-name">' + esc(nm(p)) + '</b>' + (inCart ? '<span class="kq-size">' + num(inCart) + tr(" بالسلة", " in cart") + '</span>' : '') + '</article>';
     var mu = mo && mustOf(p);
-    if (mu) return '<article class="kq-card must' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + '<span class="kq-badge must">' + num(mu.n) + tr(" بـ ", " for ") + num(mu.price) + '</span>' + low + control(p, "") + '</div>' +
+    if (mu) return '<article class="kq-card must' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + '<span class="kq-badge must">' + num(mu.n) + tr(" بـ ", " for ") + num(mu.price) + '</span>' + low + favBtn(p) + control(p, "") + '</div>' +
       '<div class="kq-price must"><span class="kq-now sale">' + esc(mustLine(p, mu)) + '</span></div><span class="kq-was">' + tr("كانت " + mustW(p, mu).one + " بـ ", "Was ") + '<s>' + num(p.price) + '</s></span>' +
       (mustSave(p, mu) > 0 ? '<span class="kq-save">🔥 ' + tr("توفّر ", "Save ") + num(mustSave(p, mu)) + tr(" ر.س", " SAR") + '</span>' : '') +
       '<b class="kq-name">' + esc(nm(p)) + '</b>' + (inCart ? '<span class="kq-size">' + num(inCart) + tr(" بالسلة", " in cart") + '</span>' : '') + '</article>';
-    return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + badge + low + control(p, kind || "") + '</div>' +
+    return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + badge + low + favBtn(p) + control(p, kind || "") + '</div>' +
       (mo ? '<div class="kq-price"><span class="kq-now sale">' + num(mo.price) + ' <small>' + tr("ر.س", "SAR") + '</small></span><s>' + num(Math.round(mo.n * p.price * 100) / 100) + '</s><span class="kq-cnt">' + tr("العدد", "Qty") + ' <b>' + num(mo.n) + '</b></span>' : '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '')) + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
       (mo ? '<span class="kq-save">🔥 ' + tr("وفّر ", "Save ") + num(Math.round((mo.n * p.price - mo.price) * 100) / 100) + tr(" ر.س بالعرض", " SAR with the offer") + '</span>' : '') +
       '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + (function(){ var L = Array.isArray(p.packs) ? p.packs.filter(function(x, i){ return !/^عرض/.test(String(x.u || "")) && !(mo && mo.i === i); }) : []; return L.length ? ' · ' + L.map(function(x){ return esc(String(x.u || "").split(" ")[0]); }).join(" · ") : ''; })() + '</span></article>';
@@ -2031,6 +2072,38 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   var form = { name: "", phone: "", details: "", note: "", pay: "cash", lat: null, lng: null, sub: "call" };
   try { var f0 = JSON.parse(localStorage.getItem("ohod-form2") || "null"); if (f0) for (var k0 in f0) form[k0] = f0[k0]; } catch(e){}
   function saveForm(){ try { localStorage.setItem("ohod-form2", JSON.stringify(form)); } catch(e){} }
+  // المفضلة: على الجهاز بس (ما تنرسل لأحد). داخل التطبيق: التطبيق يرسلها بالرابط (fav=) ونبلغه بأي تغيير (t: fav)
+  var FAV = []; try { FAV = EMBED ? String(qp("fav") || "").split(",").filter(Boolean) : (JSON.parse(localStorage.getItem("ohod-fav") || "[]") || []); } catch(e){ FAV = []; }
+  if (!Array.isArray(FAV)) FAV = [];
+  function isFav(id){ return FAV.indexOf(String(id)) >= 0; }
+  function toggleFav(id){ id = String(id); var on = !isFav(id); FAV = FAV.filter(function(x){ return x !== id; }); if (on) FAV.unshift(id); if (FAV.length > 300) FAV.length = 300;
+    if (EMBED) toApp({ t: "fav", id: id, on: on }); else try { localStorage.setItem("ohod-fav", JSON.stringify(FAV)); } catch(e){}
+    return on; }
+  function favLabel(on){ return on ? tr("شيل من المفضلة", "Remove from favourites") : tr("أضف للمفضلة", "Add to favourites"); }
+  function favBtn(p, big){ var on = isFav(p.id); return '<button class="fav' + (big ? ' big' : '') + '" type="button" data-fav="' + esc(p.id) + '" aria-pressed="' + on + '" aria-label="' + favLabel(on) + '">' + ic("heart") + '</button>'; }
+  function favList(){ return FAV.map(function(id){ return byId(id); }).filter(function(p){ return p && !p.print; }); }
+  // العناوين المحفوظة (البيت، الدوام، …) على الجهاز. form.lat/lng/details = العنوان المختار حالياً (form.addr)، فالطلب والواتساب ما تغيّروا
+  var ADDRS = null; try { ADDRS = JSON.parse(localStorage.getItem("ohod-addrs") || "null"); } catch(e){ ADDRS = null; }
+  function saveAddrs(){ try { localStorage.setItem("ohod-addrs", JSON.stringify(ADDRS)); } catch(e){} }
+  function addrId(){ return "a" + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36); }
+  function addrOf(id){ for (var i = 0; i < ADDRS.length; i++) if (ADDRS[i].id === id) return ADDRS[i]; return null; }
+  function addrName(a){ return a && String(a.label || "").trim() || tr("عنوان", "Address"); }
+  function nextLabel(){ var has = function(l){ return ADDRS.some(function(a){ return a.label === l; }); }; return !has("البيت") ? "البيت" : !has("الدوام") ? "الدوام" : ""; }
+  function useAddr(a){ form.addr = a ? a.id : ""; form.lat = a ? a.lat : null; form.lng = a ? a.lng : null; form.details = a ? a.details || "" : ""; saveForm(); }
+  if (!Array.isArray(ADDRS)) { // أول مرة: العنوان الوحيد القديم يصير «البيت»
+    ADDRS = []; if (form.lat != null && form.lng != null) { ADDRS.push({ id: addrId(), label: "البيت", lat: form.lat, lng: form.lng, details: form.details || "" }); form.addr = ADDRS[0].id; saveForm(); }
+    saveAddrs(); }
+  ADDRS = ADDRS.filter(function(a){ return a && a.id && a.lat != null && a.lng != null; });
+  if (form.addr == null && ADDRS.length) useAddr(ADDRS[0]);
+  else if (form.addr && !addrOf(form.addr)) useAddr(ADDRS[0] || null);
+  else if (form.addr) { var a0 = addrOf(form.addr); form.lat = a0.lat; form.lng = a0.lng; form.details = a0.details || ""; }
+  // وقت ما الزبون يحرّك الخريطة أو يكتب التفاصيل على عنوان محفوظ: نحدّثه
+  function syncAddr(){ var a = form.addr && addrOf(form.addr); if (!a) return; a.lat = form.lat; a.lng = form.lng; a.details = form.details || ""; saveAddrs(); }
+  // بعد ما ينرسل الطلب على عنوان جديد: نحفظه باسمه (أول عنوان «البيت»)
+  function rememberAddr(){ if (form.lat == null) return; if (form.addr && addrOf(form.addr)) { syncAddr(); return; }
+    var lb = String(form.alabel || "").trim() || nextLabel() || tr("عنوان", "Address") + " " + (ADDRS.length + 1);
+    var a = { id: addrId(), label: lb, lat: form.lat, lng: form.lng, details: form.details || "" }; ADDRS.unshift(a); if (ADDRS.length > 10) ADDRS.length = 10; form.addr = a.id; form.alabel = ""; saveAddrs(); saveForm(); }
+  var AED = null; // العنوان اللي ينعدّل في شاشة «عنوان» (من عناويني)
   var lastOrder = null, pdQty = 1, pdPack = -1;
   try { lastOrder = JSON.parse(localStorage.getItem("ohod-last") || "null"); } catch(e){}
   function saveLast(){ try { localStorage.setItem("ohod-last", JSON.stringify(lastOrder)); } catch(e){} }
@@ -2100,7 +2173,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
 
   function navBar(){
     var t = totals();
-    var it = function(id, label, icon){ var on = screen === id || (id === "cats" && screen === "cat");
+    var it = function(id, label, icon){ var on = screen === id || (id === "cats" && screen === "cat") || (id === "more" && (screen === "fav" || screen === "addrs"));
       return '<button type="button" data-nav="' + id + '"' + (on ? ' aria-current="page"' : '') + '><span class="ico">' + ic(icon) + (id === "cart" && t.n ? '<span class="count">' + t.n + '</span>' : '') + '</span>' + label + '</button>'; };
     var bar = (t.n && (screen === "home" || screen === "cat" || screen === "cats" || screen === "search")) ?
       '<button class="cartbar" type="button" data-nav="cart"><span class="l"><span class="n">' + t.n + '</span><span><b>' + tr("عرض السلة", "View cart") + '</b><span>' + (S.freeOver ? (t.fee ? tr('باقي ', 'Add ') + rial(S.freeOver - t.s) + tr(' وتوصيلك مجاني', ' more for free delivery') : tr('توصيلك مجاني', 'Free delivery unlocked')) : esc(sv("eta") || "")) + '</span></span></span><span class="tot">' + rial(t.all) + '</span></button>' : '';
@@ -2526,7 +2599,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (lim && pdQty > lim) pdQty = lim;
     var inCart = cart[(isDaily ? "t:" : "") + p.id] || 0;
     return '<div class="prod" style="background:' + tint(p.cat) + tr('"><div class="wrap"><div class="topbar"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '"><div class="wrap"><div class="topbar"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + '</button>' +
-      (inCart ? '<span class="chipline" style="background:#fff">' + inCart + tr(' في سلتك</span>', ' in your cart</span>') : '<span></span>') + '</div></div>' +
+      '<span class="pd-tr">' + (inCart ? '<span class="chipline" style="background:#fff">' + inCart + tr(' في سلتك</span>', ' in your cart</span>') : '') + (soonP(packBase) ? '' : favBtn(packBase, true)) + '</span></div></div>' +
       '<div class="art">' + imgTag(p.img, nm(p)) + '</div>' +
       '<div class="sheet-b"><div class="wrap">' +
       '<div class="ttl"><div style="display:grid;gap:4px"><span class="chipline">' + esc(bd(p) || (c ? nm(c) : "")) + (isDaily ? tr(' · عرض اليوم', ' · Deal of the day') : '') + '</span><h1>' + esc(nm(p)) + '</h1><span class="unit">' + esc(un(p)) + '</span></div>' +
@@ -2724,14 +2797,14 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     h += '<div class="bottomcta"><button class="btn btn-teal" type="button" data-nav="checkout"' + (t.n && !isClosed() && !short ? '' : ' disabled') + tr('>كمّل الطلب', '>Continue to checkout') + ic("fwd") + '</button></div>';
     return h;
   }
+  // اختيار العنوان وقت الطلب: العناوين المحفوظة + «عنوان جديد»
+  function addrPickHTML(){ if (!ADDRS.length) return '';
+    return '<div class="fld"><span>' + tr("وين نوصلك؟", "Deliver to") + '</span><div class="apick" role="group" aria-label="' + tr("العناوين المحفوظة", "Saved addresses") + '">' + ADDRS.map(function(a){ return '<button type="button" data-addrpick="' + esc(a.id) + '" aria-pressed="' + (form.addr === a.id) + '">' + ic("pin") + esc(addrName(a)) + '</button>'; }).join("") +
+      (ADDRS.length < 10 ? '<button type="button" class="new" data-addrpick="" aria-pressed="' + !form.addr + '">' + ic("plus") + tr("عنوان جديد", "New address") + '</button>' : '') + '</div></div>'; }
   function checkoutHTML(){
     var t = totals();
-    return '<div class="co-grid">' + tr('<div class="mapwrap"><div class="mapnote" id="mapNote">جاري تحميل الخريطة…</div><div id="map" aria-label="خريطة تحديد موقع البيت"></div>', '<div class="mapwrap"><div class="mapnote" id="mapNote">Loading map…</div><div id="map" aria-label="Map to pick your home location"></div>') +
-      '<div class="dot"></div><div class="mpin"><div><span></span></div></div><div class="label">' + (form.lat ? tr('يوصلك هنا', 'We deliver here') : tr('حرّك الخريطة لين بيتك', 'Move the map to your home')) + '</div>' +
-      tr('<div class="topb"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="topb"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + '</button></div>' +
-      '<button class="locate" type="button" id="locate">' + ic("target") + tr('موقعي الحالي</button></div>', 'Use my location</button></div>') +
-      '<div class="co"><div class="wrap">' +
-      '<div class="addr' + (form.lat ? ' ok' : '') + '" id="addrBox"><span class="ic">' + ic("pin") + '</span><span class="t"><b id="addrT">' + (form.lat ? tr('تم تحديد موقع البيت', 'Home location set') : tr('حدد موقع بيتك', 'Set your home location')) + '</b><span id="addrS">' + (form.lat ? tr('تقدر تحرّك الخريطة لو تبغى تعدّله', 'You can move the map to adjust it') : tr('حرّك الخريطة لين الدبوس يكون على بيتك، أو اضغط موقعي الحالي', 'Move the map until the pin is on your home, or tap Use my location')) + '</span></span></div>' +
+    return '<div class="co-grid">' + mapHTML(form) +
+      '<div class="co"><div class="wrap">' + addrPickHTML() + addrBoxHTML(form) + (ADDRS.length && !form.addr ? labelFld(form.alabel != null ? form.alabel : nextLabel()) : '') +
       tr('<div class="fld"><span>رقم الجوال</span><span class="phone" id="phoneBox"><span>+966</span><input id="cPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="5X XXX XXXX" value="', '<div class="fld"><span>Mobile number</span><span class="phone" id="phoneBox"><span>+966</span><input id="cPhone" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="5X XXX XXXX" value="') + esc(form.phone) + tr('" aria-label="رقم الجوال"></span><span class="err" id="phoneErr" hidden></span></div>', '" aria-label="Mobile number"></span><span class="err" id="phoneErr" hidden></span></div>') +
       tr('<label class="fld" for="cDetails">تفاصيل البيت <small>رقم البيت، لون الباب، علامة قريبة</small><input id="cDetails" type="text" value="', '<label class="fld" for="cDetails">Home details <small>House number, door color, a nearby landmark</small><input id="cDetails" type="text" value="') + esc(form.details) + tr('" placeholder="مثال: فيلا ٨، باب بني، جنب المسجد"></label>', '" placeholder="e.g. Villa 8, brown door, next to the mosque"></label>') +
       tr('<label class="fld" for="cName">الاسم <small>(اختياري)</small><input id="cName" type="text" autocomplete="name" value="', '<label class="fld" for="cName">Name <small>(optional)</small><input id="cName" type="text" autocomplete="name" value="') + esc(form.name) + '"></label>' +
@@ -2781,6 +2854,41 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     return '<div class="steps">' + labels.map(function(l, i){ var cls = i <= idx ? "done" : i === idx + 1 ? "now" : "next";
       return (i ? '<div class="bar' + (i <= idx ? ' on' : '') + '"></div>' : '') + '<div class="s ' + cls + '"><i>' + (cls === "done" ? ic("check") : '') + '</i>' + l + '</div>'; }).join("") + '</div>';
   }
+  // «حسابي»: المفضلة وعناويني (كلها محفوظة على الجهاز)
+  function acctLinks(){ var nf = favList().length, na = ADDRS.length;
+    return '<div class="box acct-links"><button type="button" data-nav="fav"><span class="ic h">' + ic("heart") + '</span><b>' + tr("المفضلة", "Favourites") + '</b><span class="v">' + (nf ? num(nf) + tr(" منتج", " items") : tr("فاضية", "Empty")) + '</span>' + ic("fwd") + '</button>' +
+      '<button type="button" data-nav="addrs"><span class="ic">' + ic("pin") + '</span><b>' + tr("عناويني", "My addresses") + '</b><span class="v">' + (na ? esc(ADDRS.map(addrName).slice(0, 2).join("، ")) + (na > 2 ? "…" : "") : tr("أضف عنوان", "Add one")) + '</span>' + ic("fwd") + '</button></div>'; }
+  function favHTML(){
+    var L = favList(), av = L.filter(function(p){ return avail(p) && !soonP(p); }), off = L.filter(function(p){ return !(avail(p) && !soonP(p)); });
+    var top = tr('<div class="wrap"><div class="topbar"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="wrap"><div class="topbar"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + '</button><h1>' + tr("المفضلة", "Favourites") + '</h1><span class="sq" style="visibility:hidden"></span></div>';
+    if (!L.length) return top + '<div class="box favempty"><span class="big-ic">' + ic("heart") + '</span><b style="font-size:16px">' + tr("ما عندك منتجات مفضلة للحين", "No favourites yet") + '</b><p class="hint" style="margin:0">' + tr("اضغط القلب ♡ على أي منتج، ويصير هنا عشان تطلبه بسرعة.", "Tap the heart on any product to keep it here.") + '</p><button class="btn btn-teal" type="button" data-nav="home">' + tr("ابدأ التسوّق", "Start shopping") + '</button></div></div>';
+    var need = av.filter(function(p){ return !cart[p.id]; }).length;
+    return top + '<div class="favtop"><p>' + num(L.length) + tr(" منتج", " items") + (off.length ? tr(" · " + num(off.length) + " نفد", " · " + off.length + " sold out") : "") + '</p>' + (need ? '<button class="btn btn-soft" type="button" id="favAll">' + ic("cart") + tr("أضف المتوفر للسلة", "Add available to cart") + '</button>' : '') + '</div>' +
+      '<div class="grid">' + av.concat(off).map(function(p){ return card(p); }).join("") + '</div></div>';
+  }
+  function addrsHTML(){
+    var top = tr('<div class="wrap"><div class="topbar"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="wrap"><div class="topbar"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + '</button><h1>' + tr("عناويني", "My addresses") + '</h1><span class="sq" style="visibility:hidden"></span></div>';
+    return top + '<p class="hint" style="margin:12px 2px 0">' + tr("احفظ أكثر من عنوان (البيت، الدوام…) واختار وقت الطلب وين نوصلك.", "Save several addresses and pick one when you order.") + '</p><div class="alist">' +
+      ADDRS.map(function(a){ var on = form.addr === a.id, out = zoneOut(a.lat, a.lng) || tooFar(a.lat, a.lng);
+        return '<div class="box aitem' + (on ? ' on' : '') + '"><div class="row"><span class="ic">' + ic("pin") + '</span><span class="t"><b>' + esc(addrName(a)) + '</b><span>' + esc(a.details || tr("على الموقع المحدد بالخريطة", "Pinned on the map")) + '</span>' + (out ? '<span style="color:var(--sale)">' + tr("برّا منطقة التوصيل", "Outside the delivery area") + '</span>' : '') + '</span>' + (on ? '<span class="atag">' + tr("المختار", "Selected") + '</span>' : '') + '</div>' +
+          '<div class="acts">' + (on ? '' : '<button type="button" data-addruse="' + esc(a.id) + '">' + tr("وصّلوا هنا", "Deliver here") + '</button>') + '<button type="button" data-addredit="' + esc(a.id) + '">' + tr("عدّل", "Edit") + '</button><button type="button" class="del" data-addrdel="' + esc(a.id) + '">' + tr("احذف", "Delete") + '</button></div></div>'; }).join("") +
+      (ADDRS.length < 10 ? '<button class="btn btn-teal" type="button" data-addredit="" style="justify-self:start">' + ic("plus") + tr("أضف عنوان", "Add address") + '</button>' : '') + '</div></div>';
+  }
+  // الخريطة ودبوس الموقع (نفسها في الدفع وفي تعديل العنوان)
+  function mapHTML(o){ return tr('<div class="mapwrap"><div class="mapnote" id="mapNote">جاري تحميل الخريطة…</div><div id="map" aria-label="خريطة تحديد موقع البيت"></div>', '<div class="mapwrap"><div class="mapnote" id="mapNote">Loading map…</div><div id="map" aria-label="Map to pick your home location"></div>') +
+      '<div class="dot"></div><div class="mpin"><div><span></span></div></div><div class="label">' + (o.lat ? tr('يوصلك هنا', 'We deliver here') : tr('حرّك الخريطة لين بيتك', 'Move the map to your home')) + '</div>' +
+      tr('<div class="topb"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="topb"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + '</button></div>' +
+      '<button class="locate" type="button" id="locate">' + ic("target") + tr('موقعي الحالي</button></div>', 'Use my location</button></div>'); }
+  function addrBoxHTML(o){ return '<div class="addr' + (o.lat ? ' ok' : '') + '" id="addrBox"><span class="ic">' + ic("pin") + '</span><span class="t"><b id="addrT">' + (o.lat ? tr('تم تحديد موقع البيت', 'Home location set') : tr('حدد موقع بيتك', 'Set your home location')) + '</b><span id="addrS">' + (o.lat ? tr('تقدر تحرّك الخريطة لو تبغى تعدّله', 'You can move the map to adjust it') : tr('حرّك الخريطة لين الدبوس يكون على بيتك، أو اضغط موقعي الحالي', 'Move the map until the pin is on your home, or tap Use my location')) + '</span></span></div>'; }
+  // اسم العنوان: البيت / الدوام / غيره (يكتبه)
+  function labelFld(v){ var std = v === "البيت" || v === "الدوام", other = !std;
+    return '<div class="fld"><span>' + tr("اسم العنوان", "Address name") + '</span><div class="pays lbls">' + [["البيت", tr("البيت", "Home")], ["الدوام", tr("الدوام", "Work")], ["*", tr("غيره", "Other")]].map(function(x){ return '<button type="button" data-alabel="' + x[0] + '" aria-pressed="' + (x[0] === "*" ? other : v === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div>' +
+      '<input id="cALabel" type="text" maxlength="30" placeholder="' + tr("مثلاً: بيت أهلي", "e.g. Parents' house") + '" value="' + esc(other ? v : "") + '"' + (other ? '' : ' hidden') + ' aria-label="' + tr("اسم العنوان", "Address name") + '"></div>'; }
+  function addrEditHTML(){ var o = AED || (AED = { id: "", label: nextLabel(), lat: null, lng: null, details: "" });
+    var bad = o.lat != null && (zoneOut(o.lat, o.lng) || tooFar(o.lat, o.lng));
+    return '<div class="co-grid">' + mapHTML(o) + '<div class="co"><div class="wrap">' + '<b style="font-family:var(--display);font-size:16px">' + (o.id ? tr("عدّل العنوان", "Edit address") : tr("عنوان جديد", "New address")) + '</b>' + addrBoxHTML(o) + labelFld(o.label || "") +
+      tr('<label class="fld" for="cDetails">تفاصيل البيت <small>رقم البيت، لون الباب، علامة قريبة</small><input id="cDetails" type="text" value="', '<label class="fld" for="cDetails">Home details <small>House number, door color, a nearby landmark</small><input id="cDetails" type="text" value="') + esc(o.details || "") + tr('" placeholder="مثال: فيلا ٨، باب بني، جنب المسجد"></label>', '" placeholder="e.g. Villa 8, brown door, next to the mosque"></label>') +
+      '<div id="sendErr"></div></div></div></div><div class="bottomcta"><button class="btn btn-orange" type="button" id="saveAddr"' + (o.lat == null || bad ? ' disabled' : '') + '><span>' + tr("احفظ العنوان", "Save address") + '</span></button></div>'; }
   function moreHTML(){
     return tr('<div class="wrap"><div class="topbar"><span class="sq" style="visibility:hidden"></span><h1>حسابي</h1><span class="sq" style="visibility:hidden"></span></div>', '<div class="wrap"><div class="topbar"><span class="sq" style="visibility:hidden"></span><h1>Account</h1><span class="sq" style="visibility:hidden"></span></div>') +
       '<div class="box" style="margin-top:16px;display:grid;gap:12px"><div class="who"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b style="font-size:17px">' + esc(sv("name")) + '</b><span>' + esc(sv("tagline") || "") + '</span></div></div>' +
@@ -2788,6 +2896,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       (S.freeOver ? tr('<div><dt>توصيل مجاني</dt><dd>فوق ', '<div><dt>Free delivery</dt><dd>Over ') + rial(S.freeOver) + '</dd></div>' : '') +
       tr('<div><dt>أوقات العمل</dt><dd>', '<div><dt>Opening hours</dt><dd>') + esc(sv("hours")) + tr('</dd></div><div><dt>الدفع</dt><dd>كاش أو شبكة عند الاستلام</dd></div><div><dt>رقم المحل</dt><dd dir="ltr" style="user-select:all">', '</dd></div><div><dt>Payment</dt><dd>Cash or card on delivery</dd></div><div><dt>Store number</dt><dd dir="ltr" style="user-select:all">') + esc(S.phone) + '</dd></div></dl>' +
       '<div class="actions"><a class="btn btn-teal" href="tel:' + esc(S.phone) + '">' + ic("phone") + tr('اتصل</a>', 'Call</a>') + (waNumber() ? '<a class="btn btn-soft" href="https://wa.me/' + waNumber() + tr('" target="_blank" rel="noopener">واتساب</a>', '" target="_blank" rel="noopener">WhatsApp</a>') : '') + '</div></div>' +
+      acctLinks() +
       (apiUrl() && (!NATIVE || pushCan()) ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("الإشعارات", "Notifications") + '</b><span>' + (PUSH_PREF && pushOn() ? tr("مفعّلة. بيوصلك تنبيه مع كل تغيير في حالة طلباتك.", "On. You will be notified about every change to your orders.") : tr("فعّلها عشان يوصلك تنبيه لما طلبك ينقبل ولما المندوب يطلع لك.", "Turn them on to be alerted when your order is accepted and when the driver is on the way.")) + '</span><span class="pushmsg" id="pushPrefMsg"' + (isIOS() && !isApp() ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</span></span>' +
         (PUSH_PREF && pushOn() ? '<span class="on">' + ic("check") + '</span>' : '<button class="btn btn-teal" type="button" id="pushPref">' + tr("فعّل", "Turn on") + '</button>') + '</div>' : '') +
       (apiUrl() && pushCan() && !EMBED ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("tag") + '</span><span class="t"><b>' + tr("إشعارات العروض", "Offer alerts") + '</b><span>' + (PROMO_ON ? tr("مفعّلة. بنبلغك لما ننزّل عروض جديدة.", "On. We will tell you about new offers.") : tr("بلّغني لما تنزل عروض جديدة (مرات قليلة، بدون إزعاج).", "Tell me about new offers (a few times, no spam).")) + '</span><span class="pushmsg" id="promoMsg" hidden></span></span>' +
@@ -2807,8 +2916,9 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       EMBED_SLOT ? '' : '<div class="embed"><div class="wrap"><div style="height:' + (Number(S.banH) || 200) + 'px;border-radius:24px;background:linear-gradient(90deg,#f3f0fa,#ebe6f7,#f3f0fa)"></div></div></div>';
       setTimeout(embedHeight, 0); return; }
     var h = screen === "home" ? homeHTML() : screen === "cats" ? catsHTML() : screen === "cat" ? catHTML() : screen === "product" ? productHTML() :
-      screen === "search" ? searchHTML() : screen === "cart" ? cartHTML() : screen === "checkout" ? checkoutHTML() : screen === "sent" ? sentHTML() : moreHTML();
-    var noNav = screen === "product" || screen === "checkout" || screen === "sent" || screen === "cart";
+      screen === "search" ? searchHTML() : screen === "cart" ? cartHTML() : screen === "checkout" ? checkoutHTML() : screen === "sent" ? sentHTML() :
+      screen === "fav" ? favHTML() : screen === "addrs" ? addrsHTML() : screen === "addr" ? addrEditHTML() : moreHTML();
+    var noNav = screen === "product" || screen === "checkout" || screen === "sent" || screen === "cart" || screen === "addr";
     document.body.style.paddingBottom = noNav ? "0" : ""; document.body.setAttribute("data-screen", screen);
     app.innerHTML = h + (noNav || EMBED ? "" : navBar());
     if (EMBED) { document.body.classList.add("is-embed"); if (EMBED_SCREEN) document.body.classList.add("scr"); setTimeout(embedHeight, 0); }
@@ -2818,6 +2928,10 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (screen === "home") { timers.push(setInterval(function(){ var el = $("cd"); if (el) el.textContent = countdown(); }, 1000)); kqBanners(); kqPlaceholder(); applyCuts($("kqBans")); }
     if (screen === "search") { renderSearch(); var qi = $("q"); qi.focus(); qi.addEventListener("input", function(){ q = this.value.trim(); renderSearch(); }); qi.addEventListener("change", function(){ var v = this.value.trim(); if (v) { recent = [v].concat(recent.filter(function(r){ return r !== v; })).slice(0, 8); try { localStorage.setItem("ohod-recent", JSON.stringify(recent)); } catch(e){} } }); }
     if (screen === "checkout") initCheckout();
+    if (screen === "addr") initAddrEdit();
+    if ($("favAll")) $("favAll").addEventListener("click", function(){ var n = 0;
+      favList().forEach(function(p){ if (!avail(p) || soonP(p) || cart[p.id] || grpOf(p)) return; var q = stepOf(p); if (!canAddProduct(p.id, q)) return; cart[p.id] = q; evAdd("c", p.id); n++; });
+      saveCart(); refresh(); sToast(n ? tr("انضاف " + num(n) + " منتج للسلة", num(n) + " items added") : tr("المتوفر موجود بالسلة", "Already in your cart")); });
     if ($("toAdmin")) $("toAdmin").addEventListener("click", function(){ if (canEdit) go("admin"); else openPin(); });
     if ($("toDriver")) $("toDriver").addEventListener("click", openDriver);
     if (screen === "sent") { bindSent(); trkMapInit(); trackPoll(); if ($("pushMe")) $("pushMe").addEventListener("click", function(){ orderPush(this); }); }
@@ -2870,6 +2984,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   if (EMBED) { window.addEventListener("load", embedHeight); window.addEventListener("resize", embedHeight); try { new ResizeObserver(embedHeight).observe(document.body); } catch(e){}
     // الضغطات: نرسلها للتطبيق بدل ما نفتح شاشات الموقع
     document.addEventListener("click", function(e){ var a = e.target.closest("[data-act]");
+      if (e.target.closest("[data-fav],[data-addrpick],[data-alabel],[data-addruse],[data-addredit],[data-addrdel]")) return; // تنعالج داخل الصفحة (والمفضلة تنرسل للتطبيق)
       if (EMBED_SCREEN) { var nv = e.target.closest("[data-nav]");
         // شاشة كاملة: السلة والطلب داخل الصفحة (وتنرسل للتطبيق)، والرجوع والتنقل بين الشاشات للتطبيق
         if (a || (nv && /^(checkout|sent)$/.test(nv.dataset.nav))) return;
@@ -2941,19 +3056,24 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function zoneMsg(){ return tr("موقعك برّا منطقة التوصيل حقتنا. اتصل علينا لو تبغى ترتيب خاص.", "Your location is outside our delivery area. Call us for special arrangements."); }
   function tooFar(lat, lng){ if (hasZone()) return 0; var mx = Number(S.maxKm) || 0, k = mx > 0 ? kmFromShop(lat, lng) : 0; return k > mx ? Math.round(k * 10) / 10 : 0; }
   function farMsg(k){ var a = String(Math.round(k * 10) / 10), b = String(Number(S.maxKm)); return tr("موقعك يبعد عن المحل " + a + " كم، وتوصيلنا لين " + b + " كم. اتصل علينا لو تبغى ترتيب خاص.", "Your location is " + a + " km from the store; we deliver up to " + b + " km. Call us for special arrangements."); }
+  // الموقع من الخريطة: في الدفع يروح للطلب (ويحدّث العنوان المختار)، وفي شاشة «عنوان» يروح للعنوان اللي ينعدّل
   function setLoc(lat, lng){
-    form.lat = Math.round(lat * 1e6) / 1e6; form.lng = Math.round(lng * 1e6) / 1e6; saveForm();
+    var o = screen === "addr" && AED ? AED : form;
+    o.lat = Math.round(lat * 1e6) / 1e6; o.lng = Math.round(lng * 1e6) / 1e6; if (o === form) { saveForm(); syncAddr(); }
     var b = $("addrBox"); if (b) { b.classList.add("ok"); $("addrT").textContent = tr("تم تحديد موقع البيت", "Home location set"); $("addrS").textContent = tr("تقدر تحرّك الخريطة لو تبغى تعدّله", "You can move the map to adjust it"); }
     var lb = document.querySelector(".mapwrap .label"); if (lb) lb.textContent = tr("يوصلك هنا", "We deliver here");
-    if (zoneOut(form.lat, form.lng) && b) { b.classList.remove("ok"); $("addrT").textContent = tr("برّا منطقة التوصيل", "Outside our delivery area"); $("addrS").textContent = zoneMsg(); if (lb) lb.textContent = tr("برّا المنطقة", "Outside the area"); }
-    var far = tooFar(form.lat, form.lng); if (far && b) { b.classList.remove("ok"); $("addrT").textContent = tr("برّا منطقة التوصيل", "Outside our delivery area"); $("addrS").textContent = farMsg(far); if (lb) lb.textContent = tr("بعيد عن المحل", "Too far"); }
+    var bad = false;
+    if (zoneOut(o.lat, o.lng) && b) { bad = true; b.classList.remove("ok"); $("addrT").textContent = tr("برّا منطقة التوصيل", "Outside our delivery area"); $("addrS").textContent = zoneMsg(); if (lb) lb.textContent = tr("برّا المنطقة", "Outside the area"); }
+    var far = tooFar(o.lat, o.lng); if (far && b) { bad = true; b.classList.remove("ok"); $("addrT").textContent = tr("برّا منطقة التوصيل", "Outside our delivery area"); $("addrS").textContent = farMsg(far); if (lb) lb.textContent = tr("بعيد عن المحل", "Too far"); }
+    if ($("saveAddr")) $("saveAddr").disabled = bad;
   }
-  function initCheckout(){
+  function mountMap(o){
+    if (o.lat != null) setLoc(o.lat, o.lng);
     loadLeaflet(function(){
       if (!$("map")) return;
       var n = $("mapNote"); if (n) n.remove();
-      var c = form.lat ? [form.lat, form.lng] : (S.mapCenter || S.shop || DEFAULT_CENTER);
-      map = L.map("map", { zoomControl: false, attributionControl: true }).setView(c, form.lat ? 17 : 15);
+      var c = o.lat ? [o.lat, o.lng] : (S.mapCenter || S.shop || DEFAULT_CENTER);
+      map = L.map("map", { zoomControl: false, attributionControl: true }).setView(c, o.lat ? 17 : 15);
       if (hasZone()) L.polygon(S.zone, { color: "#0E9F7B", weight: 2, fillOpacity: 0.06, interactive: false }).addTo(map);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
       map.on("dragend zoomend", function(){ var m = map.getCenter(); setLoc(m.lat, m.lng); });
@@ -2967,8 +3087,31 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         if (map) map.setView([pos.coords.latitude, pos.coords.longitude], 17);
       }, function(){ btn.disabled = false; $("addrS").textContent = tr(NATIVE ? "ما قدرنا نجيب موقعك. اسمح للموقع من إعدادات الجوال (التطبيقات ← متاجر أحد ← الأذونات)، أو حرّك الخريطة بيدك." : "ما قدرنا نجيب موقعك. اسمح للموقع من إعدادات المتصفح، أو حرّك الخريطة بيدك.", "We could not get your location. Allow location in your browser settings, or move the map by hand."); }, { enableHighAccuracy: true, timeout: 12000 });
     });
+  }
+  function initAddrEdit(){
+    var o = AED; if (!o) return;
+    mountMap(o);
+    $("cDetails").addEventListener("input", function(){ o.details = this.value; });
+    $("cALabel").addEventListener("input", function(){ o.label = this.value; });
+    $("saveAddr").addEventListener("click", function(){
+      var err = function(m){ $("sendErr").innerHTML = '<div class="alert"><span>' + esc(m) + '</span></div>'; };
+      if (o.lat == null) return err(tr("حرّك الخريطة لين الدبوس يكون على بيتك، أو اضغط «موقعي الحالي».", "Move the map to your location first."));
+      if (zoneOut(o.lat, o.lng)) return err(zoneMsg());
+      var far = tooFar(o.lat, o.lng); if (far) return err(farMsg(far));
+      var lb = String(o.label || "").trim() || nextLabel() || tr("عنوان", "Address") + " " + (ADDRS.length + 1);
+      var a = o.id && addrOf(o.id);
+      if (a) { a.label = lb; a.lat = o.lat; a.lng = o.lng; a.details = String(o.details || "").trim(); }
+      else { if (ADDRS.length >= 10) return err(tr("وصلت لأكثر عدد (١٠ عناوين). احذف واحد أول.", "You reached 10 addresses.")); a = { id: addrId(), label: lb, lat: o.lat, lng: o.lng, details: String(o.details || "").trim() }; ADDRS.push(a); }
+      saveAddrs();
+      if (!o.id || form.addr === a.id || !form.addr) useAddr(a); // العنوان الجديد يصير المختار
+      AED = null; sToast(tr("انحفظ العنوان", "Address saved")); show("back");
+    });
+  }
+  function initCheckout(){
+    mountMap(form);
+    if ($("cALabel")) $("cALabel").addEventListener("input", function(){ form.alabel = this.value; saveForm(); });
     var bind = { cPhone: "phone", cDetails: "details", cName: "name", cNote: "note" };
-    Object.keys(bind).forEach(function(id){ $(id).addEventListener("input", function(){ form[bind[id]] = this.value; saveForm(); if (id === "cNote") updateCheckoutTotals(); if (id === "cPhone") { $("phoneBox").classList.remove("bad"); $("phoneErr").hidden = true; } }); });
+    Object.keys(bind).forEach(function(id){ $(id).addEventListener("input", function(){ form[bind[id]] = this.value; saveForm(); if (id === "cDetails") syncAddr(); if (id === "cNote") updateCheckoutTotals(); if (id === "cPhone") { $("phoneBox").classList.remove("bad"); $("phoneErr").hidden = true; } }); });
     $("sendOrder").addEventListener("click", sendOrder);
     if ($("cPromoBtn")) { $("cPromoBtn").addEventListener("click", applyPromo); $("cPromo").addEventListener("keydown", function(e){ if (e.key === "Enter") { e.preventDefault(); applyPromo(); } }); }
   }
@@ -3022,7 +3165,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         btn.disabled = false; btn.firstChild.textContent = tr("أرسل الطلب", "Place order");
         if (j.ok) {
           if (!j.repeated) recordHist(items);
-          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, printText: pnote, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast();
+          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, printText: pnote, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast(); rememberAddr();
           if (j.track && PUSH_PREF && pushOn()) orderPush(null);
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
@@ -3057,6 +3200,19 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var lb = e.target.closest("[data-lang]"); if (lb) { setLang(lb.dataset.lang); return; }
     if (mode !== "store") return;
     var t;
+    if ((t = e.target.closest("[data-fav]"))) { e.preventDefault(); var fid = t.dataset.fav, fon = toggleFav(fid);
+      Array.prototype.forEach.call(document.querySelectorAll("[data-fav]"), function(x){ if (x.dataset.fav !== fid) return; x.setAttribute("aria-pressed", fon); x.setAttribute("aria-label", favLabel(fon)); x.classList.remove("pop"); if (fon) { void x.offsetWidth; x.classList.add("pop"); } });
+      try { var hf = nativePlug("Haptics"); if (hf && hf.impact) hf.impact({ style: "LIGHT" }); } catch(x){}
+      if (screen === "fav") refresh(); sToast(fon ? tr("انضاف للمفضلة ♥", "Added to favourites") : tr("انشال من المفضلة", "Removed from favourites")); return; }
+    if ((t = e.target.closest("[data-addrpick]"))) { var pa = t.dataset.addrpick ? addrOf(t.dataset.addrpick) : null; useAddr(pa); if (!pa) form.alabel = nextLabel(); saveForm(); refresh(); return; }
+    if ((t = e.target.closest("[data-addruse]"))) { useAddr(addrOf(t.dataset.addruse)); refresh(); sToast(tr("بنوصل طلبك على «" + addrName(addrOf(form.addr)) + "»", "We will deliver here")); return; }
+    if ((t = e.target.closest("[data-addredit]"))) { var ea = t.dataset.addredit && addrOf(t.dataset.addredit); AED = ea ? { id: ea.id, label: ea.label, lat: ea.lat, lng: ea.lng, details: ea.details || "" } : { id: "", label: nextLabel(), lat: null, lng: null, details: "" }; show("addr"); return; }
+    if ((t = e.target.closest("[data-addrdel]"))) { if (t.dataset.c !== "1") { t.dataset.c = "1"; t.textContent = tr("متأكد؟ احذف", "Sure? Delete"); return; }
+      var did = t.dataset.addrdel; ADDRS = ADDRS.filter(function(a){ return a.id !== did; }); saveAddrs(); if (form.addr === did) useAddr(ADDRS[0] || null); refresh(); sToast(tr("انحذف العنوان", "Address deleted")); return; }
+    if ((t = e.target.closest("[data-alabel]"))) { var lo = screen === "addr" && AED ? AED : null, lv = t.dataset.alabel, li = $("cALabel");
+      Array.prototype.forEach.call(document.querySelectorAll("[data-alabel]"), function(x){ x.setAttribute("aria-pressed", x === t); });
+      if (lv === "*") { if (li) { li.hidden = false; li.focus(); lv = li.value; } } else if (li) li.hidden = true;
+      if (lo) lo.label = lv; else { form.alabel = lv; saveForm(); } return; }
     if ((t = e.target.closest("[data-addbund]")) || (t = e.target.closest("[data-bund]"))) {
       var bid = t.dataset.addbund || t.dataset.bund, d = t.dataset.addbund ? 1 : Number(t.dataset.bd), al = bundleAlloc(banOf(bid)); if (!al) return;
       if (d > 0 && al.ids.some(function(id){ return !avail(byId(id)) || !canAddProduct(id,d); })) { sToast(tr("وصلت للكمية المتاحة أو الحد المسموح لأحد منتجات الباقة", "A bundle item reached its available quantity or purchase limit")); return; }
