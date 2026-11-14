@@ -52,7 +52,7 @@ export default {
     if (request.method === "GET" && (path === "" || path === "/ping")) return reply(200, { ok: true, service: "ohod-admin" });
     // المخزون للزبائن: كم باقي من كل منتج عليه عدّ
     // أي عملية ممكن تغيّر المخزون (طلب، تعديل، إلغاء، حفظ) تفضّي ذاكرة المخزون؛ الاستعلامات الدورية (التتبع، قائمة المندوب…) ما تفضيها
-    if (request.method === "POST" && !/^\/(?:track|rate|ev|stats|driver\/(?:orders|pending|loc|loc-off|cash|login|push)|admin\/(?:orders|alerts|today|stats|log|team|prep|pos-orders|openitems|driver-loc|staff|cash|day-report|settlement-requests))$/.test(path)) stockCache.at = 0;
+    if (request.method === "POST" && !/^\/(?:track|rate|ev|stats|mine|driver\/(?:orders|pending|loc|loc-off|cash|login|push)|admin\/(?:orders|alerts|today|stats|log|team|prep|pos-orders|openitems|driver-loc|staff|cash|day-report|settlement-requests))$/.test(path)) stockCache.at = 0;
     if (request.method === "GET" && path === "/stock") {
       // كل زائر يسأل عن المخزون كل دقيقة؛ مع آلاف المنتجات نخزن النتيجة ١٥ ثانية بدل ما نقرأ القاعدة كل مرة
       if (!stockCache.body || Date.now() - stockCache.at > 15000) stockCache = { at: Date.now(), body: JSON.stringify({ ok: true, stock: env.DB ? await readShownStock(env) : {} }) };
@@ -163,7 +163,7 @@ export default {
           let sid = short();
           if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
           try {
-            orderNo = await dbInsertOrder(env, record, need, Date.now(), false, null, { checkout, dev: body.dev });
+            orderNo = await dbInsertOrder(env, record, need, Date.now(), false, null, { checkout, dev: body.dev }); mineCache.delete(normDev(body.dev));
           } catch (e) {
             if (checkout) { const repeated = await checkoutResult(env, checkout); if (repeated) return reply(repeated.ok ? 200 : 409, repeated); }
             // ممكن طلب ثاني سبقه على آخر حبة: نشيّك المخزون مرة ثانية
@@ -303,6 +303,20 @@ export default {
       return reply(200, { ok: true });
     }
 
+    // «الرئيسية الذكية» (١٤ نوفمبر ٢٠٢٦): سجل مشتريات الجهاز المجهول من الخادم (عشان يشتغل في التطبيق والموقع بنفس الشكل).
+    // يرجع أرقام المنتجات والأعداد بس: كم طلب فيه المنتج، آخر مرة، والمدة المعتادة بين الطلبات. بدون اسم ولا جوال ولا عنوان
+    if (path === "/mine") {
+      const dev = normDev(body.dev);
+      if (!dev) return reply(400, { ok: false, code: "bad_request" });
+      if (!env.DB) return reply(200, { ok: true, n: 0, items: {} });
+      const hit = mineCache.get(dev), now = Date.now();
+      if (hit && now - hit.at < MINE_CACHE_MS) return reply(200, hit.body);
+      if (await rateHit(env, "mine:" + ip, 30, 600)) return reply(429, { ok: false, code: "slow_down" });
+      const out = await deviceHistory(env, dev, now);
+      if (mineCache.size > 500) mineCache.clear();
+      mineCache.set(dev, { at: now, body: out });
+      return reply(200, out);
+    }
     // نبضة السلة من جهاز الزبون {dev, n}: عدد المنتجات بس (بدون محتواها). الجهاز يرسلها مرة كل ١٠ دقايق بالأكثر ولما تفضى السلة
     if (path === "/cart-ping") {
       const dev = normDev(body.dev), cn = Math.max(0, Math.min(999, Math.floor(Number(body.n) || 0)));
@@ -1198,7 +1212,7 @@ async function changeStatus(env, n, st, now = Date.now(), who = "", actor = null
     for (const id of Object.keys(need)) if (cur[id] != null) stmts.push(P("UPDATE stock SET qty = MAX(qty + ?, 0) WHERE id = ?", (back ? 1 : -1) * need[id], id));
     stmts.push(...snapStmts(env, Object.keys(need).filter((id) => cur[id] != null)));
     if (counted) stmts.push(...statsStmts(env, rec, day, hour, back ? -1 : 1, back ? 1 : -1));
-    if (old.dev) stmts.push(devCountStmt(env, old.dev));   // الملغي ما ينحسب من طلبات الجهاز
+    if (old.dev) { stmts.push(devCountStmt(env, old.dev)); mineCache.delete(old.dev); }   // الملغي ما ينحسب من طلبات الجهاز
   }
   const dl = (sign, ms) => P("INSERT INTO st_day (day, orders, revenue, deliv_n, deliv_ms, deliv_rev) VALUES (?, 0, 0, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET deliv_n = deliv_n + excluded.deliv_n, deliv_ms = deliv_ms + excluded.deliv_ms, deliv_rev = deliv_rev + excluded.deliv_rev", day, sign, sign * ms, round2(sign * Number(rec.total || 0)));
   if (counted && old.status === "delivered") stmts.push(dl(-1, Number(old.dms || 0)));
@@ -2010,6 +2024,32 @@ async function saveSub(env, sub0, role, ref, dev0) {
 // كل جهاز (الموقع والتطبيق) يسوي رقم عشوائي d-xxxxxxxxxxxxxxxxxxxx أول مرة، وينرسل مع الاشتراك والطلب ونبضة السلة. بدون اسم ولا جوال
 function normDev(x) { const d = String(x || ""); return /^d-[A-Za-z0-9_-]{20}$/.test(d) ? d : null; }
 // عدّ طلبات الجهاز من سجل الطلبات نفسه (الملغي ما ينحسب): يقرأ طلبات هالجهاز بس بالفهرس orders_dev
+// سجل الجهاز للرئيسية الذكية: آخر ٦٠ طلب (غير ملغي) خلال ١٢٠ يوم، بالفهرس orders_dev. الكرتون (<id>~<خيار>) ينحسب على المنتج الأساسي
+const MINE_DAYS = 120, MINE_ORDERS = 60, MINE_ITEMS = 150, MINE_CACHE_MS = 60000;
+const mineCache = new Map();
+async function deviceHistory(env, dev, now) {
+  await ensureSchema(env);
+  const since = now - MINE_DAYS * 864e5;
+  const rows = ((await env.DB.prepare("SELECT o.no, o.created, l.id, l.qty FROM oline l JOIN (SELECT no, created FROM orders WHERE dev = ?1 AND status != 'canceled' AND created >= ?2 ORDER BY created DESC LIMIT ?3) o ON o.no = l.no LIMIT 3000")
+    .bind(dev, since, MINE_ORDERS).all()).results) || [];
+  const orders = new Set(), by = {};
+  for (const r of rows) {
+    orders.add(r.no);
+    const id = baseOf(r.id); if (!id) continue;
+    const x = by[id] || (by[id] = { nos: new Set(), at: [], q: 0 });
+    x.q += Math.max(0, Number(r.qty) || 0);
+    if (!x.nos.has(r.no)) { x.nos.add(r.no); x.at.push(Number(r.created)); }
+  }
+  const items = {};
+  Object.keys(by).map((id) => { const x = by[id]; x.at.sort((a, b) => a - b); return { id, n: x.at.length, last: x.at[x.at.length - 1], q: x.q, at: x.at }; })
+    .sort((a, b) => b.n - a.n || b.last - a.last).slice(0, MINE_ITEMS)
+    .forEach((x) => {
+      const gaps = []; for (let i = 1; i < x.at.length; i++) { const g = (x.at[i] - x.at[i - 1]) / 864e5; if (g >= 0.5) gaps.push(g); } // طلبين بنفس اليوم (نسيت شي) = مشوار واحد
+      items[x.id] = { n: x.n, q: x.q, last: x.last, ...(gaps.length ? { gap: Math.round(median(gaps) * 10) / 10 } : {}) };
+    });
+  return { ok: true, n: orders.size, items, at: now };
+}
+function median(a) { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
 function devCountStmt(env, dev) {
   return env.DB.prepare("UPDATE devices SET orders_n = (SELECT COUNT(*) FROM orders WHERE dev = ?1 AND status != 'canceled'), last_order_at = (SELECT IFNULL(MAX(created), 0) FROM orders WHERE dev = ?1 AND status != 'canceled') WHERE dev = ?1").bind(dev);
 }

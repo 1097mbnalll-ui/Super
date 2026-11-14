@@ -1502,6 +1502,14 @@ body[data-screen="driver"]{background:#F3F4F6}
 .kq-sec h2{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:700;font-size:20px}
 .kq-sec h2 svg.i{width:22px;height:22px;color:var(--orange)}
 .kq-sec button{background:none;border:0;font:inherit;font-size:12.5px;font-weight:700;color:var(--teal);display:inline-flex;align-items:center;gap:2px;cursor:pointer}
+/* الرئيسية الذكية: سطر «ليش أشوف هذا؟» تحت العنوان، و«×» يشيل المنتج من الصفوف الشخصية، وسطر صغير تحت الكرت */
+.sm-sec .kq-sec{margin-bottom:4px}
+.sm-hint{margin:0 0 10px;font-size:13px;color:#5B6474;line-height:1.6}
+.sm-slot{display:contents}
+.kq-card.sm .sm-x{position:absolute;top:6px;left:6px;z-index:3;width:28px;height:28px;padding:0;border-radius:50%;border:0;background:rgba(255,255,255,.94);color:#6B7480;font-size:19px;line-height:1;display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 4px rgba(15,42,46,.14)}
+[dir="ltr"] .kq-card.sm .sm-x{left:auto;right:6px}
+.kq-card.smx .kq-badge{top:40px}
+.sm-why{font-size:12px;color:var(--teal-deep);font-weight:600;line-height:1.4}
 .kq-sec button svg.i{width:13px;height:13px}
 .kq-sec .clr{color:#E8394F}
 .kq-cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 10px}
@@ -1742,6 +1750,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 14.1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.1V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.1a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     tag:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>',
     trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+    clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
     heart:'<path d="M12 20s-7.2-4.4-8.9-9C1.9 7.6 4 4.5 7.3 4.5c2 0 3.5 1.1 4.7 2.8 1.2-1.7 2.7-2.8 4.7-2.8 3.3 0 5.4 3.1 4.2 6.5-1.7 4.6-8.9 9-8.9 9z"/>'
   };
   var ic = function(n){ return '<svg class="i' + (n === "back" || n === "fwd" ? ' flip' : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + IC[n] + '</svg>'; };
@@ -1876,7 +1885,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function sToast(m){ var x = document.createElement("div"); x.className = "dv-toast"; x.setAttribute("role", "status"); x.textContent = m; document.body.appendChild(x); setTimeout(function(){ x.remove(); }, 2200); }
   function banOf(id){ var l = S.bans || []; for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; }
   function idsToList(ids){ return (ids || []).map(byId).filter(function(p){ return avail(p); }); }
-  var LAYOUT_DEF = ["featured","promos","again","moment","catoffers","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["top","multi","daily","offers","deals","bakery","free","catdeal","night","veg","welcome"];
+  var LAYOUT_DEF = ["featured","promos","again","due","moment","season","myoffers","catoffers","free","catgrid","offers","deals","grid"], LAYOUT_OFF = { offers: 1, deals: 1 }, PROMO_DEF = ["top","multi","daily","offers","deals","bakery","free","catdeal","night","veg","welcome"];
   function promoDefs(){ return PROMO_DEF.concat((S.bans || []).map(function(b){ return b.id; })); }
   function orderOf(list, defs){
     var out = [], seen = {};
@@ -2113,12 +2122,6 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (out.length < 4) D.products.filter(function(y){ return y.cat === p.cat && y.sub === p.sub && avail(y) && hasPic(y.img) && !seen[y.id]; }).sort(function(a, b){ return shelfScore(b) - shelfScore(a); }).slice(0, 6).forEach(function(y){ out.push(y); });
     return out.slice(0, n);
   }
-  // وقت اليوم (الرياض): فطور الصبح، غدا الظهر، عصرية، سهرة الليل
-  function momentOf(){ var h = Math.floor((Date.now() / 3600000 + 3) % 24);
-    return h >= 5 && h < 11 ? { t: tr("فطورك جاهز", "Breakfast time"), e: "☕", subs: ["eggs", "milk", "cheese", "flour", "breakfast", "laban", "tea"] } :
-      h >= 11 && h < 15 ? { t: tr("مقاضي الغدا", "Lunch essentials"), e: "🍚", subs: ["rice", "chicken", "spices", "oil", "laban", "canned", "sauces"] } :
-      h >= 15 && h < 19 ? { t: tr("قهوة العصر", "Afternoon coffee"), e: "🫖", subs: ["tea", "biscuits", "cakes", "chocolate", "nuts"] } :
-      { t: tr("طلعات السهرة", "Evening snacks"), e: "🍿", subs: ["chips", "soft", "chocolate", "icecream", "nuts", "candy", "energy"] }; }
   function pcs(n){ return n === 2 ? "حبتين" : n <= 10 ? num(n) + " حبات" : num(n) + " حبة"; }
   function multiTxt(m){ return tr(pcs(m.n) + " بـ " + num(m.price) + " ر.س", m.n + " pcs for " + num(m.price) + " SAR"); }
   function multiEach(m){ return tr("الحبة بـ " + num(Math.round(m.price / m.n * 100) / 100), num(Math.round(m.price / m.n * 100) / 100) + " each"); }
@@ -2202,7 +2205,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   var HIST = {}; try { HIST = JSON.parse(localStorage.getItem("ohod-hist") || "{}") || {}; } catch(e){}
   function recordHist(items){ var now = Date.now(); Object.keys(items).forEach(function(k){ var L = lineOf(k); if (!L || L.p.print) return; var id = L.p.base || L.p.id, q = items[k] * (Number(L.p.per) || 1);
       var h = HIST[id] || (HIST[id] = { n: 0, q: 0, at: 0 }); if (h.at !== now) h.n++; h.q += q; h.at = now; });
-    try { localStorage.setItem("ohod-hist", JSON.stringify(HIST)); } catch(e){} }
+    try { localStorage.setItem("ohod-hist", JSON.stringify(HIST)); localStorage.setItem("ohod-ordn", String((Number(localStorage.getItem("ohod-ordn")) || 0) + 1)); } catch(e){}
+    HISTV++; if (typeof MINE !== "undefined" && MINE) MINE.got = 0; }
   function histList(){ return Object.keys(HIST).map(function(id){ var p = byId(id); return p && avail(p) ? { p: p, h: HIST[id] } : null; }).filter(Boolean)
     .sort(function(a, b){ return b.h.n - a.h.n || b.h.at - a.h.at; }); }
   function usualQty(h){ return Math.max(1, Math.round(h.q / Math.max(1, h.n))); }
@@ -2547,6 +2551,168 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (!list.length) return "";
     return '<div class="kq-bans" id="kqBans">' + list.join("") + '</div><div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
   }
+  /* ---------- الرئيسية الذكية (١٤ نوفمبر ٢٠٢٦): رئيسية لكل جهاز بقواعد بسيطة ببلاش (بدون ذكاء اصطناعي مدفوع) ----------
+     سجل الجهاز من الخادم (/mine {dev}: أرقام المنتجات والأعداد بس) + السجل المحلي (ohod-hist)، فيشتغل في الموقع وفي رئيسية التطبيق الحية (dev=).
+     الصفوف: again «طلباتك المعتادة» (٣ طلبات+ أو ٦ أصناف+، وقبلها «الأكثر طلباً عند جيرانك») · due «يمكن خلص عندك؟» · moment (وقت اليوم ورمضان)
+     · season (أسبوع الراتب، قبل رمضان، ضيافة العيد) · myoffers «عروض على أغراضك». بالكثير store.smart.max (٤) صفوف مع بعض.
+     الحساب بعد أول رسم (smartFill) ويتخزن (SMC)، فالرئيسية ما تثقل. الإعدادات (اختيارية) في store.smart: {max, ramadan:[…], pre, salary:[27,3], rows:{…}} */
+  var RAMADAN_DEF = ["2026-02-18", "2027-02-08", "2028-01-28", "2029-01-16", "2030-01-06"];   // تقريبي (حسب رؤية الهلال)، والمالك يقدر يعدّله في store.smart.ramadan
+  var SM_ROWS = {
+    breakfast: { t: "فطورك جاهز", e: "☕", why: "الصبح: أغراض الفطور", subs: ["eggs", "milk", "cheese", "laban", "breakfast", "juice"], kw: "خبز|توست|صامولي|بيض|لبنة|جبن|حليب|زبدة|مربى|عسل|كرواسون" },
+    lunch: { t: "مقاضي الغدا", e: "🍚", why: "قبل الغدا: أساسيات الطبخ", subs: ["rice", "chicken", "oil", "spices", "sauces", "canned"], kw: "رز|أرز|زيت|معجون|صلصة طماطم|دجاج|بهارات|مرقة" },
+    afternoon: { t: "برّد على قلبك", e: "🧃", why: "العصرية: مشروبات باردة وآيسكريم", subs: ["soft", "icecream", "juice", "icedtea", "water"] },
+    night: { t: "طلعات السهرة", e: "🍿", why: "للسهرة: سناكات ومشروبات", subs: ["chips", "soft", "chocolate", "nuts", "candy", "icecream", "energy"] },
+    iftar: { t: "لفطورك في رمضان", e: "🌙", why: "قبل المغرب: أغراض الفطور", subs: ["laban", "juice"], kw: "تمر|فيمتو|سمبوس|رقائق|شوربة|شوفان|قمر الدين" },
+    sweet: { t: "حلا وقهوة بعد الفطور", e: "☕", why: "بعد الفطور: حلا وقهوة", subs: ["tea", "biscuits", "cakes", "chocolate", "nuts"], kw: "قهوة|هيل|كنافة|بسبوسة" },
+    suhoor: { t: "للسحور", e: "🌙", why: "سحورك: خفيف ويشبع", subs: ["eggs", "cheese", "laban", "water"], kw: "^(?!.*(شبس|سوداني)).*(فول|بيض|جبنة|خبز|توست|تمر)" },
+    salary: { t: "مقاضي الشهر", e: "🛒", why: "بداية الشهر: تعبية البيت", subs: ["rice", "oil", "sugar", "flour", "tea", "laundry", "dishes", "baby", "water", "paper"], kw: "كرتون|حفاض|حفائض|مسحوق", food: false },
+    ramadan: { t: "تجهيزات رمضان", e: "🌙", why: "رمضان قرّب: أغراض الشهر", subs: ["laban", "juice", "flour", "oil"], kw: "تمر|فيمتو|شوفان|سمبوس|رقائق|قشطة|شوربة|جيلي|كريم كراميل|قمر الدين" },
+    eid: { t: "ضيافة العيد", e: "🎉", why: "العيد قرّب: ضيافة البيت", subs: ["chocolate", "nuts", "cakes"], kw: "معمول|قهوة|هيل|شوكولات|مكسرات|حلاوة|تمر" }
+  };
+  function smCfg(){ return (S && S.smart) || {}; }
+  function smRow(k){ var r = SM_ROWS[k], o = (smCfg().rows || {})[k]; if (!r) return null; if (!o) return r; var x = {}; for (var a in r) x[a] = r[a]; for (var b in o) x[b] = o[b]; return x; }
+  // الوقت بالرياض (UTC+3)
+  function riyadhNow(){ var d = new Date(Date.now() + 3 * 3600e3); return { h: d.getUTCHours(), day: d.getUTCDate(), ms: Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) }; }
+  // رمضان: {d: رقم اليوم من أول رمضان (سالب = قبله)}، أقرب رمضان للتاريخ
+  function ramadanDay(){ var z = riyadhNow(), l = Array.isArray(smCfg().ramadan) && smCfg().ramadan.length ? smCfg().ramadan : RAMADAN_DEF, best = null;
+    l.forEach(function(s){ var t = Date.parse(String(s) + "T00:00:00Z"); if (isNaN(t)) return; var d = Math.round((z.ms - t) / 864e5); if (d > -60 && d < 31 && (best == null || Math.abs(d) < Math.abs(best))) best = d; });
+    return best; }
+  // صف التقويم: قبل رمضان بـ pre أيام (١٠)، آخر ٤ أيام من رمضان (العيد)، أسبوع الراتب (٢٧ لين ٣)
+  function seasonOf(){ var c = smCfg(), d = ramadanDay(), pre = c.pre != null ? Number(c.pre) || 0 : 10, z = riyadhNow(), sal = Array.isArray(c.salary) ? c.salary : [27, 3];
+    if (d != null && d < 0 && d >= -pre) return "ramadan";
+    if (d != null && d >= 25 && d < 30) return "eid";
+    if (d != null && d >= 0 && d < 30) return "";
+    if (c.salaryOff !== true && (z.day >= Number(sal[0]) || z.day <= Number(sal[1]))) return "salary";
+    return ""; }
+  // وقت اليوم (الرياض): فطور الصبح، غدا الظهر، عصرية، سهرة الليل. في رمضان: الفطور قبل المغرب، حلا بعده، والسحور
+  function momentOf(){ var h = riyadhNow().h, d = ramadanDay(), inR = d != null && d >= 0 && d < 30;
+    var k = inR ? (h >= 11 && h < 18 ? "iftar" : h >= 18 && h < 21 ? "sweet" : "suhoor") : (h >= 5 && h < 11 ? "breakfast" : h >= 11 && h < 15 ? "lunch" : h >= 15 && h < 19 ? "afternoon" : "night");
+    var r = smRow(k); return { k: k, t: tr(r.t, ({ breakfast: "Breakfast time", lunch: "Lunch essentials", afternoon: "Cool down", night: "Evening snacks" })[k] || r.t), e: r.e, subs: r.subs, why: r.why }; }
+  var MINE = null, MINE_BUSY = false, MINE_FAIL = 0, HISTV = 0, SMC = null, SMIX = null;
+  try { var mn0 = JSON.parse(localStorage.getItem("ohod-mine") || "null"); if (mn0 && mn0.items && mn0.dev === devId()) MINE = mn0; } catch(e){}
+  var SMHIDE = []; try { SMHIDE = JSON.parse(localStorage.getItem("ohod-smhide") || "[]") || []; } catch(e){} if (!Array.isArray(SMHIDE)) SMHIDE = [];
+  function smHidden(id){ return SMHIDE.indexOf(String(id)) > -1; }
+  function smHide(id){ id = String(id); if (!smHidden(id)) SMHIDE.unshift(id); if (SMHIDE.length > 300) SMHIDE.length = 300; try { localStorage.setItem("ohod-smhide", JSON.stringify(SMHIDE)); } catch(e){} SMC = null; }
+  // سجل الجهاز من الخادم: مرة كل ١٠ دقايق بالأكثر (والطلب الجديد يطلبه من جديد). لو الخادم القديم ما يعرف /mine: نكتفي بالسجل المحلي
+  function mineLoad(force){
+    if (!apiUrl() || MINE_BUSY || mode !== "store" || Date.now() - MINE_FAIL < 5 * 60e3) return;
+    if (!force && MINE && Date.now() - (MINE.got || 0) < 10 * 60e3) return;
+    MINE_BUSY = true;
+    fetchJSON(apiUrl() + "/mine", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dev: devId() }), timeoutMs: 8000 }).then(function(j){
+      MINE_BUSY = false;
+      if (!j || !j.ok || !j.items || typeof j.items !== "object") { MINE_FAIL = Date.now(); return; }
+      var same = MINE && MINE.n === j.n && JSON.stringify(MINE.items) === JSON.stringify(j.items);
+      MINE = { dev: devId(), n: Number(j.n) || 0, items: j.items, got: Date.now() };
+      try { localStorage.setItem("ohod-mine", JSON.stringify(MINE)); } catch(e){}
+      if (!same) { SMC = null; if (screen === "home" && mode === "store") smartFill(); }
+    });
+  }
+  // السجل المدموج: الخادم (كل الطلبات من الموقع والتطبيق) + المحلي (طلبات قبل رقم الجهاز)
+  function smHist(){ var out = {};
+    Object.keys(HIST).forEach(function(id){ var h = HIST[id]; if (h) out[id] = { n: Number(h.n) || 0, q: Number(h.q) || 0, last: Number(h.at) || 0, gap: 0 }; });
+    if (MINE && MINE.items) Object.keys(MINE.items).forEach(function(id){ var s = MINE.items[id], o = out[id]; if (!s) return;
+      if (!o) out[id] = { n: Number(s.n) || 0, q: Number(s.q) || 0, last: Number(s.last) || 0, gap: Number(s.gap) || 0 };
+      else { o.n = Math.max(o.n, Number(s.n) || 0); o.q = Math.max(o.q, Number(s.q) || 0); o.last = Math.max(o.last, Number(s.last) || 0); o.gap = Number(s.gap) || 0; } });
+    return out; }
+  function smOrderN(H){ var n = MINE ? MINE.n : 0, l = 0; try { l = Number(localStorage.getItem("ohod-ordn")) || 0; } catch(e){}
+    Object.keys(H).forEach(function(id){ l = Math.max(l, H[id].n); }); return Math.max(n, l); }
+  function smOk(p){ return p && !p.print && avail(p) && !soonP(p) && !smHidden(p.id); }
+  // فهرس خفيف: أفضل المنتجات المتوفرة بصور لكل قسم فرعي، والأكثر طلباً بالمحل (rk)
+  function smIndex(){ if (SMIX && SMIX.P === D.products && SMIX.L === LIVE) return SMIX;
+    var by = {}, all = [];
+    D.products.forEach(function(p){ if (!p || p.print || p.base || !avail(p) || !hasPic(p.img) || soonP(p)) return; all.push(p); if (p.sub) (by[p.sub] || (by[p.sub] = [])).push(p); });
+    Object.keys(by).forEach(function(k){ by[k].sort(function(a, b){ return shelfScore(b) - shelfScore(a); }); if (by[k].length > 40) by[k].length = 40; });
+    var top = all.filter(function(p){ return Number(p.rk) > 0; }).sort(function(a, b){ return (Number(b.rk) || 0) - (Number(a.rk) || 0); }).slice(0, 300);
+    return (SMIX = { P: D.products, L: LIVE, by: by, all: all, top: top, kw: {} }); }
+  var SM_NONFOOD = { care: 1, clean: 1, misc: 1, print: 1 };
+  function smKw(ix, kw, food){ var key = kw + "|" + food; if (ix.kw[key]) return ix.kw[key]; var re; try { re = new RegExp(kw); } catch(e){ return (ix.kw[key] = []); }
+    return (ix.kw[key] = ix.all.filter(function(p){ return (!food || !SM_NONFOOD[p.cat]) && re.test(p.name || ""); }).sort(function(a, b){ return shelfScore(b) - shelfScore(a); }).slice(0, 40)); }
+  // صف بموضوع (وقت اليوم/التقويم): منتجات الأقسام الفرعية والكلمات، وأول شي اللي الجهاز يطلعه، وبالتناوب بين الأنواع
+  function smThemed(k, H){ var r = smRow(k), ix = smIndex(); if (!r) return [];
+    var buckets = [], seen = {};
+    (r.ids || []).forEach(function(id){ var p = byId(id); if (smOk(p)) buckets.push([p]); });
+    if (r.kw) buckets.push(smKw(ix, r.kw, r.food !== false).slice(0, 12));
+    (r.subs || []).forEach(function(s){ buckets.push((ix.by[s] || []).slice(0, 6)); });
+    var mySub = {}; Object.keys(H).forEach(function(id){ var p = byId(id); if (p && p.sub) mySub[p.sub] = (mySub[p.sub] || 0) + H[id].n; });
+    var mine = [], rest = [];
+    for (var i = 0; i < 12; i++) buckets.forEach(function(b){ var p = b[i]; if (!p || seen[p.id] || !smOk(p)) return; seen[p.id] = 1; (H[p.id] ? mine : rest).push(p); });
+    // اللي من أنواع الجهاز يتقدم، بس بالكثير ٢ من كل نوع عشان الصف ما يصير نوع واحد
+    var cap = {}; mine.forEach(function(p){ cap[p.sub] = (cap[p.sub] || 0) + 1; });
+    rest = rest.map(function(p, i){ return { p: p, i: i, m: mySub[p.sub] ? 1 : 0 }; }).sort(function(a, b){ return b.m - a.m || a.i - b.i; })
+      .filter(function(x){ var k = x.p.sub || x.p.cat; cap[k] = (cap[k] || 0) + 1; return cap[k] <= 2; }).map(function(x){ return x.p; });
+    return mine.concat(rest).slice(0, 12); }
+  function smGap(g){ g = Math.round(g); return g <= 1 ? tr("عادةً كل يوم", "Usually daily") : g === 2 ? tr("عادةً كل يومين", "Usually every 2 days") : g >= 6 && g <= 8 ? tr("عادةً كل أسبوع", "Usually weekly") : g >= 13 && g <= 16 ? tr("عادةً كل أسبوعين", "Usually every 2 weeks") : g >= 27 && g <= 33 ? tr("عادةً كل شهر", "Usually monthly") : tr("عادةً كل " + num(g) + (g <= 10 ? " أيام" : " يوم"), "Usually every " + g + " days"); }
+  // يحسب كل الصفوف مرة وحدة ويخزنها لين يتغير شي (السجل، المخزون، الوقت، المخفي)
+  function smKey(){ return [momentOf().k, seasonOf(), riyadhNow().ms, HISTV, SMHIDE.length, smCfg().max].join("|"); }
+  function smLists(){
+    if (SMC && SMC.P === D.products && SMC.L === LIVE && SMC.M === MINE && SMC.k === smKey()) return SMC;
+    var H = smHist(), ids = Object.keys(H), now = Date.now(), N = smOrderN(H), L = {};
+    var own = ids.map(function(id){ var p = byId(id); return smOk(p) ? { p: p, h: H[id] } : null; }).filter(Boolean);
+    // يمكن خلص عندك: انطلب مرتين أو أكثر، ومرّ ٨٠٪ من مدته المعتادة. الأكثر تأخير أول (واللي له زمان طويل جداً ما يطلع)
+    var due = own.filter(function(x){ var g = x.h.gap, d = (now - x.h.last) / 864e5; return x.h.n >= 2 && g >= 0.5 && d >= 0.8 * g && d <= Math.max(3 * g, g + 7) && d <= 60; })
+      .sort(function(a, b){ return (now - b.h.last) / b.h.gap - (now - a.h.last) / a.h.gap; }).slice(0, 8);
+    if (due.length) L.due = { items: due.map(function(x){ return { p: x.p, why: smGap(x.h.gap) }; }), why: tr("صار لها وقت من آخر طلب، حسب طلباتك قبل", "It has been a while since you last ordered these") };
+    var dueIds = {}; due.forEach(function(x){ dueIds[x.p.id] = 1; });
+    if (N >= 3 || ids.length >= 6) {
+      var us = own.slice().sort(function(a, b){ return b.h.n - a.h.n || b.h.last - a.h.last; }), us2 = us.filter(function(x){ return !dueIds[x.p.id]; });
+      if (us2.length >= 4) us = us2;
+      if (us.length) L.again = { mine: true, items: us.slice(0, 12).map(function(x){ return { p: x.p, h: x.h, why: x.h.n > 1 ? tr("انطلب " + (x.h.n === 2 ? "مرتين" : num(x.h.n) + " مرات"), "Ordered " + x.h.n + " times") : "" }; }), why: tr("من طلباتك السابقة، الأكثر أول", "From your past orders, most frequent first") };
+    }
+    if (!L.again) { // البداية: الأكثر طلباً بالمحل، ويقدّم اللي يناسب وقت اليوم، وبالكثير ٢ من كل نوع
+      var mo = momentOf(), boost = {}; (mo.subs || []).forEach(function(s){ boost[s] = 1; });
+      var cnt = {}, pick = smIndex().top.filter(smOk).map(function(p, i){ return { p: p, s: (Number(p.rk) || 0) * (boost[p.sub] ? 1.5 : 1) }; }).sort(function(a, b){ return b.s - a.s; })
+        .filter(function(x){ var k = x.p.sub || x.p.cat; cnt[k] = (cnt[k] || 0) + 1; return cnt[k] <= 2; }).slice(0, 12);
+      if (pick.length >= 4) L.again = { mine: false, items: pick.map(function(x){ return { p: x.p }; }), why: tr("اللي يطلبه أهل " + (sv("area") || "الحي") + " أكثر شي", "What your neighbours order most") };
+    }
+    // صف وقت اليوم والتقويم ما يكرر اللي فوقه (لو بقى فيه ٤ وأكثر)
+    var used = {}; ["again", "due"].forEach(function(id){ if (L[id]) L[id].items.forEach(function(x){ used[x.p.id] = 1; }); });
+    var fresh = function(l){ var f = l.filter(function(p){ return !used[p.id]; }); return f.length >= 4 ? f : l; };
+    var mo3 = momentOf(), ml = fresh(smThemed(mo3.k, H));
+    if (ml.length >= 4) L.moment = { title: mo3.e + " " + mo3.t, items: ml.map(function(p){ return { p: p }; }), why: tr(mo3.why + (ml.some(function(p){ return H[p.id]; }) ? "، واللي تطلبه أول" : ""), "") };
+    var sk = seasonOf(), sr = sk && smRow(sk), sl = sk ? fresh(smThemed(sk, H)) : [];
+    if (sr && sl.length >= 4) L.season = { title: sr.e + " " + tr(sr.t, sr.t), items: sl.map(function(p){ return { p: p }; }), why: tr(sr.why, "") };
+    // عروض على أغراضك: العروض الموجودة (خصم، عرض كمية، عرض مجموعة) على اللي طلبته أو من أنواعه. ترتيب بس، بدون خصم جديد
+    if (own.length || ids.length) {
+      var mySub = {}; ids.forEach(function(id){ var p = byId(id); if (p && p.sub) mySub[p.sub] = (mySub[p.sub] || 0) + H[id].n; });
+      var offs = D.products.filter(function(p){ return (H[p.id] || mySub[p.sub]) && smOk(p) && (isOffer(p) || grpOf(p)); })
+        .sort(function(a, b){ return (H[b.id] ? 1e6 : 0) + (mySub[b.sub] || 0) * 100 + shelfScore(b) - ((H[a.id] ? 1e6 : 0) + (mySub[a.sub] || 0) * 100 + shelfScore(a)); });
+      var oc = {}; offs = offs.filter(function(p){ if (H[p.id]) return true; oc[p.sub] = (oc[p.sub] || 0) + 1; return oc[p.sub] <= 3 && hasPic(p.img); }).slice(0, 12);
+      if (offs.length >= 2) L.myoffers = { items: offs.map(function(p){ return { p: p, why: H[p.id] ? tr("من طلباتك", "You ordered this") : "" }; }), why: tr("العروض الحالية على أشياء تطلبها أو من نوعها", "Current offers on things you buy") };
+    }
+    // بالكثير max صفوف (٤): الأهم أول، والموسمي ياخذ مكان صف وقت اليوم
+    var max = Math.max(1, Math.min(6, Number(smCfg().max) || 4)), shown = {}, k2 = 0;
+    ["again", "due", "season", "myoffers", "moment"].forEach(function(id){ if (L[id] && k2 < max) { shown[id] = 1; k2++; } });
+    Object.keys(L).forEach(function(id){ if (!shown[id]) delete L[id]; });
+    return (SMC = { P: D.products, L: LIVE, M: MINE, k: smKey(), rows: L }); }
+  // كرت الصف الشخصي: نفس كرت المنتج + «×» يشيله من الصفوف الشخصية + سطر صغير «ليش»
+  function smCard(x, own){ var h = card(x.p).replace('class="kq-card', 'class="kq-card sm'); if (own) h = h.replace('<div class="kq-img">', '<div class="kq-img"><button type="button" class="sm-x" data-smhide="' + esc(x.p.id) + '" aria-label="' + tr("شيله من هالقائمة", "Hide from this list") + '" title="' + tr("شيله من هالقائمة", "Hide from this list") + '">×</button>');
+    h = h.replace('class="kq-card sm', 'class="kq-card sm' + (own ? ' smx' : ''));
+    return x.why ? h.replace(/<\/article>$/, '<span class="sm-why">' + esc(x.why) + '</span></article>') : h; }
+  var SM_ICON = { again: "cart", due: "clock", myoffers: "tag" };
+  function smSecHTML(id){ var R = smLists().rows[id]; if (!R) return "";
+    var t = id === "again" ? (R.mine ? tr("طلباتك المعتادة", "Your usuals") : tr("الأكثر طلباً عند جيرانك", "Popular with your neighbours")) : id === "due" ? tr("يمكن خلص عندك؟", "Running low?") : id === "myoffers" ? tr("عروض على أغراضك", "Offers on your items") : R.title;
+    var head = (SM_ICON[id] ? ic(SM_ICON[id]) : '') + esc(t), own = id === "due" || id === "myoffers" || (id === "again" && R.mine);
+    var btn = id === "again" && R.mine ? '<button type="button" data-smaddall>' + tr("أضف المعتاد كله", "Add all usuals") + ic("plus") + '</button>' : '';
+    return '<div class="wrap sm-sec" data-smsec="' + id + '"><div class="kq-sec"><h2>' + head + '</h2>' + btn + '</div>' + (R.why ? '<p class="sm-hint">' + esc(R.why) + '</p>' : '') +
+      '<div class="rail">' + R.items.map(function(x){ return smCard(x, own); }).join("") + '</div></div>'; }
+  // في الرسم: لو الصفوف محسوبة تنرسم على طول، وإلا مكان فاضي يتعبى بعد أول رسم (ما يأخر ظهور الصفحة)
+  function smSlot(id){ if (SMC && SMC.P === D.products && SMC.L === LIVE && SMC.M === MINE && SMC.k === smKey()) return smSecHTML(id); smPend = true; return '<div class="sm-slot" data-smart="' + id + '"></div>'; }
+  var smPend = false, smTimer = 0;
+  function smartFill(){ clearTimeout(smTimer); smTimer = setTimeout(function(){
+    if (screen !== "home" || mode !== "store") return;
+    // بناء الفهرس (١١ ألف منتج) بمهمة لحاله، والصفوف بمهمة ثانية: ما فيه مهمة طويلة وحدة تعلّق الصفحة
+    if (!(SMIX && SMIX.P === D.products && SMIX.L === LIVE)) { smIndex(); smartFill(); return; }
+    var els = document.querySelectorAll("[data-smart],[data-smsec]"); if (!els.length) return;
+    var ys = window.scrollY;
+    Array.prototype.forEach.call(els, function(el){ var id = el.getAttribute("data-smart") || el.getAttribute("data-smsec"), h = smSecHTML(id);
+      if (h) el.outerHTML = h; else if (el.hasAttribute("data-smsec")) el.outerHTML = '<div class="sm-slot" data-smart="' + id + '"></div>'; });
+    if (window.scrollY !== ys) window.scrollTo(0, ys);
+    if (EMBED) embedHeight(); }, 0); }
+  function smAddAll(){ var R = smLists().rows.again, n = 0; if (!R || !R.mine) return;
+    R.items.forEach(function(x){ var p = x.p, id = p.id, q = Math.max(1, Math.round(x.h.q / Math.max(1, x.h.n))); if (cart[id] || grpOf(p) || mustOf(p)) return; var c = capOf(p, q); if (c > 0) q = Math.min(q, c); if (!canAddProduct(id, q)) return;
+      if (EMBED) toApp({ t: "cart.add", key: id, qty: q }); else cart[id] = q; n++; });
+    if (!EMBED) { saveCart(); refresh(); }
+    sToast(n ? tr("انضاف " + num(n) + " منتج من طلباتك المعتادة", num(n) + " usual items added") : tr("طلباتك المعتادة موجودة بالسلة", "Your usual items are already in the cart")); }
   function homeHTML(){
     var h = '<div class="kq-head"><div class="wrap">' +
       (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span>' + (lastOrder.subs && lastOrder.subs.length ? '<em class="trk-sub">' + tr("فيه بديل ينتظر موافقتك", "A replacement needs your answer") + '</em>' : '') + '</span>' + ic("fwd") + '</button>' :
@@ -2563,13 +2729,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       var pic = l.filter(function(p){ return hasPic(p.img); })[0]; return { c: c, n: l.length, mx: mx, pic: pic }; }).filter(Boolean).sort(function(a, b){ return b.n - a.n; }).slice(0, 8);
     SEC.catoffers = co.length > 1 ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("tag") + tr("عروض الأقسام", "Deals by aisle") + '</h2><button type="button" data-chip="offers">' + tr("كل العروض", "All offers") + ic("fwd") + '</button></div><div class="kq-cof">' +
       co.map(function(x){ return '<button type="button" class="cof" style="--ct:' + tint(x.c.id) + '" data-chip="o:' + esc(x.c.id) + '"><span class="cof-t"><b>' + tr("عروض ", "") + esc(nm(x.c)) + tr("", " deals") + '</b>' + (x.mx ? '<em>' + tr("حتى ", "Up to ") + num(x.mx) + tr("٪", "%") + '</em>' : '') + '<small>' + num(x.n) + tr(" منتج", " items") + '</small></span>' + (x.pic ? kbImg(x.pic.id, "cof-p") : '') + '</button>'; }).join("") + '</div></div>' : '';
-    // «اطلب مرة ثانية»: منتجاتك المعتادة (من طلباتك على هالجهاز) وزر يضيفها كلها بكمياتها المعتادة
-    var hl = EMBED ? [] : histList().slice(0, 16);
-    SEC.again = hl.length ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("cart") + tr("اطلب مرة ثانية", "Order again") + '</h2><button type="button" id="addAgain">' + tr("أضف المعتاد كله", "Add all usuals") + ic("plus") + '</button></div><div class="rail">' +
-      hl.map(function(x){ return card(x.p); }).join("") + '</div></div>' : '';
-    var mo2 = momentOf(), ml = [];
-    mo2.subs.forEach(function(sub){ D.products.filter(function(y){ return y.sub === sub && avail(y) && hasPic(y.img); }).sort(function(a, b){ return shelfScore(b) - shelfScore(a); }).slice(0, 3).forEach(function(y){ ml.push(y); }); });
-    SEC.moment = ml.length >= 4 ? '<div class="wrap"><div class="kq-sec"><h2>' + mo2.e + ' ' + mo2.t + '</h2></div><div class="rail">' + ml.slice(0, 16).map(function(x){ return card(x); }).join("") + '</div></div>' : '';
+    // الرئيسية الذكية: صفوف لكل جهاز (تنحسب بعد أول رسم، شوف smLists)
+    smPend = false; ["again", "due", "moment", "season", "myoffers"].forEach(function(id){ SEC[id] = smSlot(id); });
     // بنر ثابت فوق للعرض المميز (store.groups أول مجموعة مفعّلة)، والبنرات تحته تتحرك
     var fg = (S.groups || []).filter(function(g){ return g && g.on !== false && g.top !== false && grpItems(g).length; })[0];
     var fgArt = fg ? artBan("featured", { name: fg.name || "", n: fg.n, w: fg.w || tr("حبات", "pcs"), short: String(fg.name || "").split(" ")[0], price: Number(fg.price), unit: grpOld(fg), before: Math.round(fg.n * grpOld(fg) * 100) / 100, save: grpSave(fg),
@@ -3067,9 +3228,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     document.body.style.paddingBottom = noNav ? "0" : ""; document.body.setAttribute("data-screen", screen);
     app.innerHTML = h + (noNav || EMBED ? "" : navBar());
     if (EMBED) { document.body.classList.add("is-embed"); if (EMBED_SCREEN) document.body.classList.add("scr"); setTimeout(embedHeight, 0); }
-    if (screen === "home" && $("addAgain")) $("addAgain").addEventListener("click", function(){ var n = 0;
-      histList().slice(0, 16).forEach(function(x){ var id = x.p.id, q = usualQty(x.h); if (cart[id]) return; var c = capOf(x.p, q); if (c > 0) q = Math.min(q, c); if (!canAddProduct(id, q)) return; cart[id] = q; n++; });
-      saveCart(); refresh(); sToast(n ? tr("انضاف " + num(n) + " منتج من مشترياتك المعتادة", num(n) + " usual items added") : tr("منتجاتك المعتادة موجودة بالسلة", "Your usual items are already in the cart")); });
+    if (screen === "home" && mode === "store") { if (smPend) smartFill(); setTimeout(function(){ mineLoad(); }, 0); }
     if (screen === "home") { timers.push(setInterval(function(){ var el = $("cd"); if (el) el.textContent = countdown(); }, 1000)); kqBanners(); kqPlaceholder(); applyCuts($("kqBans")); }
     if (screen === "search") { renderSearch(); var qi = $("q"); qi.focus(); qi.addEventListener("input", function(){ q = this.value.trim(); renderSearch(); }); qi.addEventListener("change", function(){ var v = this.value.trim(); if (v) { recent = [v].concat(recent.filter(function(r){ return r !== v; })).slice(0, 8); try { localStorage.setItem("ohod-recent", JSON.stringify(recent)); } catch(e){} } }); }
     if (screen === "checkout") initCheckout();
@@ -3130,7 +3289,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   if (EMBED) { window.addEventListener("load", embedHeight); window.addEventListener("resize", embedHeight); try { new ResizeObserver(embedHeight).observe(document.body); } catch(e){}
     // الضغطات: نرسلها للتطبيق بدل ما نفتح شاشات الموقع
     document.addEventListener("click", function(e){ var a = e.target.closest("[data-act]");
-      if (e.target.closest("[data-fav],[data-addrpick],[data-alabel],[data-addruse],[data-addredit],[data-addrdel]")) return; // تنعالج داخل الصفحة (والمفضلة تنرسل للتطبيق)
+      if (e.target.closest("[data-smhide],[data-smaddall],[data-fav],[data-addrpick],[data-alabel],[data-addruse],[data-addredit],[data-addrdel]")) return; // تنعالج داخل الصفحة (والمفضلة تنرسل للتطبيق)
       if (EMBED_SCREEN) { var nv = e.target.closest("[data-nav]");
         // شاشة كاملة: السلة والطلب داخل الصفحة (وتنرسل للتطبيق)، والرجوع والتنقل بين الشاشات للتطبيق
         if (a || (nv && /^(checkout|sent)$/.test(nv.dataset.nav))) return;
@@ -3347,6 +3506,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var lb = e.target.closest("[data-lang]"); if (lb) { setLang(lb.dataset.lang); return; }
     if (mode !== "store") return;
     var t;
+    if ((t = e.target.closest("[data-smhide]"))) { e.preventDefault(); e.stopPropagation(); smHide(t.dataset.smhide); smartFill(); sToast(tr("تمام، ما بيطلع لك في هالقوائم", "Done, it won't show in these lists")); return; }
+    if (e.target.closest("[data-smaddall]")) { e.preventDefault(); smAddAll(); return; }
     if ((t = e.target.closest("[data-fav]"))) { e.preventDefault(); var fid = t.dataset.fav, fon = toggleFav(fid);
       Array.prototype.forEach.call(document.querySelectorAll("[data-fav]"), function(x){ if (x.dataset.fav !== fid) return; x.setAttribute("aria-pressed", fon); x.setAttribute("aria-label", favLabel(fon)); x.classList.remove("pop"); if (fon) { void x.offsetWidth; x.classList.add("pop"); } });
       try { var hf = nativePlug("Haptics"); if (hf && hf.impact) hf.impact({ style: "LIGHT" }); } catch(x){}
