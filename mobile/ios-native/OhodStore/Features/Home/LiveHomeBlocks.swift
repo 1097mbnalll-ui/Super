@@ -85,7 +85,7 @@ struct LiveHomeBlocks<Fallback: View>: View {
             if failed { fallback() }
             else {
                 LiveWeb(url: LiveBridge.url([URLQueryItem(name: "blocks", value: blocks.joined(separator: ","))], cart: cart, version: catalog.dataTag),
-                        fit: true, height: $height, failed: $failed,
+                        fit: true, height: $height, failed: $failed, script: catalog.liveScript,
                         onMessage: LiveBridge(path: $path, tab: $tab, cart: cart, catalog: catalog).handle)
                     .frame(height: height > 0 ? height : 1)
                     .opacity(height > 0 ? 1 : 0)
@@ -153,8 +153,9 @@ struct LiveSlot: View {
 
     var body: some View {
         if !failed {
-            LiveWeb(url: LiveBridge.url([URLQueryItem(name: "slot", value: slot), URLQueryItem(name: "id", value: id)], cart: cart, version: catalog.dataTag + (slot == "cart" ? "." + String(cart.revision) : "")),
-                    fit: true, height: $height, failed: $failed,
+            // السلة بعد # (cart=…): لما تتغير الصفحة تعيد الرسم بنفسها (hashchange) بدون تحميل جديد. كان رقم السلة في v فتنزل الصفحة كاملة مع كل «+»
+            LiveWeb(url: LiveBridge.url([URLQueryItem(name: "slot", value: slot), URLQueryItem(name: "id", value: id)], cart: cart, version: catalog.dataTag),
+                    fit: true, height: $height, failed: $failed, script: catalog.liveScript,
                     onMessage: LiveBridge(path: livePath ?? .constant(NavigationPath()), tab: nil, cart: cart, catalog: catalog).handle)
                 .frame(height: height > 4 ? height : 0)
                 .clipped()
@@ -186,7 +187,7 @@ struct LiveScreen: View {
                     Button("جرّب مرة ثانية") { failed = false; url = nil }
                 }.padding(30)
             } else if let url {
-                LiveWeb(url: url, fit: false, height: $height, failed: $failed,
+                LiveWeb(url: url, fit: false, height: $height, failed: $failed, script: catalog.liveScript,
                         onMessage: LiveBridge(path: $path, tab: liveTab, cart: cart, catalog: catalog, close: { if !path.isEmpty { path.removeLast() } }, orders: orders).handle)
             } else { ProgressView() }
         }
@@ -235,6 +236,8 @@ private struct LiveWeb: UIViewRepresentable {
     let fit: Bool
     @Binding var height: CGFloat
     @Binding var failed: Bool
+    /// نسخة المتجر اللي عند التطبيق: تنحقن في الصفحة قبل سكربتاتها فما تنزّل data.json مرة ثانية (الصفحة تتأكد إن نسختها نفس v بالرابط)
+    var script: LiveScript? = nil
     let onMessage: ([String: Any]) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -242,6 +245,7 @@ private struct LiveWeb: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let cfg = WKWebViewConfiguration()
         cfg.userContentController.add(context.coordinator, name: "ohod")
+        context.coordinator.inject(cfg.userContentController)
         cfg.websiteDataStore = .default()
         let w = WKWebView(frame: .zero, configuration: cfg)
         w.isOpaque = false; w.backgroundColor = .clear; w.scrollView.backgroundColor = .clear
@@ -265,10 +269,21 @@ private struct LiveWeb: UIViewRepresentable {
         var parent: LiveWeb
         var loaded: URL?
         private var timer: Task<Void, Never>?
+        /// نسخة البيانات المحقونة حالياً في هالصفحة
+        private var injected: String?
         init(_ p: LiveWeb) { parent = p }
+
+        /// يحط (أو يبدّل) سكربت البيانات لو نسخة التطبيق تغيّرت. يشتغل من التحميل الجاي للصفحة
+        func inject(_ uc: WKUserContentController) {
+            guard let s = parent.script, s.tag != injected else { return }
+            uc.removeAllUserScripts()
+            uc.addUserScript(WKUserScript(source: s.source, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+            injected = s.tag
+        }
 
         func load(_ w: WKWebView, _ url: URL) {
             loaded = url
+            inject(w.configuration.userContentController)
             w.load(URLRequest(url: url, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 15))
             timer?.cancel()
             guard parent.fit else { return }
