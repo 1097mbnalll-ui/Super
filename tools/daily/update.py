@@ -12,6 +12,7 @@
 import sys, json, re, hashlib, collections, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from classify import classify, norm
+from names import clean
 import openpyxl
 
 UNIT = {'حبه': 'حبة', 'حبة': 'حبة', 'شده': 'شدّة', 'شدة': 'شدّة', 'علبه': 'علبة', 'علبة': 'علبة', 'ربطه': 'ربطة', 'ربطة': 'ربطة',
@@ -43,6 +44,8 @@ def read_rows(path):
 
 PACKS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'packs_map.json')
 HIDDEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hidden.json')
+# المنتجات المكررة اللي اندمجت (merged.json): باركود المكرر ← معرّف المنتج الباقي. كميتها تنضاف للباقي وما ترجع منتج منفصل
+MERGED = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'merged.json')
 # عروض الرف من المالك (السعر العادي والعرض)، ما يغيّرها ملف الكاشير
 _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shelf_offers.json')
 KEEP_OFFERS = '--keep-offers' in sys.argv
@@ -57,7 +60,8 @@ def main(data_path, xlsx, dry=False):
     KEEP_ON = {p['id'] for p in d['products'] if p.get('stock')}
     pmap = {k: v for k, v in json.load(open(PACKS)).items() if k != '_'} if os.path.exists(PACKS) else {}
     hidden = {x['bc'] for x in json.load(open(HIDDEN)).get('items', [])} if os.path.exists(HIDDEN) else set()
-    gone = {'x' + k for k in pmap} | {'x' + b for b in hidden}
+    merged = {k: v for k, v in json.load(open(MERGED)).items() if k != '_'} if os.path.exists(MERGED) else {}
+    gone = {'x' + k for k in pmap} | {'x' + b for b in hidden} | {k if k.startswith('x') else 'x' + k for k in merged}
     if any(p['id'] in gone for p in d['products']):
         d['products'] = [p for p in d['products'] if p['id'] not in gone]
     ps = d['products']
@@ -66,7 +70,7 @@ def main(data_path, xlsx, dry=False):
     names = {key(p['name']) for p in ps}
     by_name = {}
     for p in ps: by_name.setdefault(key(p['name']), p)
-    rep = collections.Counter(); changed = []; kept_diff = []; seen = set(); qty_of = {}; pack_rows = {}
+    rep = collections.Counter(); changed = []; kept_diff = []; seen = set(); qty_of = {}; pack_rows = {}; alias_rows = []
     # الملف فيه أحياناً نفس الباركود (أو نفس الاسم) أكثر من سطر: المعتمد آخر سطر (قرار المالك)
     best = {}
     for row in read_rows(xlsx):
@@ -78,8 +82,11 @@ def main(data_path, xlsx, dry=False):
         if code in hidden: rep['hidden'] += 1; continue
         if code in pmap: pack_rows[code] = (qty, price); continue
         good = bool(re.fullmatch(r'\d{6,14}', code))
+        _aid = code if good else 'xn' + hashlib.sha1(name.encode()).hexdigest()[:10]
+        if _aid in merged: alias_rows.append((merged[_aid], qty, price)); rep['merged_alias'] += 1; continue
+        name = clean(name)
         p = by_bc.get(code) if good else None
-        p = p or by_id.get('x' + code if good else 'xn' + hashlib.sha1(name.encode()).hexdigest()[:10])
+        p = p or by_id.get('x' + code if good else _aid)   # معرّف المنتج بدون باركود من الاسم الأصلي بالملف (قبل التنظيف)
         if not p and key(name) in by_name and not (good and by_name[key(name)].get('bc') and by_name[key(name)]['bc'] != code):
             p = by_name[key(name)]
         if p and p['id'] in seen: rep['repeat'] += 1; continue
@@ -122,13 +129,25 @@ def main(data_path, xlsx, dry=False):
         if not cat:
             n = norm(name)
             cat = 'drinks' if re.search(r'\d\s?(مل|لتر)', n) else 'sweets' if re.search(r'\d\s?(جم|ج|جرام|غ)(?=\s)', n) else 'misc'
-        np = {'id': 'x' + code if good else 'xn' + hashlib.sha1(name.encode()).hexdigest()[:10], 'name': name,
+        np = {'id': 'x' + code if good else _aid, 'name': name,
               'unit': UNIT.get(unit, 'حبة'), 'price': price, 'cat': cat, 'stock': qty > 0}
         if good: np['bc'] = code
         if cat == 'misc' and sub: np['sub'] = sub
         qty_of[np['id']] = max(0, int(qty))
         ps.append(np); by_id[np['id']] = np; names.add(key(name)); rep['added'] += 1
         if good: by_bc[code] = np
+    # المكرر المدموج: كميته تنضاف للمنتج الباقي (والمتوفر لو أي واحد متوفر)، وسعره بس لو الباقي ما جاء بالملف
+    for target, qty, price in alias_rows:
+        b = by_id.get(target)
+        if not b: rep['merged_no_target'] += 1; continue
+        if b['id'] not in seen and b['id'] not in qty_of and price > 0 and b.get('old') is None and b['id'] not in SHELF and abs(price - float(b['price'])) >= 0.01:
+            changed.append((b['name'], b['price'], price)); b['price'] = price; rep['price'] += 1
+        if b['id'] in qty_of and qty_of[b['id']] is None:
+            if qty > 0 and not b.get('stock'): b['stock'] = True; rep['stock_on'] += 1
+            continue
+        qty_of[b['id']] = qty_of.get(b['id'], 0) + max(0, int(qty))
+        avail = qty_of[b['id']] > 0
+        if bool(b.get('stock')) != avail: b['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
     # الشدّة/الكرتون: سعر الخيار من الملف، والكمية بالحبات تنضاف للحبة
     for code, (qty, price) in pack_rows.items():
         m = pmap[code]; b = by_id.get(m['base'])

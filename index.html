@@ -2533,7 +2533,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var SYN = null;
   function stripAl(w){ return w.length > 4 ? w.replace(/^(وال|بال|فال|كال|لل|ال)/, "") : w; }
   function synOf(w){
-    if (!SYN) { SYN = {}; Object.keys(SYN_SRC).forEach(function(k){ var g = [k].concat(SYN_SRC[k].split(/\s+/).filter(Boolean)).map(function(x){ return stripAl(normAr(x)); }); g.forEach(function(x){ SYN[x] = (SYN[x] || []).concat(g.filter(function(y){ return y !== x; })); }); }); }
+    // المرادفات من ملف المتجر (store.syn) تغلب الموجودة هنا، وتوصل للتطبيق بعد بدون تحديث
+    if (!SYN) { SYN = {}; var SS = {}; Object.keys(SYN_SRC).forEach(function(k){ SS[k] = SYN_SRC[k]; }); if (S.syn && typeof S.syn === "object") Object.keys(S.syn).forEach(function(k){ SS[k] = String(S.syn[k] || ""); });
+      Object.keys(SS).forEach(function(k){ var g = [k].concat(SS[k].split(/\s+/).filter(Boolean)).map(function(x){ return stripAl(normAr(x)); }); g.forEach(function(x){ SYN[x] = (SYN[x] || []).concat(g.filter(function(y){ return y !== x; })); }); }); }
     return SYN[w] || [];
   }
   // فرق حرف واحد (حرف زايد أو ناقص أو مختلف أو حرفين متبادلين)
@@ -2548,7 +2550,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var searchIx = null, searchNm = null, searchTok = null, searchIxOf = null;
   function searchProducts(text){
     if (searchIxOf !== D.products) {
-      searchIxOf = D.products; var toks = {};
+      searchIxOf = D.products; SYN = null; var toks = {};
       searchNm = D.products.map(function(p){ return " " + normAr(nm(p) + " " + (p.name_en || "")).split(/\s+/).map(stripAl).join(" ") + " "; });
       searchIx = D.products.map(function(p, i){ var c = catOf(p.cat); var pk = p.packs || [];
         var h = normAr(asciiDigits([p.name, p.name_en, p.bc, c && c.name, c && c.name_en, p.unit, pk.map(function(x){ return x.u; }).join(" "), isCarton(p) ? "كرتون كرتونه شده شد كراتين" : ""].join(" ")));
@@ -2561,7 +2563,8 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var alts = words.map(function(w){
       var a = [w].concat(synOf(w));
       var hit = a.some(function(x){ for (var i = 0; i < searchIx.length; i++) if (searchIx[i].indexOf(x) > -1) return true; return false; });
-      if (!hit && w.length >= 4) searchTok.forEach(function(t){ if (near1(w, t)) a.push(t); });
+      // الكلمة القريبة بحرف (خطأ إملائي): دايماً للكلمة الطويلة، وللقصيرة لو ما لها نتائج (طلب المالك ١٤ نوفمبر: «أبحث وما ألقاها وهي موجودة»)
+      if ((!hit && w.length >= 4) || w.length >= 6) searchTok.forEach(function(t){ if (t !== w && near1(w, t) && a.indexOf(t) < 0) a.push(t); });
       return a;
     });
     // نية القسم: كلمة تطابق اسم قسم ترفع منتجاته
