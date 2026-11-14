@@ -85,7 +85,9 @@ export default {
       let promo = 0, promoCode = "";
       if (body.promo && env.DB) { const pc = await promoCheck(env, body.promo, normPhone(body.phone) || null, pr.subtotal); if (!pc.error) { promo = promoAmount(pc.rule, pr.subtotal); promoCode = pc.rule.code; } else promoCode = "!" + pc.error; }
       const gift = !promo ? (pr.gift || 0) : 0;
+      const S = data.store || {}, onlyPrint = pr.lines.every((l) => l.p.print), minOrder = onlyPrint && S.print && S.print.minOrder != null ? Number(S.print.minOrder) || 0 : Number(S.minOrder) || 0;
       return reply(200, { ok: true, subtotal: pr.subtotal, fee: pr.fee, gift, promo, promoCode, total: round2(pr.subtotal + pr.fee - gift - promo), count: pr.count,
+        min: minOrder, belowMin: minOrder > 0 && pr.subtotal < minOrder,
         lines: pr.lines.map((l) => ({ id: l.p.id, qty: l.qty, price: l.price, tag: l.tag || "" })) });
     }
     if (path === "/promo/check") {
@@ -1415,7 +1417,8 @@ function priceOrder(data, body, quote) {
   if (!quote && (S.closed || !openNow(S))) return { error: "closed" };
   const onlyPrint = lines.length > 0 && lines.every((l) => l.p.print), PR = S.print && typeof S.print === "object" ? S.print : null;
   const minOrder = onlyPrint && PR && PR.minOrder != null ? Number(PR.minOrder) || 0 : Number(S.minOrder) || 0;
-  if (minOrder > 0 && base + dealSum < minOrder) return { error: "min_order", min: minOrder };
+  // التسعير للتطبيق (/quote) يرجع الأسعار والعروض حتى لو السلة تحت أقل طلب، عشان الخصم يطلع في السلة من أول منتج (الحد يُفرض في /order)
+  if (!quote && minOrder > 0 && base + dealSum < minOrder) return { error: "min_order", min: minOrder };
   const subtotal = round2(base + dealSum);
   const fee = S.freeOver && subtotal >= S.freeOver ? 0 : Number(S.fee || 0);
   const gift = giftAsked(body.note) && Date.now() < GIFT.until && subtotal >= GIFT.min ? GIFT.amount : 0;

@@ -39,6 +39,11 @@ ok(sq.prepare("SELECT qty FROM stock WHERE id='pantry0'").get().qty === 50 - 1 -
 let qq = await call('/quote', { items: { pantry0: 2, pantry1: 1 } });
 ok(qq.ok && qq.subtotal === 11.95 && qq.total === 11.95 + qq.fee, 'التسعير للتطبيق (/quote): ' + JSON.stringify([qq.subtotal, qq.fee, qq.total]));
 qq = await call('/quote', { items: { pantry0: 1 } }); ok(qq.ok && qq.subtotal === 13, 'علبة وحدة بسعرها (لا شكراً): ' + qq.subtotal);
+// التطبيق: السلة تحت أقل طلب تنسعّر بالعرض بعد (كان يرجع min_order والتطبيق يعرض السعر بدون خصم)
+data.store.minOrder = 20; await call('/save', { ...A, data });
+qq = await call('/quote', { items: { pantry0: 2, pantry1: 1 } }); ok(qq.ok && qq.subtotal === 11.95 && qq.belowMin === true && qq.min === 20, 'تحت أقل طلب: التسعير بالعرض ويقول إنه تحت الحد: ' + JSON.stringify([qq.ok, qq.subtotal, qq.belowMin]));
+r = await call('/order', { items: { pantry0: 2, pantry1: 1 }, phone: '0557000009', lat: 24.84, lng: 46.83 }); ok(!r.ok && r.code === 'min_order', 'الطلب نفسه تحت الحد مرفوض: ' + r.code);
+delete data.store.minOrder; await call('/save', { ...A, data });
 data.store.groups[0].must = true; ok((await call('/save', { ...A, data })).ok, 'حفظ إجباري');
 qq = await call('/quote', { items: { pantry0: 2 } }); ok(!qq.ok && qq.code === 'pack_only' && qq.n === 3, 'لو العرض إجباري (must) الناقص مرفوض: ' + qq.code);
 const v = await call('/admin/verify', A); ok(v.ok && v.clean, 'التحليل مطابق');
