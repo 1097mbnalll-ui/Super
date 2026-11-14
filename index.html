@@ -1027,6 +1027,13 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .artb .arow{display:flex;justify-content:space-between;gap:6px;border-bottom:1px dashed #ccc;padding:3px 0}.artb .arow.tot{border:0;margin-top:6px;font:400 19px Lalezar;color:#7C3AED}
 .artb .aslot{position:absolute;left:14px;top:28px;display:flex;gap:6px;background:#FDE68A;padding:8px;border-radius:16px;box-shadow:0 0 0 4px #F59E0B}.artb .aslot i{width:58px;height:84px;background:#fff;border-radius:10px;position:relative;overflow:hidden;display:block}
 .artb .atag{position:absolute;background:#fff;border:2.5px solid #1B1B1B;border-radius:10px 10px 10px 3px;padding:3px 10px;font:400 19px Lalezar;color:#E11D48;direction:ltr}
+.artb .apaper-mast{position:absolute;left:10px;right:10px;top:8px;display:flex;align-items:center;justify-content:space-between;border-top:2px solid #1C1917;border-bottom:1px solid #1C1917;box-shadow:0 3px 0 -2px #1C1917;padding:2px 4px;font:700 10px Tajawal,sans-serif;color:#57534E}.artb .apaper-mast b{font:400 19px Lalezar,serif;color:#1C1917}
+.artb .apaper-ph{position:absolute;top:50px;width:74px;height:96px;background:#fff;border:1px solid #A8A29E;box-shadow:2px 3px 0 rgba(0,0,0,.08)}.artb .apaper-ph i{position:absolute;bottom:4px;left:0;right:0;text-align:center;font:400 16px Lalezar;color:#B91C1C;font-style:normal;direction:ltr}
+.artb .apaper-stamp{position:absolute;left:140px;top:112px;width:58px;height:58px;border:3px double #B91C1C;border-radius:50%;color:#B91C1C;display:grid;place-items:center;text-align:center;font:400 15px/1 Lalezar;transform:rotate(-14deg);background:rgba(254,226,226,.6)}
+.artb .apaper-rays{position:absolute;left:-40px;top:-40px;width:300px;height:300px;background:repeating-conic-gradient(rgba(255,255,255,.35) 0 10deg,transparent 10deg 20deg);border-radius:50%;z-index:-1}
+.artb .apaper-guy{position:absolute;left:4px;bottom:-6px;height:calc(100% + 4px);width:auto;max-width:56%;z-index:1}
+.artb .apaper-sheet{animation:apaperw 3.2s ease-in-out infinite;transform-origin:97px 120px}@keyframes apaperw{0%,100%{transform:rotate(0)}50%{transform:rotate(-1.5deg)}}
+@media (prefers-reduced-motion:reduce){.artb .apaper-sheet{animation:none}}
 .artb .aburst{position:absolute;left:18px;top:18px;width:120px;height:120px;background:#FACC15;clip-path:polygon(50% 0,61% 18%,82% 8%,80% 30%,100% 38%,84% 54%,96% 74%,74% 76%,70% 98%,52% 84%,32% 100%,28% 78%,6% 80%,16% 60%,0 44%,20% 32%,14% 10%,36% 18%);display:grid;place-items:center;text-align:center;font:400 25px/1 Lalezar;color:#DC2626;transform:rotate(-10deg);animation:aspin 2.6s ease-in-out infinite}
 .artb .aticket{-webkit-mask:radial-gradient(circle at 34% 0,transparent 14px,#000 14.5px) top/100% 51% no-repeat,radial-gradient(circle at 34% 100%,transparent 14px,#000 14.5px) bottom/100% 51% no-repeat}
 .artb .abar{position:absolute;right:18px;bottom:16px;width:110px;height:18px;background:repeating-linear-gradient(90deg,#fff 0 2px,transparent 2px 4px,#fff 4px 5px,transparent 5px 8px)}
@@ -2402,7 +2409,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function aBtn(t, st){ return '<span class="abtn" style="' + st + '">' + t + '</span>'; }
   function aBox(st, inner){ return '<div style="position:absolute;' + st + '">' + inner + '</div>'; }
   var SR = " ر.س";
-  function artPick(id, n){ var f = S.banArt && S.banArt[id]; if (f != null && f !== "" && !isNaN(f)) return Math.max(0, Math.min(n - 1, Number(f) - 1));
+  function paperDay(){ var d = new Date(Date.now() + 3 * 36e5), st = new Date(Date.UTC(d.getUTCFullYear(), 0, 1)); return { day: tr(['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][d.getUTCDay()], ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getUTCDay()]), no: Math.floor((d - st) / 6048e5) + 1 }; }
+  function artPick(id, n){ var f = S.banArt && S.banArt[id]; if (Array.isArray(f) && f.length) { var dd = new Date(), dy = Math.floor((dd - new Date(dd.getFullYear(), 0, 0)) / 864e5); f = f[dy % f.length]; } if (f != null && f !== "" && !isNaN(f)) return Math.max(0, Math.min(n - 1, Number(f) - 1));
     var d = new Date(), day = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5); return (day + id.length) % n; }
   var ART = {
     featured: [
@@ -2426,11 +2434,38 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       function(x){ return '<div class="abg" style="background:#FFD23F"></div>' + aBox('right:18px;top:14px;color:#1B1B1B;z-index:2', aT(tr('عروض الأسبوع · ', 'Weekly offers · ') + num(x.count) + tr(' منتج', ' items')) + aH(tr('خصم حتى<br>', 'Up to<br>') + num(x.pct) + '٪', 42, 'line-height:.95')) +
         aBtn(tr('تسوّق العروض', 'Shop offers'), 'right:18px;bottom:14px;background:#1B1B1B;color:#FFD23F') +
         x.pcts.slice(0, 4).map(function(v, i){ return '<span class="atag" style="' + ['left:22px;top:18px;transform:rotate(-12deg)', 'left:104px;top:58px;transform:rotate(9deg)', 'left:28px;top:100px;transform:rotate(6deg)', 'left:116px;top:122px;transform:rotate(-7deg)'][i] + '">-' + num(v) + '٪</span>'; }).join(''); },
-      function(x){ return '<div class="abg" style="background:#fff;box-shadow:inset 0 0 0 3px #DC2626;background-image:repeating-linear-gradient(0deg,transparent 0 22px,#FEE2E2 22px 23px)"></div>' +
-        aBox('right:16px;top:14px;color:#111', aT(tr('جريدة عروض ', 'Offers paper · ') + esc(sv('name')), 'color:#DC2626') + aH(tr('تنزيلات<br>الأسبوع', 'Weekly<br>deals'), 38, 'line-height:1')) +
-        '<div class="aburst">' + tr('حتى', 'Up to') + '<br>' + num(x.pct) + '٪</div>' + aBtn(tr('اقرأ العروض', 'See offers'), 'right:16px;bottom:14px;background:#DC2626;color:#fff'); },
+      function(x){ var dn = paperDay(); return '<div class="abg" style="background:#F6F0E1;background-image:radial-gradient(rgba(120,90,40,.07) 1px,transparent 1.2px);background-size:6px 6px"></div>' +
+        '<div class="apaper-mast"><span>' + tr('العدد ', 'No. ') + num(dn.no) + '</span><b>' + tr('جريدة ', 'The ') + esc(sv('name')) + '</b><span>' + dn.day + '</span></div>' +
+        x.ids.slice(0, 2).map(function(id, i){ return '<div class="apaper-ph" style="' + ['left:14px', 'left:96px'][i] + '">' + aimg(id, 'left:6px;top:6px;width:62px;height:62px;filter:grayscale(.15) contrast(1.05)') + '<i>-' + num(x.pcts[i] || x.pct) + '٪</i></div>'; }).join('') +
+        aBox('right:16px;top:50px;color:#1C1917;width:44%', aT('● ' + tr('خبر عاجل', 'Breaking'), 'color:#B91C1C;letter-spacing:.5px') + aH(tr('تنزيلات<br>الأسبوع', 'Weekly<br>deals'), 30, 'line-height:.98')) +
+        '<div class="apaper-stamp">' + tr('حتى', 'Up to') + '<br>' + num(x.pct) + '٪</div>' + aBtn(tr('اقرأ العروض', 'Read offers') + ' ←', 'right:16px;bottom:12px;background:#1C1917;color:#F6F0E1'); },
       function(x){ return '<div class="abg" style="background:#DBEAFE"></div>' + x.ids.slice(0, 4).map(function(id, i){ return aimg(id, ['left:16px;top:20px;width:62px;transform:rotate(-12deg)', 'left:82px;top:12px;width:72px;transform:rotate(10deg)', 'left:36px;top:94px;width:84px;transform:rotate(6deg)', 'left:124px;top:90px;width:60px;transform:rotate(-14deg)'][i] + ';filter:drop-shadow(3px 3px 0 #fff) drop-shadow(-3px -3px 0 #fff) drop-shadow(0 6px 8px rgba(0,0,0,.25))'); }).join('') +
         aBox('right:18px;top:20px;color:#1E3A8A', aT(num(x.count) + tr(' منتج عليه خصم', ' items on sale')) + aH(tr('العروض<br>لزقت!', 'Deals<br>stick!'), 38, 'line-height:1')) + aBtn(tr('شوفها', 'See them'), 'right:18px;bottom:14px;background:#1E3A8A;color:#fff'); }
+,
+      function(x){ var dn = paperDay(); return '<div class="abg" style="background:linear-gradient(135deg,#FFE9A8,#FFC94D)"></div><div class="apaper-rays"></div>' +
+        '<svg class="apaper-guy" viewBox="0 0 190 175" aria-hidden="true">' +
+          '<path d="M38 175c4-52 26-82 57-82s53 30 57 82z" fill="#1F1F2E"/>' +
+          '<ellipse cx="95" cy="52" rx="35" ry="38" fill="#1F1F2E"/>' +
+          '<ellipse cx="95" cy="57" rx="21" ry="24" fill="#E7B48A"/>' +
+          '<path d="M74 47c4-15 38-15 42 0c-6-6-36-6-42 0z" fill="#1F1F2E"/>' +
+          '<path d="M81 50q5-5 10 0M99 50q5-5 10 0" stroke="#3A2618" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+          '<ellipse cx="86" cy="58" rx="5.5" ry="6.5" fill="#fff"/><ellipse cx="104" cy="58" rx="5.5" ry="6.5" fill="#fff"/>' +
+          '<circle cx="88" cy="59" r="3" fill="#2B1B10"/><circle cx="106" cy="59" r="3" fill="#2B1B10"/>' +
+          '<circle cx="89" cy="57.6" r="1" fill="#fff"/><circle cx="107" cy="57.6" r="1" fill="#fff"/>' +
+          '<g class="apaper-sheet"><path d="M14 74l162-6 6 104-160 6z" fill="#FBF7EC" stroke="#2B2B2B" stroke-width="2"/>' +
+          '<path d="M96 71l2 104" stroke="#D6CFBF" stroke-width="1.5"/>' +
+          '<text x="97" y="92" text-anchor="middle" font-family="Lalezar,Tajawal,sans-serif" font-size="17" fill="#1C1917" transform="rotate(-2 97 92)">' + esc(sv('name')) + '</text>' +
+          '<path d="M24 97l146-5M24 100l146-5" stroke="#1C1917" stroke-width="1"/>' +
+          '<text x="150" y="124" text-anchor="middle" font-family="Lalezar,Tajawal,sans-serif" font-size="22" fill="#DC2626" transform="rotate(-2 150 124)">' + tr('خصم', 'SALE') + '</text>' +
+          '<text x="150" y="150" text-anchor="middle" font-family="Lalezar,Tajawal,sans-serif" font-size="24" fill="#DC2626" transform="rotate(-2 150 150)">' + num(x.pct) + '٪</text>' +
+          '<rect x="30" y="108" width="58" height="40" rx="3" fill="#E7E0CF" transform="rotate(-2 59 128)"/>' +
+          [0, 1, 2, 3].map(function(r){ return '<path d="M30 ' + (155 + r * 5) + 'l58 -2M106 ' + (160 + r * 4) + 'l58 -2" stroke="#BDB5A3" stroke-width="2"/>'; }).join('') + '</g>' +
+          '<ellipse cx="17" cy="122" rx="9" ry="12" fill="#E7B48A" stroke="#C48E66"/><ellipse cx="178" cy="116" rx="9" ry="12" fill="#E7B48A" stroke="#C48E66"/>' +
+          '<path d="M150 22l6-12M162 30l11-6M140 18l1-12" stroke="#B91C1C" stroke-width="3.5" stroke-linecap="round"/>' +
+        '</svg>' + (x.ids[0] ? aimg(x.ids[0], 'left:52px;top:110px;width:46px;height:38px;z-index:2;transform:rotate(-2deg);filter:none') : '') +
+        aBox('right:16px;top:10px;color:#1C1917;width:44%;z-index:3', aT(tr('شفت الخبر؟ 👀', 'Seen the news? 👀'), 'color:#9A3412') + aH(tr('عروض<br>متاجر أحد', 'Ohod<br>deals').replace('متاجر أحد', esc(sv('name'))), 27, 'line-height:1') + aT(num(x.count) + tr(' منتج عليه خصم', ' items on sale') + '<br>' + tr('حتى ', 'up to ') + num(x.pct) + '٪', 'font-weight:700;color:#7C2D12;white-space:normal')) +
+        aBtn(tr('اقرأ الجريدة', 'Read the paper') + ' ←', 'right:16px;bottom:12px;background:#1C1917;color:#FFD23F;z-index:3'); }
+
     ],
     top: [
       function(x){ return '<div class="abg" style="background:#111827"></div><div style="position:absolute;left:18px;top:18px;width:140px;height:140px;border-radius:50%;background:radial-gradient(#3B4252,#111827 70%)"></div>' + aimg(x.id, 'left:34px;top:26px;width:110px;transform:rotate(-8deg)') +
