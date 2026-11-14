@@ -203,6 +203,7 @@ struct RootView: View {
         else if value == "daily" { tab = .home; homePath.append(Route.daily) }
         else if value == "bundle" { tab = .home; homePath.append(Route.banner("pv-bundle")) }
         else if value == "orderdetails" { tab = .account; previewDetails = orders.orders.first }
+        else if value == "search" { tab = .home; homePath.append(Route.search) }
         else if value.hasPrefix("live:") { tab = .home; homePath.append(Route.live(String(value.dropFirst(5)))) }
         else if value.hasPrefix("category:") { tab = .categories; categoriesPath.append(Route.category(String(value.dropFirst(9)))) }
         else if value.hasPrefix("product:") {

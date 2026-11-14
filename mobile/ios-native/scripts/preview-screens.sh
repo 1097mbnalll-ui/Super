@@ -49,6 +49,38 @@ shot() {  # shot <name> <args...>
   xcrun simctl io "$DEVICE" screenshot --type=png "$OUT/$name.png" >/dev/null
   echo "shot $name"
 }
+if [ "${CHECK:-}" = "full" ]; then
+  # فحص شامل (طلب المالك ١٤ نوفمبر ٢٠٢٦): كل شاشات الزبون بالعربي (الإنجليزي موقوف)
+  WAIT=5 shot f01-first-launch
+  xcrun simctl spawn "$DEVICE" defaults write sa.ohod.store push.asked -bool YES
+  WAIT=3 shot f02-home-3s
+  WAIT=14 shot f03-home
+  shot f04-categories -screen categories
+  for c in dairy drinks sweets pantry meat cartons clean care misc bakery cheese veg roast print; do shot "f05-cat-$c" -screen "category:$c"; done
+  shot f06-product-sale -screen product:x6281057001408
+  shot f07-product-qty -screen product:x6287000260922
+  shot f08-product-carton -screen product:x6271002205159
+  shot f09-product-deemah -screen product:x6285602019306
+  shot f10-product-soon -screen product:v_orange
+  WAIT=12 shot f11-deemah-picker -screen live:g:deemah:x6285602019306
+  shot f12-search -screen search
+  shot f13-offers -screen offers
+  shot f14-deals -screen deals
+  shot f15-daily -screen daily
+  WAIT=3 shot f16-cart-group-3s -seed-group -screen cart
+  shot f17-cart-group -seed-group -screen cart
+  shot f18-cart -seed-cart -screen cart
+  WAIT=12 shot f19-address -seed-cart -screen address
+  shot f20-account -screen account
+  shot f21-placed -seed-order -screen placed
+  shot f22-order-details -seed-driver -screen orderdetails
+  shot f23-home-active-order -seed-driver -screen home
+  shot f24-sub-offer -seed-order -seed-sub -screen account
+  shot f25-promo-home -seed-promos -screen home
+  shot f26-bundle -seed-promos -screen bundle
+  shot f27-promo-cart -seed-promos -seed-promo-cart -screen cart
+  ls -la "$OUT"; exit 0
+fi
 if [ "${CHECK:-}" = "1" ]; then
   # فحص شكاوى المالك (١٤ نوفمبر ٢٠٢٦): طلب الإشعارات أول فتحة، أول الفتح بدون صفحة قديمة، الخضار «قريباً»، عرض ديمة
   WAIT=5 shot c01-first-launch-push

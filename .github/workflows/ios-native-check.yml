@@ -30,7 +30,7 @@ jobs:
         run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
       - name: Build for simulator + screenshots
         env:
-          CHECK: "1"
+          CHECK: ${{ vars.IOS_CHECK || 'full' }}
         run: OUT="$GITHUB_WORKSPACE/screenshots" mobile/ios-native/scripts/preview-screens.sh
       - uses: actions/upload-artifact@v4
         if: always()
