@@ -1818,7 +1818,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     return { label: w.join(" ") || name, size: size };
   }
   function phTag(p){
-    var e = phEmoji(p), t = phParts(nm(p));
+    var e = phEmoji(p), t = phParts(nm(p)); if (!t.size && un(p) && /\d/.test(un(p))) t.size = un(p);
     return '<span class="nph" style="--ph:' + esc(tint(p.cat)) + '" role="img" aria-label="' + esc(nm(p)) + '"><span class="nph-w" aria-hidden="true">' + e + '</span>' +
       '<span class="nph-e" aria-hidden="true">' + e + '</span><b class="nph-n">' + esc(t.label) + '</b>' + (t.size ? '<span class="nph-s" dir="auto">' + esc(t.size) + '</span>' : '') + '</span>';
   }
