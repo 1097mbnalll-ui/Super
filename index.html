@@ -977,7 +977,17 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .vd{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700;background:#EEF1F5;color:#374151;justify-self:start}.vd.ok{background:#E6F6F1;color:#0B7A5E}.vd.warn{background:#FFF1E2;color:#B45309}.vd.bad{background:#FDE8E8;color:#B91C1C}
 .zone-map{height:320px;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin:8px 0}.zone-pt{width:14px;height:14px;border-radius:50%;background:#0E9F7B;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .dv-near{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#4B5563;margin:4px 2px 10px}.dv-near b{color:#13213C}.dv-near button,.dv-near a{border:1px solid #D7DEE6;background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-weight:700;color:#13213C;text-decoration:none;cursor:pointer}.dv-stop{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:999px;background:#13213C;color:#fff;font-size:12px;font-weight:700;padding:0 6px}.dv-km{font-size:12px;color:#0E9F7B;font-weight:700}.dv-subw{background:#FFF7EE;border-radius:10px;padding:6px 10px;font-size:13px;color:#9A4A0B;margin-top:6px}
-.txtimg{display:grid;place-items:center;width:100%;height:100%;min-height:100px;padding:12px;box-sizing:border-box;text-align:center;border-radius:inherit}.txtimg b{font-family:var(--display);font-size:15px;line-height:1.35;color:#13213C;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+/* المنتج بدون صورة: بلاطة بلون القسم + رمز القسم + اسم مختصر + الحجم (بدون صور، نفس تصميم التطبيق) */
+.nph{--ph:#EEF0F3;position:relative;container-type:inline-size;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:100%;height:100%;padding:10% 9% max(22%,40px);box-sizing:border-box;text-align:center;overflow:hidden;border-radius:inherit;background:radial-gradient(120% 85% at 50% 0%,rgba(255,255,255,.75),rgba(255,255,255,0) 62%),var(--ph);color:var(--ink)}
+.nph-w{position:absolute;inset-inline-start:-6%;bottom:-10%;font-size:58cqi;line-height:1;opacity:.13;transform:rotate(-14deg);pointer-events:none;filter:saturate(.6)}
+.nph-e{display:grid;place-items:center;width:30cqi;height:30cqi;min-width:34px;min-height:34px;border-radius:50%;background:rgba(255,255,255,.78);box-shadow:0 4px 12px rgba(15,42,46,.08);font-size:16cqi;line-height:1;flex:none}
+.nph-n{position:relative;font-family:var(--display);font-weight:700;font-size:clamp(11px,10.5cqi,22px);line-height:1.3;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:balance;max-width:100%}
+.nph-s{position:relative;font-size:clamp(10px,8cqi,15px);font-weight:700;line-height:1;color:var(--ink-2);background:rgba(255,255,255,.82);border-radius:999px;padding:.35em .75em;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+@container (max-width:130px){.nph-s{display:none}.nph-e{width:26cqi;height:26cqi;min-width:0;min-height:0;font-size:14cqi}.nph-n{font-size:11px}}
+.kq-card.out .nph,.kq-card.soonp .nph{filter:grayscale(.85);opacity:.6}
+.prod .art .nph{position:relative;z-index:1;width:196px;height:196px;border-radius:34px;padding:22px 18px;transform:rotate(-4deg);background:radial-gradient(120% 85% at 50% 0%,#fff,rgba(255,255,255,.6) 70%),var(--ph);box-shadow:0 22px 34px rgba(15,42,46,.16)}
+.prod .art .nph-w{opacity:.1}
+@media (min-width:900px){.prod .art .nph{width:290px;height:290px;border-radius:44px}}
 .pd-packs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}.pd-pack{flex:1 1 90px;display:grid;gap:2px;justify-items:center;border:1.5px solid var(--line,#E3E7EC);background:#fff;border-radius:14px;padding:9px 10px;font:inherit;cursor:pointer;color:var(--ink,#13213C)}.pd-pack b{font-size:13px}.pd-pack span{font-size:12px;color:#6B7280}.pd-pack[aria-pressed="true"]{border-color:#0E9F7B;background:#E9F7F2}.pd-pack[aria-pressed="true"] span{color:#0B7A5E;font-weight:700}
 .pk-ed{display:grid;gap:6px;border-top:1px dashed var(--line);padding-top:8px}.pk-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:end}
 .kq-more{grid-column:1/-1;justify-self:center;min-width:220px;margin:6px 0 12px}.kq-more small{opacity:.7;font-weight:500}
@@ -1711,6 +1721,30 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   function catOf(id){ for (var i=0;i<D.cats.length;i++) if (D.cats[i].id === id) return D.cats[i]; return null; }
   function tint(catId){ for (var i=0;i<D.cats.length;i++) if (D.cats[i].id === catId) return D.cats[i].tint || TINTS[i % TINTS.length]; return TINTS[TINTS.length-1]; }
+  // المنتج بدون صورة: بلاطة بلون القسم + رمز القسم الفرعي + اسم مختصر + الحجم (نفس منطق NoPhotoTile في تطبيق الآيفون)
+  var CAT_EMO = { bakery: "🥐", dairy: "🥛", cheese: "🧀", veg: "🥬", meat: "🍗", pantry: "🧺", roast: "☕️", drinks: "🥤", sweets: "🍫", clean: "🧴", care: "🧼", misc: "🏠", cartons: "📦", print: "🖨️" };
+  var SUB_EMO = { milk: "🥛", laban: "🥣", eggs: "🥚", cheese: "🧀", cream: "🧈", water: "💧", soft: "🥤", juice: "🧃", energy: "⚡️", icedtea: "🧊", tea: "☕️",
+    chips: "🍟", chocolate: "🍫", biscuits: "🍪", cakes: "🧁", candy: "🍬", icecream: "🍦", nuts: "🥜", gum: "🍃", rice: "🍚", oil: "🫒", flour: "🍞", canned: "🥫",
+    pasta: "🍝", breakfast: "🍯", sugar: "🍮", sauces: "🍅", spices: "🌶️", frozen: "❄️", chicken: "🍗", beef: "🥩", processed: "🌭", fish: "🐟",
+    laundry: "🧺", dishes: "🍽️", surfaces: "🧽", bags: "🗑️", paper: "🧻", fresh: "🌸", insects: "🦟", baby: "🍼", hair: "💆", oral: "🪥", body: "🧼", deo: "🧴",
+    women: "🌷", shave: "🪒", "care/tools": "💅", kitchen: "🍳", toys: "🧸", stationery: "✏️", bbq: "🔥", pets: "🐾", electronics: "🔌", tools: "🔧", clothes: "👕",
+    religious: "📿", home: "🏠", fruit: "🍎", leaf: "🌿", "veg/veg": "🥕" };
+  function phEmoji(p){ var A = (S && S.app && S.app.catIcons) || {}, s = p.sub || ""; return SUB_EMO[p.cat + "/" + s] || SUB_EMO[s] || A[p.cat] || CAT_EMO[p.cat] || "🛒"; }
+  var PH_UNIT = "(?:مل|ملي|مللي|لتر|لترات|ل|جم|جرام|غرام|غم|غ|كجم|كغ|كيلو|كلغ|كغم|حبة|حبه|حبات|قطعة|قطعه|قطع|قرص|اقراص|منديل|مناديل|ورقة|ورقه|كيس|اكياس|جالون|سم|متر|م|انش|واط|g|gm|gr|kg|ml|l|L|ltr|cm|pcs)";
+  var PH_SIZE = new RegExp("(\\d+(?:[.,]\\d+)?\\s*(?:[×xX*\\/]\\s*\\d+(?:[.,]\\d+)?\\s*)*" + PH_UNIT + "(?:\\s*[×xX*]\\s*\\d+)?)(?=\\s|$)");
+  // يفصل الحجم عن الاسم: «عصير الربيع برتقال 125 مل» ← اسم «عصير الربيع برتقال» وحجم «125 مل» (وأرقام الموديلات الطويلة تنشال)
+  function phParts(name){
+    name = String(name || "").replace(/\s+/g, " ").trim();
+    var m = name.match(PH_SIZE) || name.match(/(\d+(?:[.,]\d+)?\s*[×xX*]\s*\d+(?:[.,]\d+)?)(?=\s|$)/), size = m ? m[1].replace(/\s*([×xX*\/])\s*/g, " $1 ").replace(/\s+/g, " ").trim() : "";
+    var rest = m ? (name.slice(0, m.index) + " " + name.slice(m.index + m[0].length)) : name;
+    var w = rest.split(" ").filter(function(x){ return x && !/^[A-Za-z]*\d{3,}[A-Za-z0-9]*$/.test(x) && !/^[×xX*\/\-]$/.test(x); });
+    return { label: w.join(" ") || name, size: size };
+  }
+  function phTag(p){
+    var e = phEmoji(p), t = phParts(nm(p));
+    return '<span class="nph" style="--ph:' + esc(tint(p.cat)) + '" role="img" aria-label="' + esc(nm(p)) + '"><span class="nph-w" aria-hidden="true">' + e + '</span>' +
+      '<span class="nph-e" aria-hidden="true">' + e + '</span><b class="nph-n">' + esc(t.label) + '</b>' + (t.size ? '<span class="nph-s" dir="auto">' + esc(t.size) + '</span>' : '') + '</span>';
+  }
   function onSale(p){ return p.old && p.old > p.price; }
   // خانة التوصيل في الإجمالي: الرسوم، أو «مجاني» والسعر المشطوب قبله لو محدد
   function feeCell(t){ return t.fee ? rial(t.fee) : (t.feeWas ? '<s class="was">' + num(t.feeWas) + '</s> ' : '') + '<b class="free">' + tr("مجاني", "Free") + '</b>'; }
@@ -1997,7 +2031,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var price = isDeal ? Number(DEAL.price || 0.95) : isDaily ? dd.price : p.price;
     var was = isDeal || isDaily ? p.price : (onSale(p) ? p.old : 0);
     var c = catOf(p.cat), inCart = cart[(kind ? kind + ":" : "") + p.id] || 0;
-    if (soonP(p)) return '<article class="kq-card soonp" data-open="' + p.id + '"><div class="kq-img">' + (hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '"><b>' + esc(nm(p)) + '</b></span>') + '<span class="kq-badge soon">' + tr("قريباً", "Soon") + '</span></div>' +
+    if (soonP(p)) return '<article class="kq-card soonp" data-open="' + p.id + '"><div class="kq-img">' + (hasPic(p.img) ? imgTag(p.img, nm(p)) : phTag(p)) + '<span class="kq-badge soon">' + tr("قريباً", "Soon") + '</span></div>' +
       '<div class="kq-price"><span class="kq-now soon">' + tr("قريباً", "Coming soon") + '</span></div><b class="kq-name">' + esc(nm(p)) + '</b></article>';
     var badge = !avail(p) ? '<span class="kq-badge out">' + tr("نفد", "Sold out") + '</span>' :
       isDeal ? '<span class="kq-badge deal">' + ic("lock") + tr("بـ ", "") + num(price) + tr(" ر.س", " SAR") + '</span>' :
@@ -2006,8 +2040,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       mo ? '' :
       (p.badge ? '<span class="kq-badge fresh">' + esc(bd(p)) + '</span>' : '');
     var lf = left(p), low = avail(p) && lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '';
-    // المنتج بدون صورة: بطاقة نصية بلون القسم بدل أيقونة الكيس، عشان الصفحة ما تبين فاضية
-    var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : '<span class="txtimg" style="background:' + tint(p.cat) + '" role="img" aria-label="' + esc(nm(p)) + '"><b>' + esc(nm(p)) + '</b></span>';
+    // المنتج بدون صورة: بلاطة بلون القسم ورمزه واسم مختصر والحجم (phTag) بدل أيقونة الكيس
+    var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : phTag(p);
     var gq = !kind && grpOf(p);
     if (gq) return '<article class="kq-card must' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + '<span class="kq-badge must">' + num(gq.n) + tr(" بـ ", " for ") + num(gq.price) + '</span>' + low +
       (avail(p) ? '<span class="ctl"><button class="add wide" type="button" data-gpick="' + esc(gq.id) + '" data-gpre="' + p.id + '">' + ic("plus") + tr("أضف", "Add") + '</button></span>' : '') + '</div>' +
@@ -2527,7 +2561,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var inCart = cart[(isDaily ? "t:" : "") + p.id] || 0;
     return '<div class="prod" style="background:' + tint(p.cat) + tr('"><div class="wrap"><div class="topbar"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '"><div class="wrap"><div class="topbar"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + '</button>' +
       (inCart ? '<span class="chipline" style="background:#fff">' + inCart + tr(' في سلتك</span>', ' in your cart</span>') : '<span></span>') + '</div></div>' +
-      '<div class="art">' + imgTag(p.img, nm(p)) + '</div>' +
+      '<div class="art">' + (hasPic(p.img) ? imgTag(p.img, nm(p)) : phTag(p)) + '</div>' +
       '<div class="sheet-b"><div class="wrap">' +
       '<div class="ttl"><div style="display:grid;gap:4px"><span class="chipline">' + esc(bd(p) || (c ? nm(c) : "")) + (isDaily ? tr(' · عرض اليوم', ' · Deal of the day') : '') + '</span><h1>' + esc(nm(p)) + '</h1><span class="unit">' + esc(un(p)) + '</span></div>' +
       '<div style="display:grid;justify-items:end">' + (soonP(p) ? '<span class="price soon">' + tr("قريباً", "Soon") + '</span>' : '<span class="price' + (was ? ' sale' : '') + '">' + num(price) + tr('<small> ر.س</small></span>', '<small> SAR</small></span>')) + (was ? '<s class="was" style="font-size:13px">' + rial(was) + '</s>' : '') + '</div></div>' +
