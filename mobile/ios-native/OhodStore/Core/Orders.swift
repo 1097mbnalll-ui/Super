@@ -35,10 +35,44 @@ struct SavedOrder: Codable, Identifiable, Equatable {
     var walletCents: Int? = nil
     /// نص الطباعة: بعد الطلب يرسل الملف على واتساب برقم الطلب
     var printText: String? = nil
+    /// تقييم الزبون بعد التوصيل (من /track أو /rate)، وهل يقدر يقيّم/يعدّل الحين (canRate من الخادم)
+    var rating: OrderRating? = nil
+    var canRate: Bool? = nil
+    /// الزبون قفل تذكير «قيّم طلبك»
+    var rateSkip: Bool? = nil
     var id: String { no }
     var count: Int { lines?.reduce(0) { $0 + $1.qty } ?? items.values.reduce(0, +) }
     /// طلب شغّال: حالته مفتوحة وعمره أقل من ١٢ ساعة (مثل activeOrder في الموقع)
     var isActive: Bool { ["new", "accepted", "onway"].contains(status) && Date().timeIntervalSince(at) < 12 * 3600 && track != false }
+}
+
+/// تقييم الطلب (نفس حقول الخادم: stars ١–٥، tags، note، at، until بالملي ثانية)
+struct OrderRating: Codable, Equatable {
+    var stars: Int
+    var tags: [String]
+    var note: String
+    var at: Date
+    /// آخر وقت للتعديل (٢٤ ساعة من أول تقييم)
+    var until: Date
+
+    static func parse(_ raw: Any?) -> OrderRating? {
+        guard let x = raw as? [String: Any], let s = CatalogParser.num(x["stars"]) else { return nil }
+        let ms = { (k: String) in Date(timeIntervalSince1970: (CatalogParser.num(x[k]) ?? 0) / 1000) }
+        return OrderRating(stars: Int(s), tags: (x["tags"] as? [Any] ?? []).compactMap { $0 as? String },
+                           note: x["note"] as? String ?? "", at: ms("at"), until: ms("until"))
+    }
+    var editable: Bool { Date() < until }
+}
+
+/// اختيارات التقييم السريعة (نفس مفاتيح الموقع والخادم). good = مزايا (٤–٥ نجوم)، غيرها مشاكل (١–٢)، و٣ نجوم الكل
+enum RateTag {
+    static let all: [(id: String, title: String, good: Bool)] = [
+        ("driver", "المندوب ممتاز", true), ("fast", "وصل بسرعة", true), ("fresh", "المنتجات طازجة", true), ("packing", "تغليف مرتب", true),
+        ("late", "تأخر", false), ("missing", "منتج ناقص", false), ("wrong", "منتج غلط", false), ("damaged", "منتج تالف", false),
+    ]
+    static func forStars(_ n: Int) -> [(id: String, title: String, good: Bool)] { all.filter { n == 3 || (n >= 4 ? $0.good : !$0.good) } }
+    static func title(_ id: String) -> String { all.first { $0.id == id }?.title ?? "" }
+    static func word(_ n: Int) -> String { ["اختر عدد النجوم", "سيئة", "مو زينة", "عادية", "حلوة", "ممتازة"][max(0, min(5, n))] }
 }
 
 struct SavedLine: Codable, Equatable, Identifiable {
@@ -163,6 +197,14 @@ final class OrderCenter {
     }
 
     var current: SavedOrder? { orders.first(where: \.isActive) }
+    /// آخر طلب وصل (آخر ٣ أيام) وينتظر تقييم، أو انقيّم وباقي وقت تعديله: بطاقة التقييم في «حسابي» (مثل rateHTML في الموقع)
+    var rateCard: SavedOrder? {
+        guard let o = orders.first(where: { $0.status == "delivered" && $0.track != false }), Date().timeIntervalSince(o.at) < 3 * 86400 else { return nil }
+        if let r = o.rating { return r.editable && o.canRate != false ? o : nil }
+        return o.canRate == true && o.rateSkip != true ? o : nil
+    }
+    /// تذكير «قيّم طلبك» في الرئيسية: ما انقيّم وما قفله الزبون (rateDue في الموقع)
+    var rateDue: SavedOrder? { rateCard.flatMap { $0.rating == nil ? $0 : nil } }
     var hasPendingAttempt: Bool { attempt != nil }
 
     /// طلب انرسل من شاشة الموقع داخل التطبيق: نحفظه هنا عشان المتابعة والإشعارات وطلباتي
@@ -359,7 +401,8 @@ final class OrderCenter {
     // MARK: متابعة وإلغاء
 
     func refresh(catalog: CatalogStore) async {
-        for order in orders where order.isActive {
+        // الطلبات الشغالة، والطلب اللي وصل وما نعرف حالة تقييمه (مرة وحدة)
+        for order in orders where order.isActive || (order.status == "delivered" && order.canRate == nil && order.track != false && Date().timeIntervalSince(order.at) < 7 * 86400) {
             let (_, json) = await API.post(catalog.apiBase, "/track", ["no": order.no, "phone": order.phone])
             if let d = json["driver"] as? [String: Any], let la = CatalogParser.num(d["lat"]), let ln = CatalogParser.num(d["lng"]) {
                 drivers[order.no] = DriverInfo(lat: la, lng: ln, eta: CatalogParser.num(d["eta"]).map { Int($0.rounded()) },
@@ -375,6 +418,11 @@ final class OrderCenter {
                     if list.count > (subs[order.no] ?? []).count { Haptics.warning() }
                     subs[order.no] = list.isEmpty ? nil : list
                 }
+            }
+            // تقييم الطلب الواصل (الخادم القديم ما يرجعه: نخليه مجهول)
+            if json["ok"] as? Bool == true, json["canRate"] != nil, let i = orders.firstIndex(where: { $0.no == order.no }) {
+                let r = OrderRating.parse(json["rating"]), can = json["canRate"] as? Bool ?? false
+                if orders[i].rating != r || orders[i].canRate != can { orders[i].rating = r; orders[i].canRate = can }
             }
             guard json["ok"] as? Bool == true, let st = json["status"] as? String,
                   let i = orders.firstIndex(where: { $0.no == order.no }), orders[i].status != st else { continue }
@@ -407,6 +455,39 @@ final class OrderCenter {
         case "slow_down": return "محاولات كثيرة، جرّب بعد شوي."
         default: return status == 0 ? "ما قدرنا نوصل للمحل. تأكد من النت." : "ما قدرنا نلغي الطلب. اتصل على المحل."
         }
+    }
+
+    /// تقييم الطلب بعد التوصيل (/rate). nil = وصل، غير كذا رسالة الخطأ
+    func rate(_ order: SavedOrder, stars: Int, tags: [String], note: String, catalog: CatalogStore) async -> String? {
+        let clean = String(note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(300))
+        let (status, json) = await API.post(catalog.apiBase, "/rate", ["no": order.no, "phone": order.phone, "stars": stars, "tags": tags, "note": clean])
+        let i = orders.firstIndex(where: { $0.no == order.no })
+        if json["ok"] as? Bool == true {
+            if let i { orders[i].rating = OrderRating.parse(json["rating"]); orders[i].canRate = json["canRate"] as? Bool ?? false }
+            Haptics.success()
+            return nil
+        }
+        switch json["code"] as? String {
+        case "locked", "too_old":
+            if let i {
+                if let r = OrderRating.parse(json["rating"]) { orders[i].rating = r }
+                orders[i].canRate = false
+            }
+            return json["code"] as? String == "locked" ? "انتهت مدة تعديل التقييم (٢٤ ساعة)." : "انتهت مدة تقييم هالطلب."
+        case "slow_down": return "محاولات كثيرة، جرّب بعد شوي."
+        default: return status == 0 ? "ما وصل تقييمك. تأكد من النت وجرّب مرة ثانية." : "ما وصل تقييمك. جرّب مرة ثانية."
+        }
+    }
+
+    /// الزبون قفل تذكير «قيّم طلبك»
+    func skipRating(_ order: SavedOrder) {
+        if let i = orders.firstIndex(where: { $0.no == order.no }) { orders[i].rateSkip = true }
+    }
+
+    /// للتصوير بس (-seed-delivered)
+    func seedDelivered() {
+        guard !orders.isEmpty else { return }
+        orders[0].status = "delivered"; orders[0].canRate = true; orders[0].rating = nil; orders[0].rateSkip = nil
     }
 
     /// رد الزبون على بديل المندوب. nil = تم، غير كذا رسالة الخطأ

@@ -29,9 +29,15 @@ struct HomeView: View {
                 OrderBubble(order: order) { tab = .account }
                     .padding(.leading, 16).padding(.bottom, 14)
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
+            } else if let due = orders.rateDue {
+                // طلب وصل وما انقيّم: تذكير خفيف (rateDue في الموقع)، يفتح «حسابي» أو ينقفل بـ×
+                RateReminder(order: due, open: { tab = .account }, close: { orders.skipRating(due) })
+                    .padding(.horizontal, 16).padding(.bottom, 14)
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: orders.current?.no)
+        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: orders.rateDue?.no)
     }
 
     private var sections: [String] {
@@ -148,6 +154,38 @@ struct HomeView: View {
 }
 
 /// دائرة الطلب الشغّال في الرئيسية: أيقونة الحالة والدقايق الباقية، تضغطها تروح لطلبك
+/// «وصلك طلبك؟ قيّم تجربتك» فوق الرئيسية بعد التوصيل
+private struct RateReminder: View {
+    let order: SavedOrder
+    let open: () -> Void
+    let close: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: open) {
+                HStack(spacing: 10) {
+                    Image(systemName: "star.fill").font(.ui(size: 18, weight: .bold)).foregroundStyle(Color(hex: 0xF5A524))
+                        .frame(width: 38, height: 38).background(.white.opacity(0.14), in: Circle())
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(tv: "وصلك طلبك \(order.no)؟ قيّم تجربتك").font(.ui(size: 14, weight: .bold)).foregroundStyle(.white).lineLimit(1)
+                        Text("ثواني وتساعدنا نصير أحسن").font(.ui(size: 12)).foregroundStyle(.white.opacity(0.75))
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle(scale: 0.97))
+            Button(action: close) {
+                Image(systemName: "xmark").font(.ui(size: 12, weight: .bold)).foregroundStyle(.white)
+                    .frame(width: 30, height: 30).background(.white.opacity(0.14), in: Circle())
+            }
+            .accessibilityLabel("إخفاء")
+        }
+        .padding(.leading, 10).padding(.trailing, 8).padding(.vertical, 8)
+        .background(Theme.ink, in: Capsule())
+        .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
+    }
+}
+
 private struct OrderBubble: View {
     let order: SavedOrder
     let action: () -> Void

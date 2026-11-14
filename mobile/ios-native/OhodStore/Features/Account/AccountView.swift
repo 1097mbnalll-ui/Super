@@ -19,6 +19,10 @@ struct AccountView: View {
                 if let current = orders.current {
                     CurrentOrderCard(order: current)
                         .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                } else if let rate = orders.rateCard {
+                    // الطلب وصل: «كيف كانت تجربتك؟» (أو شكراً + تعديل خلال ٢٤ ساعة)
+                    RateOrderCard(orderNo: rate.no) { orders.skipRating(rate) }
+                        .transition(.opacity.combined(with: .scale(scale: 0.97)))
                 }
 
                 if !pastOrders.isEmpty {
@@ -137,6 +141,7 @@ struct AccountView: View {
         .navigationTitle("حسابي")
         .navigationBarTitleDisplayMode(.inline)
         .animation(.smooth, value: orders.current?.status)
+        .animation(.smooth, value: orders.rateCard?.no)
         .sheet(isPresented: $showAddress) { AddressView() }
         .sheet(isPresented: $showWallet) { WalletSheet() }
         .alert(AppLang.english ? "تتغير اللغة للعربي لما تقفل التطبيق وتفتحه" : "The app switches to English when you close and reopen it",

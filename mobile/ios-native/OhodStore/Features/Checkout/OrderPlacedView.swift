@@ -331,6 +331,8 @@ struct OrderDetailView: View {
                             .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     ForEach(orders.subs[order.no] ?? []) { SubOfferCard(offer: $0, order: order) }
+                    // الطلب وصل: التقييم هنا بعد (نفس بطاقة «حسابي»)
+                    RateOrderCard(orderNo: order.no)
                     VStack(spacing: 0) {
                         ForEach(rows) { line in
                             HStack(spacing: 10) {

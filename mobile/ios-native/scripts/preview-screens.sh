@@ -79,12 +79,19 @@ if [ "${CHECK:-}" = "full" ]; then
   shot f25-promo-home -seed-promos -screen home
   shot f26-bundle -seed-promos -screen bundle
   shot f27-promo-cart -seed-promos -seed-promo-cart -screen cart
+  shot f28-rate-account -seed-order -seed-delivered -screen account
+  shot f29-rate-home -seed-order -seed-delivered -screen home
+  WAIT=4 shot f30-intro -intro
   NP=
+  # أول فتحة: التعريف أول، وسؤال آبل بعد ما يقفل. نعلّمه «انشاف» عشان الصورة تلقط سؤال الإشعارات
+  xcrun simctl spawn "$DEVICE" defaults write sa.ohod.store intro.seen -bool YES
   WAIT=5 shot f01-first-launch
   ls -la "$OUT"; exit 0
 fi
 if [ "${CHECK:-}" = "1" ]; then
   # فحص شكاوى المالك (١٤ نوفمبر ٢٠٢٦): طلب الإشعارات أول فتحة، أول الفتح بدون صفحة قديمة، الخضار «قريباً»، عرض ديمة
+  WAIT=4 shot c00-intro -intro -no-push
+  xcrun simctl spawn "$DEVICE" defaults write sa.ohod.store intro.seen -bool YES
   WAIT=5 shot c01-first-launch-push
   xcrun simctl spawn "$DEVICE" defaults write sa.ohod.store push.asked -bool YES
   WAIT=2 shot c02-home-2s
