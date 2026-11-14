@@ -56,10 +56,14 @@ jobs:
           vs, bn = cfg['version'], str(cfg['build'])
           v = next((x for x in vers if x['attributes']['versionString'] == vs and x['attributes']['platform'] == 'IOS'), None)
           if not v:
-              v = send('POST', 'appStoreVersions', {'type': 'appStoreVersions', 'attributes': {'platform': 'IOS', 'versionString': vs},
+              v = send('POST', 'appStoreVersions', {'type': 'appStoreVersions', 'attributes': {'platform': 'IOS', 'versionString': vs, 'releaseType': 'AFTER_APPROVAL'},
                        'relationships': {'app': {'data': {'type': 'apps', 'id': aid}}}})['data']
           elif v['attributes']['appStoreState'] not in ('PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED', 'METADATA_REJECTED'):
               print('النسخة', vs, 'حالتها', v['attributes']['appStoreState'], '، ما تنرسل'); sys.exit(1)
+          # النسخة تنزل للناس أول ما توافق آبل، والنسخة الحالية تبقى شغّالة لين ذاك الوقت (قرار المالك: لا يوقف التطبيق أبداً)
+          if v['attributes'].get('releaseType') != 'AFTER_APPROVAL':
+              rr = requests.patch(A + f'appStoreVersions/{v["id"]}', headers=H, data=json.dumps({'data': {'type': 'appStoreVersions', 'id': v['id'], 'attributes': {'releaseType': 'AFTER_APPROVAL'}}}), timeout=60)
+              print('releaseType AFTER_APPROVAL →', rr.status_code)
           b = next((x for x in builds['data'] if x['attributes']['version'] == bn), None)
           if not b or b['attributes']['processingState'] != 'VALID': print('البناء', bn, 'مو جاهز'); sys.exit(1)
           r = requests.patch(A + f'appStoreVersions/{v["id"]}/relationships/build', headers=H, data=json.dumps({'data': {'type': 'builds', 'id': b['id']}}), timeout=60)
