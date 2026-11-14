@@ -1521,6 +1521,7 @@ body[data-screen="driver"]{background:#F3F4F6}
 .kq-sec button svg.i{width:13px;height:13px}
 .kq-sec .clr{color:#E8394F}
 .kq-cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 10px}
+.kq-cats.krow{display:flex;overflow-x:auto;gap:10px;scroll-snap-type:x proximity;scrollbar-width:none;margin:0 -16px;padding:0 16px 4px}.kq-cats.krow::-webkit-scrollbar{display:none}.kq-cats.krow .kq-cat{flex:0 0 74px;scroll-snap-align:start}
 .kq-cat{display:grid;justify-items:center;gap:6px;background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:700;color:var(--ink);text-align:center;line-height:1.35;cursor:pointer}
 .kq-cat .tile{width:100%;aspect-ratio:1/1;max-width:100%;border-radius:18px;background:linear-gradient(180deg,#F6FAFC 0%,#F6FAFC 55%,var(--sky) 100%);border:1px solid #EEF2F5;display:grid;place-items:center;overflow:hidden}
 .kq-cat .tile img{width:76%;height:76%;object-fit:contain}
@@ -2513,6 +2514,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   // البنر الفني: يرجع "" لو ما فيه تصميم أو البيانات ناقصة (فيرجع البنر القديم)
   function artBan(id, x, act, tag){ var L = ART[id]; if (!L || !L.length || S.banArtOff) return ""; var h = ""; try { h = L[artPick(id, L.length)](x); } catch(e){ h = ""; } if (!h) return "";
     tag = tag || "button"; return '<' + tag + (tag === "button" ? ' type="button"' : '') + ' class="kq-ban kb artb" data-bid="' + esc(id) + '" ' + act + '>' + h + '</' + tag + '>'; }
+  var FGB = "";
   function banners(){
     var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), bakery = catOf("bakery") || D.cats[0];
     var maxOff = offers.reduce(function(m, p){ var mo = multiOf(p), r = onSale(p) ? 1 - p.price / p.old : mo ? 1 - mo.price / (mo.n * p.price) : 0; return Math.max(m, Math.round(r * 100)); }, 0);
@@ -2565,6 +2567,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (vc) B.veg = artBan("veg", { name: nm(vc.c), ids: vc.ids.slice(0, 6) }, 'data-opencat="' + vc.c.id + '"');
     if (S.welcome && S.welcome.code) B.welcome = artBan("welcome", { code: S.welcome.code, amount: Number(S.welcome.amount) || 0, min: Number(S.welcome.min) || 0 }, 'data-nav="cart"');
     var list = orderOf(S.promos, promoDefs()).filter(function(x){ return x.on && B[x.id]; }).map(function(x){ return B[x.id]; });
+    if (FGB) list.unshift(FGB);
     if (!list.length) return "";
     return '<div class="kq-bans" id="kqBans">' + list.join("") + '</div><div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
   }
@@ -2756,9 +2759,12 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     SEC.featured = fg && fgArt ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + fgArt.replace('class="kq-ban', 'class="kq-ban featured') + '</div>' : fg ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + banHTML("featured", { tag: "button", style: "hero", act: 'data-chip="g:' + esc(fg.id) + '"', k: esc(fg.name || ""), title: esc(grpLine(fg)),
       sub: tr("كانت " + (fg.w1 || "الحبة") + " بـ ", "Was ") + num(grpOld(fg)) + (grpSave(fg) > 0 ? tr(" · توفّر ", " · save ") + num(grpSave(fg)) + tr(" ر.س", " SAR") : ""), go: tr("أبغى العرض", "Get the offer"),
       ids: grpItems(fg).filter(function(p){ return hasPic(p.img); }).slice(0, 3).map(function(p){ return p.id; }) }, (S.banEdit || {}).featured).replace('class="kq-ban', 'class="kq-ban featured') + '</div>' : '';
+    // العرض المميز داخل البنرات المتحركة لو قسم «featured» مطفي (قرار المالك ١٥ نوفمبر: رئيسية أخف)
+    var layF = orderOf(S.layout, LAYOUT_DEF).filter(function(x){ return x.id === "featured"; })[0];
+    FGB = layF && !layF.on && SEC.featured ? SEC.featured.replace(/^<div class="wrap kq-sec-wrap"[^>]*>/, "").replace(/<\/div>$/, "").replace("kq-ban featured", "kq-ban") : "";
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
     SEC.free = S.freeOver ? '<div class="wrap kq-sec-wrap"><button type="button" class="kq-free" data-chip="for"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("احصل على توصيلك المجاني!", "Get free delivery!") + ' <em>' + tr("مجاني", "Free") + '</em></b><span>' + tr("لطلباتك فوق ", "On orders over ") + rial(S.freeOver) + '</span></span>' + ic("fwd") + '</button></div>' : '';
-    SEC.catgrid = '<div class="wrap"><div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-nav="cats">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div></div>';
+    SEC.catgrid = '<div class="wrap"><div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-nav="cats">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="kq-cats krow">' + D.cats.filter(function(c){ return !catSoon(c); }).map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div></div>';
     SEC.offers = offers.length ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + offers.map(function(p){ return card(p); }).join("") + '</div></div>' : '';
     SEC.deals = deals.length ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("lock") + tr("كل منتج بـ ", "Everything for ") + num(DEAL.price) + ' ' + tr("ر.س", "SAR") + '</h2><button type="button" data-chip="deals">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><p class="hint" style="margin:-6px 0 10px">' + (tt.unlocked ? tr("انفتحت لك، ضيف اللي تبغاه", "Unlocked, add what you like") : tr("تنفتح لطلبات فوق ", "Unlocks for orders over ") + rial(DEAL.min) + ' · ' + tr("باقي ", "Add ") + rial(tt.left)) + '</p><div class="rail">' + deals.map(function(p){ return card(p, "d"); }).join("") + '</div></div>' : '';
     SEC.grid = '<div class="kq-chips" id="kqChips"><div class="wrap"><div class="row">' +
