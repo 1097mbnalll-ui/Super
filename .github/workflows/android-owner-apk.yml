@@ -1,5 +1,6 @@
 # تطبيق المالك (إدارة أحد): نفس مشروع أندرويد بحزمة وأيقونة ثانية، يفتح الموقع الحي على شاشة كلمة السر.
-# يشتغل بس لما ملف mobile/store/owner-trigger.txt يتغير (دقائق البناء مدفوعة). الناتج على فرع owner-apk برابط مباشر.
+# يشتغل بس لما ملف mobile/store/owner-trigger.txt يتغير (دقائق البناء مدفوعة).
+# ما ينشر الـAPK على فرع owner-apk إلا بعد ما يجرّبه على محاكي أندرويد ويتأكد إن شاشة كلمة السر انفتحت.
 name: android-owner-apk
 
 on:
@@ -12,7 +13,7 @@ permissions:
   contents: write
 
 jobs:
-  apk:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -35,21 +36,88 @@ jobs:
           npm run sync
           cd android
           for i in 1 2 3; do ./gradlew --no-daemon assembleDebug && exit 0; echo "retry $i"; sleep 20; done; exit 1
-      - name: self-check (owner APK identity, and the customer build still builds)
+      - name: identity check
         working-directory: mobile/android
         run: |
           AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt | tail -1)
+          $AAPT dump badging app/build/outputs/apk/debug/app-debug.apk | grep -E "^package:|application-label:|launchable-activity" | cut -c1-170 | tee identity.txt
+          grep -q "name='sa.ohod.owner'" identity.txt
+          grep -q "OwnerActivity" identity.txt
+      - name: customer build still builds
+        working-directory: mobile/android
+        run: |
           cp app/build/outputs/apk/debug/app-debug.apk $RUNNER_TEMP/owner.apk
-          $AAPT dump badging $RUNNER_TEMP/owner.apk | grep -E "^package:|application-label:|launchable-activity" | cut -c1-160
           OWNER_APP= ./gradlew --no-daemon assembleDebug -q
-          $AAPT dump badging app/build/outputs/apk/debug/app-debug.apk | grep -E "^package:|application-label:" | cut -c1-160
+          AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt | tail -1)
+          $AAPT dump badging app/build/outputs/apk/debug/app-debug.apk | grep -E "^package:|launchable-activity" | cut -c1-170 | tee customer.txt
+          grep -q "name='sa.ohod.store'" customer.txt
+          grep -q "MainActivity" customer.txt
           cp $RUNNER_TEMP/owner.apk app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: owner-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+  check:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: owner-apk
+          path: mobile/android/app/build/outputs/apk/debug
+      - name: enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: run on emulator (Pixel 7, Android 15)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: mobile
+          script: ./scripts/owner-check.sh
+      - name: publish check screenshot to branch emu-results
+        if: always()
+        run: |
+          [ -d mobile/owner-out ] || exit 0
+          for try in 1 2 3 4 5; do
+            D=$RUNNER_TEMP/emu$try; rm -rf "$D"
+            git clone -q --depth 1 -b emu-results "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "$D" 2>/dev/null || { mkdir -p "$D" && git -C "$D" init -q -b emu-results && git -C "$D" remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"; }
+            T="$D/owner-app"; rm -rf "$T"; mkdir -p "$T"
+            cp mobile/owner-out/*.png mobile/owner-out/owner-report.json "$T"/ 2>/dev/null || true
+            echo "${{ github.sha }} run ${{ github.run_id }}" > "$T/SOURCE.txt"
+            git -C "$D" add -A owner-app
+            git -C "$D" -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "owner check run ${{ github.run_number }}" || exit 0
+            git -C "$D" push -q origin HEAD:emu-results && exit 0
+            sleep $((RANDOM % 8 + 3))
+          done
+          exit 0
+
+  publish:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: owner-apk
+          path: apk
       - name: publish APK to branch owner-apk (direct download)
         run: |
           D=$RUNNER_TEMP/pub; rm -rf "$D"; mkdir -p "$D"; cd "$D"
           git init -q -b owner-apk
           git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          cp "$GITHUB_WORKSPACE"/mobile/android/app/build/outputs/apk/debug/app-debug.apk ohod-owner.apk
-          echo "commit ${{ github.sha }}  run ${{ github.run_id }}" > SOURCE.txt
+          cp "$GITHUB_WORKSPACE/apk/app-debug.apk" ohod-owner.apk
+          echo "commit ${{ github.sha }}  run ${{ github.run_id }}  (checked on an Android 15 emulator: login screen opened)" > SOURCE.txt
           git add -A && git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "owner APK ${{ github.run_number }}"
           git push -q -f origin HEAD:owner-apk

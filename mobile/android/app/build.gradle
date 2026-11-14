@@ -17,7 +17,7 @@ android {
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId(ownerApp ? "sa.ohod.owner" : "sa.ohod.store")
-        manifestPlaceholders = [appLabel: ownerApp ? "إدارة أحد" : "@string/app_name", actLabel: ownerApp ? "إدارة أحد" : "@string/title_activity_main", appIcon: ownerApp ? "@mipmap/ic_owner" : "@mipmap/ic_launcher", appRoundIcon: ownerApp ? "@mipmap/ic_owner" : "@mipmap/ic_launcher_round"]
+        manifestPlaceholders = [appLabel: ownerApp ? "إدارة أحد" : "@string/app_name", actLabel: ownerApp ? "إدارة أحد" : "@string/title_activity_main", appIcon: ownerApp ? "@mipmap/ic_owner" : "@mipmap/ic_launcher", appRoundIcon: ownerApp ? "@mipmap/ic_owner" : "@mipmap/ic_launcher_round", mainActivity: ownerApp ? ".OwnerActivity" : ".MainActivity", mainTheme: ownerApp ? "@style/AppTheme.NoActionBar" : "@style/AppTheme.NoActionBarLaunch"]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode versionCodeValue
