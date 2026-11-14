@@ -28,7 +28,14 @@ const realNow = Date.now; const at = (h, m = 0) => Date.UTC(2026, 10, 12, (h - 3
 // مثل multiOf في الموقع و quantityOffer في التطبيق
 const multiOf = (p) => { const L = p.packs || []; for (let i = 0; i < L.length; i++) { const n = Math.floor(Number(L[i].n) || 0), pr = Number(L[i].price) || 0; if (n > 1 && pr > 0 && pr < n * p.price - 0.001) return { i, n, price: pr }; } return null; };
 // السلة بالحبات → عناصر الطلب (المجموعات الكاملة خيار العرض) + سعر الجوال
-const toOrder = (cart) => { const items = {}; let total = 0; for (const [id, q] of Object.entries(cart)) { const p = byId[id], mo = multiOf(p);
+// عرض المجموعة (مثل ديمة: أي ٣ بـ ١١٫٩٥) مثل الخادم: كل N بسعر العرض، والزايد بسعر الحبة من السطور الأكبر كمية
+const grpOf = (id) => (S.groups || []).find((g) => g && g.on !== false && Array.isArray(g.ids) && g.ids.includes(id));
+const toOrder = (cart) => { const items = {}; let total = 0; const G = {};
+  for (const [id, q] of Object.entries(cart)) { const g = grpOf(id); if (g) { items[id] = q; (G[g.id] || (G[g.id] = { g, l: [] })).l.push({ p: byId[id], q }); } }
+  for (const { g, l } of Object.values(G)) { const n = Math.max(2, Math.floor(Number(g.n) || 0)), U = l.reduce((a, x) => a + x.q, 0); let rest = U % n;
+    l.sort((a, b) => b.q - a.q); for (const x of l) { if (!rest) break; const t = Math.min(rest, x.q); total += t * x.p.price; rest -= t; }
+    total += Math.floor(U / n) * Number(g.price); }
+  for (const [id, q] of Object.entries(cart)) { if (grpOf(id)) continue; const p = byId[id], mo = multiOf(p);
   if (mo && q >= mo.n) { const b = Math.floor(q / mo.n), loose = q - b * mo.n; items[id + '~' + mo.i] = b; if (loose) items[id] = loose; total += b * mo.price + loose * p.price; }
   else { items[id] = q; total += q * p.price; } } return { items, sub: r2(total) }; };
 const pieces = (items) => { const need = {}; for (const [k, q] of Object.entries(items)) { const [id, i] = k.split('~'); const n = i == null ? 1 : byId[id].packs[Number(i)].n; need[id] = (need[id] || 0) + q * n; } return need; };
