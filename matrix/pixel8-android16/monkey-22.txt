@@ -1,0 +1,36 @@
+  bash arg: -p
+  bash arg: sa.ohod.store
+  bash arg: --pct-syskeys
+  bash arg: 0
+  bash arg: --pct-appswitch
+  bash arg: 0
+  bash arg: --throttle
+  bash arg: 120
+  bash arg: -s
+  bash arg: 22
+  bash arg: --ignore-timeouts
+  bash arg: 300
+args: [-p, sa.ohod.store, --pct-syskeys, 0, --pct-appswitch, 0, --throttle, 120, -s, 22, --ignore-timeouts, 300]
+ arg: "-p"
+ arg: "sa.ohod.store"
+ arg: "--pct-syskeys"
+ arg: "0"
+ arg: "--pct-appswitch"
+ arg: "0"
+ arg: "--throttle"
+ arg: "120"
+ arg: "-s"
+ arg: "22"
+ arg: "--ignore-timeouts"
+ arg: "300"
+data="sa.ohod.store"
+arg="--pct-syskeys" mCurArgData="null" mNextArg=3 argwas="--pct-syskeys" nextarg="0"
+data="0"
+arg="--pct-appswitch" mCurArgData="null" mNextArg=5 argwas="--pct-appswitch" nextarg="0"
+data="0"
+arg="--throttle" mCurArgData="null" mNextArg=7 argwas="--throttle" nextarg="120"
+data="120"
+data="22"
+arg="--ignore-timeouts" mCurArgData="null" mNextArg=11 argwas="--ignore-timeouts" nextarg="300"
+Events injected: 300
+## Network stats: elapsed time=19915ms (0ms mobile, 0ms wifi, 19915ms not connected)
