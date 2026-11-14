@@ -1,1 +1,1 @@
-  mCurrentFocus=Window{c96c698 u0 sa.ohod.store/sa.ohod.store.MainActivity}
+  mCurrentFocus=Window{7f2580b u0 sa.ohod.store/sa.ohod.store.MainActivity}
