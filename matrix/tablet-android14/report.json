@@ -27,12 +27,12 @@
     "adminVisible": false
   },
   "scroll": {
-    "frames": 140,
-    "avgMs": 86.9,
-    "fps": 11.5,
-    "over33ms": 82,
+    "frames": 195,
+    "avgMs": 73.76,
+    "fps": 13.6,
+    "over33ms": 85,
     "over50ms": 79,
-    "worstMs": 333.3
+    "worstMs": 350
   },
   "account": {
     "deleteLink": true,
@@ -47,7 +47,5 @@
   "pages": [
     "https://localhost/delete-data.html"
   ],
-  "problems": [
-    "content hidden behind tab bar"
-  ]
+  "problems": []
 }
