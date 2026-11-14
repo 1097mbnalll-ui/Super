@@ -1,0 +1,79 @@
+# إرسال نسخة الآيفون لمراجعة آبل (App Review) عن طريق App Store Connect API. ما يشتغل إلا بأمر المالك.
+# الوضع من ملف mobile/ios-native/review.json على فرع ios-review: {"mode":"status"} يطبع حالة النسخ والبناءات بس،
+# {"mode":"submit","version":"1.1","build":"<رقم البناء>","whatsNew":"..."} يربط البناء بالنسخة ويرسلها للمراجعة.
+name: ios-asc-review
+on:
+  push:
+    branches: [ios-review]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-asc-review
+  cancel-in-progress: false
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: App Store Connect
+        env:
+          KID: ${{ secrets.ASC_KEY_ID }}
+          ISS: ${{ secrets.ASC_ISSUER_ID }}
+          P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          pip install -q pyjwt cryptography requests
+          python3 - <<'PY'
+          import os, re, time, json, jwt, requests, sys
+          cfg = json.load(open('mobile/ios-native/review.json'))
+          kid, iss, p8 = os.environ['KID'].strip(), os.environ['ISS'].strip(), os.environ['P8']
+          body = re.sub(r'[^A-Za-z0-9+/=]', '', ''.join(l for l in p8.replace('\r', '').split('\n') if '-----' not in l))
+          key = '-----BEGIN PRIVATE KEY-----\n' + '\n'.join(body[i:i+64] for i in range(0, len(body), 64)) + '\n-----END PRIVATE KEY-----\n'
+          tok = jwt.encode({'iss': iss, 'iat': int(time.time()), 'exp': int(time.time()) + 1100, 'aud': 'appstoreconnect-v1'}, key, algorithm='ES256', headers={'kid': kid, 'typ': 'JWT'})
+          H = {'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json'}
+          A = 'https://api.appstoreconnect.apple.com/v1/'
+          def get(p, **q):
+              r = requests.get(A + p, headers=H, params=q, timeout=60)
+              if r.status_code >= 300: print('GET', p, r.status_code, r.text[:800]); sys.exit(1)
+              return r.json()
+          def send(m, p, data):
+              r = requests.request(m, A + p, headers=H, data=json.dumps({'data': data}), timeout=60)
+              print(m, p, '→', r.status_code)
+              if r.status_code >= 300: print(r.text[:1500]); sys.exit(1)
+              return r.json() if r.text else {}
+          app = get('apps', **{'filter[bundleId]': 'sa.ohod.store'})['data'][0]; aid = app['id']
+          print('التطبيق:', app['attributes']['name'], aid)
+          vers = get(f'apps/{aid}/appStoreVersions', limit=20)['data']
+          for v in vers: print('نسخة', v['attributes']['versionString'], v['attributes']['platform'], '→', v['attributes']['appStoreState'], v['id'])
+          builds = get('builds', **{'filter[app]': aid, 'sort': '-uploadedDate', 'limit': 8, 'include': 'preReleaseVersion'})
+          pre = {x['id']: x['attributes']['version'] for x in builds.get('included', []) if x['type'] == 'preReleaseVersions'}
+          for b in builds['data']:
+              a = b['attributes']; pv = pre.get((b['relationships'].get('preReleaseVersion', {}).get('data') or {}).get('id'), '?')
+              print('بناء', pv, '(' + a['version'] + ')', a['processingState'], 'منتهي:' , a.get('expired'), b['id'])
+          subs = get('reviewSubmissions', **{'filter[app]': aid, 'limit': 5})['data']
+          for s in subs: print('إرسال مراجعة', s['attributes'].get('state'), s['attributes'].get('submittedDate'), s['id'])
+          if cfg.get('mode') != 'submit': print('وضع الحالة بس، ما انرسل شي.'); sys.exit(0)
+          vs, bn = cfg['version'], str(cfg['build'])
+          v = next((x for x in vers if x['attributes']['versionString'] == vs and x['attributes']['platform'] == 'IOS'), None)
+          if not v:
+              v = send('POST', 'appStoreVersions', {'type': 'appStoreVersions', 'attributes': {'platform': 'IOS', 'versionString': vs},
+                       'relationships': {'app': {'data': {'type': 'apps', 'id': aid}}}})['data']
+          elif v['attributes']['appStoreState'] not in ('PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED', 'METADATA_REJECTED'):
+              print('النسخة', vs, 'حالتها', v['attributes']['appStoreState'], '، ما تنرسل'); sys.exit(1)
+          b = next((x for x in builds['data'] if x['attributes']['version'] == bn), None)
+          if not b or b['attributes']['processingState'] != 'VALID': print('البناء', bn, 'مو جاهز'); sys.exit(1)
+          r = requests.patch(A + f'appStoreVersions/{v["id"]}/relationships/build', headers=H, data=json.dumps({'data': {'type': 'builds', 'id': b['id']}}), timeout=60)
+          print('ربط البناء →', r.status_code, r.text[:300])
+          if r.status_code >= 300: sys.exit(1)
+          # ما الجديد (لو مو أول نسخة)
+          for loc in get(f'appStoreVersions/{v["id"]}/appStoreVersionLocalizations')['data']:
+              if cfg.get('whatsNew'):
+                  rr = requests.patch(A + f'appStoreVersionLocalizations/{loc["id"]}', headers=H, data=json.dumps({'data': {'type': 'appStoreVersionLocalizations', 'id': loc['id'], 'attributes': {'whatsNew': cfg['whatsNew']}}}), timeout=60)
+                  print('ما الجديد', loc['attributes']['locale'], '→', rr.status_code, rr.text[:200] if rr.status_code >= 300 else '')
+          # الإرسال
+          open_sub = next((s for s in subs if s['attributes'].get('state') in ('READY_FOR_REVIEW',)), None)
+          sub = open_sub or send('POST', 'reviewSubmissions', {'type': 'reviewSubmissions', 'attributes': {'platform': 'IOS'}, 'relationships': {'app': {'data': {'type': 'apps', 'id': aid}}}})['data']
+          send('POST', 'reviewSubmissionItems', {'type': 'reviewSubmissionItems', 'relationships': {'reviewSubmission': {'data': {'type': 'reviewSubmissions', 'id': sub['id']}}, 'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': v['id']}}}})
+          send('PATCH', f'reviewSubmissions/{sub["id"]}', {'type': 'reviewSubmissions', 'id': sub['id'], 'attributes': {'submitted': True}})
+          print('✅ انرسلت النسخة', vs, 'بناء', bn, 'للمراجعة')
+          PY
