@@ -1,0 +1,5 @@
+Physical size: 1080x2400
+sdk_gphone64_x86_64
+13
+  Current WebView package (name, version): (com.google.android.webview, 109.0.5414.123)
+    Valid package com.google.android.webview (versionName: 109.0.5414.123, versionCode: 541412337, targetSdkVersion: 33) is  installed/enabled for all users
