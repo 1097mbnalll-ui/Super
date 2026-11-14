@@ -1,0 +1,51 @@
+# APK تجريبي للجوال (يدوي فقط، دقائق البناء مدفوعة): يبني من ملفات الفرع (ANDROID_LOCAL=1)
+# وينشر الملف على فرع test-apk برابط تحميل مباشر. نسخة debug للتجربة فقط، مو لقوقل بلاي.
+name: android-test-apk
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [mobile-app]
+    paths: ['mobile/store/test-apk-trigger.txt']   # يشتغل بس لما هالملف يتغير
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: npm ci
+        working-directory: mobile
+        run: npm ci
+      - name: build (local files)
+        working-directory: mobile
+        env:
+          ANDROID_LOCAL: '1'
+        run: |
+          npm run sync
+          cd android
+          for i in 1 2 3; do ./gradlew --no-daemon assembleDebug && exit 0; echo "retry $i"; sleep 20; done; exit 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ohod-store-android-test-apk
+          path: mobile/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+      - name: publish APK to branch test-apk (direct download)
+        run: |
+          D=$RUNNER_TEMP/pub; rm -rf $D; mkdir -p $D; cd $D
+          git init -q -b test-apk
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          cp "$GITHUB_WORKSPACE"/mobile/android/app/build/outputs/apk/debug/app-debug.apk ohod-store-test.apk
+          echo "commit ${{ github.sha }}  run ${{ github.run_id }}" > SOURCE.txt
+          git add -A && git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "test APK ${{ github.run_number }}"
+          git push -q -f origin HEAD:test-apk

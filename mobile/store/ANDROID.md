@@ -55,3 +55,11 @@ App ID `sa.ohod.store` (cannot change after publishing). minSdk 24, target/compi
 - ⏳ 8. Emulator: Home/Categories/Account/Delete-data/Cart opened OK, no crash. NOT yet tested on a real phone: banners animation, order placing, order tracking, offline mode, frame rate (the emulator has no GPU).
 - ⏳ 9. Performance: no `no-cache` forced by the wrapper; WebView cache default. Not measured on a real device.
 - Cloud builds (`mobile-build`, `android-emulator`) are now manual only, they cost the owner minutes.
+
+## Simulation results (14 Nov 2026, workflow `android-matrix`, manual only)
+Devices: Pixel 7 (Android 15), small phone 5.2" (Android 14, WebView 113), Pixel Tablet (14), Pixel Fold (15), Pixel 6 (13, WebView 109), Pixel 8 (16). Each: 3 cold starts, tab walk-through, rotation, 3 random-tap runs (monkey, 900 events).
+- Found + fixed: offline "retry" button did nothing (broken quoting); red sale prices / pink cart badge / pastel banners did not match the iOS palette; status/nav bar was grey instead of mint; keyboard could cover checkout fields (adjustResize); portrait lock blocked tablets/foldables; missing colors.xml + backup rules; back button now closes open sheets first.
+- Rounds 1 and 2: no crashes on any device; layout fits between system bars on all; tablet/fold use the wide layout (tab bar on top).
+- ANR dialogs seen on 3 emulator runs were caused by the emulator host CPU being saturated (system load 35 on 4 cores, CPU pressure ~92%), and did not repeat on re-runs. Not proven on a real phone.
+- Frame rates in these runs (9-23 fps) are meaningless: the CI emulator has no GPU. Smoothness must be judged on a real phone.
+- Open before public: real-phone test (order, location permission, offline, back), FCM `google-services.json`, support email in the listing, 12 testers (personal account), live site deploy («نزّله»).

@@ -1,0 +1,2 @@
+run 3 2026-11-14T08:25:12Z
+devices=pixel7-android15,small-phone-a14
