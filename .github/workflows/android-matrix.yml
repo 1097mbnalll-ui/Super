@@ -94,7 +94,7 @@ jobs:
             git clone -q --depth 1 -b emu-results "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "$D" 2>/dev/null || { mkdir -p "$D" && git -C "$D" init -q -b emu-results && git -C "$D" remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"; }
             T="$D/matrix/${{ matrix.name }}"; rm -rf "$T"; mkdir -p "$T"
             cp mobile/emu-out/*.png "$T"/ 2>/dev/null || true
-            cp mobile/emu-out/report.json mobile/emu-out/device.txt mobile/emu-out/coldstart.txt mobile/emu-out/window.txt mobile/emu-out/crashes.txt mobile/emu-out/js-errors.txt mobile/emu-out/mem.txt mobile/emu-out/monkey-*.txt "$T"/ 2>/dev/null || true
+            cp mobile/emu-out/report.json mobile/emu-out/device.txt mobile/emu-out/coldstart.txt mobile/emu-out/window.txt mobile/emu-out/crashes.txt mobile/emu-out/anr-context.txt mobile/emu-out/anr-trace.txt mobile/emu-out/js-errors.txt mobile/emu-out/mem.txt mobile/emu-out/monkey-*.txt "$T"/ 2>/dev/null || true
             echo "${{ github.sha }} run ${{ github.run_id }}" > "$T/SOURCE.txt"
             git -C "$D" add -A matrix
             git -C "$D" -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "matrix ${{ matrix.name }} run ${{ github.run_number }}" || exit 0

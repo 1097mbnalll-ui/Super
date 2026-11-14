@@ -30,9 +30,9 @@ adb shell dumpsys window | grep -iE "mCurrentFocus|InsetsSource.*(statusBars|nav
 # 3) تدوير الشاشة (أفقي ثم رجوع) والتأكد إن التطبيق ما طاح
 adb shell settings put system accelerometer_rotation 0
 adb shell settings put system user_rotation 1; sleep 4
-adb exec-out screencap -p > "$OUT/10-landscape.png"
+adb exec-out screencap -p | node scripts/snap.cjs "$OUT/10-landscape.png"
 adb shell settings put system user_rotation 0; sleep 4
-adb exec-out screencap -p > "$OUT/11-portrait-again.png"
+adb exec-out screencap -p | node scripts/snap.cjs "$OUT/11-portrait-again.png"
 adb shell pidof $PKG > /dev/null || { echo "APP DIED after rotation"; FAIL=1; }
 # 4) ضغط عشوائي: ثلاث بذور، ٣٠٠ حدث لكل واحدة
 for SEED in 11 22 33; do
@@ -41,10 +41,15 @@ for SEED in 11 22 33; do
   grep -qE "crash|CRASH|ANR" "$OUT/monkey-$SEED.txt" && { echo "MONKEY FOUND A PROBLEM (seed $SEED)"; FAIL=1; }
   adb shell am start -n $PKG/.MainActivity > /dev/null; sleep 3
 done
-adb exec-out screencap -p > "$OUT/12-after-monkey.png"
+adb exec-out screencap -p | node scripts/snap.cjs "$OUT/12-after-monkey.png"
 adb shell dumpsys meminfo $PKG | grep -E "TOTAL PSS|TOTAL:" | head -2 > "$OUT/mem.txt"; cat "$OUT/mem.txt"
 adb logcat -d > "$OUT/logcat.txt"
 grep -E "FATAL EXCEPTION|ANR in $PKG|Process: $PKG.*died" "$OUT/logcat.txt" | head -10 > "$OUT/crashes.txt"
-if [ -s "$OUT/crashes.txt" ]; then echo "CRASHES:"; cat "$OUT/crashes.txt"; FAIL=1; fi
+if [ -s "$OUT/crashes.txt" ]; then
+  echo "CRASHES:"; cat "$OUT/crashes.txt"; FAIL=1
+  grep -A22 "ANR in $PKG" "$OUT/logcat.txt" | head -60 | cut -c1-220 > "$OUT/anr-context.txt"
+  adb root > /dev/null 2>&1; sleep 2; adb shell 'ls -t /data/anr 2>/dev/null | head -1' > "$OUT/anr-file.txt"
+  F=$(tr -d '\r' < "$OUT/anr-file.txt"); [ -n "$F" ] && adb shell "head -c 9000 /data/anr/$F" 2>/dev/null | grep -E "main|\"main\"|at |sa.ohod|webview|chromium" | head -40 > "$OUT/anr-trace.txt"
+fi
 grep -iE "Capacitor/Console.*(Error|Uncaught)|chromium.*Uncaught" "$OUT/logcat.txt" | sed 's/^.*Capacitor/Capacitor/' | sort | uniq -c | head -8 > "$OUT/js-errors.txt"; cat "$OUT/js-errors.txt"
 exit $FAIL

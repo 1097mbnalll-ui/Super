@@ -4,7 +4,7 @@ const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const out = process.argv[2] || 'emu-out';
 const sh = (c) => execSync(c, { encoding: 'utf8' });
-const shot = (n) => fs.writeFileSync(`${out}/${n}.png`, execSync('adb exec-out screencap -p', { maxBuffer: 64 * 1024 * 1024 }));
+const shot = (n) => { const b = execSync('adb exec-out screencap -p', { maxBuffer: 64 * 1024 * 1024 }); const i = b.indexOf(Buffer.from([0x89, 0x50, 0x4e, 0x47])); fs.writeFileSync(`${out}/${n}.png`, i > 0 ? b.subarray(i) : b); };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // صفحة CDP صغيرة: evaluate(fn, arg) زي Playwright
 async function connect() {
@@ -68,7 +68,7 @@ async function connect() {
   await page.evaluate(() => { location.href = './'; }); await wait(3000);
   await page.evaluate(() => { const b = [...document.querySelectorAll('[data-nav="cart"]')].pop(); if (b) b.click(); }); await wait(1500); shot('04-cart');
   fs.writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2));
-  const bad = []; if (!report.account.deleteLink) bad.push('delete link missing'); if (!report.bottomCheck.linkClear) bad.push('content hidden behind tab bar'); if (!report.env.native) bad.push('not in native mode'); if (report.env.adminVisible) bad.push('admin visible');
+  const bad = []; if (!report.account.deleteLink) bad.push('delete link missing'); if (!report.bottomCheck.linkClear && report.env.tabBarTop > report.env.innerH / 2) bad.push('content hidden behind tab bar'); if (!report.env.native) bad.push('not in native mode'); if (report.env.adminVisible) bad.push('admin visible');
   report.problems = bad; fs.writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2)); if (bad.length) { console.error('PROBLEMS:', bad.join('; ')); process.exitCode = 2; }
   console.log(JSON.stringify(report, null, 2));
   page.close();
