@@ -31,7 +31,13 @@ def main(path, dry=False):
         p['name'] = e['name']
         if new_unit is not None: p['unit'] = new_unit
         rep['applied'] += 1
-    if not dry and (rep['applied'] or rep['size_in_title']):
+    # الماركة الصغيرة فوق الاسم (brands.json): بس لو الاسم الحالي يبدأ فيها
+    try: brands = json.load(open(os.path.join(HERE, 'brands.json'), encoding='utf-8'))
+    except Exception: brands = {}
+    for pid, b in brands.items():
+        p = by.get(pid)
+        if p and not p.get('brand') and p['name'].startswith(b + ' '): p['brand'] = b; rep['brand'] += 1
+    if not dry and (rep['applied'] or rep['size_in_title'] or rep['brand']):
         open(path, 'w', encoding='utf-8').write(json.dumps(d, ensure_ascii=False, separators=(',', ':')))
     print(dict(rep), '(تجربة بدون حفظ)' if dry else '')
     for pid, now, old in skipped[:40]: print('  تخطّي (الاسم تغيّر):', pid, '|', now, '| كان', old)

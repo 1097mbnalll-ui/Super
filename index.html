@@ -1479,6 +1479,7 @@ body[data-screen="driver"]{background:#F3F4F6}
 [dir="ltr"] .kq-brand svg.i{transform:none}
 .kq-name{font-size:13.5px;font-weight:600;line-height:1.4;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .kq-size{font-size:11.5px;color:#8A939C}
+.kq-brand{display:block;font-size:11px;color:#8A939C;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kq-price{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:2px}
 .kq-now{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
 .kq-now small{font-size:11px;font-weight:700}
@@ -2166,7 +2167,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     return '<article class="kq-card' + (avail(p) ? '' : ' out') + '" data-open="' + p.id + '"><div class="kq-img">' + pic + badge + low + favBtn(p) + control(p, kind || "") + '</div>' +
       (mo ? '<div class="kq-price"><span class="kq-now sale">' + num(mo.price) + ' <small>' + tr("ر.س", "SAR") + '</small></span><s>' + num(Math.round(mo.n * p.price * 100) / 100) + '</s><span class="kq-cnt">' + tr("العدد", "Qty") + ' <b>' + num(mo.n) + '</b></span>' : '<div class="kq-price"><span class="kq-now' + (was ? ' sale' : '') + '">' + num(price) + ' <small>' + tr("ر.س", "SAR") + '</small></span>' + (was ? '<s>' + num(was) + '</s>' : '')) + (inCart ? '<span class="kq-qty">' + inCart + tr(" بالسلة", " in cart") + '</span>' : '') + '</div>' +
       (mo ? '<span class="kq-save">🔥 ' + tr("وفّر ", "Save ") + num(Math.round((mo.n * p.price - mo.price) * 100) / 100) + tr(" ر.س بالعرض", " SAR with the offer") + '</span>' : '') +
-      '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + (function(){ var L = Array.isArray(p.packs) ? p.packs.filter(function(x, i){ return !/^عرض/.test(String(x.u || "")) && !(mo && mo.i === i); }) : []; return L.length ? ' · ' + L.map(function(x){ return esc(String(x.u || "").split(" ")[0]); }).join(" · ") : ''; })() + '</span></article>';
+      (p.brand && LANG !== "en" ? '<span class="kq-brand">' + esc(p.brand) + ' ›</span>' : '') + '<b class="kq-name">' + esc(nm(p)) + '</b><span class="kq-size">' + esc(un(p)) + (function(){ var L = Array.isArray(p.packs) ? p.packs.filter(function(x, i){ return !/^عرض/.test(String(x.u || "")) && !(mo && mo.i === i); }) : []; return L.length ? ' · ' + L.map(function(x){ return esc(String(x.u || "").split(" ")[0]); }).join(" · ") : ''; })() + '</span></article>';
   }
 
   /* ---------- screens ---------- */
@@ -2883,7 +2884,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       '<span class="pd-tr">' + (inCart ? '<span class="chipline" style="background:#fff">' + inCart + tr(' في سلتك</span>', ' in your cart</span>') : '') + (soonP(packBase) ? '' : favBtn(packBase, true)) + '</span></div></div>' +
       '<div class="art">' + (hasPic(p.img) ? imgTag(p.img, nm(p)) : phTag(p)) + '</div>' +
       '<div class="sheet-b"><div class="wrap">' +
-      '<div class="ttl"><div style="display:grid;gap:4px"><span class="chipline">' + esc(bd(p) || (c ? nm(c) : "")) + (isDaily ? tr(' · عرض اليوم', ' · Deal of the day') : '') + '</span><h1>' + esc(nm(p)) + '</h1><span class="unit">' + esc(un(p)) + '</span></div>' +
+      '<div class="ttl"><div style="display:grid;gap:4px"><span class="chipline">' + esc(bd(p) || ((p.brand && LANG !== "en" ? p.brand + " · " : "") + (c ? nm(c) : ""))) + (isDaily ? tr(' · عرض اليوم', ' · Deal of the day') : '') + '</span><h1>' + esc(nm(p)) + '</h1><span class="unit">' + esc(un(p)) + '</span></div>' +
       '<div style="display:grid;justify-items:end">' + (soonP(p) ? '<span class="price soon">' + tr("قريباً", "Soon") + '</span>' : '<span class="price' + (was ? ' sale' : '') + '">' + num(price) + tr('<small> ر.س</small></span>', '<small> SAR</small></span>')) + (was ? '<s class="was" style="font-size:13px">' + rial(was) + '</s>' : '') + '</div></div>' +
       packHTML + (function(){ var gq = grpOf(packBase); if (!gq) return ''; return '<div class="ofbox must"><b>🔥 ' + esc(grpLine(gq)) + '</b><p>' + tr("كانت " + (gq.w1 || "الحبة") + " الوحدة بـ " + words(packBase.price) + (grpSave(gq) > 0 ? " · توفّر " + num(grpSave(gq)) + " ر.س" : "") + " · تختار من أي نوع", "Mix any kinds") + '</p></div>'; })() + (function(){ var mu = moB && mustOf(packBase); if (!mu) return '';
         return '<div class="ofbox must"><b>🔥 ' + esc(mustLine(packBase, mu)) + '</b><p>' + tr("كانت " + mustW(packBase, mu).one + " الوحدة بـ " + words(packBase.price), "Was " + num(packBase.price) + " each") + (mustSave(packBase, mu) > 0 ? tr(" · توفّر " + num(mustSave(packBase, mu)) + " ر.س", "") : "") + '</p>' + (packBase.packs[mu.i].mix ? '<p>' + tr("تقدر تختار من أي نوع.", "Mix any flavours.") + '</p>' : '') + '</div>'; })() + (function(){ if (!moB || mustOf(packBase) || !avail(packBase)) return ''; var inC = Number(cart[packBase.id]) || 0, rest = inC % moB.n, appl = Math.floor(inC / moB.n), pct = rest === 0 && appl ? 100 : Math.round(rest / moB.n * 100);
