@@ -82,7 +82,7 @@ ok((await call('/driver/status', { pin: '1357', no: o4, status: 'accepted' })).o
 // ٤) نقاط البيع
 r = await call('/pos/login', { pin: '3333' }); ok(r.ok && r.role === 'cashier' && r.name === 'فهد الكاشير', 'الكاشير يدخل نقاط البيع');
 await call('/save', { ...A, data, stock: { dairy3: 20 } });
-const stock0 = (await (await w.fetch(new Request('https://x.dev/stock', { headers: { Origin: O } }), env, { waitUntil() {} })).json()).stock || {};
+const stock0 = (await call('/admin/stock', { pin: '2468' })).stock || {};
 const sale = { pin: '3333', cid: 'sale-0001-abcd', pay: 'cash', paid: 50, lines: [{ id: 'dairy3', qty: 2 }, { id: 'bakery1', qty: 3 }, { bc: '6281000000123', name: 'علبة كبريت', price: 1, qty: 2 }] };
 const s1 = await call('/pos/sale', sale);
 const expect = round(2 * data.products.find((p) => p.id === 'dairy3').price + 3 * data.products.find((p) => p.id === 'bakery1').price + 2);
@@ -96,7 +96,7 @@ ok(s2.ok && s2.total === 2, 'الإدارة تقدر تغيّر السعر وت�
 const off = Date.now() - 120e3;   // قبل دقيقتين (مو ساعة: لو الساعة بعد منتصف الليل تطلع في أمس)
 const s3 = await call('/pos/sale', { pin: '3333', cid: 'sale-0006-abcd', at: off, pay: 'card', lines: [{ id: 'drinks1', qty: 1 }] });
 ok(s3.ok && s3.at === off, 'بيعة انحفظت والنت مقطوع تنسجل بوقتها الحقيقي');
-const stock1 = (await (await w.fetch(new Request('https://x.dev/stock', { headers: { Origin: O } }), env, { waitUntil() {} })).json()).stock || {};
+const stock1 = (await call('/admin/stock', { pin: '2468' })).stock || {};
 ok(stock0.dairy3 === 20, 'مخزون الشيدر قبل البيع 20'); ok(stock1.dairy3 === stock0.dairy3 - 2, 'المخزون نقص من نفس مخزون الموقع: ' + stock0.dairy3 + ' → ' + stock1.dairy3);
 L = await call('/driver/orders', { pin: '1357' }); ok(!L.orders.some((o) => o.src === 'pos' || o.source === 'pos'), 'بيعات المحل ما تطلع للمناديب');
 ok((await call('/driver/pending', { pin: '1357' })).last < Number(s3.no.slice(1)), 'وما تحسب «طلب جديد» في التطبيق');
@@ -110,7 +110,7 @@ const onl = (await call('/admin/orders', { ...A, src: 'online' })).orders, pos =
 ok(onl.every((o) => o.src !== 'pos') && pos.length === 3 && pos.every((o) => o.src === 'pos'), 'الإدارة: طلبات التوصيل لحال وبيعات المحل لحال');
 const oi = await call('/admin/openitems', A); ok(oi.items.length === 1 && oi.items[0].bc === '6281000000123' && oi.items[0].n === 2, 'الصنف اللي مو مسجّل يطلع للإدارة عشان تضيفه');
 r = await call('/driver/status', { ...A, no: s1.no, status: 'canceled' }); ok(r.ok, 'الإدارة تلغي بيعة (مرتجع)');
-const stock2 = (await (await w.fetch(new Request('https://x.dev/stock', { headers: { Origin: O } }), env, { waitUntil() {} })).json()).stock || {};
+const stock2 = (await call('/admin/stock', { pin: '2468' })).stock || {};
 ok(stock2.dairy3 === stock0.dairy3, 'المرتجع رجّع المخزون');
 const td = await call('/admin/today', A); ok(td.today.pos_n === 2 && td.today.pos_rev === round(s2.total + s3.total), 'اليوم حتى الحين: المحل لحاله ' + td.today.pos_n + ' بيعة / ' + td.today.pos_rev);
 // تسوية لكل مندوب، وإقفال اليوم بمبلغ لكل مندوب

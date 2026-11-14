@@ -54,7 +54,7 @@ export default {
     if (request.method === "POST" && !/^\/(?:track|ev|stats|driver\/(?:orders|pending|loc|loc-off|cash|login|push)|admin\/(?:orders|alerts|today|stats|log|team|prep|pos-orders|openitems|driver-loc|staff|cash|day-report|settlement-requests))$/.test(path)) stockCache.at = 0;
     if (request.method === "GET" && path === "/stock") {
       // كل زائر يسأل عن المخزون كل دقيقة؛ مع آلاف المنتجات نخزن النتيجة ١٥ ثانية بدل ما نقرأ القاعدة كل مرة
-      if (!stockCache.body || Date.now() - stockCache.at > 15000) stockCache = { at: Date.now(), body: JSON.stringify({ ok: true, stock: env.DB ? await readStock(env) : {} }) };
+      if (!stockCache.body || Date.now() - stockCache.at > 15000) stockCache = { at: Date.now(), body: JSON.stringify({ ok: true, stock: env.DB ? await readShownStock(env) : {} }) };
       return new Response(stockCache.body, { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=10" } });
     }
     if (request.method === "GET" && path === "/push/key") {
@@ -76,6 +76,27 @@ export default {
     if (body.pin != null) body.pin = asciiDigits(String(body.pin));
 
     // طلب من زبون: ما يحتاج رقم سري
+    // تسعير السلة من الخادم (للتطبيق): أي قاعدة تسعير جديدة (مجموعات، أكواد، هدايا) تطلع صح بدون تحديث التطبيق
+    if (path === "/quote") {
+      if (await rateHit(env, "quote:" + ip, 120, 600)) return reply(429, { ok: false, code: "slow_down" });
+      let data; try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+      const pr = priceOrder(data, body, true);
+      if (pr.error) return reply(200, { ok: false, code: pr.error, id: pr.id, n: pr.n, min: pr.min });
+      let promo = 0, promoCode = "";
+      if (body.promo && env.DB) { const pc = await promoCheck(env, body.promo, normPhone(body.phone) || null, pr.subtotal); if (!pc.error) { promo = promoAmount(pc.rule, pr.subtotal); promoCode = pc.rule.code; } else promoCode = "!" + pc.error; }
+      const gift = !promo ? (pr.gift || 0) : 0;
+      const S = data.store || {}, onlyPrint = pr.lines.every((l) => l.p.print), minOrder = onlyPrint && S.print && S.print.minOrder != null ? Number(S.print.minOrder) || 0 : Number(S.minOrder) || 0;
+      return reply(200, { ok: true, subtotal: pr.subtotal, fee: pr.fee, gift, promo, promoCode, total: round2(pr.subtotal + pr.fee - gift - promo), count: pr.count,
+        min: minOrder, belowMin: minOrder > 0 && pr.subtotal < minOrder,
+        lines: pr.lines.map((l) => ({ id: l.p.id, qty: l.qty, price: l.price, tag: l.tag || "" })) });
+    }
+    if (path === "/promo/check") {
+      if (!env.DB) return reply(503, { ok: false, code: "promo_invalid" });
+      if (await rateHit(env, "promo:" + ip, 15, 600)) return reply(429, { ok: false, code: "slow_down" });
+      const pc = await promoCheck(env, body.code, normPhone(body.phone) || null, null);
+      if (pc.error) return reply(400, { ok: false, code: pc.error });
+      return reply(200, { ok: true, ...pc.rule });
+    }
     if (path === "/order") {
       if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
       const chat = env.TELEGRAM_BOT_TOKEN ? await env.LOCKS.get("tg_chat") : null;
@@ -104,6 +125,18 @@ export default {
         const km = distM(shop[0], shop[1], Number(body.lat), Number(body.lng)) / 1000;
         if (km > maxKm) return reply(400, { ok: false, code: "too_far", km: Math.round(km * 10) / 10, max: maxKm });
       }
+      if (body.promo) {
+        const pc = await promoCheck(env, body.promo, priced.phone, priced.subtotal);
+        if (pc.error) return reply(400, { ok: false, code: pc.error, min: pc.min });
+        priced.gift = 0; priced.promo = pc.rule.code; priced.promoAmt = promoAmount(pc.rule, priced.subtotal);
+        priced.promoRule = { kind: pc.rule.kind, value: pc.rule.value, min: pc.rule.min, cap: pc.rule.cap };
+        priced.total = round2(priced.subtotal + priced.fee - priced.promoAmt);
+      }
+      if (priced.gift && env.DB) {
+        await ensureSchema(env);
+        const used = await env.DB.prepare("SELECT 1 x FROM orders WHERE phone = ? AND status != 'canceled' AND json_extract(data, '$.gift') > 0 LIMIT 1").bind(priced.phone).first().catch(() => null);
+        if (used) { priced.gift = 0; priced.total = round2(priced.subtotal + priced.fee); }
+      }
       const record = orderRecord(priced, body);
       const walletPart = moneyCents(body.walletAmount || 0);
       if (walletPart === null || walletPart > moneyCents(record.total)) return reply(400,{ok:false,code:'bad_payment'});
@@ -122,8 +155,8 @@ export default {
         try {
           await ensureSchema(env);
           await withCost(env, record);
-          stockBefore = await readStock(env);
           const need = needOf(record);
+          stockBefore = await readStock(env, Object.keys(need));
           const short = () => Object.keys(need).find((id) => stockBefore[id] != null && stockBefore[id] < need[id]);
           let sid = short();
           if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
@@ -132,7 +165,7 @@ export default {
           } catch (e) {
             if (checkout) { const repeated = await checkoutResult(env, checkout); if (repeated) return reply(repeated.ok ? 200 : 409, repeated); }
             // ممكن طلب ثاني سبقه على آخر حبة: نشيّك المخزون مرة ثانية
-            stockBefore = await readStock(env); sid = short();
+            stockBefore = await readStock(env, Object.keys(need)); sid = short();
             if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
             throw e;
           }
@@ -148,7 +181,7 @@ export default {
         });
         if (!sent.ok && !env.DB) return reply(502, { ok: false, code: "telegram" });
       }
-      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, total: priced.total, count: priced.count, track: !!env.DB });
+      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, gift: priced.gift || 0, promo: priced.promo || "", promoAmt: priced.promoAmt || 0, total: priced.total, count: priced.count, track: !!env.DB });
     }
 
     // الزبون يتابع حالة طلبه (رقم الطلب + نفس رقم الجوال)
@@ -251,6 +284,15 @@ export default {
       if (!row) return reply(404, { ok: false, code: "not_found" });
       if (!(await saveSub(env, body.sub, "customer", String(n)))) return reply(400, { ok: false, code: "bad_sub" });
       later(pushTo(env, [normSub(body.sub)], { title: "تم تفعيل الإشعارات", body: "بنبلغك أول ما تتغير حالة طلبك #" + (1000 + n), url: "./", tag: "order" + n }));
+      return reply(200, { ok: true });
+    }
+    // الزبون يشترك في إشعارات العروض (الموقع أو التطبيق): {sub, off?}. بدون حذف تلقائي مثل اشتراكات الطلب
+    if (path === "/push/promo") {
+      if (!env.DB || !env.LOCKS) return reply(404, { ok: false, code: "no_push" });
+      if (await rateHit(env, "promosub:" + ip, 20, 3600)) return reply(429, { ok: false, code: "slow_down" });
+      await ensureSchema(env);
+      if (body.off) { const sb = normSub(body.sub); if (sb && sb.endpoint) await env.DB.prepare("DELETE FROM subs WHERE endpoint = ? AND role = 'promo'").bind(String(sb.endpoint)).run(); return reply(200, { ok: true, off: true }); }
+      if (!(await saveSub(env, body.sub, "promo", ""))) return reply(400, { ok: false, code: "bad_sub" });
       return reply(200, { ok: true });
     }
     if (path === "/push/unsub") {
@@ -622,7 +664,7 @@ export default {
       return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
     }
 
-    if (['/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/wallet', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
+    if (['/admin/promo-push','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/wallet', '/admin/promos', '/admin/promo-save', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
       if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
       await ensureSchema(env);
       const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner', later);
@@ -630,6 +672,13 @@ export default {
     }
     if (path === "/admin/stock") {
       if (!env.DB) return reply(200, { ok: true, stock: {}, costs: {}, hasDB: false });
+      // الإدارة تطلب بس اللي تحتاجه: ids = المنتجات المعروضة، summary = المخزون القليل (سطر واحد) وعدد أسعار الشراء
+      if (Array.isArray(body.ids)) { const ids = body.ids.slice(0, 500).map(String);
+        const cs = (await env.DB.prepare("SELECT id, cost FROM pcost WHERE id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids)).all()).results || [], costs = {}; for (const r of cs) costs[r.id] = r.cost;
+        return reply(200, { ok: true, stock: await readStock(env, ids), costs, hasDB: true }); }
+      if (body.summary) { await ensureSchema(env);
+        const n = await env.DB.prepare("SELECT COUNT(*) n FROM pcost").first();
+        return reply(200, { ok: true, low: await readShownStock(env), costCount: n ? n.n : 0, hasDB: true }); }
       return reply(200, { ok: true, stock: await readStock(env), costs: await readCosts(env), hasDB: true });
     }
     if (path === "/admin/log") {
@@ -784,7 +833,7 @@ export default {
       let orderNo, before = {};
       try {
         await ensureSchema(env);
-        before = await readStock(env);
+        before = await readStock(env, Object.keys(need));
         const sid = Object.keys(need).find((id) => before[id] != null && before[id] < need[id]);
         if (sid && !body.force) return reply(409, { ok: false, code: "unavailable", id: sid, left: before[sid] });
         await withCost(env, rec);
@@ -915,6 +964,8 @@ async function ensureSchema(env) {
   await env.DB.batch([
     "CREATE TABLE IF NOT EXISTS orders (no INTEGER PRIMARY KEY AUTOINCREMENT, created INTEGER NOT NULL, updated INTEGER NOT NULL, status TEXT NOT NULL, phone TEXT NOT NULL, data TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS stock (id TEXT PRIMARY KEY, qty INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS stock_snap (k TEXT PRIMARY KEY, v TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS promo_codes (code TEXT PRIMARY KEY, kind TEXT NOT NULL, value REAL NOT NULL, min REAL NOT NULL DEFAULT 0, cap REAL NOT NULL DEFAULT 0, until INTEGER NOT NULL DEFAULT 0, max_uses INTEGER NOT NULL DEFAULT 0, per_phone INTEGER NOT NULL DEFAULT 1, active INTEGER NOT NULL DEFAULT 1, note TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL, who TEXT NOT NULL DEFAULT '')",
     "CREATE TABLE IF NOT EXISTS subs (endpoint TEXT NOT NULL, role TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', p256dh TEXT NOT NULL, auth TEXT NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (endpoint, role, ref))",
     "CREATE TABLE IF NOT EXISTS st_day (day TEXT PRIMARY KEY, orders INTEGER NOT NULL, revenue REAL NOT NULL)",
     "CREATE TABLE IF NOT EXISTS st_hour (day TEXT NOT NULL, hour INTEGER NOT NULL, orders INTEGER NOT NULL, revenue REAL NOT NULL, PRIMARY KEY (day, hour))",
@@ -988,7 +1039,7 @@ async function ensureSchema(env) {
 function orderRecord(o, body) {
   return {
     lines: o.lines.map((l) => ({ id: l.p.id, name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, regularPrice: Math.max(Number(l.price), Number(l.p.price)||0, Number(l.p.old)||0), tag: l.tag || "", ...(l.p.per ? { per: l.p.per } : {}) })),
-    subtotal: o.subtotal, fee: o.fee, total: o.total, count: o.count, phone: o.phone,
+    subtotal: o.subtotal, fee: o.fee, ...(o.gift > 0 ? { gift: o.gift } : {}), ...(o.promo ? { promo: o.promo, promoAmt: o.promoAmt, promoRule: o.promoRule } : {}), total: o.total, count: o.count, phone: o.phone,
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
     pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
     st: 1, // انحسب في التحليل
@@ -1013,6 +1064,7 @@ async function dbInsertOrder(env, rec, need, now, force, log, opt = {}) {
     st.push(P("SELECT CASE WHEN qty < ? THEN json('stock') ELSE 1 END x FROM stock WHERE id = ?", need[id], id));
     st.push(P("UPDATE stock SET qty = qty - ? WHERE id = ?", need[id], id));
   }
+  st.push(...snapStmts(env, Object.keys(need)));
   if (opt.checkout) st.push(P(`INSERT INTO checkout_keys(request_id,no,fingerprint) VALUES(?,${NO},?)`,opt.checkout.id,opt.checkout.fingerprint));
   if (rec.walletCents) {
     st.push(P(`INSERT INTO wallet_order_keys(request_id,no) VALUES(?,${NO})`,rec.walletRequestId));
@@ -1069,8 +1121,9 @@ async function changeStatus(env, n, st, now = Date.now(), who = "", actor = null
   if (who) stmts.push(logStmt(env, who, "status", "#" + (1000 + n), { from: old.status, to: st, total: Number(rec.total || 0) }));
   if ((st === "canceled") !== (old.status === "canceled")) {
     const back = st === "canceled";
-    const need = needOf(rec), cur = await readStock(env);
+    const need = needOf(rec), cur = await readStock(env, Object.keys(needOf(rec)));
     for (const id of Object.keys(need)) if (cur[id] != null) stmts.push(P("UPDATE stock SET qty = MAX(qty + ?, 0) WHERE id = ?", (back ? 1 : -1) * need[id], id));
+    stmts.push(...snapStmts(env, Object.keys(need).filter((id) => cur[id] != null)));
     if (counted) stmts.push(...statsStmts(env, rec, day, hour, back ? -1 : 1, back ? 1 : -1));
   }
   const dl = (sign, ms) => P("INSERT INTO st_day (day, orders, revenue, deliv_n, deliv_ms, deliv_rev) VALUES (?, 0, 0, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET deliv_n = deliv_n + excluded.deliv_n, deliv_ms = deliv_ms + excluded.deliv_ms, deliv_rev = deliv_rev + excluded.deliv_rev", day, sign, sign * ms, round2(sign * Number(rec.total || 0)));
@@ -1144,7 +1197,11 @@ async function editOrder(env, data, body, who) {
   if (old.status === "canceled") return { error: "canceled" };
   let rec; try { rec = JSON.parse(old.data); } catch { return { error: "bad_order" }; }
   const split = await env.DB.prepare('SELECT * FROM payment_splits WHERE no = ?').bind(n).first();
-  if (old.status === 'delivered') return {error:'payment_locked'};
+  // بعد التوصيل (طلب المالك ١٤ نوفمبر ٢٠٢٦، فترة التجربة): يتعدل ما دام الدفع بطريقة وحدة واليوم مو مقفل. الكاش+الشبكة يتصحح تحصيله أول
+  if (old.status === 'delivered') {
+    if (split && split.cash > 0 && split.card > 0) return {error:'payment_locked'};
+    if (await env.DB.prepare('SELECT day FROM day_closures WHERE day=?').bind(old.day || riyadhDateAt(old.created)).first().catch(() => null)) return {error:'day_closed'};
+  }
   if(old.status==='onway' && (await env.DB.prepare('SELECT require_receipt FROM pos_settings WHERE id=1').first())?.require_receipt)return {error:'pos_locked'};
   const byId = {}; for (const p of data.products || []) byId[p.id] = p;
   const oldBy = {}; for (const l of rec.lines || []) oldBy[l.id] = l;
@@ -1153,13 +1210,21 @@ async function editOrder(env, data, body, who) {
     const id = String(x.id || ""), q = Math.floor(Number(x.qty)), pr = Number(x.price);
     const p = byId[id] || oldBy[id];
     if (!p || !(q > 0 && q <= (p.print || oldBy[id] ? 5000 : 500)) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
-    lines.push({ id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined, ...(oldBy[id] && oldBy[id].per ? { per: Number(oldBy[id].per) } : {}) });
+    // اسم المنتج يتصحح في الطلب لو المالك كتبه (مثل اسم غلط)، وإلا اسم المتجر
+    const nm = typeof x.name === "string" && x.name.trim() ? x.name.trim().slice(0, 120) : (oldBy[id] && oldBy[id].name) || p.name;
+    lines.push({ id, name: nm, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined, ...(oldBy[id] && oldBy[id].per ? { per: Number(oldBy[id].per) } : {}) });
   }
   if (!lines.length) return { error: "empty" };
   const fee = Math.max(0, Number(body.fee ?? rec.fee) || 0);
   const subtotal = round2(lines.reduce((s, l) => s + l.qty * l.price, 0));
-  const nr = { ...rec, lines, subtotal, fee, total: round2(subtotal + fee), count: lines.reduce((s, l) => s + l.qty, 0), st: 1,
-    edits: (rec.edits || []).concat([{ at: Date.now(), before: rec.total, after: round2(subtotal + fee) }]).slice(-20) };
+  // هدية الاعتذار تبقى بعد التعديل ما دام المنتجات ٣٠ وفوق
+  const gift = Number(rec.gift) > 0 && subtotal >= GIFT.min ? Number(rec.gift) : 0;
+  // كود الخصم ينحسب من جديد على المبلغ الجديد (النسبة تتغير، والمبلغ الثابت يبقى ما دام فوق الحد الأدنى)
+  const promoAmt = rec.promo && rec.promoRule ? promoAmount(rec.promoRule, subtotal) : 0;
+  const nr = { ...rec, lines, subtotal, fee, total: round2(subtotal + fee - gift - promoAmt), count: lines.reduce((s, l) => s + l.qty, 0), st: 1,
+    edits: (rec.edits || []).concat([{ at: Date.now(), before: rec.total, after: round2(subtotal + fee - gift - promoAmt) }]).slice(-20) };
+  if (gift) nr.gift = gift; else delete nr.gift;
+  if (rec.promo) nr.promoAmt = promoAmt;
   await withCost(env, nr, true);
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created);
@@ -1187,11 +1252,12 @@ async function editOrder(env, data, body, who) {
   if (rec.st) stmts.push(...statsStmts(env, rec, day, hour, -1, 0));
   stmts.push(...statsStmts(env, nr, day, hour, 1, 0));
   if (old.status === "delivered" && rec.st) stmts.push(P("UPDATE st_day SET deliv_rev = deliv_rev + ? WHERE day = ?", round2(nr.total - Number(rec.total || 0)), day));
-  const a = needOf(rec), b = needOf(nr), cur = await readStock(env);
+  const a = needOf(rec), b = needOf(nr), cur = await readStock(env, [...new Set(Object.keys(a).concat(Object.keys(b)))]);
   for (const id of new Set(Object.keys(a).concat(Object.keys(b)))) {
     const d = (b[id] || 0) - (a[id] || 0);
     if (d && cur[id] != null) stmts.push(P("UPDATE stock SET qty = MAX(qty - ?, 0) WHERE id = ?", d, id));
   }
+  stmts.push(...snapStmts(env, [...new Set(Object.keys(a).concat(Object.keys(b)))].filter((id) => cur[id] != null)));
   await env.DB.batch(stmts);
   return { order: { ...nr, no: "#" + (1000 + n), status: old.status, created: old.created } };
 }
@@ -1227,15 +1293,43 @@ function openNow(S, now = Date.now()) {
   return o === c ? true : o < c ? (m >= o && m < c) : (m >= o || m < c);
 }
 
-function priceOrder(data, body) {
+// «هدية اعتذار» (١٢ نوفمبر ٢٠٢٦، بعد توقف الطلب بسبب حد D1): خصم ٥ ريال على طلب منتجاته ٣٠ ريال وفوق،
+// لين نهاية ١٥ نوفمبر بتوقيت الرياض، مرة وحدة لكل جوال (الطلبات الملغاة ما تنحسب). الزبون يكتب «هدية اعتذار» في الملاحظات
+const GIFT = { amount: 5, min: 30, until: Date.UTC(2026, 10, 15, 21, 0) };
+const giftAsked = (note) => /هدي[ةه]\s*(?:ال)?اعتذار/.test(String(note || ""));
+// أكواد الخصم: يضيفها المالك أو المدير من الإدارة (جدول promo_codes، سري: ما ينحفظ في data.json)
+// kind: amount (ريال) أو percent (نسبة، مع حد أعلى cap). min: أقل مبلغ منتجات. until: آخر وقت (0 = بدون). max_uses: كل الاستخدامات (0 = بدون حد). per_phone: كم مرة لكل جوال (0 = بدون حد)
+// الكود ما يجتمع مع «هدية اعتذار»: واحد بس لكل طلب
+function normCode(v) { return asciiDigits(String(v || "")).replace(/\s+/g, "").toUpperCase().slice(0, 24); }
+function promoAmount(rule, subtotal) {
+  if (!rule || subtotal < Number(rule.min || 0)) return 0;
+  let a = rule.kind === "percent" ? subtotal * Number(rule.value) / 100 : Number(rule.value);
+  if (rule.kind === "percent" && Number(rule.cap) > 0) a = Math.min(a, Number(rule.cap));
+  return round2(Math.max(0, Math.min(a, subtotal)));
+}
+// يرجع القاعدة أو كود الخطأ: promo_invalid / promo_expired / promo_min / promo_used / promo_limit
+async function promoCheck(env, code, phone, subtotal) {
+  code = normCode(code);
+  if (!code || !env.DB) return { error: "promo_invalid" };
+  await ensureSchema(env);
+  const r = await env.DB.prepare("SELECT * FROM promo_codes WHERE code = ?").bind(code).first();
+  if (!r || !r.active) return { error: "promo_invalid" };
+  if (r.until && Date.now() > r.until) return { error: "promo_expired" };
+  const rule = { code, kind: r.kind, value: r.value, min: r.min, cap: r.cap, until: r.until };
+  if (subtotal != null && subtotal < Number(r.min || 0)) return { error: "promo_min", min: r.min, rule };
+  if (r.max_uses > 0) { const u = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE status != 'canceled' AND json_extract(data, '$.promo') = ?").bind(code).first(); if ((u?.n || 0) >= r.max_uses) return { error: "promo_limit" }; }
+  if (phone && r.per_phone > 0) { const u = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE phone = ? AND status != 'canceled' AND json_extract(data, '$.promo') = ?").bind(phone, code).first(); if ((u?.n || 0) >= r.per_phone) return { error: "promo_used" }; }
+  return { rule };
+}
+function priceOrder(data, body, quote) {
   const S = data.store || {};
   const byId = {};
   for (const p of data.products || []) byId[p.id] = p;
   const items = body.items && typeof body.items === "object" ? body.items : {};
-  const phone = normPhone(body.phone);
-  if (!phone) return { error: "bad_phone" };
+  const phone = quote ? "" : normPhone(body.phone);
+  if (!quote && !phone) return { error: "bad_phone" };
   const lat = Number(body.lat), lng = Number(body.lng);
-  if (!(lat >= 16 && lat <= 33 && lng >= 34 && lng <= 56)) return { error: "bad_location" };
+  if (!quote && !(lat >= 16 && lat <= 33 && lng >= 34 && lng <= 56)) return { error: "bad_location" };
 
   const DEAL = S.deal95 && S.deal95.on ? S.deal95 : null;
   const DAILY = S.daily && S.daily.on ? S.daily : null;
@@ -1247,7 +1341,7 @@ function priceOrder(data, body) {
   const lines = [];
   let base = 0, dealSum = 0, count = 0;
   const dealLines = [];
-  const bund = {};
+  const bund = {}, grp = {};
   for (const [key, rawQty] of Object.entries(items)) {
     let qty = Math.floor(Number(rawQty));
     if (!(qty > 0 && qty <= 5000)) continue;   // الطباعة بالصفحة: ١٢٠ صفحة × ٣ نسخ = ٣٦٠ سطر واحد؛ الباقي أقصاه ٢٠٠ (تحت)
@@ -1267,6 +1361,11 @@ function priceOrder(data, body) {
     const p = kind === "r" && String(parts[0]).includes("~") ? packProduct(byId, parts[0]) : byId[parts.length > 1 ? parts[1] : parts[0]];
     if (!p || !p.stock) return { error: "unavailable", id: key };
     if (qty > (p.print ? 5000 : 200)) continue;
+    // عرض المجموعة (S.groups): أي N من منتجات المجموعة بسعر واحد (مثل «أي ٣ علب ديمة بـ ١١٫٩٥»)، لازم العدد يكون مضاعف N
+    if (kind === "r" && !p.base) { const g = (S.groups || []).find((x) => x && x.on !== false && Array.isArray(x.ids) && x.ids.includes(p.id));
+      if (g) { (grp[g.id] || (grp[g.id] = { g, q: [] })).q.push({ p, qty }); continue; } }
+    // عرض الكمية الإجباري: المنتج ينباع بالمجموعة بس (المفتاح <id>~<الخيار>)، الحبة لحالها مرفوضة
+    if (kind === "r" && !p.base && Array.isArray(p.packs) && p.packs.some((x) => x && x.must)) return { error: "pack_only", id: key };
     if (kind === "t") {
       if (!daily || daily.id !== p.id) { lines.push({ p, qty, price: Number(p.price), tag: "" }); base += qty * p.price; count += qty; continue; }
       const lim = Number(DAILY.limit || 0);
@@ -1291,6 +1390,27 @@ function priceOrder(data, body) {
       if (extra > 0) { lines.push({ p, qty: extra, price: Number(p.price), tag: "" }); base += extra * p.price; count += extra; }
     }
   }
+  // المجموعات: المبلغ = عدد المجموعات × السعر، يتوزع على السطور بالهللة (السطر اللي ما يتقسم ينقسم سطرين)
+  for (let { g, q } of Object.values(grp)) {
+    const n = Math.max(2, Math.floor(Number(g.n) || 0)), U = q.reduce((a, x) => a + x.qty, 0);
+    // العرض اختياري: كل N بسعر العرض، والزايد (أقل من N) بسعر الحبة العادي. g.must = العرض إجباري (يرفض الناقص)
+    let rest = U % n;
+    if (rest && g.must) return { error: "pack_only", id: g.id, n };
+    q.sort((a, b) => b.qty - a.qty);
+    for (const x of q) { if (!rest) break; const t = Math.min(rest, x.qty); lines.push({ p: x.p, qty: t, price: Number(x.p.price), tag: "" }); base += t * x.p.price; count += t; x.qty -= t; rest -= t; }
+    const G = q.filter((x) => x.qty > 0), S2 = U - (U % n);
+    if (!S2) continue;
+    const cents = Math.round(Number(g.price) * 100) * (S2 / n), unit = Math.floor(cents / S2); let extra = cents - unit * S2;
+    q = G; q.sort((a, b) => a.qty - b.qty);
+    for (const { p, qty } of q) {
+      const tag = "عرض " + String(g.name || "").slice(0, 30);
+      if (extra >= qty) { lines.push({ p, qty, price: (unit + 1) / 100, tag }); extra -= qty; }
+      else if (extra > 0) { lines.push({ p, qty: qty - extra, price: unit / 100, tag }); lines.push({ p, qty: extra, price: (unit + 1) / 100, tag }); extra = 0; }
+      else lines.push({ p, qty, price: unit / 100, tag });
+      count += qty;
+    }
+    base += cents / 100;
+  }
   if (DEAL && base >= Number(DEAL.min || 0)) for (const d of dealLines) { lines.push(d); dealSum += d.qty * d.price; count += d.qty; }
   // الحد لكل طلب بالحبات: الكرتون يحسب بعدد حباته
   const quantities = {};
@@ -1300,13 +1420,15 @@ function priceOrder(data, body) {
     if (max > 0 && qty > max) return {error:'item_limit',id,max};
   }
   if (!count) return { error: "empty" };
-  if (S.closed || !openNow(S)) return { error: "closed" };
+  if (!quote && (S.closed || !openNow(S))) return { error: "closed" };
   const onlyPrint = lines.length > 0 && lines.every((l) => l.p.print), PR = S.print && typeof S.print === "object" ? S.print : null;
   const minOrder = onlyPrint && PR && PR.minOrder != null ? Number(PR.minOrder) || 0 : Number(S.minOrder) || 0;
-  if (minOrder > 0 && base + dealSum < minOrder) return { error: "min_order", min: minOrder };
+  // التسعير للتطبيق (/quote) يرجع الأسعار والعروض حتى لو السلة تحت أقل طلب، عشان الخصم يطلع في السلة من أول منتج (الحد يُفرض في /order)
+  if (!quote && minOrder > 0 && base + dealSum < minOrder) return { error: "min_order", min: minOrder };
   const subtotal = round2(base + dealSum);
   const fee = S.freeOver && subtotal >= S.freeOver ? 0 : Number(S.fee || 0);
-  return { lines, subtotal, fee, total: round2(subtotal + fee), count, phone };
+  const gift = giftAsked(body.note) && Date.now() < GIFT.until && subtotal >= GIFT.min ? GIFT.amount : 0;
+  return { lines, subtotal, fee, gift, total: round2(subtotal + fee - gift), count, phone };
 }
 
 // وحدة بيع ثانية لنفس المنتج: «<المنتج>~<رقم الخيار>»، سعرها من بيانات المتجر، والمخزون ينخصم بعدد حباتها من المنتج الأساسي
@@ -1336,6 +1458,8 @@ function orderText(data, o, body, orderNo) {
     "",
     `المنتجات: ${money(o.subtotal)}`,
     `التوصيل: ${o.fee ? money(o.fee) : "مجاني"}`,
+    o.gift ? `🎁 هدية اعتذار: −${money(o.gift)}` : null,
+    o.promoAmt ? `🏷️ كود خصم ${esc(o.promo)}: −${money(o.promoAmt)}` : null,
     `<b>الإجمالي: ${money(o.total)}</b>`,
     `الدفع: ${pay}`,
     "",
@@ -1480,7 +1604,7 @@ async function saveToGitHub(env, file, text, message, baseVersion) {
 
 function asciiDigits(value) { return String(value??'').replace(/[٠-٩۰-۹]/g,c=>String(c.charCodeAt(0)-(c<='٩'?0x660:0x6f0))); }
 async function checkoutFingerprint(body) {
-  return dataVersion({items:body.items||{},phone:normPhone(body.phone),pay:body.pay==='card'?'card':'cash',name:String(body.name||''),details:String(body.details||''),note:String(body.note||''),sub:body.sub||'call',lat:Number(body.lat),lng:Number(body.lng),wallet:moneyCents(body.walletAmount||0)});
+  return dataVersion({items:body.items||{},phone:normPhone(body.phone),pay:body.pay==='card'?'card':'cash',name:String(body.name||''),details:String(body.details||''),note:String(body.note||''),sub:body.sub||'call',promo:normCode(body.promo),lat:Number(body.lat),lng:Number(body.lng),wallet:moneyCents(body.walletAmount||0)});
 }
 async function checkoutResult(env, checkout) {
   const old=await env.DB.prepare('SELECT k.fingerprint,o.no,o.total FROM checkout_keys k JOIN orders o ON o.no=k.no WHERE k.request_id=?').bind(checkout.id).first();
@@ -1502,18 +1626,36 @@ function needOf(rec) {
   return need;
 }
 let stockCache = { at: 0, body: "" };
-async function readStock(env) {
+// للزبائن: بس الكميات القليلة (≤ STOCK_SHOW). الكمية الكبيرة ما تحد السلة، والخادم يتأكد وقت الطلب ويرجع الباقي لو ما كفى
+const STOCK_SHOW = 10;
+// «صورة» المخزون القليل في سطر واحد (stock_snap): الزائر يقرأ سطر واحد بدل آلاف الصفوف.
+// كل تعديل على المخزون يحدّث في نفس الدفعة بس المنتجات اللي تغيّرت (snapStmts)، والاستيراد الجماعي يعيد بناءها كاملة (snapRebuild)
+const SNAP_REBUILD = "INSERT INTO stock_snap (k, v) SELECT 'low', COALESCE(json_group_object(id, qty), '{}') FROM stock WHERE qty <= " + STOCK_SHOW + " ON CONFLICT(k) DO UPDATE SET v = excluded.v";
+function snapStmts(env, ids) {
+  return [...new Set(ids.map(String))].map((id) => env.DB.prepare(
+    "UPDATE stock_snap SET v = CASE WHEN (SELECT qty FROM stock WHERE id = ?1) <= " + STOCK_SHOW +
+    " THEN json_set(v, '$.\"' || ?1 || '\"', (SELECT qty FROM stock WHERE id = ?1)) ELSE json_remove(v, '$.\"' || ?1 || '\"') END WHERE k = 'low'").bind(id));
+}
+async function readShownStock(env) {
   await ensureSchema(env);
-  const rs = await env.DB.prepare("SELECT id, qty FROM stock").all();
+  let r = await env.DB.prepare("SELECT v FROM stock_snap WHERE k = 'low'").first();
+  if (!r) { await env.DB.prepare(SNAP_REBUILD).run(); r = await env.DB.prepare("SELECT v FROM stock_snap WHERE k = 'low'").first(); }
+  try { return JSON.parse(r && r.v || "{}"); } catch { return {}; }
+}
+async function readStock(env, ids) {
+  await ensureSchema(env);
+  // مع ١١ ألف منتج، قراءة الجدول كامل لكل طلب تخلّص حد القراءة اليومي في D1؛ نقرأ بس المنتجات المطلوبة
+  const rs = ids ? await env.DB.prepare("SELECT id, qty FROM stock WHERE id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids.map(String))).all()
+    : await env.DB.prepare("SELECT id, qty FROM stock").all();
   const out = {};
   for (const r of rs.results || []) out[r.id] = r.qty;
   return out;
 }
 async function moveStock(env, need, sign, known) {
-  const cur = known || (await readStock(env));
+  const cur = known || (await readStock(env, Object.keys(need)));
   const st = Object.keys(need).filter((id) => cur[id] != null)
     .map((id) => env.DB.prepare("UPDATE stock SET qty = MAX(qty + ?, 0) WHERE id = ?").bind(sign * need[id], id));
-  if (st.length) await env.DB.batch(st);
+  if (st.length) await env.DB.batch([...st, ...snapStmts(env, Object.keys(need).filter((id) => cur[id] != null))]);
 }
 async function setStock(env, map) {
   await ensureSchema(env);
@@ -1528,7 +1670,7 @@ async function setStock(env, map) {
   }
   // كل القيم في جملة وحدة (استيراد ٣٠٠٠ صنف = استعلام واحد بدل ٣٠٠٠)
   if (Object.keys(put).length) st.push(env.DB.prepare("INSERT INTO stock (id, qty) SELECT key, value FROM json_each(?) WHERE true ON CONFLICT(id) DO UPDATE SET qty = excluded.qty").bind(JSON.stringify(put)));
-  if (st.length) await env.DB.batch(st);
+  if (st.length) await env.DB.batch([...st, env.DB.prepare(SNAP_REBUILD)]);
 }
 
 // وضع «المندوب للتوصيل بس»: الطلب يوصل المندوب بعد ما يعلّمه المجهز «جاهز».
@@ -1756,7 +1898,7 @@ function normSub(sub) {
 async function saveSub(env, sub0, role, ref) {
   const sub = normSub(sub0);
   if (!sub || typeof sub !== "object") return false;
-  if (sub.native && role !== "customer") return false;   // التطبيق الأصلي للزبائن بس (الإدارة والمندوب والمجهز ما فيهم)
+  if (sub.native && role !== "customer" && role !== "promo") return false;   // التطبيق الأصلي للزبائن بس (الإدارة والمندوب والمجهز ما فيهم)
   if (!sub.native && !sub.keys) return false;
   const ep = String(sub.endpoint || ""), p = String((sub.keys || {}).p256dh || ""), a = String((sub.keys || {}).auth || "");
   if (!sub.native && (!/^https:\/\/[^\s]{10,900}$/.test(ep) || !/^[\w-]{80,100}$/.test(p) || !/^[\w-]{16,30}$/.test(a))) return false;
@@ -2543,6 +2685,39 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     try{await env.DB.batch([snapshotGuard,P('INSERT INTO day_closures(day,at,who,expected,actual,cash_total,card_total,wallet_total,sales,orders,note) VALUES(?,?,?,?,?,?,?,?,?,?,?)',day,Date.now(),who,report.outstanding,actual,report.cash,report.card,report.wallet,report.sales,report.count,note),...receipts]);}catch{return fail('conflict',409);}
     return {ok:true,difference:actual-report.outstanding};
   }
+  // إرسال إشعار عروض للزبائن المشتركين (التطبيق والموقع). test: لأجهزة الإدارة بس. الحد: ٤ إرسالات في اليوم، وكل نداء يرسل لين ٨٠٠ جهاز (offset للباقي)
+  if(path==='/admin/promo-push'){
+    if(!['owner','admin','manager'].includes(role))return fail('forbidden',403);
+    const title=String(body.title||'').trim().slice(0,60),text=String(body.body||'').trim().slice(0,180);
+    if(!title||!text)return fail('bad_message');
+    const go=String(body.go||'').replace(/[^\w:.\-]/g,'').slice(0,60),msg={title,body:text,url:go?'./?go='+go:'./',tag:'promo'};
+    const total=((await P("SELECT COUNT(*) n FROM subs WHERE role='promo'").first())||{}).n||0;
+    if(body.test)return {ok:true,test:true,sent:await notifyRole(env,'admin',null,msg),total};
+    const dayStart=Date.now()-((Date.now()+3*3600e3)%864e5);
+    const done=((await P("SELECT COUNT(*) n FROM alog WHERE act='promo_push' AND at>=?",dayStart).first())||{}).n||0;
+    const offset=Math.max(0,Math.floor(Number(body.offset)||0));
+    if(!offset&&done>=4)return {ok:false,code:'daily_limit',limit:4,status:429};
+    const rs=await P("SELECT endpoint,p256dh,auth FROM subs WHERE role='promo' ORDER BY created,endpoint LIMIT 800 OFFSET ?",offset).all();
+    const list=(rs.results||[]).map((r)=>({endpoint:r.endpoint,keys:{p256dh:r.p256dh,auth:r.auth}}));
+    const sent=await pushTo(env,list,msg);
+    if(!offset)await logStmt(env,who,'promo_push',title,{total,body:text,go}).run();
+    return {ok:true,sent,tried:list.length,total,next:offset+list.length<total?offset+list.length:null};
+  }
+  if(path==='/admin/promos'||path==='/admin/promo-save'){
+    if(!['owner','admin','manager'].includes(role))return fail('forbidden',403);
+    if(path==='/admin/promo-save'){
+      const code=normCode(body.code);if(!/^[A-Z0-9\u0621-\u064A_-]{3,24}$/.test(code))return fail('bad_code');
+      if(body.remove){await env.DB.batch([P('DELETE FROM promo_codes WHERE code=?',code),logStmt(env,who,'promo_remove',code,{})]);}
+      else{
+        const kind=body.kind==='percent'?'percent':'amount',value=Number(body.value),min=Math.max(0,Number(body.min)||0),cap=Math.max(0,Number(body.cap)||0);
+        if(!(value>0)||(kind==='percent'&&value>90)||(kind==='amount'&&value>500))return fail('bad_value');
+        const until=Number(body.until)||0,maxUses=Math.max(0,Math.floor(Number(body.maxUses)||0)),perPhone=Math.max(0,Math.floor(Number(body.perPhone??1)));
+        await env.DB.batch([P("INSERT INTO promo_codes(code,kind,value,min,cap,until,max_uses,per_phone,active,note,created,who) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(code) DO UPDATE SET kind=excluded.kind,value=excluded.value,min=excluded.min,cap=excluded.cap,until=excluded.until,max_uses=excluded.max_uses,per_phone=excluded.per_phone,active=excluded.active,note=excluded.note",code,kind,value,min,cap,until,maxUses,perPhone,body.active===false?0:1,String(body.note||'').slice(0,100),Date.now(),who),logStmt(env,who,'promo_save',code,{kind,value,min,active:body.active!==false})]);
+      }
+    }
+    const rows=(await P("SELECT c.*,(SELECT COUNT(*) FROM orders o WHERE o.status!='canceled' AND json_extract(o.data,'$.promo')=c.code) used,(SELECT IFNULL(SUM(json_extract(o.data,'$.promoAmt')),0) FROM orders o WHERE o.status!='canceled' AND json_extract(o.data,'$.promo')=c.code) given FROM promo_codes c ORDER BY c.created DESC LIMIT 200").all()).results||[];
+    return {ok:true,codes:rows.map(r=>({code:r.code,kind:r.kind,value:r.value,min:r.min,cap:r.cap,until:r.until,maxUses:r.max_uses,perPhone:r.per_phone,active:!!r.active,note:r.note,used:r.used,given:Math.round(r.given*100)/100,created:r.created}))};
+  }
   if(path==='/admin/prep-mode'){
     if(role==='preparer')return fail('forbidden',403);
     if(body.mode!==undefined||body.lateMin!==undefined){
@@ -2570,6 +2745,8 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     const lines=safeJson(row.data).lines||[],checks={};let complete=true;
     lines.forEach((l,i)=>{const v=body.checks?.[String(i)];if(['picked','missing'].includes(v))checks[String(i)]=v;if(v!=='picked')complete=false;});
     if(body.stage==='ready'&&!complete)return fail('missing_items');
+    // بديل ينتظر رد الزبون: ما يطلع للمندوب لين يرد (أو ينسحب الاقتراح)
+    if(body.stage==='ready'){const pend=await P("SELECT COUNT(*) c FROM sub_offers WHERE no=? AND state='pending'",no).first();if(pend&&pend.c)return fail('pending_sub');}
     try{await env.DB.batch([P("SELECT CASE WHEN COALESCE((SELECT version FROM prep_orders WHERE no=?),0) != ? OR (SELECT status FROM orders WHERE no=?) NOT IN ('new','accepted') OR (SELECT updated FROM orders WHERE no=?) != ? THEN json('prep_conflict') ELSE 1 END",no,prior?.version||0,no,no,row.updated),P('INSERT INTO prep_orders(no,stage,checks,updated,who,version) VALUES(?,?,?,?,?,?) ON CONFLICT(no) DO UPDATE SET stage=excluded.stage,checks=excluded.checks,updated=excluded.updated,who=excluded.who,version=excluded.version',no,body.stage,JSON.stringify(checks),Date.now(),who,(prior?.version||0)+1),logStmt(env,who,'prep','#'+(1000+no),{stage:body.stage,missing:Object.values(checks).filter(v=>v==='missing').length})]);}catch{return fail('conflict',409);}
     if(body.stage==='ready'&&prior?.stage!=='ready'){const d=safeJson(row.data),drvId=(await P('SELECT drv FROM orders WHERE no=?',no).first())?.drv||null;
       later(notifyRole(env,'driver',drvId&&drvId!=='admin'?drvId:null,{title:'طلب جاهز للتوصيل #'+(1000+no),body:[d.name,d.details,money(d.total)].filter(Boolean).join(' · '),url:'./#driver',tag:'ready'+no}));}
@@ -2621,9 +2798,9 @@ function posDocument(raw,no){
     if(price===null||regular===null||!Number.isInteger(qty)||qty<=0)throw Error('bad_order');
     return {id:String(l.id||''),name:String(l.name||''),unit:String(l.unit||''),qty,price,regular:Math.max(price,regular),total:price*qty,tag:String(l.tag||'')};
   });
-  const subtotal=moneyCents(order.subtotal),fee=moneyCents(order.fee||0),total=moneyCents(order.total),gross=lines.reduce((s,l)=>s+l.regular*l.qty,0);
-  if(!lines.length||subtotal===null||fee===null||total===null||lines.reduce((s,l)=>s+l.total,0)!==subtotal||subtotal+fee!==total)throw Error('bad_order');
-  return {orderNo:'#'+(1000+no),lines,gross,discount:gross-subtotal,subtotal,fee,total};
+  const subtotal=moneyCents(order.subtotal),fee=moneyCents(order.fee||0),gift=moneyCents(Number(order.gift||0)+Number(order.promoAmt||0)),total=moneyCents(order.total),gross=lines.reduce((s,l)=>s+l.regular*l.qty,0);
+  if(!lines.length||subtotal===null||fee===null||gift===null||total===null||lines.reduce((s,l)=>s+l.total,0)!==subtotal||subtotal+fee-gift!==total)throw Error('bad_order');
+  return {orderNo:'#'+(1000+no),lines,gross,discount:gross-subtotal,subtotal,fee,...(gift?{gift}:{}),total};
 }
 async function latestPosReceipt(env,no){return env.DB.prepare('SELECT * FROM pos_receipts WHERE no=? ORDER BY revision DESC LIMIT 1').bind(no).first();}
 async function posRoute(env,path,body,who,role){
