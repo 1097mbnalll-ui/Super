@@ -1,6 +1,6 @@
-  mCurrentFocus=Window{49e745e u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
-        InsetsSource id=821a0001 type=navigationBars frame=[0,1857][1080,1920] visible=true flags=SUPPRESS_SCRIM insetsRoundedCornerFrame=false
-        InsetsSource id=d2d00000 type=statusBars frame=[0,0][1080,63] visible=true flags= insetsRoundedCornerFrame=false
-        InsetsSourceControl: {821a0001 mType=navigationBars initiallyVisible mSurfacePosition=Point(0, 1794) mInsetsHint=Insets{left=0, top=0, right=0, bottom=63}}
-        InsetsSourceControl: {d2d00000 mType=statusBars initiallyVisible mSurfacePosition=Point(0, 0) mInsetsHint=Insets{left=0, top=63, right=0, bottom=0}}
-        mSource=InsetsSource id=d2d00000 type=statusBars frame=[0,0][1080,63] visible=true flags= insetsRoundedCornerFrame=false
+  mCurrentFocus=Window{51ed257 u0 sa.ohod.store/sa.ohod.store.MainActivity}
+        InsetsSource id=b2080000 type=statusBars frame=[0,0][1080,63] visible=true flags= insetsRoundedCornerFrame=false
+        InsetsSource id=6f920001 type=navigationBars frame=[0,1857][1080,1920] visible=true flags=SUPPRESS_SCRIM insetsRoundedCornerFrame=false
+        InsetsSourceControl: {b2080000 mType=statusBars initiallyVisible mSurfacePosition=Point(0, 0) mInsetsHint=Insets{left=0, top=63, right=0, bottom=0}}
+        InsetsSourceControl: {6f920001 mType=navigationBars initiallyVisible mSurfacePosition=Point(0, 1794) mInsetsHint=Insets{left=0, top=0, right=0, bottom=63}}
+        mSource=InsetsSource id=6f920001 type=navigationBars frame=[0,1857][1080,1920] visible=true flags=SUPPRESS_SCRIM insetsRoundedCornerFrame=false
