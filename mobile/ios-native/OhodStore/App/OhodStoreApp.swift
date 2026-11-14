@@ -104,6 +104,11 @@ struct RootView: View {
             }
         }
         .onChange(of: catalog.dataVersion) { _, _ in cart.normalize(catalog) }
+        // تسعير الخادم يتجهز أول ما تتغير السلة (من أي شاشة)، مو لما تنفتح السلة بس
+        .task(id: cart.revision) {
+            try? await Task.sleep(for: .milliseconds(400))
+            if !Task.isCancelled, !cart.isEmpty { await cart.refreshQuote(catalog) }
+        }
         // ضغط على إشعار عروض: العروض أو قسم معيّن
         .onReceive(NotificationCenter.default.publisher(for: .ohodGo)) { n in
             guard let go = n.object as? String else { return }
@@ -160,6 +165,10 @@ struct RootView: View {
             cart.set("t:\(f[0].id)", 1)
             cart.set("d:\(f[6].id)", 1)
             cart.setBundle("pv-bundle", 1, catalog: catalog)
+        }
+        if args.contains("-seed-group"), let g = catalog.store.groups.first {
+            let ids = g.ids.filter { id in catalog.product(id).map(catalog.isAvailable) == true }
+            if let a = ids.first { cart.set(a, 2) }; if ids.count > 1 { cart.set(ids[1], 1) } else if let a = ids.first { cart.set(a, 3) }
         }
         if args.contains("-seed-cart"), cart.isEmpty, let index = catalog.index {
             for (i, p) in index.featured.prefix(4).enumerated() { cart.set(p.id, i == 0 ? 2 : 1) }

@@ -228,12 +228,27 @@ final class Cart {
             }
             guard let r = catalog.resolve(key) else { continue }
             var row = CartRow(key: key, product: r.product, pack: r.pack, qty: qty, available: catalog.isAvailable(r.product))
-            if r.pack == nil, let q = r.product.quantityOffer { row.offer = (q.index, q.count, q.price) }
+            // منتج داخل عرض مجموعة (ديمة): الخادم يسعّره بالمجموعة، مو بعرض الكمية
+            if r.pack == nil, catalog.group(for: r.product.id) == nil, let q = r.product.quantityOffer { row.offer = (q.index, q.count, q.price) }
             t.rows.append(row)
             guard row.available else { continue }
             t.count += qty
             t.subtotal += row.lineTotal
             t.savings += row.saving
+        }
+        // عرض المجموعة («أي ٣ علب ديمة بـ ١١٫٩٥») محلياً بنفس حساب الخادم (priceOrder): كل N بسعر العرض، والزايد بسعره
+        // من المنتج الأكثر كمية. كذا السلة تطلع بالسعر الصحيح من أول لحظة، بدون ما تنتظر رد الخادم
+        for g in store.groups {
+            let n = Swift.max(2, g.count)
+            var items: [(price: Double, qty: Int)] = []
+            for r in t.rows where r.available && r.promo == nil && r.pack == nil && g.ids.contains(r.product.id) { items.append((r.product.price, r.qty)) }
+            let units = items.reduce(0) { $0 + $1.qty }, sets = units / n
+            guard sets > 0 else { continue }
+            var rest = units % n, inSets = 0.0
+            for it in items.sorted(by: { $0.qty > $1.qty }) { let take = Swift.min(rest, it.qty); rest -= take; inSets += Double(it.qty - take) * it.price }
+            let groupTotal = Double(sets) * g.price
+            t.subtotal += groupTotal - inSets
+            if inSets > groupTotal { t.savings += inSets - groupTotal }
         }
         // ٠٫٩٥ يفتح لما الطلب العادي يوصل الحد، وما يدخل بالإجمالي قبلها
         t.regularSubtotal = (t.subtotal * 100).rounded() / 100

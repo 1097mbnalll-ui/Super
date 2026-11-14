@@ -63,6 +63,8 @@ if [ "${CHECK:-}" = "1" ]; then
   WAIT=12 shot c08b-deemah-page-home -screen live:g:deemah
   WAIT=12 shot c09-home-cart -seed-cart
   shot c10-cart -seed-cart -screen cart
+  # عرض ديمة في السلة: السعر لازم يطلع ١١٫٩٥ من أول لحظة (حساب محلي، مو انتظار الخادم)
+  WAIT=3 shot c11-cart-group-3s -seed-group -screen cart
   ls -la "$OUT"; exit 0
 fi
 WAIT=14 shot 01-home -seed-cart
