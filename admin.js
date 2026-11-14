@@ -40,7 +40,7 @@
       '<section class="adm-panel" data-panel="prods"><div class="card" id="aImport"></div><div class="card" id="openItems" hidden></div><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث بالاسم أو الباركود…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-soft" type="button" id="offProds">🔥 منتجات العروض</button><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
         '<p class="hint">«قبل الخصم» اختياري: لو كتبته أكبر من السعر، يطلع المنتج في العروض مع نسبة الخصم. اضغط على الصورة لتغييرها أو رفع صورة من جهازك. الأسهم ترتّب المنتج داخل قسمه.</p></div><div class="alist prods" id="aProds"></div></section>' +
       '<section class="adm-panel" data-panel="cats"><div class="card"><div class="sec-head" style="margin:0"><h2>الأقسام</h2><button class="btn btn-brand" type="button" id="addCat">+ قسم جديد</button></div><p class="hint">الأسهم ترتّب الأقسام في المتجر كله: الدوائر والشبكة وصفحة الأقسام.</p><div class="alist" id="aCats"></div></div></section>' +
-      '<section class="adm-panel" data-panel="offers"><div class="card" id="aPromos"></div></section>' +
+      '<section class="adm-panel" data-panel="offers"><div class="card" id="aOffProds"></div><div class="card" id="aPromos"></div></section>' +
       '<section class="adm-panel" data-panel="costs" id="aCosts"></section>' +
       '<section class="adm-panel" data-panel="codes" id="aCodes"></section>' +
       '<section class="adm-panel" data-panel="layout"><div class="card" id="aLayout"></div></section>' +
@@ -139,10 +139,11 @@
     if (GH && !apiUrl()) renderGh();
     if (apiUrl()) renderTg();
     if (apiUrl()) renderPush();
-    renderPromos(); renderLayout(); renderBans(); renderLook(); renderACats(); renderAFilter(); renderAProds(); renderOver();
+    renderPromos(); renderOffProds(); renderLayout(); renderBans(); renderLook(); renderACats(); renderAFilter(); renderAProds(); renderOver();
     adminExtras();
   }
   function showTab(id){
+    if (id === "offers") setTimeout(renderOffProds, 0);
     if(staffAuth && staffAuth.user.role==='cashier' && ['pos','settlement'].indexOf(id)<0)return;
     if (staffAuth && staffAuth.user.role === "preparer" && id !== "prep") return;
     if (ordersOnly() && ["olist", "alerts"].indexOf(id) < 0) return;
@@ -630,6 +631,29 @@
     box.innerHTML = out.length ? out.map(function(p){ return '<button type="button" class="chip" data-dealtoggle="' + p.id + '" aria-pressed="false">' + imgTag(p.img, "") + esc(p.name) + '</button>'; }).join("") : '<span class="hint">ما فيه منتج بهالاسم.</span>';
   }
   document.addEventListener("input", function(e){ if (e.target.id === "dealQ") { dealQ = e.target.value; dealResults(); } if (e.target.id === "prPages") { PR.pages = asciiDigits(e.target.value).replace(/\D/g, "").slice(0, 5); var sm = $("prSum"); if (sm) sm.innerHTML = printSumHTML(); } });
+  // تبويب «العروض»: كل المنتجات اللي عليها عرض في مكان واحد (طلب المالك ١٤ نوفمبر ٢٠٢٦)
+  var offTab = "";
+  function renderOffProds(){
+    var box = $("aOffProds"); if (!box) return;
+    if (!$("offCss")) { var cs = document.createElement("style"); cs.id = "offCss"; cs.textContent = ".offlist{display:grid;gap:8px}.offrow{display:grid;grid-template-columns:48px 1fr auto;grid-template-areas:'im t pr' 'im bt bt';gap:4px 10px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:14px;background:#fff}.offrow.off{opacity:.55}.offrow .im{grid-area:im;width:48px;height:48px;border-radius:10px;overflow:hidden;background:var(--tile)}.offrow .im img{width:100%;height:100%;object-fit:contain}.offrow .t{grid-area:t;display:grid;min-width:0}.offrow .nm{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.offrow .t small{color:var(--muted)}.offrow .pr{grid-area:pr;text-align:end;font-size:13.5px}.offrow .pr b{color:var(--sale,#F2335B)}.offrow .pr s{color:var(--muted);font-size:12px}.offrow .bt{grid-area:bt;display:flex;gap:6px;justify-content:flex-end}"; document.head.appendChild(cs); }
+    var all = draft.products.filter(function(p){ return offKind(p); }), lab = { sale: "خصم", qty: "عرض كمية", grp: "اختر من أي نوع" };
+    var cnt = { "": all.length, sale: 0, qty: 0, grp: 0 }; all.forEach(function(p){ cnt[offKind(p)]++; });
+    var list = all.filter(function(p){ return !offTab || offKind(p) === offTab; });
+    var line = function(p){ var k = offKind(p), pk = k === "qty" ? (p.packs || []).filter(function(x){ return Number(x.n) > 1 && Number(x.price) > 0; })[0] : null, g = k === "grp" ? (draft.store.groups || []).filter(function(x){ return (x.ids || []).indexOf(p.id) > -1; })[0] : null;
+      var price = k === "sale" ? '<b>' + num(p.price) + '</b> <s>' + num(p.old) + '</s>' : pk ? '<b>' + num(pk.n) + ' بـ ' + num(pk.price) + '</b> <s>' + num(pk.n * p.price) + '</s>' : g ? '<b>' + num(g.n) + ' بـ ' + num(g.price) + '</b> <small>(' + esc(g.name || "") + ')</small>' : '';
+      return '<div class="offrow' + (p.stock === false ? ' off' : '') + '"><span class="im">' + imgTag(p.img, "") + '</span><span class="t"><b class="nm">' + esc(p.name) + '</b><small>' + lab[k] + (p.stock === false ? ' · نفد' : '') + '</small></span><span class="pr">' + price + '</span>' +
+        '<span class="bt"><button type="button" class="btn btn-soft sm" data-offedit="' + esc(p.id) + '">عدّل</button>' + (k === "sale" ? '<button type="button" class="btn btn-soft sm" data-offrm="' + esc(p.id) + '">شيل الخصم</button>' : '') + '</span></div>'; };
+    var tab = function(id, t){ return '<button type="button" class="chip" data-offtab="' + id + '" aria-pressed="' + (offTab === id) + '">' + t + ' (' + num(cnt[id]) + ')</button>'; };
+    box.innerHTML = '<h2>🔥 منتجات العروض <small style="font-weight:600;color:var(--muted)">' + num(all.length) + ' منتج</small></h2><p class="hint">كل منتج عليه عرض. «عدّل» يفتحه في المنتجات، و«شيل الخصم» يرجّعه لسعره العادي (بعدها اضغط «حفظ تغييرات المتجر»).</p>' +
+      '<div class="chips" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">' + tab("", "الكل") + tab("sale", "خصم") + tab("qty", "عرض كمية") + tab("grp", "اختر من أي نوع") + '</div>' +
+      (list.length ? '<div class="offlist">' + list.map(line).join("") + '</div>' : '<p class="empty">ما فيه منتجات بهالنوع.</p>');
+  }
+  document.addEventListener("click", function(e){
+    var t;
+    if ((t = e.target.closest("[data-offtab]"))) { offTab = t.dataset.offtab; renderOffProds(); return; }
+    if ((t = e.target.closest("[data-offrm]"))) { var p = dById(t.dataset.offrm); if (p) { p.price = Number(p.old) || p.price; delete p.old; markDirty(); renderOffProds(); renderAFilter(); renderAProds(); } return; }
+    if ((t = e.target.closest("[data-offedit]"))) { var q = dById(t.dataset.offedit); if (q) { aFilter.q = q.name; aFilter.cat = "all"; aFilter.show = 0; showTab("prods"); $("aQ").value = q.name; renderAFilter(); renderAProds(); } return; }
+  });
   function renderPromos(){
     var st = draft.store;
     st.deal95 = st.deal95 || { on: false, min: 250, price: 0.95, limit: 1, ids: [] };
