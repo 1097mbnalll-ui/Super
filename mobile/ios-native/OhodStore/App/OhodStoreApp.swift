@@ -42,6 +42,9 @@ struct RootView: View {
     @State private var previewDetails: SavedOrder?
     @State private var tab: AppTab = .home
     @State private var seenSubs: Set<Int> = []
+    /// تعريف أول فتحة (IntroView): يطلع فوق كل شي، وسؤال الإشعارات ينتظره
+    @State private var showIntro = false
+    @State private var introChecked = false
     private struct PendingSub: Identifiable { let offer: SubOffer; let order: SavedOrder; var id: Int { offer.id } }
     private var pendingSub: PendingSub? {
         for o in orders.orders where o.isActive { if let s = (orders.subs[o.no] ?? []).first(where: { !seenSubs.contains($0.id) }) { return PendingSub(offer: s, order: o) } }
@@ -78,6 +81,18 @@ struct RootView: View {
         .id(catalog.lookVersion)
         .environment(\.zoomNamespace, zoom)
         .environment(\.liveTab, $tab)
+        .overlay {
+            if showIntro {
+                IntroView { withAnimation(.smooth(duration: 0.3)) { showIntro = false } }
+                    .transition(.opacity)
+                    .zIndex(10)
+            }
+        }
+        .onAppear {
+            guard !introChecked else { return }
+            introChecked = true
+            showIntro = IntroView.shouldShow(hasOrders: !orders.orders.isEmpty)
+        }
         .task {
             await catalog.load()
             applyLaunchArguments()
@@ -88,6 +103,11 @@ struct RootView: View {
         .task {
             guard !UserDefaults.standard.bool(forKey: "push.asked"), !ProcessInfo.processInfo.arguments.contains("-no-push") else { return }
             try? await Task.sleep(for: .seconds(1.5))
+            // التعريف مفتوح: سؤال آبل يطلع بعد ما يقفله (ما يطلع فوق البطاقات)
+            if showIntro {
+                while showIntro, !Task.isCancelled { try? await Task.sleep(for: .milliseconds(300)) }
+                try? await Task.sleep(for: .seconds(0.6))
+            }
             let ok = await Push.shared.enable()
             UserDefaults.standard.set(true, forKey: "push.asked")
             guard ok else { return }
@@ -154,6 +174,7 @@ struct RootView: View {
     }
 
     /// للتصوير الآلي على المحاكي (Codemagic): -screen home|categories|category:<id>|product:<id>|cart|offers|account|address|addresses|favorites|placed و -seed-cart و -seed-order و -seed-fav و -seed-addresses
+    /// و -seed-delivered (الطلب وصل وينتظر تقييم) و -intro (تعريف أول فتحة)
     /// وجهة إشعار العروض: العروض أو قسم معيّن
     private func openGo(_ go: String) {
         UserDefaults.standard.removeObject(forKey: "push.go")
@@ -197,6 +218,7 @@ struct RootView: View {
             o.details = "فيلا ١٢، الباب الأخضر"; o.sub = "swap"; o.lat = 24.8452; o.lng = 46.8148
             orders.seedPreview(o, driver: DriverInfo(lat: 24.8418, lng: 46.8102, eta: 8, before: 1, near: false))
         }
+        if args.contains("-seed-delivered") { orders.seedDelivered() }
         if args.contains("-seed-sub"), let o = orders.orders.first, let index = catalog.index, index.featured.count > 6 {
             let a = index.featured[0], b = index.featured[6]
             orders.seedSubs(o.no, [SubOffer(id: 1, name: a.name, qty: 1, price: a.price, toID: b.id, toName: b.name, toUnit: b.unit,
