@@ -81,6 +81,9 @@ struct RootView: View {
             await catalog.load()
             applyLaunchArguments()
             Push.shared.resumePromo(api: catalog.apiBase)
+        }
+        // طلب الإشعارات أول فتحة: ما ينتظر تحميل المتجر (كان يتأخر لين ينزل ملف المنتجات كامل)
+        .task {
             if !UserDefaults.standard.bool(forKey: "push.asked") {
                 let st = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
                 if st == .notDetermined || (st == .authorized && !Push.shared.promo) {
@@ -93,6 +96,10 @@ struct RootView: View {
             PushAskView {
                 askPush = false
                 Task {
+                    // سؤال آبل يطلع على طول، والاشتراك بالعروض ينتظر لين يعرف التطبيق رابط الخادم
+                    guard await Push.shared.enable() else { return }
+                    var n = 0
+                    while catalog.apiBase.isEmpty, n < 60 { try? await Task.sleep(for: .milliseconds(500)); n += 1 }
                     await Push.shared.enablePromo(api: catalog.apiBase)
                     for o in orders.orders where o.isActive { Push.shared.register(no: o.no, phone: o.phone, api: catalog.apiBase) }
                 }

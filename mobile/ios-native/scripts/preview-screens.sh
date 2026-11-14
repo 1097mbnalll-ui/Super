@@ -51,7 +51,8 @@ shot() {  # shot <name> <args...>
 }
 if [ "${CHECK:-}" = "1" ]; then
   # فحص شكاوى المالك (١٤ نوفمبر ٢٠٢٦): طلب الإشعارات أول فتحة، أول الفتح بدون صفحة قديمة، الخضار «قريباً»، عرض ديمة
-  WAIT=6 shot c01-first-launch-push
+  WAIT=4 shot c01-first-launch-push
+  WAIT=8 shot c01b-first-launch-push
   xcrun simctl spawn "$DEVICE" defaults write sa.ohod.store push.asked -bool YES
   WAIT=2 shot c02-home-2s
   WAIT=5 shot c03-home-5s
@@ -60,6 +61,7 @@ if [ "${CHECK:-}" = "1" ]; then
   shot c06-deemah-product -screen product:x6285602019306
   WAIT=12 shot c07-deemah-picker -screen live:g:deemah:x6285602019306
   shot c08-bakery -screen category:bakery
+  WAIT=12 shot c08b-deemah-page-home -screen live:g:deemah
   WAIT=12 shot c09-home-cart -seed-cart
   shot c10-cart -seed-cart -screen cart
   ls -la "$OUT"; exit 0
