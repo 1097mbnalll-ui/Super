@@ -3050,6 +3050,21 @@ html.sp-on,html.sp-on body{overflow:hidden}
       .then(function(sub){ PUSH_PREF = true; try { localStorage.setItem("ohod-push", "1"); } catch(e){} return sub.toJSON(); });
   }
   function pushErrText(e){ var c = e && e.code; return c === "denied" ? tr("ما سمحت بالإشعارات. ", "Notifications were not allowed. ") + pushWhy() : c === "no_push" ? tr("الإشعارات لسا ما تفعّلت في الخادم (حدّث كود الخادم).", "Notifications are not enabled on the server yet.") : pushWhy() || tr("ما قدرنا نفعّل الإشعارات. جرّب مرة ثانية.", "We could not turn on notifications. Try again."); }
+  // طلب المالك ١٤ نوفمبر ٢٠٢٦: أول ما يفتح الزبون الموقع يطلع سؤال المتصفح للإشعارات، ولو وافق ينشترك بكل الإشعارات (الطلب والعروض).
+  // السؤال بعد أول لمسة (سفاري وكروم يطلبون لمسة من الزبون)، وبعد ثانيتين من الفتح، ومرة وحدة بس (سواء وافق أو رفض).
+  function askPushOnce(){
+    try { if (EMBED || mode !== "store" || !pushCan() || (isIOS() && !isApp()) || localStorage.getItem("ohod-pushask") === "1") return; } catch(e){ return; }
+    var perm = Notification.permission;
+    if (perm === "denied") return;
+    var subscribe = function(){ return pushSub().then(function(sub){ return fetchJSON(apiUrl() + "/push/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub }) }); })
+      .then(function(j){ if (j && j.ok) { PROMO_ON = true; try { localStorage.setItem("ohod-promo", "1"); } catch(e){} } }).catch(function(){}); };
+    try { localStorage.setItem("ohod-pushask", "1"); } catch(e){}
+    if (perm === "granted") { if (!PROMO_ON) subscribe(); return; }
+    subscribe();
+  }
+  (function(){ var t0 = Date.now(), done = false;
+    var go = function(){ if (done) return; if (Date.now() - t0 < 2000) return; done = true; document.removeEventListener("pointerup", go, true); askPushOnce(); };
+    document.addEventListener("pointerup", go, true); })();
   function orderPush(btn){
     if (!lastOrder) return;
     if (btn) { btn.disabled = true; btn.lastChild.textContent = tr("جاري التفعيل…", "Turning on…"); }
