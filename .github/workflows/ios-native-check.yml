@@ -1,0 +1,40 @@
+# فحص تطبيق الآيفون على محاكي (بدون رفع ولا توقيع). مجاني: المستودع عام، ودقائق GitHub Actions للمستودعات العامة ما تنحسب.
+# بدل فحص Codemagic المدفوع. يشتغل لما ينرفع كود على فرع ios-check (git push origin mobile-app:ios-check)، أو يدوي.
+# الصور تطلع في Artifacts باسم ios-check.
+name: ios-native-check
+
+on:
+  push:
+    branches: [ios-check]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-native-check
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select newest Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] || X=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          sudo xcode-select -s "$X/Contents/Developer"; xcodebuild -version
+      - name: Install XcodeGen
+        run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Build for simulator + screenshots
+        env:
+          CHECK: "1"
+        run: OUT="$GITHUB_WORKSPACE/screenshots" mobile/ios-native/scripts/preview-screens.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-check
+          path: screenshots/
+          retention-days: 7
