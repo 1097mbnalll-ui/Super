@@ -4,6 +4,9 @@ name: android-test-apk
 
 on:
   workflow_dispatch:
+  push:
+    branches: [mobile-app]
+    paths: ['mobile/store/test-apk-trigger.txt']   # يشتغل بس لما هالملف يتغير
 
 permissions:
   contents: write
