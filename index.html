@@ -1,10 +1,12 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="متاجر أحد: سوبر ماركت ومخبز في حي الرمال. اطلب مقاضيك وخبزك الحار ونوصّلها لين باب بيتك، والدفع عند الاستلام."><meta name="theme-color" content="#F3F6F4"><link rel="icon" type="image/png" href="favicon-64.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="متاجر أحد"></head><body>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="متاجر أحد: سوبر ماركت ومخبز في حي الرمال. اطلب مقاضيك وخبزك الحار ونوصّلها لين باب بيتك، والدفع عند الاستلام."><meta name="theme-color" content="#F3F6F4"><link rel="icon" type="image/png" href="favicon-64.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:var(--sa-top);padding-bottom:var(--sa-bottom)}html{scroll-padding-top:var(--sa-top)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="متاجر أحد"></head><body>
 <title data-keep>متاجر أحد</title>
 <meta name="claude:viewport-fit-sides" content="cover" data-keep>
 <link rel="preconnect" href="https://fonts.googleapis.com" data-keep>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin data-keep>
 <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Lalezar&family=Tajawal:wght@700;800;900&family=Aref+Ruqaa:wght@700&display=swap" data-keep>
 <style data-keep>
+/* الحواف الآمنة: آيفون وأندرويد الجديد يعطون env()، وأندرويد القديم (WebView أقل من 140) تعطيه Capacitor كمتغير --safe-area-inset-* */
+:root{--sa-top:max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px));--sa-bottom:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px));--sa-left:max(env(safe-area-inset-left,0px),var(--safe-area-inset-left,0px));--sa-right:max(env(safe-area-inset-right,0px),var(--safe-area-inset-right,0px))}
 /* Layout: phone-first grocery app in RTL. Ink-teal brand, orange actions, each aisle on its own tinted plate. Screens: home, categories, aisle, product, search, cart, checkout (map + phone), sent, account. Admin console republishes data through the server. */
 :root{
   --ink:#17212B; --ink-2:#3A4652; --muted:#6B7480; --ground:#FFFFFF; --surface:#FFFFFF; --line:#ECEEF1; --tile:#F4F5F7; --sky:#DDF2EE; --sky-2:#BFE7DE;
@@ -22,7 +24,7 @@
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:13.5px;line-height:1.55;padding-bottom:104px}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--sky)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:var(--sa-top);z-index:30;background:var(--sky)}
 [hidden]{display:none!important}
 [dir="ltr"] svg.flip{transform:scaleX(-1)}
 .langbtn{flex:none;min-width:38px;height:32px;padding:0 10px;border-radius:999px;border:0;background:rgba(255,255,255,.8);color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
@@ -31,7 +33,7 @@ p{margin:0}
 button,input,select,textarea{font-family:var(--body)}
 a{color:var(--teal-deep)}
 :focus-visible{outline:3px solid var(--orange);outline-offset:2px;border-radius:10px}
-.wrap{max-width:560px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(20px,var(--sa-left));padding-right:max(20px,var(--sa-right))}
 svg.i{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .sq{width:38px;height:38px;border-radius:12px;border:0;background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow);text-decoration:none;flex:none}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 16px;border-radius:14px;font-family:var(--display);font-weight:700;font-size:13.5px;text-decoration:none;border:0;cursor:pointer;line-height:1.2}
@@ -136,14 +138,14 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .meter i{display:block;height:100%;border-radius:9px;background:var(--orange)}
 
 /* nav + cart bar */
-.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;width:min(480px,calc(100% - 40px));height:64px;border-radius:32px;background:rgba(255,255,255,.82);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;gap:4px;padding:0 6px;box-shadow:0 10px 30px rgba(23,33,43,.14);border:1px solid rgba(255,255,255,.7)}
+.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + var(--sa-bottom));z-index:20;width:min(480px,calc(100% - 40px));height:64px;border-radius:32px;background:rgba(255,255,255,.82);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;gap:4px;padding:0 6px;box-shadow:0 10px 30px rgba(23,33,43,.14);border:1px solid rgba(255,255,255,.7)}
 .nav button{background:none;border:0;display:grid;justify-items:center;gap:2px;color:var(--ink);font-size:10.5px;font-weight:500;cursor:pointer;position:relative;padding:7px 0;border-radius:26px;font-family:var(--body)}
 .nav button svg.i{width:19px;height:19px}
 .nav button[aria-current="page"]{color:var(--teal-deep);background:var(--sky);font-weight:700}
 .nav button i{width:4px;height:4px;border-radius:50%}
 .nav button[aria-current="page"] i{background:transparent}
 .nav .count{position:absolute;top:0;left:calc(50% - 22px);min-width:18px;height:18px;border-radius:9px;background:var(--pink);color:#fff;font-size:10.5px;display:grid;place-items:center;padding:0 4px}
-.cartbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:19;width:min(480px,calc(100% - 40px));height:52px;border-radius:26px;background:var(--teal);color:#fff;border:0;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 18px;box-shadow:0 10px 24px rgba(14,159,123,.35);cursor:pointer;font-family:var(--body)}
+.cartbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + var(--sa-bottom));z-index:19;width:min(480px,calc(100% - 40px));height:52px;border-radius:26px;background:var(--teal);color:#fff;border:0;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 18px;box-shadow:0 10px 24px rgba(14,159,123,.35);cursor:pointer;font-family:var(--body)}
 .cartbar .l{display:flex;align-items:center;gap:10px;text-align:right}
 .cartbar .n{width:36px;height:36px;border-radius:50%;background:#fff;color:var(--teal-deep);display:grid;place-items:center;font-family:var(--display);font-weight:700}
 .cartbar b{font-family:var(--display);font-size:12.5px;display:block}
@@ -177,7 +179,7 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .pair{flex:none;display:flex;align-items:center;gap:7px;background:var(--ground);border:0;border-radius:12px;padding:5px 10px 5px 5px;font:inherit;font-size:11px;font-weight:700;color:var(--ink);cursor:pointer}
 .pair span{width:32px;height:32px;border-radius:10px;display:grid;place-items:center}
 .pair img{width:22px;height:22px;object-fit:contain}
-.buybar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(560px,100%);z-index:21;background:var(--surface);padding:12px max(20px,env(safe-area-inset-left,0px)) calc(14px + env(safe-area-inset-bottom,0px));display:flex;gap:12px;align-items:center;box-shadow:0 -6px 24px rgba(15,42,46,.08)}
+.buybar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(560px,100%);z-index:21;background:var(--surface);padding:12px max(20px,var(--sa-left)) calc(14px + var(--sa-bottom));display:flex;gap:12px;align-items:center;box-shadow:0 -6px 24px rgba(15,42,46,.08)}
 .qtybig{display:flex;align-items:center;gap:4px;background:var(--ground);border-radius:18px;padding:5px}
 .qtybig button{width:36px;height:36px;border-radius:12px;border:0;background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer}
 .qtybig b{font-family:var(--display);font-size:15px;min-width:24px;text-align:center}
@@ -211,7 +213,7 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .totals .grand{padding-top:8px;border-top:1px dashed var(--line);align-items:baseline;color:var(--ink)}
 .totals .grand b{font-family:var(--display);font-size:14px}
 .totals .grand .price{font-size:18px}
-.bottomcta{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(560px,100%);z-index:21;background:var(--surface);padding:12px max(20px,env(safe-area-inset-left,0px)) calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 24px rgba(15,42,46,.08)}
+.bottomcta{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(560px,100%);z-index:21;background:var(--surface);padding:12px max(20px,var(--sa-left)) calc(14px + var(--sa-bottom));box-shadow:0 -6px 24px rgba(15,42,46,.08)}
 .bottomcta .btn{width:100%;min-height:48px;border-radius:16px;font-size:14px;justify-content:space-between}
 .empty{display:grid;justify-items:center;gap:14px;text-align:center;padding:70px 20px;color:var(--muted)}
 .empty .big{width:76px;height:76px;border-radius:26px;background:var(--surface);display:grid;place-items:center;box-shadow:var(--shadow);color:var(--teal)}
@@ -226,7 +228,7 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .mapwrap .mpin span{width:16px;height:16px;border-radius:50%;background:var(--orange)}
 .mapwrap .dot{position:absolute;left:50%;top:50%;z-index:4;width:12px;height:6px;margin:-3px 0 0 -6px;border-radius:50%;background:rgba(15,42,46,.3);pointer-events:none}
 .mapwrap .label{position:absolute;left:50%;top:50%;transform:translate(-50%,-92px);z-index:5;background:var(--ink);color:#fff;border-radius:12px;padding:5px 10px;font-size:11.5px;font-weight:700;white-space:nowrap;pointer-events:none}
-.mapwrap .topb{position:absolute;left:max(20px,env(safe-area-inset-left,0px));right:max(20px,env(safe-area-inset-right,0px));top:calc(16px + env(safe-area-inset-top,0px));z-index:6;display:flex;justify-content:space-between}
+.mapwrap .topb{position:absolute;left:max(20px,var(--sa-left));right:max(20px,var(--sa-right));top:calc(16px + var(--sa-top));z-index:6;display:flex;justify-content:space-between}
 .mapwrap .locate{position:absolute;left:20px;bottom:46px;z-index:6;min-height:44px;padding:0 14px;border-radius:14px;border:0;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(15,42,46,.14);cursor:pointer}
 .mapwrap .locate svg.i{color:var(--teal)}
 .mapnote{position:absolute;inset:0;z-index:2;display:grid;place-items:center;color:var(--muted);font-size:13px;padding:20px;text-align:center}
@@ -431,7 +433,7 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .trackbar .t span{font-size:12px;color:#C9DCD6}
 
 /* shared (admin) */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:12;background:var(--surface);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:var(--sa-top);z-index:12;background:var(--surface);border-bottom:1px solid var(--line)}
 .top .wrap{max-width:1120px;display:flex;align-items:center;gap:12px;padding-block:10px}
 .top .brandname{display:grid;line-height:1.25;min-width:0}
 .top .brandname b{font-family:var(--display);font-size:1.05rem}
@@ -442,7 +444,7 @@ main.wrap[style*="grid"]{max-width:1120px}
 .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sec-head h2{font-size:1.1rem;font-weight:700}
 .sheet{position:fixed;inset:0;z-index:40;background:rgba(6,16,20,.55);display:grid;align-items:end;justify-items:center}
-.panel{background:var(--surface);width:min(640px,100%);max-height:92%;overflow:auto;border-radius:26px 26px 0 0;padding:20px max(20px,env(safe-area-inset-left,0px)) calc(20px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
+.panel{background:var(--surface);width:min(640px,100%);max-height:92%;overflow:auto;border-radius:26px 26px 0 0;padding:20px max(20px,var(--sa-left)) calc(20px + var(--sa-bottom));display:grid;gap:14px}
 .panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .panel-head h2{font-size:1.2rem;font-weight:700}
 label{display:grid;gap:4px;font-weight:700;font-size:.85rem}
@@ -459,7 +461,7 @@ input,textarea,select{font:inherit;font-weight:400;color:var(--ink);background:v
 .pin{font-size:1.4rem;letter-spacing:.5em;text-align:center;direction:ltr}
 .credit{margin-top:16px;font-size:11.5px;color:var(--muted);text-align:center}
 /* admin */
-.admin-bar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 73px);z-index:11;background:var(--orange-soft);border-bottom:1px solid var(--line)}
+.admin-bar{position:sticky;top:calc(var(--sa-top) + 73px);z-index:11;background:var(--orange-soft);border-bottom:1px solid var(--line)}
 .admin-bar .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding-block:10px}
 .admin-bar .grow{flex:1;min-width:140px;font-weight:700}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:12px}
@@ -955,7 +957,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-free em{font-style:normal;background:#E8394F;color:#fff;border-radius:7px;padding:1px 8px;font-size:11px}
 .kq-free .t>span{font-size:12px;color:var(--muted)}
 .kq-free>svg.i{color:#B8C0C8}
-.kq-chips{position:sticky;top:env(safe-area-inset-top,0px);z-index:12;background:#fff;padding:12px 0 10px;margin-top:6px}
+.kq-chips{position:sticky;top:var(--sa-top);z-index:12;background:#fff;padding:12px 0 10px;margin-top:6px}
 .kq-chips .row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
 .kq-chips .row::-webkit-scrollbar{display:none}
 .kq-filter{flex:none;width:42px;height:42px;border-radius:14px;border:1px solid #E6EAEE;background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
@@ -1123,6 +1125,12 @@ body.is-embed{background:transparent!important;padding:0!important;margin:0}body
 .kb.s-split .s1{inset-inline-end:28%;top:6%;width:24%;height:86%;transform:rotate(8deg);z-index:3}
 .kb-big{position:absolute;z-index:4;inset-inline-end:5%;bottom:9%;color:#fff;line-height:1;display:grid;gap:2px}
 .kb-big b{font-size:clamp(24px,calc(var(--banh,200px) / 6),38px);letter-spacing:-.02em}.kb-big b.sm{font-size:16px;max-width:110px;line-height:1.3}.kb-big small{font-size:12px;opacity:.85}.kb-big s{font-size:13px;opacity:.7}
+/* عرض الكمية (split): النص يبقى في الجهة البيضاء ولا يدخل تحت صورة المنتج ولا على اللوحة الزرقاء، واسم المنتج سطرين بالكثير */
+.kb.s-split .t{max-width:35%}
+.kb.s-split .t h2{font-size:clamp(15px,5.2vw,21px);line-height:1.25}
+.kb.s-split .t p{unicode-bidi:plaintext;text-align:start;font-size:11px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kb.s-split .t .go{white-space:nowrap;padding:8px 13px}
+.kb.s-split .s1{width:20%;inset-inline-end:31%}
 /* 9 bundle */
 .kb.s-bundle{background:var(--bc,#F1ECFF);color:#2E1A6B}
 .kb.s-bundle .t.wide{max-width:none;inset-inline-end:5.5%}
@@ -1268,7 +1276,7 @@ body[data-screen="driver"]{background:#F3F4F6}
 .dv-item.cur .im{width:96px;height:96px}.dv-item.cur .q b{font-size:30px}
 .dv-item .r2{display:flex;gap:8px}.dv-item .r2 .ok{flex:1}.dv-item .r2 .miss{min-width:120px;white-space:nowrap;padding:0 12px}
 .dv-foot .miss{white-space:nowrap}
-.dv-foot{position:fixed;left:0;right:0;bottom:0;z-index:8;background:#fff;border-top:1px solid #E3E6EB;padding:12px 16px calc(14px + env(safe-area-inset-bottom));display:flex;gap:10px;max-width:560px;margin:0 auto}
+.dv-foot{position:fixed;left:0;right:0;bottom:0;z-index:8;background:#fff;border-top:1px solid #E3E6EB;padding:12px 16px calc(14px + var(--sa-bottom));display:flex;gap:10px;max-width:560px;margin:0 auto}
 .dv-foot .dv-sq{border:1px solid #E3E6EB;width:54px;height:54px}
 .dv-hero{position:relative;height:340px;background:#fff;display:grid;place-items:center}
 .dv-hero .big{width:280px;height:280px;object-fit:contain}.dv-hero .noph{width:200px;height:200px;border-radius:24px}
@@ -1285,7 +1293,7 @@ body[data-screen="driver"]{background:#F3F4F6}
 .dv-prod .chk span{display:flex;gap:8px;align-items:center}.dv-prod .chk svg.i{width:16px;height:16px;color:#15803D;flex:none}
 .dv-prod .price{display:flex;justify-content:space-between;font-size:13px;color:#5B6474}.dv-prod .price b{color:#13213C}
 .dv-sheet{position:fixed;inset:0;z-index:20;background:rgba(19,33,60,.55);display:flex;align-items:flex-end;justify-content:center}
-.dv-sheet .pan{background:#fff;width:100%;max-width:560px;border-radius:28px 28px 0 0;padding:10px 18px calc(22px + env(safe-area-inset-bottom));display:grid;gap:12px;max-height:92vh;overflow:auto}
+.dv-sheet .pan{background:#fff;width:100%;max-width:560px;border-radius:28px 28px 0 0;padding:10px 18px calc(22px + var(--sa-bottom));display:grid;gap:12px;max-height:92vh;overflow:auto}
 .dv-sheet .grab{justify-self:center;width:44px;height:5px;border-radius:3px;background:#CBD2DC}
 .dv-sheet .hd{display:flex;gap:12px;align-items:center}.dv-sheet .hd h2{margin:0;font-size:18px}.dv-sheet .hd span{font-size:12.5px;color:#5B6474}
 .dv-sheet .im{width:64px;height:64px;border-radius:14px;background:#F3F4F6;object-fit:contain;padding:4px;box-sizing:border-box;flex:none}
@@ -1402,6 +1410,10 @@ body[data-screen="driver"]{background:#F3F4F6}
 .kq-save svg.i{width:14px;height:14px;fill:currentColor;stroke:none}
 .rail .kq-card{width:150px}
 .rail{grid-auto-columns:150px}
+/* بطاقة المنتج ما تتمدد أبداً أكثر من عرضها: «وفّر … بالعرض» الطويلة (الإنجليزي) تلف سطرين بدل ما تطلع على البطاقة اللي جنبها */
+.kq-card{grid-template-columns:minmax(0,1fr)}
+.kq-card .kq-save{white-space:normal;max-width:100%;justify-self:start;line-height:1.3;border-radius:14px;padding:3px 9px;text-align:start}
+.kq-card .kq-price{min-width:0}
 .kq-nav{height:66px;border-radius:33px;background:rgba(255,255,255,.88);grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:0 6px;box-shadow:0 10px 30px rgba(23,33,43,.16)}
 .kq-nav button{display:grid;justify-items:center;gap:2px;color:var(--ink);font-size:10.5px;font-weight:600;padding:6px 0;border-radius:24px;position:relative}
 .kq-nav button .ico{position:relative;display:grid}
@@ -1527,6 +1539,27 @@ html.sp-on,html.sp-on body{overflow:hidden}
 @keyframes spUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes spBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+/* ===== تصميم أندرويد (يشتغل بس داخل تطبيق أندرويد: html.android). الموقع وآيفون ما يتأثرون أبداً ===== */
+html.android{--teal:#0E8A6A!important;--teal-deep:#086650!important;--sky:#DDF1EA!important;--sky-2:#C4E6DA!important;--mint:#DDF1EA!important;--orange:#EE7417!important;--orange-text:#C4560A!important;--orange-soft:#FFF1E4!important;--ink:#0D1420!important;--muted:#596171!important;--line:#E3E8E6!important;--tile:#F3F6F5!important;--display:"Noto Kufi Arabic","Readex Pro",Tahoma,sans-serif!important}
+html.android .kq-head{background:linear-gradient(180deg,#CBEBDF 0%,#E4F4EE 62%,#fff 100%)}
+html.android .kq-grid{gap:14px 8px}
+html.android .kq-img{background:#F3F6F5}
+html.android .kq-card .kq-name,html.android .kq-card h3{font-size:11.5px;line-height:1.35}
+html.android .kq-price{gap:4px}html.android .kq-now{font-size:13px;font-family:var(--display);font-weight:700}html.android .kq-price s{font-size:10.5px}
+html.android .kq-badge{font-size:9.5px;padding:2px 6px;top:6px;left:6px;border-radius:6px;background:#EE7417}
+html.android .btn-teal,html.android .buybar .btn,html.android .bottomcta .btn{background:linear-gradient(135deg,#12A07C,#0B7A5E,#07604A);color:#fff;border:0}
+html.android .kq-nav button[aria-current="page"]{background:var(--mint);color:var(--teal-deep)}
+html.android .kq-nav .kq-mid{background:linear-gradient(135deg,#F08A2A,#E2661A,#C9501A);box-shadow:0 6px 16px rgba(226,102,26,.45)}
+html.android .kq-nav .kq-mid svg.i{color:#fff}
+/* iOS: ما فيه أحمر. التخفيض والعروض نحاسي، والبنر تدرّج نحاسي */
+html.android{--sale:#C4560A!important;--pink:#EE7417!important}
+html.android .kq-now.sale,html.android .kq-save{color:#C4560A}
+html.android .kq-qty{background:#C4560A}
+html.android .kq-price s{color:#596171}
+html.android .kq-ban.kb{background:linear-gradient(135deg,#F08A2A,#E2661A,#C9501A)!important;color:#fff}
+html.android .kq-ban.kb .t,html.android .kq-ban.kb .t *{color:#fff!important}
+html.android .kq-ban.kb .kb-mesh,html.android .kq-ban.kb .kb-ring,html.android .kq-ban.kb .kb-cut{display:none}
+html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.12)}
 </style>
 <div id="splash" aria-hidden="true"><div class="sp-in"><div class="sp-stage"><i class="sp-ring"></i><i class="sp-ring r2"></i><img class="sp-logo" src="icon-192.png" alt="" onerror="this.style.display='none'"></div><b class="sp-name">متاجر أحد</b><span class="sp-tag"></span><div class="sp-bar"><i></i></div></div></div>
 <script>(function(){var s=document.getElementById("splash");if(!s)return;var skip=false;try{skip=!!sessionStorage.getItem("ohod-sp")||location.hash==="#driver"||location.hash==="#pos"||/[?&]app=(driver|pos)/.test(location.search)||/[?&]embed=1/.test(location.search)||(window.matchMedia&&matchMedia("(prefers-reduced-motion:reduce)").matches);sessionStorage.setItem("ohod-sp","1")}catch(e){}if(skip){s.remove();return}var h=document.documentElement;h.classList.add("sp-on");var done=function(){s.classList.add("out");setTimeout(function(){s.remove();h.classList.remove("sp-on")},480)};setTimeout(done,2000);s.addEventListener("click",done)})();</script>
@@ -1574,8 +1607,33 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var isPath = function(k){ return /^(?:cat|p)\/[\w-]+\.(?:webp|png|jpg)$/.test(k || ""); };
   // صورة المنتج: ملف منفصل في p/ (الجديد، ما يثقّل data.json) أو صورة مدمجة قديمة في D.imgs
   var hasPic = function(k){ return isPath(k) || (isPhoto(k) && !!D.imgs[k]); };
-  var picSrc = function(k){ return isPath(k) ? k : D.imgs[k]; };
-  var imgTag = function(k, alt){ if (isPath(k)) return '<img src="' + esc(k) + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy" decoding="async">'; return isPhoto(k) && D.imgs[k] ? '<img src="' + D.imgs[k] + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy">' : '<span class="noimg" role="img" aria-label="' + esc(alt||"") + '"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>'; };
+  // داخل تطبيق الآيفون/الأندرويد (Capacitor): صفحة المتجر تنحط داخل التطبيق، وصور المنتجات والبيانات تنزل من الموقع (فتتحدث بدون تحديث من المتجر)
+  // تطبيق أندرويد يفتح الموقع الحي نفسه (?app=android) عشان أي تحديث بالموقع أو الصور يوصل التطبيق فوراً بدون نسخة جديدة في قوقل بلاي
+  var APPQ = /[?&]app=android(?:&|$)/.test(location.search);
+  if (APPQ && /[?&]fcm=1(?:&|$)/.test(location.search)) window.__FCM__ = true;
+  var OWNERQ = /[?&]app=owner(?:&|$)/.test(location.search);   // تطبيق المالك: يفتح شاشة كلمة السر على طول
+  var NATIVE = !OWNERQ && (!!window.__NATIVE_STORE__ || APPQ || !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && !window.OhodApp)), SITEB = String(window.__SITE__ || "");
+  if (NATIVE && (APPQ || (window.Capacitor && Capacitor.getPlatform && Capacitor.getPlatform() === "android"))) document.documentElement.classList.add("android"); (function(){ var l = document.createElement("link"); l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700&display=swap"; document.head.appendChild(l); var tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = "#DDF1EA"; })();
+  // إحساس التطبيق الأصلي (داخل التطبيق بس): بدون تحديد نص أو ظل لمس، وانتقال ينزلق بين الصفحات مثل آيفون (View Transitions)
+  if (NATIVE) { document.documentElement.classList.add("native"); var nst = document.createElement("style"); nst.textContent =
+    "html.native{-webkit-tap-highlight-color:transparent}html.native body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}" +
+    "html.native input,html.native textarea,html.native select{-webkit-user-select:text;user-select:text}" +
+    "html.native .kq-nav{view-transition-name:tabbar}html.native .cartbar{view-transition-name:cartbar}" +
+    "::view-transition-old(root),::view-transition-new(root){animation-duration:.34s;animation-timing-function:cubic-bezier(.2,.85,.25,1);mix-blend-mode:normal}" +
+    "html[data-vt=tab]::view-transition-old(root),html[data-vt=tab]::view-transition-new(root){animation-duration:.16s}" +
+    "html[data-vt=fwd][dir=rtl]::view-transition-new(root){animation-name:vtInL}html[data-vt=fwd][dir=rtl]::view-transition-old(root){animation-name:vtOutR}" +
+    "html[data-vt=back][dir=rtl]::view-transition-new(root){animation-name:vtInR}html[data-vt=back][dir=rtl]::view-transition-old(root){animation-name:vtOutL;z-index:2}" +
+    "html[data-vt=fwd][dir=ltr]::view-transition-new(root){animation-name:vtInR2}html[data-vt=fwd][dir=ltr]::view-transition-old(root){animation-name:vtOutL2}" +
+    "html[data-vt=back][dir=ltr]::view-transition-new(root){animation-name:vtInL2}html[data-vt=back][dir=ltr]::view-transition-old(root){animation-name:vtOutR2;z-index:2}" +
+    "@keyframes vtInL{from{transform:translateX(-100%)}}@keyframes vtOutR{to{transform:translateX(28%);filter:brightness(.92)}}" +
+    "@keyframes vtInR{from{transform:translateX(28%);filter:brightness(.92)}}@keyframes vtOutL{to{transform:translateX(-100%)}}" +
+    "@keyframes vtInR2{from{transform:translateX(100%)}}@keyframes vtOutL2{to{transform:translateX(-28%);filter:brightness(.92)}}" +
+    "@keyframes vtInL2{from{transform:translateX(-28%);filter:brightness(.92)}}@keyframes vtOutR2{to{transform:translateX(100%)}}" +
+    "@media (prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation:none}}";
+    document.head.appendChild(nst); }
+  var assetUrl = function(k){ return NATIVE && /^p\//.test(k) ? SITEB + k : k; };
+  var picSrc = function(k){ return isPath(k) ? assetUrl(k) : D.imgs[k]; };
+  var imgTag = function(k, alt){ if (isPath(k)) return '<img src="' + esc(assetUrl(k)) + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy" decoding="async">'; return isPhoto(k) && D.imgs[k] ? '<img src="' + D.imgs[k] + '" alt="' + esc(alt||"") + '" class="photo" loading="lazy">' : '<span class="noimg" role="img" aria-label="' + esc(alt||"") + '"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>'; };
   // قسم «الكراتين والشدّات» (cartons): يجمع كل منتج وحدته كرتون أو شدّة (من ملف التحديث اليومي)، أو له خيار كرتون/شدّة، من كل الأقسام
   var CARTON_RE = /^(كرتون|كرتونه|شدّة|شدة|شده)/;
   function isCarton(p){ return CARTON_RE.test(String(p.unit || "")) || (Array.isArray(p.packs) && p.packs.some(function(x){ return CARTON_RE.test(String(x.u || "")) && Number(x.price) > 0; })); }
@@ -1619,10 +1677,24 @@ html.sp-on,html.sp-on body{overflow:hidden}
   /* ---------- data helpers ---------- */
   var S = D.store, DEAL = S.deal95 || null, DAILY = S.daily || null;
   var THEMES = {"kiu": {"ar": "سماوي فاتح", "en": "Light sky", "v": {"--sky": "#D3ECF5", "--sky-2": "#B9E0EE", "--teal": "#17707A", "--teal-deep": "#0F5961", "--mint": "#E2F2F5", "--ink": "#1B1F24", "--tile": "#F4F6F8", "--orange": "#F07B1F"}}, "mint": {"ar": "نعناع", "v": {"--sky": "#DDF2EE", "--sky-2": "#BFE7DE", "--teal": "#0E9F7B", "--teal-deep": "#0A7A5E", "--mint": "#DDF6EC", "--ink": "#17212B", "--tile": "#F4F5F7", "--orange": "#FF8A1F"}, "en": "Mint"}, "sky": {"ar": "سماوي", "v": {"--sky": "#D9F0F8", "--sky-2": "#B3E0F0", "--teal": "#0A8DB5", "--teal-deep": "#086E8E", "--mint": "#DDF2FA", "--ink": "#13202B", "--tile": "#F3F6F8", "--orange": "#FF8A1F"}, "en": "Sky"}, "sunset": {"ar": "برتقالي دافئ", "v": {"--sky": "#FFEBDA", "--sky-2": "#FFD4B0", "--teal": "#E46A12", "--teal-deep": "#B4520B", "--mint": "#FFEEDF", "--ink": "#2A1C12", "--tile": "#F7F4F1", "--orange": "#2A9D8F"}, "en": "Warm orange"}, "grape": {"ar": "بنفسجي", "v": {"--sky": "#ECE8FF", "--sky-2": "#D7CEFF", "--teal": "#6A4CE0", "--teal-deep": "#5236C2", "--mint": "#EEEAFF", "--ink": "#1D1836", "--tile": "#F5F4FA", "--orange": "#FF8A1F"}, "en": "Violet"}, "rose": {"ar": "وردي", "v": {"--sky": "#FFE7EF", "--sky-2": "#FFC9DA", "--teal": "#D63F74", "--teal-deep": "#AE2D5B", "--mint": "#FFE9F0", "--ink": "#2B1520", "--tile": "#F8F4F6", "--orange": "#FF8A1F"}, "en": "Rose"}, "navy": {"ar": "كحلي وذهبي", "v": {"--sky": "#E4E9F2", "--sky-2": "#C8D3E7", "--teal": "#1F3A68", "--teal-deep": "#162C52", "--mint": "#E7ECF5", "--ink": "#121A2B", "--tile": "#F3F4F7", "--orange": "#C9A23A"}, "en": "Navy & gold"}, "lime": {"ar": "زيتوني", "v": {"--sky": "#EDF4DC", "--sky-2": "#D6E7B2", "--teal": "#56831C", "--teal-deep": "#436715", "--mint": "#EEF5DF", "--ink": "#1C2412", "--tile": "#F5F6F1", "--orange": "#F08A2C"}, "en": "Olive"}};
+  // تصميم أندرويد يتبع نفس خيارات «شكل التطبيق» اللي المالك يتحكم فيها من الإدارة (store.app)
+  function androidLook(){
+    if (!document.documentElement.classList.contains("android")) return;
+    var A = (S && S.app) || {}, hx = function(v){ return /^#[0-9a-f]{6}$/i.test(v || "") ? v : null; }, n = function(v){ v = Number(v); return v > 0.5 && v < 2 ? v : 1; };
+    var br = hx(A.brand), ac = hx(A.accent), rad = { soft: 12, square: 6 }[A.radius] || 18, cols = A.columns == 2 ? 2 : 3, ts = n(A.textScale), ps = n(A.priceScale);
+    var css = "";
+    if (br) css += "html.android{--teal:" + br + "!important;--teal-deep:" + br + "!important}html.android .btn-teal,html.android .buybar .btn,html.android .bottomcta .btn{background:linear-gradient(135deg," + br + ",color-mix(in srgb," + br + " 82%,#fff))}";
+    if (ac) css += "html.android{--orange:" + ac + "!important;--orange-text:" + ac + "!important;--sale:" + ac + "!important;--pink:" + ac + "!important}html.android .kq-nav .kq-mid{background:linear-gradient(135deg," + ac + ",color-mix(in srgb," + ac + " 80%,#fff))}html.android .kq-ban.kb{background:linear-gradient(135deg," + ac + ",color-mix(in srgb," + ac + " 80%,#000))!important}html.android .kq-badge{background:" + ac + "}html.android .kq-now.sale,html.android .kq-save{color:" + ac + "}html.android .kq-qty{background:" + ac + "}";
+    if (A.background === "gray") css += "html.android body{background:#F3F5F4}";
+    css += "html.android .kq-img{border-radius:" + rad + "px}html.android .kq-grid{grid-template-columns:repeat(" + cols + ",minmax(0,1fr))}" +
+      "html.android .kq-card .kq-name{font-size:" + (11.5 * ts * (cols === 2 ? 1.18 : 1)).toFixed(1) + "px}html.android .kq-now{font-size:" + (13 * ps * (cols === 2 ? 1.25 : 1)).toFixed(1) + "px}";
+    var st = document.getElementById("andLook"); if (!st) { st = document.createElement("style"); st.id = "andLook"; document.head.appendChild(st); } st.textContent = css;
+  }
   function applyTheme(id){
     var th = THEMES[id] || THEMES.kiu, r = document.documentElement.style;
     Object.keys(th.v).forEach(function(k){ r.setProperty(k, th.v[k]); });
-    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", th.v["--sky"]);
+    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", document.documentElement.classList.contains("android") ? "#DDF1EA" : th.v["--sky"]);
+    androidLook();
   }
   applyTheme(S.theme);
   var GH = /\.github\.io$/.test(location.hostname);
@@ -2716,11 +2788,12 @@ html.sp-on,html.sp-on body{overflow:hidden}
       (S.freeOver ? tr('<div><dt>توصيل مجاني</dt><dd>فوق ', '<div><dt>Free delivery</dt><dd>Over ') + rial(S.freeOver) + '</dd></div>' : '') +
       tr('<div><dt>أوقات العمل</dt><dd>', '<div><dt>Opening hours</dt><dd>') + esc(sv("hours")) + tr('</dd></div><div><dt>الدفع</dt><dd>كاش أو شبكة عند الاستلام</dd></div><div><dt>رقم المحل</dt><dd dir="ltr" style="user-select:all">', '</dd></div><div><dt>Payment</dt><dd>Cash or card on delivery</dd></div><div><dt>Store number</dt><dd dir="ltr" style="user-select:all">') + esc(S.phone) + '</dd></div></dl>' +
       '<div class="actions"><a class="btn btn-teal" href="tel:' + esc(S.phone) + '">' + ic("phone") + tr('اتصل</a>', 'Call</a>') + (waNumber() ? '<a class="btn btn-soft" href="https://wa.me/' + waNumber() + tr('" target="_blank" rel="noopener">واتساب</a>', '" target="_blank" rel="noopener">WhatsApp</a>') : '') + '</div></div>' +
-      (apiUrl() ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("الإشعارات", "Notifications") + '</b><span>' + (PUSH_PREF && pushOn() ? tr("مفعّلة. بيوصلك تنبيه مع كل تغيير في حالة طلباتك.", "On. You will be notified about every change to your orders.") : tr("فعّلها عشان يوصلك تنبيه لما طلبك ينقبل ولما المندوب يطلع لك.", "Turn them on to be alerted when your order is accepted and when the driver is on the way.")) + '</span><span class="pushmsg" id="pushPrefMsg"' + (isIOS() && !isApp() ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</span></span>' +
+      (apiUrl() && (!NATIVE || pushCan()) ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("bell") + '</span><span class="t"><b>' + tr("الإشعارات", "Notifications") + '</b><span>' + (PUSH_PREF && pushOn() ? tr("مفعّلة. بيوصلك تنبيه مع كل تغيير في حالة طلباتك.", "On. You will be notified about every change to your orders.") : tr("فعّلها عشان يوصلك تنبيه لما طلبك ينقبل ولما المندوب يطلع لك.", "Turn them on to be alerted when your order is accepted and when the driver is on the way.")) + '</span><span class="pushmsg" id="pushPrefMsg"' + (isIOS() && !isApp() ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</span></span>' +
         (PUSH_PREF && pushOn() ? '<span class="on">' + ic("check") + '</span>' : '<button class="btn btn-teal" type="button" id="pushPref">' + tr("فعّل", "Turn on") + '</button>') + '</div>' : '') +
       (apiUrl() && pushCan() && !EMBED ? '<div class="box pushbox" style="margin-top:12px"><span class="ic">' + ic("tag") + '</span><span class="t"><b>' + tr("إشعارات العروض", "Offer alerts") + '</b><span>' + (PROMO_ON ? tr("مفعّلة. بنبلغك لما ننزّل عروض جديدة.", "On. We will tell you about new offers.") : tr("بلّغني لما تنزل عروض جديدة (مرات قليلة، بدون إزعاج).", "Tell me about new offers (a few times, no spam).")) + '</span><span class="pushmsg" id="promoMsg" hidden></span></span>' +
         (PROMO_ON ? '<button class="btn btn-soft" type="button" id="promoOff">' + tr("إيقاف", "Turn off") + '</button>' : '<button class="btn btn-teal" type="button" id="promoOn">' + tr("فعّل", "Turn on") + '</button>') + '</div>' : '') +
-      tr('<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">الدخول</b><p class="hint">للإدارة والموظفين والمناديب: كل واحد يدخل بكلمة السر حقته، ويفتح له قسمه.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">', '<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">Sign in</b><p class="hint">For the owner, staff and drivers: everyone signs in with their own password.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">') + ic("lock") + tr('الدخول</button></div>', 'Sign in</button></div>') +
+      (NATIVE ? "" : tr('<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">الدخول</b><p class="hint">للإدارة والموظفين والمناديب: كل واحد يدخل بكلمة السر حقته، ويفتح له قسمه.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">', '<div class="box" style="margin-top:12px;display:grid;gap:8px"><b style="font-family:var(--display)">Sign in</b><p class="hint">For the owner, staff and drivers: everyone signs in with their own password.</p><button class="btn btn-orange" type="button" id="toAdmin" style="justify-self:start">') + ic("lock") + tr('الدخول</button></div>', 'Sign in</button></div>')) +
+      '<p class="hint" style="margin-top:14px;text-align:center"><a href="delete-data.html" style="color:inherit;text-decoration:underline">' + tr("طلب حذف بياناتي", "Request data deletion") + '</a> · <a href="privacy.html" style="color:inherit;text-decoration:underline">' + tr("سياسة الخصوصية", "Privacy policy") + '</a></p>' +
       '<div class="box" style="margin-top:12px"><b>محفظتي والكاش باك</b><p class="hint">رصيدك وسجل حركاتك. تفعيل الدخول من الإدارة بعد التحقق من رقمك.</p><button class="btn btn-soft" type="button" data-walletcustomer>افتح المحفظة</button></div>' +
       tr('<p class="credit">صور بعض الخضار والفواكه من مجموعة Fruits-360 لـ Mihai Oltean (رخصة MIT). الخريطة © مساهمو OpenStreetMap.</p></div>', '<p class="credit">Some fruit and vegetable photos are from the Fruits-360 collection by Mihai Oltean (MIT license). Map © OpenStreetMap contributors.</p></div>');
   }
@@ -2827,12 +2900,21 @@ html.sp-on,html.sp-on body{overflow:hidden}
     var pad = function(x){ return (x < 10 ? "0" : "") + x; };
     return pad(Math.floor(s / 3600)) + ":" + pad(Math.floor(s % 3600 / 60)) + ":" + pad(s % 60);
   }
+  // ystack يحفظ مكان التمرير لكل صفحة في stack، فالرجوع (داخل التطبيق) يرجعك لنفس المكان مثل تطبيقات آيفون
+  var ystack = [];
   function show(s){
-    if (s === "back") { s = stack.pop() || "home"; if (s === screen) s = stack.pop() || "home"; }
-    else if (s !== screen) { if (s === "home") stack = []; else stack.push(screen); }
+    var from = screen, back = s === "back", y = 0;
+    if (back) { s = stack.pop() || "home"; y = ystack.pop() || 0; if (s === screen) { s = stack.pop() || "home"; y = ystack.pop() || 0; } }
+    else if (s !== screen) { if (s === "home") { stack = []; ystack = []; } else { stack.push(screen); ystack.push(window.scrollY); } }
+    if (stack.length !== ystack.length) ystack = stack.map(function(){ return 0; });
     if (s === "checkout" && !totals().n) s = "cart";
     if (s === "checkout") EV.co = 1;
-    screen = s; render(); window.scrollTo(0, 0);
+    var go3 = function(){ screen = s; render(); window.scrollTo(0, NATIVE && back ? y : 0); };
+    var tabs = { home: 1, cats: 1, cart: 1, more: 1 };
+    if (NATIVE && s !== from && document.startViewTransition) {
+      document.documentElement.setAttribute("data-vt", tabs[s] && tabs[from] ? "tab" : back ? "back" : "fwd");
+      try { document.startViewTransition(go3); } catch(e){ go3(); }
+    } else go3();
   }
   function refresh(){ var y = window.scrollY, rails = Array.prototype.map.call(document.querySelectorAll(".rail,.cats-row"), function(r){ return r.scrollLeft; }); render(); Array.prototype.forEach.call(document.querySelectorAll(".rail,.cats-row"), function(r, i){ if (rails[i] != null) r.scrollLeft = rails[i]; }); window.scrollTo(0, y); }
 
@@ -2883,7 +2965,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
       navigator.geolocation.getCurrentPosition(function(pos){
         btn.disabled = false; setLoc(pos.coords.latitude, pos.coords.longitude);
         if (map) map.setView([pos.coords.latitude, pos.coords.longitude], 17);
-      }, function(){ btn.disabled = false; $("addrS").textContent = tr("ما قدرنا نجيب موقعك. اسمح للموقع من إعدادات المتصفح، أو حرّك الخريطة بيدك.", "We could not get your location. Allow location in your browser settings, or move the map by hand."); }, { enableHighAccuracy: true, timeout: 12000 });
+      }, function(){ btn.disabled = false; $("addrS").textContent = tr(NATIVE ? "ما قدرنا نجيب موقعك. اسمح للموقع من إعدادات الجوال (التطبيقات ← متاجر أحد ← الأذونات)، أو حرّك الخريطة بيدك." : "ما قدرنا نجيب موقعك. اسمح للموقع من إعدادات المتصفح، أو حرّك الخريطة بيدك.", "We could not get your location. Allow location in your browser settings, or move the map by hand."); }, { enableHighAccuracy: true, timeout: 12000 });
     });
     var bind = { cPhone: "phone", cDetails: "details", cName: "name", cNote: "note" };
     Object.keys(bind).forEach(function(id){ $(id).addEventListener("input", function(){ form[bind[id]] = this.value; saveForm(); if (id === "cNote") updateCheckoutTotals(); if (id === "cPhone") { $("phoneBox").classList.remove("bad"); $("phoneErr").hidden = true; } }); });
@@ -2945,7 +3027,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
           if (EMBED) toApp({ t: "order", no: String(j.orderNo), total: Number(j.total) || 0, phone: phone, pay: payload.pay, items: items, lat: payload.lat, lng: payload.lng, track: !!j.track });
-          if(sentCart&&JSON.stringify(cart)===sentCart)cart={};saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; render(); loadStock(); window.scrollTo(0, 0); return;
+          if(sentCart&&JSON.stringify(cart)===sentCart)cart={};saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; try { var hp = nativePlug("Haptics"); if (hp && hp.notification) hp.notification({ type: "SUCCESS" }); } catch(e){} render(); loadStock(); window.scrollTo(0, 0); return;
         }
         var c = j.code;
         if((c==='network'||c==='timeout'||j.status>=500)&&checkoutAttempt){checkoutAttempt.uncertain=true;saveCheckoutAttempt(checkoutAttempt);}
@@ -3023,9 +3105,13 @@ html.sp-on,html.sp-on body{overflow:hidden}
   var PUSH_PREF = false; try { PUSH_PREF = localStorage.getItem("ohod-push") === "1"; } catch(e){}
   function isIOS(){ return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
   function isApp(){ return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
-  function pushCan(){ return !!apiUrl() && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
-  function pushOn(){ return pushCan() && Notification.permission === "granted"; }
+  // إضافات Capacitor (الإشعارات الأصلية، زر الرجوع، الاهتزاز): موجودة بس داخل تطبيق الآيفون/الأندرويد
+  function nativePlug(n){ try { return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins[n]) || null; } catch(e){ return null; } }
+  // أندرويد بدون google-services.json (Firebase) يطيح لو طلبنا رمز الجهاز، فنخفي الإشعارات لين ينبني التطبيق بالملف (علامة __FCM__ من build-www)
+  function pushCan(){ if (NATIVE) return !!apiUrl() && !!nativePlug("PushNotifications") && (window.__FCM__ || !(window.Capacitor && Capacitor.getPlatform && Capacitor.getPlatform() === "android")); return !!apiUrl() && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+  function pushOn(){ if (NATIVE) return pushCan() && PUSH_PREF; return pushCan() && Notification.permission === "granted"; }
   function pushWhy(){
+    if (NATIVE) return tr("اسمح بالإشعارات للتطبيق من إعدادات الجوال، وجرّب مرة ثانية.", "Allow notifications for the app in your phone settings and try again.");
     if (!apiUrl()) return tr("الإشعارات تحتاج خادم الطلبات.", "Notifications need the order server.");
     if (isIOS() && !isApp()) return tr("على الآيفون: اضغط زر المشاركة ثم «إضافة إلى الشاشة الرئيسية»، وافتح المتجر من الأيقونة وفعّل الإشعارات من هناك.", "On iPhone: tap Share, then Add to Home Screen, open the store from the icon and turn on notifications there.");
     if (!pushCan()) return tr("المتصفح هذا ما يدعم الإشعارات. جرّب Chrome أو Safari الجديد.", "This browser does not support notifications. Try a recent Chrome or Safari.");
@@ -3035,6 +3121,23 @@ html.sp-on,html.sp-on body{overflow:hidden}
   function b64uBytes(s){ var b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), a = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
   function pushSub(){
     if (!pushCan()) return Promise.reject({ code: "unsupported" });
+    if (NATIVE) {   // تطبيق أصلي: نطلب الإذن ونجيب رمز الجهاز (آبل APNs أو قوقل FCM)، والخادم هو اللي يرسل
+      var PN = nativePlug("PushNotifications");
+      return PN.requestPermissions().then(function(r){
+        if (!r || r.receive !== "granted") throw { code: "denied" };
+        return new Promise(function(res, rej){
+          var t = setTimeout(function(){ rej({ code: "unsupported" }); }, 15000);
+          try { PN.removeAllListeners(); } catch(e){}
+          PN.addListener("registration", function(tok){ clearTimeout(t); res(tok && tok.value); });
+          PN.addListener("registrationError", function(){ clearTimeout(t); rej({ code: "unsupported" }); });
+          PN.register();
+        });
+      }).then(function(token){
+        if (!token) throw { code: "unsupported" };
+        PUSH_PREF = true; try { localStorage.setItem("ohod-push", "1"); } catch(e){}
+        return { native: (window.Capacitor && Capacitor.getPlatform && Capacitor.getPlatform()) === "ios" ? "ios" : "android", token: String(token) };
+      });
+    }
     var perm = Notification.permission === "granted" ? Promise.resolve("granted") : new Promise(function(res){ var r = Notification.requestPermission(res); if (r && r.then) r.then(res); });
     return perm.then(function(p){ if (p !== "granted") throw { code: "denied" }; return navigator.serviceWorker.register("sw.js"); })
       .then(function(){ return navigator.serviceWorker.ready; })
@@ -4071,7 +4174,36 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // داخل التطبيق: الخانات الصغيرة ما تسأل عن المخزون (التطبيق عنده المخزون)، والشاشات الكاملة مرة وحدة
   if (!EMBED) { loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000); } else if (EMBED_SCREEN || EMBED_PAGE) loadStock();
   document.addEventListener("visibilitychange", function(){ if (!EMBED && !document.hidden && mode === "store") loadStock(); });
-  if (location.hash === "#driver" || /[?&]app=driver/.test(location.search) || APP) openDriver();
+  if (!NATIVE && (location.hash === "#driver" || /[?&]app=driver/.test(location.search) || APP)) openDriver();
+  if (OWNERQ) {   // تطبيق المالك: افتح الدخول على طول، وزر ثابت لو انقفل
+    document.documentElement.classList.add("owner");
+    var ob = document.createElement("button"); ob.type = "button"; ob.textContent = "دخول الإدارة";
+    ob.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + var(--sa-bottom));z-index:40;min-height:52px;padding:0 28px;border:0;border-radius:26px;background:#0D1420;color:#fff;font:700 16px/1 inherit;box-shadow:0 8px 24px rgba(13,20,32,.3)";
+    ob.onclick = function(){ if (!$("pinSheet")) openPin(); }; document.body.appendChild(ob);
+    setTimeout(function(){ if (mode === "store" && !$("pinSheet")) openPin(); }, 300);
+  }
+  if (NATIVE) {   // لمسات التطبيق الأصلي: زر الرجوع في أندرويد، واهتزاز خفيف عند إضافة منتج للسلة
+    var AppP = nativePlug("App"), HapP = nativePlug("Haptics");
+    if (AppP && AppP.addListener) AppP.addListener("backButton", function(){
+      var ov = [].slice.call(document.querySelectorAll(".sheet:not([hidden])")).pop();   // نافذة مفتوحة: الرجوع يقفلها أول
+      if (ov) { var cb = ov.querySelector('[id$="Close"],[data-close],[aria-label*="إغلاق"],[aria-label="Close"],.panel-head button'); if (cb) cb.click(); else ov.remove(); return; }
+      var bk = document.querySelector('[data-nav="back"]'); if (bk) { bk.click(); return; }
+      if (document.body.getAttribute("data-screen") !== "home") { var hm = document.querySelector('[data-nav="home"]'); if (hm) { hm.click(); return; } }
+      var nw = Date.now();
+      if (window.__bkAt && nw - window.__bkAt < 2200) { if (AppP.exitApp) AppP.exitApp(); return; }
+      window.__bkAt = nw;
+      var tt = document.createElement("div"); tt.textContent = LANG === "en" ? "Press back again to exit" : "اضغط رجوع مرة ثانية للخروج";
+      tt.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + var(--sa-bottom));z-index:99;background:#17212B;color:#fff;padding:10px 18px;border-radius:22px;font:600 13px/1.4 inherit;max-width:80%;text-align:center";
+      document.body.appendChild(tt); setTimeout(function(){ tt.remove(); }, 2000);
+    });
+    if (HapP && HapP.impact) document.addEventListener("click", function(e){ if (e.target.closest && e.target.closest('[data-addprod],[data-act="inc"],[data-act="dec"]')) { try { HapP.impact({ style: "LIGHT" }); } catch(x){} } }, true);
+    // سحب من طرف الشاشة للرجوع (مثل آيفون): من اليمين بالعربي، ومن اليسار بالإنجليزي
+    var esx = null, esy = 0;
+    document.addEventListener("touchstart", function(e){ var t = e.touches[0], rtl = document.documentElement.dir !== "ltr";
+      esx = mode === "store" && screen !== "home" && e.touches.length === 1 && (rtl ? t.clientX > window.innerWidth - 26 : t.clientX < 26) ? t.clientX : null; esy = t.clientY; }, { passive: true });
+    document.addEventListener("touchend", function(e){ if (esx == null) return; var t = e.changedTouches[0], dx = t.clientX - esx, rtl = document.documentElement.dir !== "ltr"; esx = null;
+      if ((rtl ? -dx : dx) > 60 && Math.abs(t.clientY - esy) < 60) { var bk = document.querySelector('[data-nav="back"]'); if (bk) bk.click(); else if (stack.length) show("back"); } }, { passive: true });
+  }
   // داخل تطبيق المندوب: التطبيق للمندوب بس، ما يقدر يرجع للمتجر
   if (APP) { appLock = true; appUpdateCheck(); document.addEventListener("visibilitychange", function(){ if (!document.hidden) appUpdateCheck(); });
     window.addEventListener("popstate", function(){ if (mode !== "driver" || location.hash !== "#driver") openDriver(); }); }
@@ -4079,12 +4211,12 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // التطبيق يغيّر السلة بالرابط (#…cart=): لو اللي تغيّر السلة بس نعيد الرسم بدون تحميل الصفحة كلها من جديد (كانت تثقل الرئيسية مع كل «+»)
   if (EMBED) { var embedKey = function(){ return ["blocks", "slot", "id", "page", "screen"].map(qp).join("|"); }, embedWas = embedKey();
     window.addEventListener("hashchange", function(){ if (embedKey() !== embedWas) { location.reload(); return; } try { cart = JSON.parse(qp("cart") || "{}") || {}; } catch(e) { cart = {}; } refresh(); }); }
-  window.addEventListener("hashchange", function(){ if (EMBED) return; if ((location.hash === "#driver" || appLock) && mode !== "driver") openDriver(); });
+  window.addEventListener("hashchange", function(){ if (EMBED) return; if (!NATIVE && (location.hash === "#driver" || appLock) && mode !== "driver") openDriver(); });
   // نقاط البيع في المحل انشالت (البيع في المحل على برنامج الكاشير حق المحل): الرابط القديم يفتح المتجر
   if (location.hash === "#pos") { try { history.replaceState(null, "", location.pathname + location.search); } catch(e){} }
   // داخل التطبيق: نسخة البيانات من التطبيق (v) فالملف ينحفظ بالكاش ويفتح أسرع، والموقع العادي دايماً أحدث نسخة
   // الموقع: نفس الرابط كل مرة والمتصفح يسأل «تغيّر؟» (ETag) فلو ما تغيّر ما ينزل الملف من جديد (٢ ميقا). داخل التطبيق: نسخة التطبيق (v)
-  if (GH || LIVEDATA) fetch(EMBED && qp("v") ? "data.json?v=" + qp("v") : "data.json", EMBED && qp("v") ? {} : { cache: "no-cache" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
+  if (GH || LIVEDATA || NATIVE) fetch(NATIVE ? SITEB + "data.json?v=" + Date.now() : (EMBED && qp("v") ? "data.json?v=" + qp("v") : "data.json"), NATIVE ? { cache: "no-store" } : (EMBED && qp("v") ? {} : { cache: "no-cache" })).then(function(r){ return r.ok ? r.json() : null; }).then(function(nd){
     dataReady = true;
     if (nd && nd.store && nd.products && nd.imgs) { var hadApi = !!apiUrl(); applyData(nd); if (!hadApi) loadStock(); if (mode === "store" && screen !== "checkout") refresh(); }
     // رابط من إشعار (?go=offers أو o:<قسم>): يفتح العروض أو القسم مرة وحدة
