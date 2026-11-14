@@ -297,8 +297,7 @@ final class CatalogStore {
         if index == nil, let cached = Self.readCache() {
             // البصمة قبل ما تنرسم الرئيسية، عشان الصفحة الحية ما تنفتح مرتين (مرة بنسخة 0 ومرة بالبصمة)
             let t = await Task.detached(priority: .userInitiated) { Self.tag(cached) }.value
-            try? await apply(cached)
-            dataTag = t
+            try? await apply(cached, tag: t)
         }
         await refresh()
     }
@@ -320,7 +319,18 @@ final class CatalogStore {
         await refresh()
     }
 
+    /// تحديث شغّال الحين: أي طلب تحديث ثاني (سحب للتحديث، رجوع للتطبيق، bad_items) ينتظره بدل ما ينزّل الملف مرة ثانية
+    @ObservationIgnored private var refreshing: Task<Void, Never>?
+
     func refresh() async {
+        if let running = refreshing { await running.value; return }
+        let task = Task { await self.refreshNow() }
+        refreshing = task
+        await task.value
+        refreshing = nil
+    }
+
+    private func refreshNow() async {
         lastRefresh = Date()
         do {
             var comps = URLComponents(url: AppConfig.site.appendingPathComponent("data.json"), resolvingAgainstBaseURL: false)!
@@ -328,14 +338,35 @@ final class CatalogStore {
             var req = URLRequest(url: comps.url!)
             req.cachePolicy = .reloadIgnoringLocalCacheData
             req.timeoutInterval = 20
-            let (data, resp) = try await URLSession.shared.data(for: req)
-            guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+            // طلب مشروط: لو الملف ما تغيّر من آخر نسخة عندنا يرد الموقع 304 بدون الملف (٠ بايت بدل ٤٠٠ كيلو).
+            // نرسل البصمة بس لو النسخة المعروضة الحين هي نفسها اللي انحفظت معها البصمة
+            let saved = Self.readValidators()
+            if index != nil, let saved, saved.tag == dataTag {
+                if let e = saved.etag { req.setValue(e, forHTTPHeaderField: "If-None-Match") }
+                if let m = saved.lastModified { req.setValue(m, forHTTPHeaderField: "If-Modified-Since") }
+            }
+            let (data, resp) = try await Self.session.data(for: req)
+            let http = resp as? HTTPURLResponse
+            if http?.statusCode == 304, index != nil, saved?.tag == dataTag {
+                // ما تغيّر شي: نخلي النسخة اللي عندنا
+                failed = false
+                await refreshStock(force: true)
+                return
+            }
+            guard http?.statusCode == 200 else { throw URLError(.badServerResponse) }
             let t = await Task.detached(priority: .userInitiated) { Self.tag(data) }.value
-            if t != dataTag || index == nil {
-                try await apply(data)
-                Self.writeCache(data)
-                dataTag = t
+            let changed = t != dataTag || index == nil
+            if changed {
+                try await apply(data, tag: t)
                 version += 1
+            }
+            // بصمة الموقع تنحفظ بس لو نفس الملف محفوظ على الجوال (لو الحفظ فشل تنمسح، والطلب الجاي ينزّل الملف كامل)
+            let etag = http?.value(forHTTPHeaderField: "ETag"), modified = http?.value(forHTTPHeaderField: "Last-Modified")
+            if changed || saved?.tag != t {
+                if Self.writeCache(data) { Self.writeValidators(etag: etag, lastModified: modified, tag: t) }
+                else { Self.writeValidators(etag: nil, lastModified: nil, tag: "") }
+            } else {
+                Self.writeValidators(etag: etag, lastModified: modified, tag: t)
             }
             failed = false
         } catch {
@@ -364,20 +395,68 @@ final class CatalogStore {
     /// يزيد مع كل نسخة جديدة من المتجر (السلة تنظّف عروضها المنتهية)
     private(set) var dataVersion = 0
 
-    private func apply(_ data: Data) async throws {
+    /// نسخة المتجر اللي تنحقن في صفحات الموقع داخل التطبيق (الرئيسية الحية والخانات)، عشان ما تنزّل data.json مرة ثانية
+    @ObservationIgnored private(set) var liveScript: LiveScript?
+
+    private func apply(_ data: Data, tag: String) async throws {
+        // الفهرس وسكربت الصفحات الحية يتجهزون مع بعض بالخلفية
+        let script = Task.detached(priority: .userInitiated) { LiveScript.make(data, tag: tag) }
         let built = try await Task.detached(priority: .userInitiated) { try CatalogIndex.build(from: data) }.value
+        let js = await script.value
         if built.catalog.store.look != AppLook.current {
             AppLook.current = built.catalog.store.look
             lookVersion += 1
         }
         index = built
+        liveScript = js
+        dataTag = tag
         dataVersion += 1
         Analytics.shared.apiBase = built.catalog.store.api.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
+
+    /// جلسة خاصة بملف المتجر: بدون كاش النظام (الملف ينحفظ عندنا، وكل نسخة ٢ ميقا ما لها داعي تنكرر في الكاش)
+    private static let session: URLSession = {
+        let c = URLSessionConfiguration.default
+        c.urlCache = nil
+        c.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return URLSession(configuration: c)
+    }()
 
     private static var cacheURL: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("catalog-data.json")
     }
     private static func readCache() -> Data? { try? Data(contentsOf: cacheURL) }
-    private static func writeCache(_ data: Data) { try? data.write(to: cacheURL, options: .atomic) }
+    @discardableResult
+    private static func writeCache(_ data: Data) -> Bool { (try? data.write(to: cacheURL, options: .atomic)) != nil }
+
+    /// بصمة الموقع (ETag / Last-Modified) للنسخة المحفوظة، مع بصمتنا (tag) للتأكد إنها لنفس الملف
+    private struct Validators: Codable { var etag: String?; var lastModified: String?; var tag: String }
+    private static let validatorsKey = "catalog.validators"
+    private static func readValidators() -> Validators? {
+        guard let d = UserDefaults.standard.data(forKey: validatorsKey), let v = try? JSONDecoder().decode(Validators.self, from: d),
+              v.etag != nil || v.lastModified != nil, !v.tag.isEmpty else { return nil }
+        return v
+    }
+    private static func writeValidators(etag: String?, lastModified: String?, tag: String) {
+        let v = Validators(etag: etag, lastModified: lastModified, tag: tag)
+        if (etag == nil && lastModified == nil) || tag.isEmpty { UserDefaults.standard.removeObject(forKey: validatorsKey); return }
+        if let d = try? JSONEncoder().encode(v) { UserDefaults.standard.set(d, forKey: validatorsKey) }
+    }
+}
+
+/// سكربت يحط نسخة المتجر في الصفحة قبل ما تشتغل (WKUserScript)، والصفحة تستخدمه بدل ما تنزّل data.json
+/// لو نسخته (tag) نفس نسخة الرابط (v). ينحط كنص JSON داخل نص JS والصفحة تعمل له JSON.parse (نفس شغلها لو نزّلت الملف)،
+/// بدل كائن JS بحجم ٢ ميقا يحلله المحرك كبرنامج (أبطأ لو ما مشى على الطريق السريع)
+struct LiveScript: Sendable {
+    let tag: String
+    let source: String
+
+    static func make(_ data: Data, tag: String) -> LiveScript? {
+        guard let text = String(data: data, encoding: .utf8),
+              let wrapped = try? JSONSerialization.data(withJSONObject: [text], options: [.withoutEscapingSlashes]),
+              let literal = String(data: wrapped, encoding: .utf8),
+              !tag.isEmpty, tag.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) else { return nil }
+        // النسخة (V) تنحط آخر شي: لو صار أي خطأ قبلها الصفحة ما تلقاها وتنزّل الملف بنفسها
+        return LiveScript(tag: tag, source: "window.__OHOD_DATA_JSON__=" + literal + "[0];window.__OHOD_DATA_V__=\"" + tag + "\";")
+    }
 }
