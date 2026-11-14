@@ -1032,6 +1032,12 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kb.s-split .s1{inset-inline-end:28%;top:6%;width:24%;height:86%;transform:rotate(8deg);z-index:3}
 .kb-big{position:absolute;z-index:4;inset-inline-end:5%;bottom:9%;color:#fff;line-height:1;display:grid;gap:2px}
 .kb-big b{font-size:clamp(24px,calc(var(--banh,200px) / 6),38px);letter-spacing:-.02em}.kb-big b.sm{font-size:16px;max-width:110px;line-height:1.3}.kb-big small{font-size:12px;opacity:.85}.kb-big s{font-size:13px;opacity:.7}
+/* عرض الكمية (split): النص يبقى في الجهة البيضاء ولا يدخل تحت صورة المنتج ولا على اللوحة الزرقاء، واسم المنتج سطرين بالكثير */
+.kb.s-split .t{max-width:35%}
+.kb.s-split .t h2{font-size:clamp(15px,5.2vw,21px);line-height:1.25}
+.kb.s-split .t p{unicode-bidi:plaintext;text-align:start;font-size:11px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kb.s-split .t .go{white-space:nowrap;padding:8px 13px}
+.kb.s-split .s1{width:20%;inset-inline-end:31%}
 /* 9 bundle */
 .kb.s-bundle{background:var(--bc,#F1ECFF);color:#2E1A6B}
 .kb.s-bundle .t.wide{max-width:none;inset-inline-end:5.5%}
