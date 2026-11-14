@@ -1,1 +1,1 @@
-           TOTAL PSS:   115236            TOTAL RSS:   240660       TOTAL SWAP PSS:      213
+           TOTAL PSS:    95157            TOTAL RSS:   241332       TOTAL SWAP PSS:      226
