@@ -38,6 +38,11 @@ jobs:
               try:
                   tok = jwt.encode({'iss': iss.strip(), 'iat': int(time.time()), 'exp': int(time.time()) + 600, 'aud': 'appstoreconnect-v1'}, key, algorithm='ES256', headers={'kid': kid.strip(), 'typ': 'JWT'})
                   print('توقيع المفتاح محلياً ✅ (ملف الـ p8 سليم)')
+                  print('KEY_ID أول ٣ وآخر ٢:', kid.strip()[:3] + '…' + kid.strip()[-2:], '| ISSUER أول ٨ وآخر ٤:', iss.strip()[:8] + '…' + iss.strip()[-4:], '(قارنها بصفحة المفاتيح في App Store Connect)')
+                  # مفتاح فردي (Individual) ما له Issuer: توكنه بـ sub=user بدل iss
+                  tok2 = jwt.encode({'iat': int(time.time()), 'exp': int(time.time()) + 600, 'aud': 'appstoreconnect-v1', 'sub': 'user'}, key, algorithm='ES256', headers={'kid': kid.strip(), 'typ': 'JWT'})
+                  r0 = requests.get('https://api.appstoreconnect.apple.com/v1/apps?limit=1', headers={'Authorization': 'Bearer ' + tok2}, timeout=30)
+                  print('تجربة كمفتاح فردي (Individual) → HTTP', r0.status_code)
                   r = requests.get('https://api.appstoreconnect.apple.com/v1/apps?limit=1', headers={'Authorization': 'Bearer ' + tok}, timeout=30)
                   print('نداء أبل /v1/apps → HTTP', r.status_code)
                   print(r.text[:600])
