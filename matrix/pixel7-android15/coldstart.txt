@@ -1,3 +1,3 @@
-Status: ok TotalTime: 4465 
-Status: ok TotalTime: 6572 
-Status: ok TotalTime: 4669 
+Status: ok TotalTime: 3633 
+Status: ok TotalTime: 6585 
+Status: ok TotalTime: 5991 
