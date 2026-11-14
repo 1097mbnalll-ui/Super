@@ -68,6 +68,8 @@ async function connect() {
   await page.evaluate(() => { location.href = './'; }); await wait(3000);
   await page.evaluate(() => { const b = [...document.querySelectorAll('[data-nav="cart"]')].pop(); if (b) b.click(); }); await wait(1500); shot('04-cart');
   fs.writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2));
+  const bad = []; if (!report.account.deleteLink) bad.push('delete link missing'); if (!report.bottomCheck.linkClear) bad.push('content hidden behind tab bar'); if (!report.env.native) bad.push('not in native mode'); if (report.env.adminVisible) bad.push('admin visible');
+  report.problems = bad; fs.writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2)); if (bad.length) { console.error('PROBLEMS:', bad.join('; ')); process.exitCode = 2; }
   console.log(JSON.stringify(report, null, 2));
   page.close();
 })().catch((e) => { console.error('FAIL', e); try { shot('99-error'); } catch {} process.exit(1); });
