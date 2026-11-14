@@ -364,6 +364,8 @@ final class OrderCenter {
 
         // توكن المحفظة ما ينحفظ مع المحاولة، ينضاف وقت الإرسال بس
         body["walletToken"] = (wallet?.phone == body["phone"] as? String) ? (wallet?.token ?? "") : ""
+        // جهاز الزبون المجهول (شرائح إشعارات العروض): نفس الموقع
+        body["dev"] = Device.id
         sending = true
         defer { sending = false }
         let (status, json) = await API.post(catalog.apiBase, "/order", body)
@@ -392,6 +394,7 @@ final class OrderCenter {
             if !resendingOld { cart.note = "" }
             if !orders.contains(where: { $0.no == no }) { orders.insert(order2, at: 0) }
             if orders.count > 30 { orders.removeLast(orders.count - 30) }
+            CartPing.shared.orderPlaced()   // الخادم صفّر عدّ السلة مع الطلب
             cart.remove(sent: sent, catalog: catalog)
             if order2.track != false { Push.shared.register(no: no, phone: order2.phone, api: catalog.apiBase) }
             Haptics.success()

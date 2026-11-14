@@ -18,7 +18,7 @@ final class PushDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCen
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         [.banner, .sound, .list]
     }
-    /// ضغط الزبون على الإشعار: لو فيه وجهة (?go=offers أو o:<قسم>) نفتحها
+    /// ضغط الزبون على الإشعار: لو فيه وجهة (?go=offers أو o:<قسم> أو cart لتذكير السلة) نفتحها
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         guard let url = response.notification.request.content.userInfo["url"] as? String,
               let go = URLComponents(string: url)?.queryItems?.first(where: { $0.name == "go" })?.value, !go.isEmpty else { return }
@@ -68,7 +68,7 @@ final class Push {
         token = t
         let list = pending; pending = []
         for p in list { send(no: p.no, phone: p.phone, api: p.api, token: t) }
-        if promo, let api = UserDefaults.standard.string(forKey: "push.promoApi"), !api.isEmpty { Task { _ = await API.post(api, "/push/promo", ["sub": ["native": "ios", "token": t]]) } }
+        if promo, let api = UserDefaults.standard.string(forKey: "push.promoApi"), !api.isEmpty { Task { _ = await API.post(api, "/push/promo", ["sub": ["native": "ios", "token": t], "dev": Device.id]) } }
     }
 
     /// إشعارات العروض (يرسلها المالك من الإدارة): الزبون يشترك أو يوقفها من «حسابي»
@@ -77,7 +77,7 @@ final class Push {
         guard !api.isEmpty, await enable() else { return }
         promo = true
         UserDefaults.standard.set(true, forKey: "push.promo"); UserDefaults.standard.set(api, forKey: "push.promoApi")
-        if let t = token { _ = await API.post(api, "/push/promo", ["sub": ["native": "ios", "token": t]]) } else { UIApplication.shared.registerForRemoteNotifications() }
+        if let t = token { _ = await API.post(api, "/push/promo", ["sub": ["native": "ios", "token": t], "dev": Device.id]) } else { UIApplication.shared.registerForRemoteNotifications() }
     }
     func disablePromo() {
         promo = false
@@ -96,6 +96,6 @@ final class Push {
     func failed() { pending = [] }
 
     private func send(no: String, phone: String, api: String, token: String) {
-        Task { _ = await API.post(api, "/push/order", ["no": no, "phone": phone, "sub": ["native": "ios", "token": token]]) }
+        Task { _ = await API.post(api, "/push/order", ["no": no, "phone": phone, "sub": ["native": "ios", "token": token], "dev": Device.id]) }
     }
 }

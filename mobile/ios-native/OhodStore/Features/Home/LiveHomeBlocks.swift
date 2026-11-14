@@ -53,6 +53,7 @@ struct LiveBridge {
             }
         case "order":
             if let no = m["no"] as? String ?? (CatalogParser.num(m["no"]).map { String(Int($0)) }) {
+                CartPing.shared.orderPlaced()   // الطلب من شاشة الموقع: الخادم صفّر عدّ السلة (cart.sync اللي بعده ما يرسل نبضة)
                 var items: [String: Int] = [:]
                 for (k, v) in (m["items"] as? [String: Any]) ?? [:] { items[k] = Int(CatalogParser.num(v) ?? 0) }
                 orders?.adopt(no: no, total: CatalogParser.num(m["total"]) ?? 0, phone: m["phone"] as? String ?? "", pay: m["pay"] as? String ?? "cash",
@@ -70,7 +71,7 @@ struct LiveBridge {
         c.queryItems = [URLQueryItem(name: "embed", value: "1"), URLQueryItem(name: "v", value: version)]
         // المفضلة (fav=id,id) عشان القلوب في الصفحة تطلع مثل التطبيق
         let fav = Favorites.stored.prefix(300).joined(separator: ",")
-        var f = URLComponents(); f.queryItems = items + [URLQueryItem(name: "cart", value: cj)] + (fav.isEmpty ? [] : [URLQueryItem(name: "fav", value: fav)])
+        var f = URLComponents(); f.queryItems = items + [URLQueryItem(name: "cart", value: cj), URLQueryItem(name: "dev", value: Device.id)] + (fav.isEmpty ? [] : [URLQueryItem(name: "fav", value: fav)])
         c.percentEncodedFragment = String((f.percentEncodedQuery ?? "").replacingOccurrences(of: "#", with: "%23"))
         return c.url!
     }

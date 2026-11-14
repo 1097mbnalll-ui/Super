@@ -179,6 +179,7 @@ struct RootView: View {
     private func openGo(_ go: String) {
         UserDefaults.standard.removeObject(forKey: "push.go")
         if go == "offers" { tab = .offers }
+        else if go == "cart" { tab = .cart }   // تذكير السلة «🛒 سلتك تنتظرك»
         else if go.hasPrefix("o:") || go.hasPrefix("c:") { tab = .categories; categoriesPath = NavigationPath(); categoriesPath.append(Route.category(String(go.dropFirst(2)))) }
     }
 
