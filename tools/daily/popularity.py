@@ -17,7 +17,7 @@ SUB_W = {'milk': 60, 'eggs': 70, 'laban': 50, 'water': 70, 'soft': 55, 'juice': 
          'baby': 30, 'hair': 20, 'oral': 20, 'breakfast': 25, 'sugar': 25, 'spices': 15, 'energy': 25, 'icedtea': 20}
 # ماركات يعرفها الكل
 BRAND = re.compile(r'المراعي|نادك|السعوديه|الصافي|بيبسي|ببسي|كوكا|سفن اب|ميرندا|ليز|بطاطس عمان|نوفا|بيرين|اروى|العين|صحتك|نقي|الربيع|'
-                   r'جالكسي|كيت كات|سنيكرز|اوريو|ديمه|ابو ولد|اندومي|قودي|ابو كاس|الشعلان|عافيه|نستله|نيدو|تايد|فاين|كلينكس|ديتول|الوطنيه|ساديا|دو!|امريكانا|كيري|بوك')
+                   r'جالكسي|كيت كات|سنيكرز|اوريو|دوريتوس|شيتوس|سبرايت|فانتا|شويبس|ديمه|ابو ولد|اندومي|قودي|ابو كاس|الشعلان|عافيه|نستله|نيدو|تايد|فاين|كلينكس|ديتول|الوطنيه|ساديا|دو!|امريكانا|كيري|بوك')
 SMALL = re.compile(r'(?<!\d)(125|150|180|200|240|250|320|330|340)\s?(مل|ملي)|حبه!')
 
 def run(path, use_db=True):
@@ -38,7 +38,9 @@ def run(path, use_db=True):
         pl = [x for x in dict.fromkeys(pairs.get(p['id'], [])) if x != p['id']][:6]
         if pl: p['pair'] = pl
         else: p.pop('pair', None)
-        nm = norm(p['name'])
+        # الحجم صار في «الوحدة» لبعض المنتجات (apply_names.py): نقراه معها عشان نقاط الحجم الصغير ما تضيع
+        u = str(p.get('unit') or '')
+        nm = norm(p['name'] + ('' if u in ('', 'حبة') else ' ' + u))
         s = SUB_W.get(p.get('sub'), 0) + (25 if BRAND.search(nm) else 0) + (8 if SMALL.search(nm) else 0)
         s += 12 * math.log1p(sold.get(p['id'], 0)) * 10 + 6 * math.log1p(carts.get(p['id'], 0)) * 5 + 2 * math.log1p(views.get(p['id'], 0)) * 5
         rk = min(999, round(s))
