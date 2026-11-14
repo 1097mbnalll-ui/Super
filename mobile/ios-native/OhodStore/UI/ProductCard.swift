@@ -33,10 +33,17 @@ struct ProductCard: View {
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
                         .fill(Theme.surface)
-                    RemoteImage(url: product.imageURL, maxPixel: 300)
-                        .padding(12)
-                        .padding(.bottom, 12)
-                        .opacity(available ? 1 : 0.45)
+                    if product.imageURL == nil {
+                        // بدون صورة: بلاطة بلون القسم ورمزه واسم مختصر والحجم (مثل الموقع)
+                        NoPhotoTile(product: product)
+                            .saturation(available ? 1 : 0.15)
+                            .opacity(available ? 1 : 0.6)
+                    } else {
+                        RemoteImage(url: product.imageURL, maxPixel: 300)
+                            .padding(12)
+                            .padding(.bottom, 12)
+                            .opacity(available ? 1 : 0.45)
+                    }
                     if available, let badge = badgeText {
                         Text(tv: badge)
                             .font(.kufi(10.5, .bold, relativeTo: .caption2))

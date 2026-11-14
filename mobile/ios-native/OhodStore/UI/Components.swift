@@ -193,3 +193,111 @@ struct PriceLabel: View {
         .environment(\.layoutDirection, .rightToLeft)
     }
 }
+
+// MARK: - المنتج بدون صورة
+
+/// بلاطة المنتج بدون صورة (نفس phTag في index.html): لون القسم + رمز القسم الفرعي + اسم مختصر + الحجم، بدون صور
+struct NoPhotoTile: View {
+    let product: Product
+    /// صفحة المنتج: خلفية أفتح عشان تبان فوق خلفية الصفحة
+    var large = false
+    @Environment(CatalogStore.self) private var catalog
+
+    var body: some View {
+        let category = catalog.category(product.cat)
+        let emoji = NoPhoto.emoji(product, category: category)
+        let parts = NoPhoto.parts(product.name)
+        let tint = Color(hexString: category?.tint) ?? Color(hex: 0xEEF0F3)
+        GeometryReader { geo in
+            let w = geo.size.width
+            // كرت ضيق (٣ بالصف): بدون شريحة الحجم ورمز أصغر، عشان ما يتغطى بزر الإضافة
+            let compact = w < 150
+            ZStack {
+                tint
+                RadialGradient(colors: large ? [Color.white, Color.white.opacity(0.6)] : [Color.white.opacity(0.75), Color.white.opacity(0)],
+                               center: .top, startRadius: 0, endRadius: w * (large ? 0.85 : 0.62))
+                // الرمز كبير وباهت بالزاوية (علامة مائية)
+                Text(verbatim: emoji)
+                    .font(.system(size: w * 0.58))
+                    .saturation(0.6)
+                    .opacity(large ? 0.1 : 0.13)
+                    .rotationEffect(.degrees(-14))
+                    .offset(y: w * 0.1)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                VStack(spacing: w * 0.03) {
+                    Text(verbatim: emoji)
+                        .font(.system(size: w * (compact ? 0.13 : 0.16)))
+                        .frame(width: compact ? w * 0.24 : Swift.max(34, w * 0.3), height: compact ? w * 0.24 : Swift.max(34, w * 0.3))
+                        .background(Color.white.opacity(0.78), in: Circle())
+                        .shadow(color: Theme.ink.opacity(0.08), radius: 6, y: 3)
+                    Text(tv: parts.label)
+                        .font(.kufi(compact ? 11 : Swift.min(22, Swift.max(11, w * 0.105)), .bold))
+                        .foregroundStyle(Theme.ink)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                    if !parts.size.isEmpty, !compact {
+                        Text(tv: parts.size)
+                            .font(.ui(size: Swift.min(15, Swift.max(10, w * 0.08)), weight: .bold))
+                            .foregroundStyle(Theme.ink.opacity(0.78))
+                            .lineLimit(1)
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(Color.white.opacity(0.82), in: Capsule())
+                    }
+                }
+                .padding(.horizontal, w * 0.09)
+                .padding(.top, w * 0.1)
+                .padding(.bottom, large ? w * 0.1 : Swift.max(w * 0.22, 40))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .clipped()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(tv: product.name))
+    }
+}
+
+/// منطق بلاطة «بدون صورة» (مطابق لـ SUB_EMO وphParts في الموقع)
+enum NoPhoto {
+    static let subEmoji: [String: String] = [
+        "milk": "🥛", "laban": "🥣", "eggs": "🥚", "cheese": "🧀", "cream": "🧈", "water": "💧", "soft": "🥤", "juice": "🧃", "energy": "⚡️", "icedtea": "🧊", "tea": "☕️",
+        "chips": "🍟", "chocolate": "🍫", "biscuits": "🍪", "cakes": "🧁", "candy": "🍬", "icecream": "🍦", "nuts": "🥜", "gum": "🍃", "rice": "🍚", "oil": "🫒", "flour": "🍞", "canned": "🥫",
+        "pasta": "🍝", "breakfast": "🍯", "sugar": "🍮", "sauces": "🍅", "spices": "🌶️", "frozen": "❄️", "chicken": "🍗", "beef": "🥩", "processed": "🌭", "fish": "🐟",
+        "laundry": "🧺", "dishes": "🍽️", "surfaces": "🧽", "bags": "🗑️", "paper": "🧻", "fresh": "🌸", "insects": "🦟", "baby": "🍼", "hair": "💆", "oral": "🪥", "body": "🧼", "deo": "🧴",
+        "women": "🌷", "shave": "🪒", "care/tools": "💅", "kitchen": "🍳", "toys": "🧸", "stationery": "✏️", "bbq": "🔥", "pets": "🐾", "electronics": "🔌", "tools": "🔧", "clothes": "👕",
+        "religious": "📿", "home": "🏠", "fruit": "🍎", "leaf": "🌿", "veg/veg": "🥕",
+    ]
+
+    /// رمز القسم الفرعي، وإلا رمز القسم (اللي يقدر المالك يغيّره من «شكل التطبيق»)
+    static func emoji(_ p: Product, category: Category?) -> String {
+        let s = p.sub ?? ""
+        return subEmoji["\(p.cat)/\(s)"] ?? subEmoji[s] ?? category?.emoji ?? "🛒"
+    }
+
+    private static let unit = "(?:مل|ملي|مللي|لتر|لترات|ل|جم|جرام|غرام|غم|غ|كجم|كغ|كيلو|كلغ|كغم|حبة|حبه|حبات|قطعة|قطعه|قطع|قرص|اقراص|منديل|مناديل|ورقة|ورقه|كيس|اكياس|جالون|سم|متر|م|انش|واط|g|gm|gr|kg|ml|l|L|ltr|cm|pcs)"
+    private static let sizeRE = try? NSRegularExpression(pattern: #"(\d+(?:[.,]\d+)?\s*(?:[×xX*/]\s*\d+(?:[.,]\d+)?\s*)*"# + unit + #"(?:\s*[×xX*]\s*\d+)?)(?=\s|$)"#)
+    private static let dimRE = try? NSRegularExpression(pattern: #"(\d+(?:[.,]\d+)?\s*[×xX*]\s*\d+(?:[.,]\d+)?)(?=\s|$)"#)
+    private static let codeRE = try? NSRegularExpression(pattern: #"^[A-Za-z]*\d{3,}[A-Za-z0-9]*$"#)
+
+    /// «عصير الربيع برتقال 125 مل» ← اسم «عصير الربيع برتقال» وحجم «125 مل» (وأرقام الموديلات الطويلة تنشال)
+    static func parts(_ raw: String) -> (label: String, size: String) {
+        let name = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let ns = name as NSString
+        let all = NSRange(location: 0, length: ns.length)
+        var size = ""
+        var rest = name
+        if let m = sizeRE?.firstMatch(in: name, range: all) ?? dimRE?.firstMatch(in: name, range: all) {
+            size = ns.substring(with: m.range(at: 1))
+                .replacingOccurrences(of: #"\s*([×xX*/])\s*"#, with: " $1 ", options: .regularExpression)
+                .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            rest = ns.replacingCharacters(in: m.range, with: " ")
+        }
+        let words = rest.split(whereSeparator: \.isWhitespace).map(String.init).filter { w in
+            if ["×", "x", "X", "*", "/", "-"].contains(w) { return false }
+            let r = NSRange(location: 0, length: (w as NSString).length)
+            return codeRE?.firstMatch(in: w, range: r) == nil
+        }
+        let label = words.joined(separator: " ")
+        return (label.isEmpty ? name : label, size)
+    }
+}

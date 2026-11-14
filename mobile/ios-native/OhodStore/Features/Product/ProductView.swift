@@ -37,9 +37,21 @@ struct ProductView: View {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .bottomLeading) {
                     Theme.softGradient
-                    RemoteImage(url: product.imageURL, maxPixel: 900)
-                        .padding(36)
-                        .opacity(available ? 1 : 0.5)
+                    if product.imageURL == nil {
+                        // بدون صورة: بلاطة مائلة بلون القسم (مثل الموقع)
+                        NoPhotoTile(product: product, large: true)
+                            .frame(width: 220, height: 220)
+                            .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
+                            .shadow(color: Theme.ink.opacity(0.16), radius: 17, y: 11)
+                            .rotationEffect(.degrees(-4))
+                            .saturation(available ? 1 : 0.15)
+                            .opacity(available ? 1 : 0.6)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        RemoteImage(url: product.imageURL, maxPixel: 900)
+                            .padding(36)
+                            .opacity(available ? 1 : 0.5)
+                    }
                     if available, let badge = product.offerBadge {
                         Label(tr(badge), systemImage: "percent")
                             .font(.kufi(12, .bold))
