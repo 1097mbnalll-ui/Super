@@ -6,8 +6,8 @@ struct AccountView: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(OrderCenter.self) private var orders
     @Environment(Cart.self) private var cart
+    @Environment(Favorites.self) private var favorites
     @State private var haptics = Haptics.enabled
-    @State private var showAddress = false
     @State private var showWallet = false
     @State private var langNote = false
 
@@ -50,13 +50,24 @@ struct AccountView: View {
                 .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color(hex: 0xD7EEE6)))
                 }
 
-                Text("الإعدادات").font(.ui(size: 14)).foregroundStyle(Theme.muted).padding(.top, 8)
+                // المفضلة وعناويني (على الجوال بس)، مثل acctLinks في الموقع
                 VStack(spacing: 0) {
-                    Button { showAddress = true } label: {
-                        row("عنوانك", systemImage: "mappin.and.ellipse",
-                            value: orders.address == nil ? "حدّده" : (orders.address!.details.isEmpty ? "البيت" : orders.address!.details))
+                    NavigationLink(value: Route.favorites) {
+                        row("المفضلة", systemImage: "heart", value: favoritesCount == 0 ? "فاضية" : "\(favoritesCount) منتج")
                     }
                     Divider().padding(.trailing, 52)
+                    NavigationLink(value: Route.addresses) {
+                        row("عناويني", systemImage: "mappin.and.ellipse",
+                            value: orders.addresses.isEmpty ? "أضف عنوان" : orders.addresses.prefix(2).map(\.title).joined(separator: "، ") + (orders.addresses.count > 2 ? "…" : ""))
+                    }
+                }
+                .foregroundStyle(Theme.ink)
+                .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
+                .padding(.top, 8)
+
+                Text("الإعدادات").font(.ui(size: 14)).foregroundStyle(Theme.muted).padding(.top, 8)
+                VStack(spacing: 0) {
                     Toggle(isOn: $haptics) {
                         Label("الاهتزاز", systemImage: "iphone.radiowaves.left.and.right")
                     }
@@ -137,13 +148,16 @@ struct AccountView: View {
         .navigationTitle("حسابي")
         .navigationBarTitleDisplayMode(.inline)
         .animation(.smooth, value: orders.current?.status)
-        .sheet(isPresented: $showAddress) { AddressView() }
         .sheet(isPresented: $showWallet) { WalletSheet() }
         .alert(AppLang.english ? "تتغير اللغة للعربي لما تقفل التطبيق وتفتحه" : "The app switches to English when you close and reopen it",
                isPresented: $langNote) {
             Button("تمام") {}
         }
         .refreshable { await orders.refresh(catalog: catalog) }
+    }
+
+    private var favoritesCount: Int {
+        favorites.ids.filter { id in catalog.product(id).map { !$0.isPrint } ?? false }.count
     }
 
     private var pastOrders: [SavedOrder] {

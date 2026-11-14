@@ -16,6 +16,7 @@ struct LiveBridge {
     let catalog: CatalogStore
     var close: (() -> Void)? = nil
     var orders: OrderCenter? = nil
+    var favorites: Favorites? = nil
 
     func handle(_ m: [String: Any]) {
         let t = m["t"] as? String ?? "", id = m["id"] as? String ?? ""
@@ -34,6 +35,10 @@ struct LiveBridge {
         case "nav":
             if id == "cats" { tab?.wrappedValue = .categories } else if id == "search" { path.wrappedValue.append(Route.search) } else if id == "cart" { tab?.wrappedValue = .cart }
             else if id == "home" { tab?.wrappedValue = .home } else if id == "account" || id == "more" { tab?.wrappedValue = .account } else if id == "offers" { tab?.wrappedValue = .offers }
+            else if id == "fav" { path.wrappedValue.append(Route.favorites) } else if id == "addrs" { path.wrappedValue.append(Route.addresses) }
+        case "fav":
+            // القلب في صفحة حية: نحفظه في مفضلة التطبيق
+            if !id.isEmpty { favorites?.set(id, on: m["on"] as? Bool ?? true) }
         case "cart.add":
             if let key = m["key"] as? String, let q = CatalogParser.num(m["qty"]) { cart.add(key: key, delta: Int(q)); Haptics.added() }
         case "cart.set":
@@ -63,7 +68,9 @@ struct LiveBridge {
         let cj = (try? JSONSerialization.data(withJSONObject: cart.snapshot, options: [.sortedKeys])).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
         // الصفحة نفسها ثابتة (embed + نسخة البيانات) فتنحفظ بالكاش وتفتح بسرعة، والباقي بعد # (الموقع يقراه من هناك)
         c.queryItems = [URLQueryItem(name: "embed", value: "1"), URLQueryItem(name: "v", value: version)]
-        var f = URLComponents(); f.queryItems = items + [URLQueryItem(name: "cart", value: cj)]
+        // المفضلة (fav=id,id) عشان القلوب في الصفحة تطلع مثل التطبيق
+        let fav = Favorites.stored.prefix(300).joined(separator: ",")
+        var f = URLComponents(); f.queryItems = items + [URLQueryItem(name: "cart", value: cj)] + (fav.isEmpty ? [] : [URLQueryItem(name: "fav", value: fav)])
         c.percentEncodedFragment = String((f.percentEncodedQuery ?? "").replacingOccurrences(of: "#", with: "%23"))
         return c.url!
     }
@@ -77,6 +84,7 @@ struct LiveHomeBlocks<Fallback: View>: View {
     @ViewBuilder var fallback: () -> Fallback
     @Environment(CatalogStore.self) private var catalog
     @Environment(Cart.self) private var cart
+    @Environment(Favorites.self) private var favorites
     @State private var height: CGFloat = 0
     @State private var failed = false
 
@@ -86,7 +94,7 @@ struct LiveHomeBlocks<Fallback: View>: View {
             else {
                 LiveWeb(url: LiveBridge.url([URLQueryItem(name: "blocks", value: blocks.joined(separator: ","))], cart: cart, version: catalog.dataTag),
                         fit: true, height: $height, failed: $failed,
-                        onMessage: LiveBridge(path: $path, tab: $tab, cart: cart, catalog: catalog).handle)
+                        onMessage: LiveBridge(path: $path, tab: $tab, cart: cart, catalog: catalog, favorites: favorites).handle)
                     .frame(height: height > 0 ? height : 1)
                     .opacity(height > 0 ? 1 : 0)
                 // وهو يحمّل: مكان فاضي بنفس حجم البنر، مو البنرات الأصلية القديمة (كانت تطلع «صفحة قديمة» أول ما ينفتح التطبيق)
@@ -148,6 +156,7 @@ struct LiveSlot: View {
     @Environment(\.livePath) private var livePath
     @Environment(CatalogStore.self) private var catalog
     @Environment(Cart.self) private var cart
+    @Environment(Favorites.self) private var favorites
     @State private var height: CGFloat = 0
     @State private var failed = false
 
@@ -155,7 +164,7 @@ struct LiveSlot: View {
         if !failed {
             LiveWeb(url: LiveBridge.url([URLQueryItem(name: "slot", value: slot), URLQueryItem(name: "id", value: id)], cart: cart, version: catalog.dataTag + (slot == "cart" ? "." + String(cart.revision) : "")),
                     fit: true, height: $height, failed: $failed,
-                    onMessage: LiveBridge(path: livePath ?? .constant(NavigationPath()), tab: nil, cart: cart, catalog: catalog).handle)
+                    onMessage: LiveBridge(path: livePath ?? .constant(NavigationPath()), tab: nil, cart: cart, catalog: catalog, favorites: favorites).handle)
                 .frame(height: height > 4 ? height : 0)
                 .clipped()
         }
@@ -171,6 +180,7 @@ struct LiveScreen: View {
     @Environment(Cart.self) private var cart
     @Environment(OrderCenter.self) private var orders
     @Environment(\.liveTab) private var liveTab
+    @Environment(Favorites.self) private var favorites
     @State private var height: CGFloat = 0
     @State private var failed = false
     @State private var url: URL? = nil
@@ -187,7 +197,7 @@ struct LiveScreen: View {
                 }.padding(30)
             } else if let url {
                 LiveWeb(url: url, fit: false, height: $height, failed: $failed,
-                        onMessage: LiveBridge(path: $path, tab: liveTab, cart: cart, catalog: catalog, close: { if !path.isEmpty { path.removeLast() } }, orders: orders).handle)
+                        onMessage: LiveBridge(path: $path, tab: liveTab, cart: cart, catalog: catalog, close: { if !path.isEmpty { path.removeLast() } }, orders: orders, favorites: favorites).handle)
             } else { ProgressView() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

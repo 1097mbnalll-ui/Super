@@ -2,12 +2,35 @@ import Foundation
 import Observation
 import CoreLocation
 
-/// عنوان التوصيل المحفوظ في الجوال (ما ينرسل لأحد إلا مع الطلب)
-struct DeliveryAddress: Codable, Equatable {
+/// عنوان توصيل محفوظ في الجوال (ما ينرسل لأحد إلا مع الطلب). الزبون يحفظ أكثر من واحد باسم (البيت، الدوام، …) مثل ohod-addrs في الموقع
+struct DeliveryAddress: Codable, Equatable, Identifiable {
+    var id: String
+    var label: String
     var lat: Double
     var lng: Double
-    var details: String = ""
+    var details: String
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: lat, longitude: lng) }
+    /// الاسم اللي يطلع للزبون
+    var title: String {
+        let t = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? "عنوان" : t
+    }
+
+    init(id: String = UUID().uuidString, label: String = "البيت", lat: Double, lng: Double, details: String = "") {
+        self.id = id; self.label = label; self.lat = lat; self.lng = lng; self.details = details
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, label, lat, lng, details }
+
+    /// العنوان القديم (قبل العناوين المتعددة) ما فيه id ولا label: ياخذ «البيت»
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? "البيت"
+        lat = try c.decode(Double.self, forKey: .lat)
+        lng = try c.decode(Double.self, forKey: .lng)
+        details = try c.decodeIfPresent(String.self, forKey: .details) ?? ""
+    }
 }
 
 /// طلب انرسل من هالجوال (للمتابعة و«اطلب مرة ثانية»)
@@ -132,7 +155,12 @@ enum OrderError: Error, Equatable {
 @MainActor
 @Observable
 final class OrderCenter {
-    private(set) var address: DeliveryAddress? { didSet { Self.store(address, "order.address") } }
+    /// العناوين المحفوظة (أقصى ١٠) والمختار منها للطلب
+    private(set) var addresses: [DeliveryAddress] = [] { didSet { persistAddresses() } }
+    private(set) var selectedAddressID: String? = nil { didSet { persistAddresses() } }
+    /// عنوان الطلب: المختار، وإلا أول عنوان
+    var address: DeliveryAddress? { addresses.first { $0.id == selectedAddressID } ?? addresses.first }
+    static let maxAddresses = 10
     var name: String = UserDefaults.standard.string(forKey: "order.name") ?? "" {
         didSet { UserDefaults.standard.set(name, forKey: "order.name") }
     }
@@ -157,7 +185,15 @@ final class OrderCenter {
     @ObservationIgnored private var attempt: Attempt? { didSet { Self.store(attempt, "order.attempt") } }
 
     init() {
-        address = Self.load("order.address")
+        if let saved: [DeliveryAddress] = Self.load("order.addresses") {
+            addresses = saved
+            selectedAddressID = UserDefaults.standard.string(forKey: "order.addressID")
+        } else if let old: DeliveryAddress = Self.load("order.address") {
+            // أول مرة بعد التحديث: العنوان الوحيد القديم يصير «البيت»
+            addresses = [old]
+            selectedAddressID = old.id
+        }
+        persistAddresses()
         orders = Self.load("order.history") ?? []
         attempt = Self.load("order.attempt")
     }
@@ -175,17 +211,59 @@ final class OrderCenter {
         orders.insert(o, at: 0)
     }
 
+    /// يحفظ العنوان (جديد أو تعديل) ويختاره للطلب، مع الجوال والاسم
     func save(address: DeliveryAddress, phone: String, name: String) {
-        self.address = address
+        saveAddress(address)
         self.phone = Self.normalizedPhone(phone) ?? phone
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// إضافة أو تعديل عنوان (بنفس id) ويصير المختار
+    func saveAddress(_ address: DeliveryAddress) {
+        var a = address
+        a.details = a.details.trimmingCharacters(in: .whitespacesAndNewlines)
+        a.label = a.label.trimmingCharacters(in: .whitespacesAndNewlines)
+        if a.label.isEmpty { a.label = nextLabel.isEmpty ? "عنوان \(addresses.count + 1)" : nextLabel }
+        var list = addresses
+        if let i = list.firstIndex(where: { $0.id == a.id }) { list[i] = a }
+        else { list.append(a); if list.count > Self.maxAddresses { list.removeFirst(list.count - Self.maxAddresses) } }
+        addresses = list
+        selectedAddressID = a.id
+    }
+
+    func selectAddress(_ id: String) {
+        guard addresses.contains(where: { $0.id == id }) else { return }
+        selectedAddressID = id
+    }
+
+    /// حذف عنوان. لو كان المختار: نختار أول عنوان باقي
+    func deleteAddress(_ id: String) {
+        addresses.removeAll { $0.id == id }
+        if selectedAddressID == id || !addresses.contains(where: { $0.id == selectedAddressID }) { selectedAddressID = addresses.first?.id }
+    }
+
+    /// اسم مقترح للعنوان الجديد: «البيت» ثم «الدوام» (مثل nextLabel في الموقع)
+    var nextLabel: String {
+        !addresses.contains { $0.label == "البيت" } ? "البيت" : !addresses.contains { $0.label == "الدوام" } ? "الدوام" : ""
+    }
+
+    /// العنوان برّا منطقة التوصيل (المرسومة أو maxKm)؟
+    static func outside(_ a: DeliveryAddress, _ store: StoreInfo) -> Bool {
+        !inZone(a.coordinate, store.zone) || tooFar(a.coordinate, store) != nil
+    }
+
+    private func persistAddresses() {
+        Self.store(addresses, "order.addresses")
+        UserDefaults.standard.set(selectedAddressID, forKey: "order.addressID")
+        // نسخة من المختار بالمفتاح القديم (لو رجع الزبون لنسخة أقدم من التطبيق)
+        Self.store(address, "order.address")
     }
 
     /// للتصوير على المحاكي بس (-seed-order)
     func seedPreview(_ order: SavedOrder, driver: DriverInfo? = nil) {
         orders = [order]
         drivers[order.no] = driver
-        if address == nil { address = DeliveryAddress(lat: 24.845, lng: 46.815, details: "فيلا ١٢، الباب الأخضر") }
+        if address == nil { saveAddress(DeliveryAddress(lat: 24.845, lng: 46.815, details: "فيلا ١٢، الباب الأخضر")) }
     }
 
     /// للتصوير بس (-seed-sub)

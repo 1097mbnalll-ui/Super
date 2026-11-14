@@ -46,13 +46,14 @@ struct ProductCard: View {
                             .background(Theme.copper, in: UnevenRoundedRectangle(bottomTrailingRadius: 10, topTrailingRadius: 0, style: .continuous))
                     }
                     if available, let low = catalog.lowLeft(product) {
+                        // تحت على اليمين (مثل الموقع)، عشان فوق على اليسار للقلب
                         Text(tv: "باقي \(low) بس")
                             .font(.ui(size: 10, weight: .bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 6).padding(.vertical, 2)
                             .background(Theme.copperInk, in: Capsule())
                             .padding(5)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                     }
                     if !available {
                         Text(catalog.isSoon(product) ? "قريباً" : "نفد")
@@ -125,6 +126,10 @@ struct ProductCard: View {
             Color.clear
                 .aspectRatio(1, contentMode: .fit)
                 .padding(6)
+                // القلب (المفضلة) فوق الصورة بالزاوية المقابلة للشارة، حتى للمنتج النافد (يقدر يحفظه لين يرجع)
+                .overlay(alignment: .topTrailing) {
+                    if !catalog.isSoon(product) { FavoriteButton(productID: product.id).padding(-4) }
+                }
                 .overlay(alignment: .bottom) {
                     if available {
                         if kind == .deal, !cart.dealUnlocked(catalog) {

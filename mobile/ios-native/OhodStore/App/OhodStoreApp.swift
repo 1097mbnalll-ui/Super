@@ -8,6 +8,7 @@ struct OhodStoreApp: App {
     @State private var cart = Cart()
     @State private var orders = OrderCenter()
     @State private var wallet = WalletCenter()
+    @State private var favorites = Favorites()
 
     var body: some Scene {
         WindowGroup {
@@ -16,6 +17,7 @@ struct OhodStoreApp: App {
                 .environment(cart)
                 .environment(orders)
                 .environment(wallet)
+                .environment(favorites)
                 .environment(\.layoutDirection, AppLang.direction)
                 .environment(\.locale, AppLang.locale)   // عربي بأرقام إنجليزية (قرار المالك)، أو إنجليزي من «حسابي»
                 .tint(Theme.brand)
@@ -33,6 +35,7 @@ struct RootView: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(Cart.self) private var cart
     @Environment(OrderCenter.self) private var orders
+    @Environment(Favorites.self) private var favorites
     @Environment(\.scenePhase) private var scenePhase
     @State private var previewAddress = false
     @State private var previewPlaced: SavedOrder?
@@ -150,7 +153,7 @@ struct RootView: View {
         return name
     }
 
-    /// للتصوير الآلي على المحاكي (Codemagic): -screen home|categories|category:<id>|product:<id>|cart|offers|account|address|placed و -seed-cart و -seed-order
+    /// للتصوير الآلي على المحاكي (Codemagic): -screen home|categories|category:<id>|product:<id>|cart|offers|account|address|addresses|favorites|placed و -seed-cart و -seed-order و -seed-fav و -seed-addresses
     /// وجهة إشعار العروض: العروض أو قسم معيّن
     private func openGo(_ go: String) {
         UserDefaults.standard.removeObject(forKey: "push.go")
@@ -169,6 +172,14 @@ struct RootView: View {
         if args.contains("-seed-group"), let g = catalog.store.groups.first {
             let ids = g.ids.filter { id in catalog.product(id).map(catalog.isAvailable) == true }
             if let a = ids.first { cart.set(a, 2) }; if ids.count > 1 { cart.set(ids[1], 1) } else if let a = ids.first { cart.set(a, 3) }
+        }
+        if args.contains("-seed-fav"), favorites.ids.isEmpty, let index = catalog.index {
+            for p in index.featured.prefix(5).reversed() { favorites.set(p.id, on: true) }
+            if let out = index.catalog.products.first(where: { !catalog.isAvailable($0) && !$0.isPrint && !catalog.isSoon($0) }) { favorites.set(out.id, on: true) }
+        }
+        if args.contains("-seed-addresses"), orders.addresses.isEmpty {
+            orders.saveAddress(DeliveryAddress(label: "البيت", lat: 24.845, lng: 46.815, details: "فيلا ١٢، الباب الأخضر"))
+            orders.saveAddress(DeliveryAddress(label: "الدوام", lat: 24.840, lng: 46.805, details: "برج الأعمال، الدور ٣"))
         }
         if args.contains("-seed-cart"), cart.isEmpty, let index = catalog.index {
             for (i, p) in index.featured.prefix(4).enumerated() { cart.set(p.id, i == 0 ? 2 : 1) }
@@ -202,6 +213,8 @@ struct RootView: View {
         else if value == "deals" { tab = .home; homePath.append(Route.deals) }
         else if value == "daily" { tab = .home; homePath.append(Route.daily) }
         else if value == "bundle" { tab = .home; homePath.append(Route.banner("pv-bundle")) }
+        else if value == "favorites" { tab = .account; accountPath.append(Route.favorites) }
+        else if value == "addresses" { tab = .account; accountPath.append(Route.addresses) }
         else if value == "orderdetails" { tab = .account; previewDetails = orders.orders.first }
         else if value == "search" { tab = .home; homePath.append(Route.search) }
         else if value.hasPrefix("live:") { tab = .home; homePath.append(Route.live(String(value.dropFirst(5)))) }
@@ -243,6 +256,8 @@ struct TabStack<Root: View>: View {
                     case .daily: DailyDealView()
                     case .banner(let id): RemoteScreen(key: "banner", page: "b:" + id, path: $path) { BannerProductsView(bannerID: id) }
                     case .live(let page): LiveScreen(page: page, path: $path)
+                    case .favorites: FavoritesView()
+                    case .addresses: AddressBookView()
                     }
                 }
                 .environment(\.livePath, $path)
