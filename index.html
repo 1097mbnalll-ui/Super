@@ -3131,7 +3131,9 @@ html.sp-on,html.sp-on body{overflow:hidden}
   // «أنا في الدوام» (طلب المالك ١٣ نوفمبر ٢٠٢٦): المندوب يشارك موقعه مع الإدارة طول الدوام، مو بس وهو يوصّل. الزبون ما يشوفه إلا وطلبه في الطريق
   var DUTY = false; try { DUTY = localStorage.getItem("ohod-duty") === "1"; } catch(e){}
   function setDuty(v){ DUTY = !!v; try { localStorage.setItem("ohod-duty", DUTY ? "1" : "0"); } catch(e){} geoSync(); }
-  function geoNeed(){ return !APP && mode === "driver" && !!drv.pin && (drvGroups().way.length > 0 || (DUTY && !geo.admin)) && (!geo.admin || geo.share); }
+  // طلب المالك ١٤ نوفمبر ٢٠٢٦: الموقع ينرسل من أول ما المندوب يمسك الطلب (رايح يستلمه)، مو بس وهو في الطريق للزبون
+  function drvBusy(){ return (drv.orders || []).some(function(o){ return mine(o) && (o.status === "accepted" || o.status === "onway"); }); }
+  function geoNeed(){ return !APP && mode === "driver" && !!drv.pin && (drvBusy() || (DUTY && !geo.admin)) && (!geo.admin || geo.share); }
   function appState(){ try { return JSON.parse(OhodApp.state()); } catch(e){ return {}; } }
   function geoSync(){
     if (APP) {   // التطبيق يرسل الموقع بنفسه حتى والشاشة مقفلة
@@ -3164,7 +3166,7 @@ html.sp-on,html.sp-on body{overflow:hidden}
     if (!geo.pos || geo.busy || !geoNeed()) return;
     var now = Date.now(), moved = geo.sentPos ? geoMeters(geo.sentPos, geo.pos) : 1e9, gap = now - geo.sentAt;
     // في الدوام بدون توصيل: كل دقيقة، أو كل ٢٠ ثانية لو تحرك ٥٠ متر (نخفف الكتابة على القاعدة)
-    var idle = !drvGroups().way.length;
+    var idle = !drvBusy();
     if (!force && !(idle ? (gap >= 60000 || (gap >= 20000 && moved >= 50)) : (gap >= 15000 || (gap >= 4000 && moved >= 8)))) return;
     geo.busy = true; var p = geo.pos;
     api("/driver/loc", { pin: drv.pin, lat: p.lat, lng: p.lng, acc: p.acc, share: geo.share }).then(function(j){

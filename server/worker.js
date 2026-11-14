@@ -1197,7 +1197,11 @@ async function editOrder(env, data, body, who) {
   if (old.status === "canceled") return { error: "canceled" };
   let rec; try { rec = JSON.parse(old.data); } catch { return { error: "bad_order" }; }
   const split = await env.DB.prepare('SELECT * FROM payment_splits WHERE no = ?').bind(n).first();
-  if (old.status === 'delivered') return {error:'payment_locked'};
+  // بعد التوصيل (طلب المالك ١٤ نوفمبر ٢٠٢٦، فترة التجربة): يتعدل ما دام الدفع بطريقة وحدة واليوم مو مقفل. الكاش+الشبكة يتصحح تحصيله أول
+  if (old.status === 'delivered') {
+    if (split && split.cash > 0 && split.card > 0) return {error:'payment_locked'};
+    if (await env.DB.prepare('SELECT day FROM day_closures WHERE day=?').bind(old.day || riyadhDateAt(old.created)).first().catch(() => null)) return {error:'day_closed'};
+  }
   if(old.status==='onway' && (await env.DB.prepare('SELECT require_receipt FROM pos_settings WHERE id=1').first())?.require_receipt)return {error:'pos_locked'};
   const byId = {}; for (const p of data.products || []) byId[p.id] = p;
   const oldBy = {}; for (const l of rec.lines || []) oldBy[l.id] = l;
@@ -1206,7 +1210,9 @@ async function editOrder(env, data, body, who) {
     const id = String(x.id || ""), q = Math.floor(Number(x.qty)), pr = Number(x.price);
     const p = byId[id] || oldBy[id];
     if (!p || !(q > 0 && q <= (p.print || oldBy[id] ? 5000 : 500)) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
-    lines.push({ id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined, ...(oldBy[id] && oldBy[id].per ? { per: Number(oldBy[id].per) } : {}) });
+    // اسم المنتج يتصحح في الطلب لو المالك كتبه (مثل اسم غلط)، وإلا اسم المتجر
+    const nm = typeof x.name === "string" && x.name.trim() ? x.name.trim().slice(0, 120) : (oldBy[id] && oldBy[id].name) || p.name;
+    lines.push({ id, name: nm, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined, ...(oldBy[id] && oldBy[id].per ? { per: Number(oldBy[id].per) } : {}) });
   }
   if (!lines.length) return { error: "empty" };
   const fee = Math.max(0, Number(body.fee ?? rec.fee) || 0);
