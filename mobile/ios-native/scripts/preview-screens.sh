@@ -51,8 +51,7 @@ shot() {  # shot <name> <args...>
 }
 if [ "${CHECK:-}" = "1" ]; then
   # فحص شكاوى المالك (١٤ نوفمبر ٢٠٢٦): طلب الإشعارات أول فتحة، أول الفتح بدون صفحة قديمة، الخضار «قريباً»، عرض ديمة
-  WAIT=4 shot c01-first-launch-push
-  WAIT=8 shot c01b-first-launch-push
+  WAIT=5 shot c01-first-launch-push
   xcrun simctl spawn "$DEVICE" defaults write sa.ohod.store push.asked -bool YES
   WAIT=2 shot c02-home-2s
   WAIT=5 shot c03-home-5s
