@@ -1,0 +1,876 @@
+Command line invocation:
+    /Applications/Xcode_26.6.app/Contents/Developer/usr/bin/xcodebuild -project OhodStore.xcodeproj -scheme OhodStore -configuration Debug -sdk iphonesimulator -destination "generic/platform=iOS Simulator" -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+
+Build settings from command line:
+    CODE_SIGNING_ALLOWED = NO
+    SDKROOT = iphonesimulator26.5
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'OhodStore' in project 'OhodStore' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 602df2fd3f1ff448185c254453d8a11d
+Build description path: /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/XCBuildData/602df2fd3f1ff448185c254453d8a11d.xcbuilddata
+CreateBuildDirectory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products
+    cd /Users/runner/work/Super/Super/mobile/ios-native/OhodStore.xcodeproj
+    builtin-create-build-directory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products
+
+CreateBuildDirectory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex
+    cd /Users/runner/work/Super/Super/mobile/ios-native/OhodStore.xcodeproj
+    builtin-create-build-directory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex
+
+ClangStatCache /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk /Users/runner/work/Super/Super/mobile/ios-native/build/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-688ef53f1462e2c8f657fdc38a81448ff45c64a1807a658693f2a61704f17a36.sdkstatcache
+    cd /Users/runner/work/Super/Super/mobile/ios-native/OhodStore.xcodeproj
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -o /Users/runner/work/Super/Super/mobile/ios-native/build/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-688ef53f1462e2c8f657fdc38a81448ff45c64a1807a658693f2a61704f17a36.sdkstatcache
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore-78fb8ba095eaab48eadca0498de38e37-VFS-iphonesimulator/all-product-headers.yaml
+    cd /Users/runner/work/Super/Super/mobile/ios-native/OhodStore.xcodeproj
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore-78fb8ba095eaab48eadca0498de38e37-VFS-iphonesimulator/all-product-headers.yaml
+
+CreateBuildDirectory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator
+    cd /Users/runner/work/Super/Super/mobile/ios-native/OhodStore.xcodeproj
+    builtin-create-build-directory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator
+
+CreateBuildDirectory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/runner/work/Super/Super/mobile/ios-native/OhodStore.xcodeproj
+    builtin-create-build-directory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/runner/work/Super/Super/mobile/ios-native/OhodStore.xcodeproj
+    builtin-create-build-directory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+CreateBuildDirectory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator
+    cd /Users/runner/work/Super/Super/mobile/ios-native/OhodStore.xcodeproj
+    builtin-create-build-directory /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore.hmap (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore.hmap
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore.DependencyStaticMetadataFileList (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore.DependencyMetadataFileList (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore.DependencyMetadataFileList
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-project-headers.hmap (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-project-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-own-target-headers.hmap (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-own-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-generated-files.hmap (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-generated-files.hmap
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-all-target-headers.hmap (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-all-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-all-non-framework-target-headers.hmap (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibPath-normal-x86_64.txt (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibPath-normal-x86_64.txt
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibPath-normal-arm64.txt (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibPath-normal-arm64.txt
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibInstallName-normal-x86_64.txt (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibInstallName-normal-x86_64.txt
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibInstallName-normal-arm64.txt (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibInstallName-normal-arm64.txt
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore_const_extract_protocols.json (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore_const_extract_protocols.json
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.SwiftFileList (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.SwiftFileList
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.SwiftConstValuesFileList (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.LinkFileList (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.LinkFileList
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-OutputFileMap.json (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-OutputFileMap.json
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore_const_extract_protocols.json (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore_const_extract_protocols.json
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.SwiftFileList (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.SwiftFileList
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.SwiftConstValuesFileList (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.LinkFileList (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.LinkFileList
+
+WriteAuxiliaryFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-OutputFileMap.json (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    write-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-OutputFileMap.json
+
+MkDir /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /bin/mkdir -p /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app
+
+Ld /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/__preview.dylib normal x86_64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target x86_64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -install_name @rpath/OhodStore.debug.dylib -Xlinker -dead_strip -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore_dependency_info.dat -o /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/__preview.dylib
+
+Ld /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/__preview.dylib normal arm64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -install_name @rpath/OhodStore.debug.dylib -Xlinker -dead_strip -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore_dependency_info.dat -o /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/__preview.dylib
+
+MkDir /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_output/unthinned (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /bin/mkdir -p /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_output/unthinned
+
+MkDir /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_output/thinned (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /bin/mkdir -p /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_output/thinned
+
+GenerateAssetSymbols /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Assets.xcassets (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/usr/bin/actool /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Assets.xcassets --compile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app --output-format human-readable-text --notices --warnings --export-dependency-info /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_dependencies --output-partial-info-plist /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_generated_info.plist --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --development-region ar --target-device iphone --minimum-deployment-target 17.0 --platform iphonesimulator --bundle-identifier sa.ohod.store --generate-swift-asset-symbol-extensions NO --generate-swift-asset-symbols /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/GeneratedAssetSymbols.h
+/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+CreateUniversalBinary /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/__preview.dylib normal arm64\ x86_64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/__preview.dylib /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/__preview.dylib -output /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/__preview.dylib
+
+CpResource /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/PrivacyInfo.xcprivacy /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/PrivacyInfo.xcprivacy (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/PrivacyInfo.xcprivacy /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app
+
+CpResource /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/NotoKufiArabic-SemiBold.ttf /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Fonts/NotoKufiArabic-SemiBold.ttf (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Fonts/NotoKufiArabic-SemiBold.ttf /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app
+
+CpResource /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/NotoKufiArabic-Medium.ttf /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Fonts/NotoKufiArabic-Medium.ttf (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Fonts/NotoKufiArabic-Medium.ttf /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app
+
+CpResource /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/NotoKufiArabic-Bold.ttf /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Fonts/NotoKufiArabic-Bold.ttf (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Fonts/NotoKufiArabic-Bold.ttf /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app
+
+CopyStringsFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/en.lproj/Localizable.strings /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/en.lproj/Localizable.strings (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copyStrings --validate --outputencoding binary --outfilename Localizable.strings --outdir /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/en.lproj -- /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/en.lproj/Localizable.strings
+/Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/en.lproj/Localizable.strings:1:1: note: detected encoding of input file as Unicode (UTF-8) (in target 'OhodStore' from project 'OhodStore')
+
+CompileAssetCatalogVariant thinned /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Assets.xcassets (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/usr/bin/actool /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Assets.xcassets --compile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --development-region ar --target-device iphone --minimum-deployment-target 17.0 --platform iphonesimulator
+/* com.apple.actool.compilation-results */
+/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_generated_info.plist_thinned
+/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_output/thinned/AppIcon60x60@2x.png
+/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_output/thinned/AppIcon76x76@2x~ipad.png
+/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_output/thinned/Assets.car
+
+
+SwiftDriver OhodStore normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-SwiftDriver -- /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OhodStore -Onone @/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target x86_64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/runner/work/Super/Super/mobile/ios-native/build/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-688ef53f1462e2c8f657fdc38a81448ff45c64a1807a658693f2a61704f17a36.sdkstatcache -output-file-map /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -sdk-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-generated-files.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-own-target-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-project-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources-normal/x86_64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/x86_64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-Swift.h -working-directory /Users/runner/work/Super/Super/mobile/ios-native -experimental-emit-module-separately -disable-cmo
+
+SwiftDriver OhodStore normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-SwiftDriver -- /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OhodStore -Onone @/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/runner/work/Super/Super/mobile/ios-native/build/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-688ef53f1462e2c8f657fdc38a81448ff45c64a1807a658693f2a61704f17a36.sdkstatcache -output-file-map /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -sdk-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-generated-files.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-own-target-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-project-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-Swift.h -working-directory /Users/runner/work/Super/Super/mobile/ios-native -experimental-emit-module-separately -disable-cmo
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_stddef-C3NGIMLS9GTTZ88KSEVCFKM1H.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_AvailabilityInternal-9WOJHYJIXAEMT66UTDDSQ6OIX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/ptrcheck-9NEFCLG5AH6CCQ4ALFZBQ87VS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_SwiftConcurrencyShims-F272DVDSSDAMIZ655WDAGZYD4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/DeveloperToolsSupport-BAPHF3MOZCSEX6OMBW1E483NR.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_SwiftConcurrencyShims-8SM6MYT34AYI7HLQJ8I3IWC0M.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/ptrauth-1YMEW9FMTT43ZB676J5QXB6HL.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_float-AAGCSYGO8ESSDAWET0WWNCBZ1.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/DeveloperToolsSupport-9ID8JJSZTPW33JCB7XY8I269J.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_stdarg-5QD3UAHE1QKG5CTBZWN0HV6LC.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/SwiftShims-36B02VDATKSNX818CBFF8TC0U.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_stdarg-ELAQMW7AZ2A0EIZOZN0SB1OKW.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/ptrcheck-CSW09VTI5INACQNILM6OWDZU9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_stdbool-9RBZG7QARFY6F6W0HTX8QFKCP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_float-E8B6BAPI5VF264BJOC2OF802U.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_stdbool-DI9VPDOUSAGZGA59TH9M7KY1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_stddef-EG7SMZQD4Y66J76KOOZ7J5ELD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/SwiftShims-6O8XTTGMIM9VS87O1AL9NL973.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_AvailabilityInternal-7UUGTMERXG32LIJKF1QXD5KAV.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_DarwinFoundation1-9OTXFPFQB85TOEHG9HS7Z7NDJ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/ptrauth-BYC1FCWGPSB1NUMTWUEYZFNP8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_DarwinFoundation1-5BB8KVJQSKF95WCKWR860FTNE.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_DarwinFoundation2-EZB19XZJ0JTJXMZDSJ0NJMKOD.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_limits-D0KBU2U05VGCA52P5N9RH85C1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_limits-5QBF9YXES1V1YVLEV3WI8XY0O.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_DarwinFoundation2-D3C7V21ZSIKS7GB5FSILY8P0F.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/sys_types-5F3F4VA5ZYJP42SP9QM01WBLY.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_stdint-5QXC4U541SJRMJ4VM70NU1RZE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_stdint-D7FHJ3HAPWWXWB19KQ6ENY05L.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_tgmath-3WVADPSRHUDKWFFCK7M0ZBPZ9.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_stdatomic-6U9B6Y1TUM3EF9WO5SAM0OQJK.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_intrinsics-5GM6RU6MSXYWG5CEK69O11G52.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_stdatomic-75WUT5TNIQT5R1HRP1ZKFZPL8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/sys_types-CWXD58H7EI0GFL4X3VO2HQAEZ.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_DarwinFoundation3-X9QXBEQY4MCWLYL19YNXIQHR.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_tgmath-CYYO57WV39SB8BO4AOW4LF7RN.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_intrinsics-959Q5PTKFJW9NG506S6PTSTIT.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_inttypes-6DZ8KHHTJ0PCGHRS35H5R5U22.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_DarwinFoundation3-BQ9DHZFNO0LDRMMHA2IBE30AG.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Darwin-84TU8L54I6N7YH7QFHY83TJ88.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_Builtin_inttypes-BCFZOSLNKD9O78XLBSCQY2I7A.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/simd-C7OXR3P6W9AV0YI6I103L1DNS.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/simd-9IWZDPCW3BG117SXZMXN9B267.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Darwin-6XMPZV5NO3EAPEALL4W2EW75K.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Spatial-32SP3Z00M9GB3CT13DU9PBNVP.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Spatial-33KHJ0L9W1JXWHWCCOYZ1W2BW.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/MachO-EEIOHXBMVBU530I9BE86QKYK9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/ObjectiveC-6TLKQUMFERNOGM2QAB35B73YP.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/ObjectiveC-4LQZE5MOXLD1D5S8OX5FS515N.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/MachO-CAC19DFS8CXXM7ACFNKL8LS7V.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/os_object-8UPAI4MIJ2GSOM5YAZ88TO77Y.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/os_object-DEA5I2X5D1FW78X2Y3FXH6UKI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/os_workgroup-Z33QLAK8DT77RSH9IZ1HJ7DV.pcm
+
+LinkAssetCatalog /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Resources/Assets.xcassets (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-linkAssetCatalog --thinned /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_output/thinned --thinned-dependencies /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_generated_info.plist_thinned --unthinned /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_output/unthinned --unthinned-dependencies /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_generated_info.plist_unthinned --output /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app --plist-output /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_generated_info.plist
+note: Emplaced /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/Assets.car (in target 'OhodStore' from project 'OhodStore')
+note: Emplaced /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/AppIcon76x76@2x~ipad.png (in target 'OhodStore' from project 'OhodStore')
+note: Emplaced /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/AppIcon60x60@2x.png (in target 'OhodStore' from project 'OhodStore')
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/os_workgroup-BM9ZVUTR5PP13IQOSMJ7B9F3.pcm
+
+ProcessInfoPlistFile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/Info.plist /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Info.plist (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-infoPlistUtility /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Info.plist -producttype com.apple.product-type.application -genpkginfo /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/assetcatalog_generated_info.plist -o /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/Info.plist
+warning: User supplied UIDeviceFamily key in the Info.plist will be overwritten. Please use the build setting TARGETED_DEVICE_FAMILY and remove UIDeviceFamily from your Info.plist. (in target 'OhodStore' from project 'OhodStore')
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Dispatch-3EFF9GSFDOSBULE20MV7M46CH.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Dispatch-7FE3Y613BDR98GZYYKLMOZSYY.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/XPC-2B8MJTP30JKT432GSCQB9BG2X.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreFoundation-38WGDCTSU8MG6X6TSBFH43MBJ.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/dnssd-8I5B46ER9IYL137A8DX42QEQH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/XPC-3JUES3W71840GS0QYKNCFWLB9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreFoundation-EVLJRFP68QO0BPO8CQOZ1AV6Z.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/dnssd-8J5YDBSU0D9CZN594GKTXVEUK.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/os-BG86O9U91V3HPY593RV1W72Q3.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CFNetwork-5224DQ5J7YTHWY8BHLN9L74L4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreGraphics-2CIW1KUMI9NJP661DGIKO4XN9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Security-2QU4VY5KYMFCW7ML2E6IN5JUP.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Security-7KSI9RT7IW50ED9U5TFB8KDH0.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreGraphics-1TWL2QHKEJI64AZ2RY0RN6YTU.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreText-1LQ3TICESO2UYDCWTETLYK6U4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CFNetwork-96V7JFUA8B8V8DRTYK0SFKSCR.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/os-826TDIF2GIWMFJVP4DFE8OU6Y.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Foundation-7DKCQ5GP7VIW0DET3RCM6SXP4.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/ImageIO-DJ6LVRVUJFE5Z00CZ88SNGQ1.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreText-1S2HYTICWT3TMEO4WNZNMQYBK.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/ImageIO-BMXT0YXGWM93E5LQ764R1CXNT.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Foundation-8TJ0OBQQ00KXMU6S1IU2GUWOF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Symbols-ATONOGBFN0YSRJCL0LXO9GY4T.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/UIUtilities-7E91S3LVBM6PC0LB3JT4V5SN9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/OpenGLES-BXOSMR70G97AMQZ1JTI5UOZMV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/UserNotifications-D0VNV43UFHGBYFBNJ74WRKKKF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/DataDetection-6LGD7432R1C7JW1NKLM8Y29MJ.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Network-9D5KEFAZR598GAMJLI1IX6GZC.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/UIUtilities-5G3ZEN9JS8VHU85QD8CE7H0DJ.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Symbols-42UPKHL15LKB15ZE4I8HOVMNJ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_LocationEssentials-F27NOBVF8C96KXQ8FXMP10P84.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreTransferable-D8NV1JP0L6LL5DT7KVWK8VGEA.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Accessibility-31ID0REKTB4N2MSIBLGDEVS7A.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/FileProvider-77Q9BPC000GX01I32ML8ZPAWK.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreLocation-29RU6VIIICKR0A6NJSEFXOR5Q.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/OpenGLES-21IXJYF5TJ21FUMQQIGIRYHU9.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/OSLog-F2B94N8GNLZOZGNM18OAPFT1I.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Network-AJKW1M8HTDFBXB5CA64F0S67P.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/IOSurface-6N5SQCXB1VTCY7R1PWAPXZGCX.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Accessibility-39TRBHDFBF0A68Y32RVN78PTK.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/OSLog-6CJIDQFHEOPHHCHIXCNV62U69.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/UniformTypeIdentifiers-6VU97N5OH2BXYLRXECIJ8U3MR.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/FileProvider-DTKWEB1PK2V2R899WDTD7CI0S.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/DataDetection-C36PDLIYJMX5RPRSEZCR2JA25.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/UserNotifications-1TGSHMO4XYXQTCEOEKWHGYQ8V.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/UniformTypeIdentifiers-4V22SP530MGHT2FIEKN5YMV6U.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Metal-2ZX4XRSX3UBRIYDZM01Y9XBAS.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreData-3FP7BIVF57XDMRAJBY1JGHQIZ.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/IOSurface-7T6Z0Y2IKQAP0ZKF4PHZR9VQS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreData-11TMZQVAA2GKTPV1HX5SBOC5E.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Metal-BAM33GKI9R28NHVJF6V7HRS6D.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreTransferable-1MKWQ9HMQZNJMURF654T66774.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreVideo-128HARP4JTY7T81PHCFG8Y769.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/_LocationEssentials-CEYO2VC39AT0AAQNOEEEXA937.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreLocation-25H375TKRJI19L2LNGLK4XWG6.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreVideo-4MTXH9P3Y66LSJZWALAIHB2O3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreImage-DE6NZL1B08GYZB93I9RBGEHOD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/QuartzCore-1DM3XIGVYEX2PI6IR1O7IUU78.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/QuartzCore-8AF547UI04DJ6P3E0017N0JZX.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/CoreImage-7TOW9XXT4XYHH9NTRRY666890.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/SwiftUICore-5HL59FJB9T9GNW7T1C3RLWO29.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/SwiftUICore-38JW7OLB1II5DXSEZK3JZYYRP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/UIKit-4KF1ZGKPFPA0LVBJ4JQWOGDGL.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/UIKit-BAAN7TGXR66E98PCOWKSU1A5K.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/SwiftUI-669SGV4EWYZ4NRXYCGC7KG56G.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/MapKit-CICI5STMUMONVC8BLKR185173.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/WebKit-EJ3249U6BYSU6D7L32QXAV7CG.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/WebKit-AKJ9KZ969CZITSAPWQC9PEBH0.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/SwiftUI-2RE3HX11DLBLV76EDUH2M0NFH.pcm
+
+SwiftExplicitDependencyGeneratePcm x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/MapKit-4AF9D0BQWNVMALBZ5S4B6GA4Y.pcm
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ OhodStore (in target 'OhodStore' from project 'OhodStore')
+EmitSwiftModule normal arm64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 Compiling\ ProductView.swift,\ PromoViews.swift,\ Push.swift,\ SearchView.swift,\ SubOfferCard.swift,\ Theme.swift,\ Wallet.swift,\ WalletViews.swift,\ GeneratedAssetSymbols.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Product/ProductView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Promos/PromoViews.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Push.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Search/SearchView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/SubOfferCard.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Theme.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Wallet.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Account/WalletViews.swift /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'OhodStore' from project 'OhodStore')
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Product/ProductView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Promos/PromoViews.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Push.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Search/SearchView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/SubOfferCard.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Theme.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Wallet.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Account/WalletViews.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 Compiling\ HomeView.swift,\ ImagePipeline.swift,\ Lang.swift,\ LiveHomeBlocks.swift,\ Models.swift,\ OhodStoreApp.swift,\ OrderPlacedView.swift,\ Orders.swift,\ PrintView.swift,\ ProductCard.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Home/HomeView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/ImagePipeline.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Lang.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Home/LiveHomeBlocks.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Models.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/App/OhodStoreApp.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/OrderPlacedView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Orders.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Print/PrintView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/UI/ProductCard.swift (in target 'OhodStore' from project 'OhodStore')
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Home/HomeView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/ImagePipeline.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Lang.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Home/LiveHomeBlocks.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Models.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/App/OhodStoreApp.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/OrderPlacedView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Orders.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Print/PrintView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/UI/ProductCard.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftEmitModule normal x86_64 Emitting\ module\ for\ OhodStore (in target 'OhodStore' from project 'OhodStore')
+
+EmitSwiftModule normal x86_64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for OhodStore (in target 'OhodStore' from project 'OhodStore')
+
+SwiftDriver\ Compilation\ Requirements OhodStore normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OhodStore -Onone @/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/runner/work/Super/Super/mobile/ios-native/build/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-688ef53f1462e2c8f657fdc38a81448ff45c64a1807a658693f2a61704f17a36.sdkstatcache -output-file-map /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -sdk-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-generated-files.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-own-target-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-project-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-Swift.h -working-directory /Users/runner/work/Super/Super/mobile/ios-native -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal x86_64 Emitting module for OhodStore (in target 'OhodStore' from project 'OhodStore')
+
+SwiftDriver\ Compilation\ Requirements OhodStore normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OhodStore -Onone @/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target x86_64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/runner/work/Super/Super/mobile/ios-native/build/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-688ef53f1462e2c8f657fdc38a81448ff45c64a1807a658693f2a61704f17a36.sdkstatcache -output-file-map /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -sdk-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-generated-files.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-own-target-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-project-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources-normal/x86_64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/x86_64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-Swift.h -working-directory /Users/runner/work/Super/Super/mobile/ios-native -experimental-emit-module-separately -disable-cmo
+
+SwiftCompile normal x86_64 Compiling\ ProductView.swift,\ PromoViews.swift,\ Push.swift,\ SearchView.swift,\ SubOfferCard.swift,\ Theme.swift,\ Wallet.swift,\ WalletViews.swift,\ GeneratedAssetSymbols.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Product/ProductView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Promos/PromoViews.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Push.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Search/SearchView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/SubOfferCard.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Theme.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Wallet.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Account/WalletViews.swift /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'OhodStore' from project 'OhodStore')
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Product/ProductView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Promos/PromoViews.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Push.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Search/SearchView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/SubOfferCard.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Theme.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Wallet.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Account/WalletViews.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftMergeGeneratedHeaders /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/OhodStore-Swift.h /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-Swift.h /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-Swift.h (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-swiftHeaderTool -arch arm64 /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-Swift.h -arch x86_64 /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-Swift.h -o /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/OhodStore-Swift.h
+
+SwiftDriverJobDiscovery normal arm64 Compiling ProductView.swift, PromoViews.swift, Push.swift, SearchView.swift, SubOfferCard.swift, Theme.swift, Wallet.swift, WalletViews.swift, GeneratedAssetSymbols.swift (in target 'OhodStore' from project 'OhodStore')
+
+Copy /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/x86_64-apple-ios-simulator.swiftmodule /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.swiftmodule (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.swiftmodule /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/x86_64-apple-ios-simulator.swiftmodule
+
+Copy /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/x86_64-apple-ios-simulator.swiftdoc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.swiftdoc (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.swiftdoc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/x86_64-apple-ios-simulator.swiftdoc
+
+Copy /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/x86_64-apple-ios-simulator.abi.json /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.abi.json (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.abi.json /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/x86_64-apple-ios-simulator.abi.json
+
+Copy /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/arm64-apple-ios-simulator.swiftmodule /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.swiftmodule (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.swiftmodule /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/arm64-apple-ios-simulator.swiftdoc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.swiftdoc (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.swiftdoc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/arm64-apple-ios-simulator.swiftdoc
+
+Copy /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/arm64-apple-ios-simulator.abi.json /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.abi.json (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.abi.json /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/Project/x86_64-apple-ios-simulator.swiftsourceinfo /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.swiftsourceinfo (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.swiftsourceinfo /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/Project/x86_64-apple-ios-simulator.swiftsourceinfo
+
+Copy /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.swiftsourceinfo (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.swiftsourceinfo /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+SwiftCompile normal x86_64 Compiling\ HomeView.swift,\ ImagePipeline.swift,\ Lang.swift,\ LiveHomeBlocks.swift,\ Models.swift,\ OhodStoreApp.swift,\ OrderPlacedView.swift,\ Orders.swift,\ PrintView.swift,\ ProductCard.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Home/HomeView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/ImagePipeline.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Lang.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Home/LiveHomeBlocks.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Models.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/App/OhodStoreApp.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/OrderPlacedView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Orders.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Print/PrintView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/UI/ProductCard.swift (in target 'OhodStore' from project 'OhodStore')
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Home/HomeView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/ImagePipeline.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Lang.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Home/LiveHomeBlocks.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Models.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/App/OhodStoreApp.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/OrderPlacedView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Orders.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Print/PrintView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/UI/ProductCard.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 Compiling\ AccountView.swift,\ AddressView.swift,\ Analytics.swift,\ Cart.swift,\ CartView.swift,\ CatalogStore.swift,\ CategoriesView.swift,\ Components.swift,\ EnglishTable.swift,\ Haptics.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Account/AccountView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/AddressView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Analytics.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Cart.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Cart/CartView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/CatalogStore.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Categories/CategoriesView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/UI/Components.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/EnglishTable.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Haptics.swift (in target 'OhodStore' from project 'OhodStore')
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Account/AccountView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/AddressView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Analytics.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Cart.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Cart/CartView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/CatalogStore.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Categories/CategoriesView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/UI/Components.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/EnglishTable.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal x86_64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Haptics.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftDriverJobDiscovery normal x86_64 Compiling ProductView.swift, PromoViews.swift, Push.swift, SearchView.swift, SubOfferCard.swift, Theme.swift, Wallet.swift, WalletViews.swift, GeneratedAssetSymbols.swift (in target 'OhodStore' from project 'OhodStore')
+
+SwiftCompile normal arm64 Compiling\ AccountView.swift,\ AddressView.swift,\ Analytics.swift,\ Cart.swift,\ CartView.swift,\ CatalogStore.swift,\ CategoriesView.swift,\ Components.swift,\ EnglishTable.swift,\ Haptics.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Account/AccountView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/AddressView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Analytics.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Cart.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Cart/CartView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/CatalogStore.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Categories/CategoriesView.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/UI/Components.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/EnglishTable.swift /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Haptics.swift (in target 'OhodStore' from project 'OhodStore')
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Account/AccountView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Checkout/AddressView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Analytics.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Cart.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Cart/CartView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/CatalogStore.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Features/Categories/CategoriesView.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/UI/Components.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/EnglishTable.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftCompile normal arm64 /Users/runner/work/Super/Super/mobile/ios-native/OhodStore/Core/Haptics.swift (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling HomeView.swift, ImagePipeline.swift, Lang.swift, LiveHomeBlocks.swift, Models.swift, OhodStoreApp.swift, OrderPlacedView.swift, Orders.swift, PrintView.swift, ProductCard.swift (in target 'OhodStore' from project 'OhodStore')
+
+SwiftDriverJobDiscovery normal x86_64 Compiling AccountView.swift, AddressView.swift, Analytics.swift, Cart.swift, CartView.swift, CatalogStore.swift, CategoriesView.swift, Components.swift, EnglishTable.swift, Haptics.swift (in target 'OhodStore' from project 'OhodStore')
+
+SwiftDriverJobDiscovery normal arm64 Compiling AccountView.swift, AddressView.swift, Analytics.swift, Cart.swift, CartView.swift, CatalogStore.swift, CategoriesView.swift, Components.swift, EnglishTable.swift, Haptics.swift (in target 'OhodStore' from project 'OhodStore')
+
+SwiftDriver\ Compilation OhodStore normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-Swift-Compilation -- /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OhodStore -Onone @/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/runner/work/Super/Super/mobile/ios-native/build/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-688ef53f1462e2c8f657fdc38a81448ff45c64a1807a658693f2a61704f17a36.sdkstatcache -output-file-map /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -sdk-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-generated-files.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-own-target-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-project-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-Swift.h -working-directory /Users/runner/work/Super/Super/mobile/ios-native -experimental-emit-module-separately -disable-cmo
+
+Ld /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/OhodStore.debug.dylib normal arm64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -filelist /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.LinkFileList -install_name @rpath/OhodStore.debug.dylib -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -dead_strip -Xlinker -object_path_lto -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.swiftmodule @/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore-linker-args.resp -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -o /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/OhodStore.debug.dylib
+
+SwiftDriverJobDiscovery normal x86_64 Compiling HomeView.swift, ImagePipeline.swift, Lang.swift, LiveHomeBlocks.swift, Models.swift, OhodStoreApp.swift, OrderPlacedView.swift, Orders.swift, PrintView.swift, ProductCard.swift (in target 'OhodStore' from project 'OhodStore')
+
+SwiftDriver\ Compilation OhodStore normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-Swift-Compilation -- /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OhodStore -Onone @/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target x86_64-apple-ios17.0-simulator -g -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/runner/work/Super/Super/mobile/ios-native/build/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -c -j3 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-688ef53f1462e2c8f657fdc38a81448ff45c64a1807a658693f2a61704f17a36.sdkstatcache -output-file-map /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -sdk-module-cache-path /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/runner/work/Super/Super/mobile/ios-native/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-generated-files.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-own-target-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-project-headers.hmap -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/include -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources-normal/x86_64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources/x86_64 -Xcc -I/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-Swift.h -working-directory /Users/runner/work/Super/Super/mobile/ios-native -experimental-emit-module-separately -disable-cmo
+
+Ld /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/OhodStore.debug.dylib normal x86_64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target x86_64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -filelist /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.LinkFileList -install_name @rpath/OhodStore.debug.dylib -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -dead_strip -Xlinker -object_path_lto -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.swiftmodule @/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore-linker-args.resp -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -o /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/OhodStore.debug.dylib
+
+ConstructStubExecutorLinkFileList /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-ExecutorLinkFileList-normal-arm64.txt (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    construct-stub-executor-link-file-list /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/OhodStore.debug.dylib /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'OhodStore' from project 'OhodStore')
+
+Ld /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/OhodStore normal arm64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -isysroot /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-ExecutorLinkFileList-normal-arm64.txt /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/OhodStore.debug.dylib -o /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/OhodStore
+
+CreateUniversalBinary /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/OhodStore.debug.dylib normal arm64\ x86_64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/OhodStore.debug.dylib /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/OhodStore.debug.dylib -output /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/OhodStore.debug.dylib
+
+ConstructStubExecutorLinkFileList /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-ExecutorLinkFileList-normal-x86_64.txt (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    construct-stub-executor-link-file-list /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/OhodStore.debug.dylib /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-ExecutorLinkFileList-normal-x86_64.txt
+note: Using stub executor library with Swift entry point. (in target 'OhodStore' from project 'OhodStore')
+
+Ld /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/OhodStore normal x86_64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target x86_64-apple-ios17.0-simulator -isysroot /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -F/Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibPath-normal-x86_64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-DebugDylibInstallName-normal-x86_64.txt -Xlinker -filelist -Xlinker /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore-ExecutorLinkFileList-normal-x86_64.txt /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/OhodStore.debug.dylib -o /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/OhodStore
+
+CreateUniversalBinary /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/OhodStore normal arm64\ x86_64 (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo -create /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/Binary/OhodStore /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/Binary/OhodStore -output /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/OhodStore
+
+ExtractAppIntentsMetadata (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.109.0.ER0AWp/Metal.xctoolchain --module-name OhodStore --sdk-root /Applications/Xcode_26.6.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk --xcode-version 17F113 --platform-family iOS --deployment-target 17.0 --bundle-identifier sa.ohod.store --output /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app --target-triple arm64-apple-ios17.0-simulator --target-triple x86_64-apple-ios17.0-simulator --binary-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/OhodStore --dependency-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore_dependency_info.dat --dependency-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore_dependency_info.dat --stringsdata-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --stringsdata-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.SwiftFileList --source-file-list /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.SwiftFileList --metadata-file-list /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore.DependencyMetadataFileList --static-metadata-file-list /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore.DependencyStaticMetadataFileList --swift-const-vals-list /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/arm64/OhodStore.SwiftConstValuesFileList --swift-const-vals-list /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/Objects-normal/x86_64/OhodStore.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-11-14 11:45:42.337 appintentsmetadataprocessor[3917:15364] Starting appintentsmetadataprocessor export
+2026-11-14 11:45:42.349 appintentsmetadataprocessor[3917:15364] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CopySwiftLibs /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/OhodStore.debug.dylib --scan-folder /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/Frameworks --scan-folder /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/PlugIns --scan-folder /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/SystemExtensions --scan-folder /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/Extensions --platform iphonesimulator --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.109.0.ER0AWp/Metal.xctoolchain --toolchain /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+AppIntentsSSUTraining (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /Applications/Xcode_26.6.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/Info.plist --temp-dir-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/ssu --bundle-id sa.ohod.store --product-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app --extracted-metadata-path /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/Metadata.appintents --metadata-file-list /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Intermediates.noindex/OhodStore.build/Debug-iphonesimulator/OhodStore.build/OhodStore.DependencyMetadataFileList --source-file /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app/Info.plist --archive-ssu-assets
+2026-11-14 11:45:42.397 appintentsnltrainingprocessor[3935:15399] Parsing options for appintentsnltrainingprocessor
+2026-11-14 11:45:42.397 appintentsnltrainingprocessor[3935:15399] Starting AppIntents SSU YAML Generation
+2026-11-14 11:45:42.405 appintentsnltrainingprocessor[3935:15399] No AppShortcuts found - Skipping.
+
+RegisterExecutionPolicyException /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-RegisterExecutionPolicyException /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app
+
+Validate /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    builtin-validationUtility /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app -shallow-bundle -infoplist-subpath Info.plist
+
+Touch /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app (in target 'OhodStore' from project 'OhodStore')
+    cd /Users/runner/work/Super/Super/mobile/ios-native
+    /usr/bin/touch -c /Users/runner/work/Super/Super/mobile/ios-native/build/Build/Products/Debug-iphonesimulator/OhodStore.app
+
+** BUILD SUCCEEDED **
+
