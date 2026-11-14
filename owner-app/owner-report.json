@@ -1,30 +1,31 @@
 {
-  "url": "https://1097mbnalll-ui.github.io/",
-  "pinSheet": false,
-  "pinInput": false,
+  "url": "https://1097mbnalll-ui.github.io/Super/?app=owner",
+  "pinSheet": true,
+  "pinInput": true,
   "capacitor": "undefined",
-  "screen": null,
-  "title": "",
+  "screen": "more",
+  "title": "متاجر أحد",
+  "offlineErr": null,
   "timeline": [
     {
       "t": 1,
-      "pinSheet": false,
-      "screen": null
+      "pinSheet": true,
+      "screen": "more"
     },
     {
       "t": 3,
-      "pinSheet": false,
-      "screen": null
+      "pinSheet": true,
+      "screen": "more"
     },
     {
       "t": 6,
-      "pinSheet": false,
-      "screen": null
+      "pinSheet": true,
+      "screen": "more"
     },
     {
       "t": 12,
-      "pinSheet": false,
-      "screen": null
+      "pinSheet": true,
+      "screen": "more"
     }
   ]
 }
