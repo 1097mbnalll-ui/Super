@@ -1,0 +1,53 @@
+{
+  "url": "https://localhost/",
+  "screenPx": [
+    2560,
+    1600
+  ],
+  "density": 2,
+  "env": {
+    "insets": {
+      "envTop": "0px",
+      "envBottom": "0px",
+      "capTop": "0px",
+      "capBottom": "0px",
+      "top": "0px",
+      "bottom": "0px",
+      "left": "0px",
+      "right": "0px"
+    },
+    "innerH": 716,
+    "innerW": 1280,
+    "htmlClass": "android native",
+    "platform": "android",
+    "native": true,
+    "tabBarBottom": 76,
+    "tabBarTop": 16,
+    "ua": "Mozilla/5.0 (Linux; Android 14; sdk_gphone64_x86_64 Build/UE1A.230829.050; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/113.0.5672.136 Safari/537.36",
+    "adminVisible": false
+  },
+  "scroll": {
+    "frames": 140,
+    "avgMs": 86.9,
+    "fps": 11.5,
+    "over33ms": 82,
+    "over50ms": 79,
+    "worstMs": 333.3
+  },
+  "account": {
+    "deleteLink": true,
+    "privacyLink": true
+  },
+  "bottomCheck": {
+    "linkBottom": 523.0703125,
+    "tabTop": 27.5,
+    "innerH": 716,
+    "linkClear": false
+  },
+  "pages": [
+    "https://localhost/delete-data.html"
+  ],
+  "problems": [
+    "content hidden behind tab bar"
+  ]
+}

@@ -1,0 +1,6 @@
+  mCurrentFocus=Window{624c05e u0 sa.ohod.store/sa.ohod.store.MainActivity}
+        InsetsSource id=aa80000 type=statusBars frame=[0,0][2560,48] visible=true flags= insetsRoundedCornerFrame=false
+        InsetsSource id=5bdc0001 type=navigationBars frame=[0,1480][2560,1600] visible=true flags=SUPPRESS_SCRIM insetsRoundedCornerFrame=true
+        InsetsSourceControl: {aa80000 mType=statusBars initiallyVisible mSurfacePosition=Point(0, 0) mInsetsHint=Insets{left=0, top=48, right=0, bottom=0}}
+        InsetsSourceControl: {5bdc0001 mType=navigationBars initiallyVisible mSurfacePosition=Point(0, 1480) mInsetsHint=Insets{left=0, top=0, right=0, bottom=120}}
+        mSource=InsetsSource id=5bdc0001 type=navigationBars frame=[0,1480][2560,1600] visible=true flags=SUPPRESS_SCRIM insetsRoundedCornerFrame=true
