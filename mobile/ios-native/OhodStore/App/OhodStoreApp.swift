@@ -83,7 +83,7 @@ struct RootView: View {
         }
         // قرار المالك ١٤ نوفمبر ٢٠٢٦: أول فتحة يطلع سؤال آبل مباشرة، ولو وافق نرسل له كل الإشعارات (الطلب والعروض)
         .task {
-            guard !UserDefaults.standard.bool(forKey: "push.asked") else { return }
+            guard !UserDefaults.standard.bool(forKey: "push.asked"), !ProcessInfo.processInfo.arguments.contains("-no-push") else { return }
             try? await Task.sleep(for: .seconds(1.5))
             let ok = await Push.shared.enable()
             UserDefaults.standard.set(true, forKey: "push.asked")
@@ -104,6 +104,11 @@ struct RootView: View {
             }
         }
         .onChange(of: catalog.dataVersion) { _, _ in cart.normalize(catalog) }
+        // تسعير الخادم يتجهز أول ما تتغير السلة (من أي شاشة)، مو لما تنفتح السلة بس
+        .task(id: cart.revision) {
+            try? await Task.sleep(for: .milliseconds(400))
+            if !Task.isCancelled, !cart.isEmpty { await cart.refreshQuote(catalog) }
+        }
         // ضغط على إشعار عروض: العروض أو قسم معيّن
         .onReceive(NotificationCenter.default.publisher(for: .ohodGo)) { n in
             guard let go = n.object as? String else { return }
@@ -161,6 +166,10 @@ struct RootView: View {
             cart.set("d:\(f[6].id)", 1)
             cart.setBundle("pv-bundle", 1, catalog: catalog)
         }
+        if args.contains("-seed-group"), let g = catalog.store.groups.first {
+            let ids = g.ids.filter { id in catalog.product(id).map(catalog.isAvailable) == true }
+            if let a = ids.first { cart.set(a, 2) }; if ids.count > 1 { cart.set(ids[1], 1) } else if let a = ids.first { cart.set(a, 3) }
+        }
         if args.contains("-seed-cart"), cart.isEmpty, let index = catalog.index {
             for (i, p) in index.featured.prefix(4).enumerated() { cart.set(p.id, i == 0 ? 2 : 1) }
         }
@@ -194,6 +203,7 @@ struct RootView: View {
         else if value == "daily" { tab = .home; homePath.append(Route.daily) }
         else if value == "bundle" { tab = .home; homePath.append(Route.banner("pv-bundle")) }
         else if value == "orderdetails" { tab = .account; previewDetails = orders.orders.first }
+        else if value == "search" { tab = .home; homePath.append(Route.search) }
         else if value.hasPrefix("live:") { tab = .home; homePath.append(Route.live(String(value.dropFirst(5)))) }
         else if value.hasPrefix("category:") { tab = .categories; categoriesPath.append(Route.category(String(value.dropFirst(9)))) }
         else if value.hasPrefix("product:") {

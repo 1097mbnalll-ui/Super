@@ -7,7 +7,9 @@ struct CatalogIndex: Sendable {
     let byId: [String: Product]
     let categoriesById: [String: Category]
     let byCategory: [String: [Product]]
-    let search: [(id: String, text: String, barcode: String)]
+    let search: [(id: String, text: String, barcode: String, name: String)]
+    /// كلمات الفهرس (٤ أحرف وفوق) للتصحيح الإملائي
+    let tokens: [String]
     let offers: [Product]
     let featured: [Product]
 
@@ -35,14 +37,20 @@ struct CatalogIndex: Sendable {
         // البحث يشمل أسماء الخيارات (شدّة/كرتون) وكلماتها العامة، و«موية» للماء
         let water = try? NSRegularExpression(pattern: "(^|\\s)(ماء|مياه)(\\s|$)")
         let catNames = Dictionary(catalog.categories.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
-        let search = catalog.products.filter { !$0.isPrint }.map { p -> (id: String, text: String, barcode: String) in
+        var toks = Set<String>()
+        let search = catalog.products.filter { !$0.isPrint }.map { p -> (id: String, text: String, barcode: String, name: String) in
             // نفس فهرس الموقع: الاسم والإنجليزي والباركود واسم القسم والخيارات
             var text = [p.name, p.nameEN ?? "", p.barcode ?? "", catNames[p.cat] ?? "", p.unit, p.isCarton ? "كرتون كرتونه شده شد كراتين جملة" : ""].joined(separator: " ")
             if !p.packs.isEmpty { text += " " + p.packs.map(\.unit).joined(separator: " ") + " كرتون كرتونه شده شد باكت علبه" }
             if water?.firstMatch(in: p.name, range: NSRange(p.name.startIndex..., in: p.name)) != nil { text += " موية مويه مويا مياه ماء" }
-            return (id: p.id, text: ArabicSearch.normalize(text), barcode: p.barcode ?? "")
+            let h = ArabicSearch.normalize(text), hw = h.split(separator: " ").map { ArabicSearch.stripAl(String($0)) }
+            for t in hw where t.count >= 4 { toks.insert(t) }
+            let nm = ArabicSearch.normalize(p.name + " " + (p.nameEN ?? "")).split(separator: " ").map { ArabicSearch.stripAl(String($0)) }.joined(separator: " ")
+            return (id: p.id, text: " " + h + " " + hw.joined(separator: " ") + " ", barcode: p.barcode ?? "", name: " " + nm + " ")
         }
-        let offers = catalog.products.filter { $0.inStock && ($0.discount != nil || $0.quantityOffer != nil) }
+        // منتجات «اختر من أي نوع» (ديمة) عروض بعد، تطلع في تبويب العروض
+        let inGroup = Set(catalog.store.groups.flatMap(\.ids))
+        let offers = catalog.products.filter { $0.inStock && ($0.discount != nil || $0.quantityOffer != nil || inGroup.contains($0.id)) }
             .sorted { ($0.hasPhoto ? 0 : 1, -($0.discount ?? 0)) < ($1.hasPhoto ? 0 : 1, -($1.discount ?? 0)) }
         // مختارات الرئيسية: العروض اللي لها صور، ثم منتجات بصور من أهم الأقسام بالتناوب
         var featured = offers.filter(\.hasPhoto)
@@ -59,7 +67,7 @@ struct CatalogIndex: Sendable {
         }
         return CatalogIndex(catalog: catalog, byId: byId,
                             categoriesById: Dictionary(catalog.categories.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }),
-                            byCategory: byCategory, search: search, offers: offers, featured: featured)
+                            byCategory: byCategory, search: search, tokens: Array(toks), offers: offers, featured: featured)
     }
 }
 
@@ -145,20 +153,54 @@ final class CatalogStore {
         return (p, nil, nil)
     }
 
-    func search(_ query: String, limit: Int = 120) -> [Product] {
+    /// البحث (نفس searchProducts في الموقع): كل كلمة لازم تنوجد بنفسها أو بمرادف (store.syn) أو بكلمة قريبة بحرف،
+    /// والترتيب: اللي يطابق الاسم أول، والمتوفر وبصورة قبل غيره. بدون قطع قبل الترتيب (كان يفوّت منتجات موجودة)
+    func search(_ query: String, limit: Int = 300) -> [Product] {
         guard let index else { return [] }
-        let words = ArabicSearch.words(query)
+        let words = ArabicSearch.words(query).map(ArabicSearch.stripAl)
         guard !words.isEmpty else { return [] }
         let digits = CatalogParser.latinDigits(query).filter(\.isNumber)
-        var hits: [Product] = []
-        for entry in index.search {
-            if (digits.count >= 6 && entry.barcode.contains(digits)) || words.allSatisfy({ entry.text.contains($0) }),
-               let p = index.byId[entry.id] {
-                hits.append(p)
-                if hits.count >= limit * 3 { break }
-            }
+        let syn = synonyms()
+        let alts: [[String]] = words.map { w in
+            var a = [w] + (syn[w] ?? [])
+            let hit = a.contains { x in index.search.contains { $0.text.contains(x) } }
+            if (!hit && w.count >= 4) || w.count >= 6 { for t in index.tokens where t != w && ArabicSearch.near1(w, t) && !a.contains(t) { a.append(t) } }
+            return a
         }
-        return Array(hits.sorted { (isAvailable($0) ? 0 : 1, $0.hasPhoto ? 0 : 1) < (isAvailable($1) ? 0 : 1, $1.hasPhoto ? 0 : 1) }.prefix(limit))
+        var out: [(p: Product, s: Double)] = []
+        for e in index.search {
+            guard let p = index.byId[e.id] else { continue }
+            if digits.count >= 6 && e.barcode.contains(digits) { out.append((p, 1000)); continue }
+            var sc = 0.0, ok = true
+            for a in alts {
+                var best = -1.0
+                for (k, x) in a.enumerated() {
+                    var s2 = -1.0
+                    if e.name.contains(" " + x + " ") { s2 = 6 } else if e.name.contains(" " + x) { s2 = 4 } else if e.name.contains(x) { s2 = 2 } else if e.text.contains(x) { s2 = 1 }
+                    if s2 >= 0 && k > 0 { s2 -= 0.5 }
+                    best = Swift.max(best, s2)
+                }
+                if best < 0 { ok = false; break }
+                sc += best
+            }
+            guard ok else { continue }
+            if e.name.hasPrefix(" " + (alts.first?.first ?? "")) { sc += 3 }
+            if isAvailable(p) { sc += 50 }
+            if p.hasPhoto { sc += 2 }
+            out.append((p, sc))
+        }
+        return out.sorted { $0.s != $1.s ? $0.s > $1.s : $0.p.name.count < $1.p.name.count }.prefix(limit).map(\.p)
+    }
+    @ObservationIgnored private var synCache: (src: [String: String], map: [String: [String]])?
+    private func synonyms() -> [String: [String]] {
+        let src = store.syn
+        if let c = synCache, c.src == src { return c.map }
+        var m: [String: [String]] = [:]
+        for (k, v) in src {
+            let g = ([k] + v.split(separator: " ").map(String.init)).map { ArabicSearch.stripAl(ArabicSearch.normalize($0)) }
+            for x in g { m[x, default: []] += g.filter { $0 != x } }
+        }
+        synCache = (src, m); return m
     }
 
     // MARK: عروض المتجر (نفس الموقع: dealsList / daily / bundleAlloc / lineOf)
