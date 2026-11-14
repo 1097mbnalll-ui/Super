@@ -1,6 +1,6 @@
-  mCurrentFocus=Window{9eb91b6 u0 sa.ohod.store/sa.ohod.store.MainActivity}
-        InsetsSource id=2fb40000 type=statusBars frame=[0,0][1080,132] visible=true flags= sideHint=TOP boundingRects=null
-        InsetsSource id=56ca0001 type=navigationBars frame=[0,2337][1080,2400] visible=true flags=SUPPRESS_SCRIM|ANIMATE_RESIZING sideHint=BOTTOM boundingRects=null
-        InsetsSourceControl: {2fb40000 mType=statusBars initiallyVisible mSurfacePosition=Point(0, 0) mInsetsHint=Insets{left=0, top=132, right=0, bottom=0}}
-        InsetsSourceControl: {56ca0001 mType=navigationBars initiallyVisible mSurfacePosition=Point(0, 2337) mInsetsHint=Insets{left=0, top=0, right=0, bottom=63}}
-        mSource=InsetsSource id=56ca0001 type=navigationBars frame=[0,2337][1080,2400] visible=true flags=SUPPRESS_SCRIM|ANIMATE_RESIZING sideHint=BOTTOM boundingRects=null
+  mCurrentFocus=Window{da30dff u0 sa.ohod.store/sa.ohod.store.MainActivity}
+        InsetsSource id=e0e90000 type=statusBars frame=[0,0][1080,132] visible=true flags= sideHint=TOP boundingRects=null
+        InsetsSource id=62970001 type=navigationBars frame=[0,2337][1080,2400] visible=true flags=SUPPRESS_SCRIM|ANIMATE_RESIZING sideHint=BOTTOM boundingRects=null
+        InsetsSourceControl: {e0e90000 mType=statusBars initiallyVisible mSurfacePosition=Point(0, 0) mInsetsHint=Insets{left=0, top=132, right=0, bottom=0}}
+        InsetsSourceControl: {62970001 mType=navigationBars initiallyVisible mSurfacePosition=Point(0, 2337) mInsetsHint=Insets{left=0, top=0, right=0, bottom=63}}
+        mSource=InsetsSource id=62970001 type=navigationBars frame=[0,2337][1080,2400] visible=true flags=SUPPRESS_SCRIM|ANIMATE_RESIZING sideHint=BOTTOM boundingRects=null
