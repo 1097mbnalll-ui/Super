@@ -83,7 +83,7 @@ struct RootView: View {
         }
         // قرار المالك ١٤ نوفمبر ٢٠٢٦: أول فتحة يطلع سؤال آبل مباشرة، ولو وافق نرسل له كل الإشعارات (الطلب والعروض)
         .task {
-            guard !UserDefaults.standard.bool(forKey: "push.asked") else { return }
+            guard !UserDefaults.standard.bool(forKey: "push.asked"), !ProcessInfo.processInfo.arguments.contains("-no-push") else { return }
             try? await Task.sleep(for: .seconds(1.5))
             let ok = await Push.shared.enable()
             UserDefaults.standard.set(true, forKey: "push.asked")

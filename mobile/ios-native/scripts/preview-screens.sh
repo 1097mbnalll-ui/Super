@@ -44,15 +44,15 @@ xcrun simctl install "$DEVICE" "$APP"
 shot() {  # shot <name> <args...>
   local name="$1"; shift
   xcrun simctl terminate "$DEVICE" sa.ohod.store >/dev/null 2>&1 || true
-  xcrun simctl launch "$DEVICE" sa.ohod.store "$@" >/dev/null
+  xcrun simctl launch "$DEVICE" sa.ohod.store ${NP:-} "$@" >/dev/null
   sleep "${WAIT:-9}"
   xcrun simctl io "$DEVICE" screenshot --type=png "$OUT/$name.png" >/dev/null
   echo "shot $name"
 }
 if [ "${CHECK:-}" = "full" ]; then
   # فحص شامل (طلب المالك ١٤ نوفمبر ٢٠٢٦): كل شاشات الزبون بالعربي (الإنجليزي موقوف)
-  WAIT=5 shot f01-first-launch
-  xcrun simctl spawn "$DEVICE" defaults write sa.ohod.store push.asked -bool YES
+  # سؤال الإشعارات آخر شي: لو انسأل أول، نافذة آبل تبقى فوق كل الصور (المحاكي ما يضغط «سماح»)
+  NP=-no-push
   WAIT=3 shot f02-home-3s
   WAIT=14 shot f03-home
   shot f04-categories -screen categories
@@ -79,6 +79,8 @@ if [ "${CHECK:-}" = "full" ]; then
   shot f25-promo-home -seed-promos -screen home
   shot f26-bundle -seed-promos -screen bundle
   shot f27-promo-cart -seed-promos -seed-promo-cart -screen cart
+  NP=
+  WAIT=5 shot f01-first-launch
   ls -la "$OUT"; exit 0
 fi
 if [ "${CHECK:-}" = "1" ]; then
