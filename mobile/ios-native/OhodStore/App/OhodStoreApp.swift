@@ -85,8 +85,9 @@ struct RootView: View {
         .task {
             guard !UserDefaults.standard.bool(forKey: "push.asked") else { return }
             try? await Task.sleep(for: .seconds(1.5))
+            let ok = await Push.shared.enable()
             UserDefaults.standard.set(true, forKey: "push.asked")
-            guard await Push.shared.enable() else { return }
+            guard ok else { return }
             var n = 0
             while catalog.apiBase.isEmpty, n < 60 { try? await Task.sleep(for: .milliseconds(500)); n += 1 }
             await Push.shared.enablePromo(api: catalog.apiBase)
