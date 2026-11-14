@@ -23,6 +23,12 @@ struct ProductView: View {
         .modifier(ZoomDestination(id: productID))
         .onAppear { Analytics.shared.view(productID) }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // المفضلة (مثل القلب أعلى صفحة المنتج في الموقع)
+            if let p = catalog.product(productID), !catalog.isSoon(p) {
+                ToolbarItem(placement: .topBarTrailing) { FavoriteButton(productID: productID, large: true) }
+            }
+        }
     }
 
     @ViewBuilder

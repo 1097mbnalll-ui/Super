@@ -15,6 +15,9 @@ enum Route: Hashable {
     case banner(String)
     /// صفحة حية من الموقع (page=…): مثل اختيار عرض المجموعة
     case live(String)
+    /// «المفضلة» و«عناويني» من «حسابي»
+    case favorites
+    case addresses
 }
 
 private struct ZoomNamespaceKey: EnvironmentKey {

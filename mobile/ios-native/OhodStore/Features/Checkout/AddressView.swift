@@ -6,6 +6,10 @@ import CoreLocation
 struct AddressView: View {
     /// زر الحفظ: «احفظ العنوان» أو «احفظ وأرسل الطلب»
     var confirmTitle = "احفظ العنوان"
+    /// العنوان اللي ينعدّل (من «عناويني»). بدونه: العنوان المختار، أو جديد لو ما فيه عنوان
+    var addressID: String? = nil
+    /// «أضف عنوان»: عنوان جديد حتى لو فيه عناوين محفوظة
+    var startNew = false
     var onSaved: () -> Void = {}
 
     @Environment(CatalogStore.self) private var catalog
@@ -19,13 +23,18 @@ struct AddressView: View {
     @State private var phone = ""
     @State private var details = ""
     @State private var name = ""
+    /// اسم العنوان (البيت، الدوام، أو يكتبه) و id العنوان اللي ينعدّل (nil = جديد)
+    @State private var label = ""
+    @State private var customLabel = false
+    @State private var editingID: String?
     @State private var phoneError: String?
     @State private var locating = false
     @State private var locationDenied = false
     @State private var locator = LocationFetcher()
     @FocusState private var focus: Field?
 
-    private enum Field { case phone, details, name }
+    private enum Field { case phone, details, name, label }
+    private static let presetLabels = ["البيت", "الدوام"]
 
     private var zone: [CLLocationCoordinate2D] {
         catalog.store.zone.map { CLLocationCoordinate2D(latitude: $0[0], longitude: $0[1]) }
@@ -128,6 +137,8 @@ struct AddressView: View {
                 .font(.ui(size: 13.5, weight: .semibold))
                 .foregroundStyle(inside ? Theme.brandDeep : Theme.copperInk)
 
+            labelPicker
+
             field("الجوال", text: $phone, prompt: "05XXXXXXXX", field: .phone, error: phoneError)
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
@@ -162,6 +173,43 @@ struct AddressView: View {
         }
     }
 
+    /// اسم العنوان: البيت / الدوام / غيره (يكتبه)، مثل labelFld في الموقع
+    private var labelPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                ForEach(Self.presetLabels, id: \.self) { l in
+                    labelChip(l, on: !customLabel && label == l) { customLabel = false; label = l }
+                }
+                labelChip("غيره", on: customLabel) {
+                    customLabel = true
+                    if Self.presetLabels.contains(label) { label = "" }
+                    focus = .label
+                }
+            }
+            if customLabel {
+                field("العنوان", text: $label, prompt: "اسمه، مثلاً: بيت أهلي", field: .label)
+                    .submitLabel(.next)
+                    .onSubmit { focus = .phone }
+            }
+        }
+    }
+
+    private func labelChip(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(.snappy(duration: 0.2)) { action() }
+            Haptics.selected()
+        } label: {
+            Text(tv: title)
+                .font(.ui(size: 14, weight: .semibold))
+                .foregroundStyle(on ? .white : Theme.ink)
+                .frame(maxWidth: .infinity, minHeight: 40)
+                .background(on ? Theme.ink : .white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? .clear : Theme.line))
+        }
+        .buttonStyle(PressableStyle(scale: 0.96))
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
     private func field(_ title: String, text: Binding<String>, prompt: String, field: Field, error: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 12) {
@@ -190,7 +238,11 @@ struct AddressView: View {
     private func setup() {
         phone = orders.phone
         name = orders.name
-        if let a = orders.address {
+        let current = startNew ? nil : (addressID.flatMap { id in orders.addresses.first { $0.id == id } } ?? orders.address)
+        editingID = current?.id
+        label = current?.label ?? orders.nextLabel
+        customLabel = !Self.presetLabels.contains(label)
+        if let a = current {
             details = a.details
             center = a.coordinate
             position = .region(MKCoordinateRegion(center: a.coordinate, latitudinalMeters: 450, longitudinalMeters: 450))
@@ -236,7 +288,8 @@ struct AddressView: View {
             return
         }
         guard inside else { Haptics.warning(); return }
-        orders.save(address: DeliveryAddress(lat: center.latitude, lng: center.longitude,
+        orders.save(address: DeliveryAddress(id: editingID ?? UUID().uuidString, label: label,
+                                             lat: center.latitude, lng: center.longitude,
                                              details: details.trimmingCharacters(in: .whitespacesAndNewlines)),
                     phone: normalized, name: name)
         Haptics.selected()
