@@ -77,12 +77,6 @@ struct AccountView: View {
                     .disabled(Push.shared.enabled)
                     Divider().padding(.trailing, 52)
                     Button {
-                        if Push.shared.promo { Push.shared.disablePromo() } else { Task { await Push.shared.enablePromo(api: catalog.apiBase) } }
-                    } label: {
-                        row("إشعارات العروض", systemImage: "tag", value: Push.shared.promo ? "مفعّلة ✓ (اضغط للإيقاف)" : "فعّلها")
-                    }
-                    Divider().padding(.trailing, 52)
-                    Button {
                         AppLang.set(english: !AppLang.english)
                         langNote = true
                     } label: {

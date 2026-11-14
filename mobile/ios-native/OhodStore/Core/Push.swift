@@ -47,7 +47,8 @@ final class Push {
         denied = !granted
         enabled = granted
         UserDefaults.standard.set(granted, forKey: "push.pref")
-        if granted { UIApplication.shared.registerForRemoteNotifications() }
+        // قرار المالك ١٤ نوفمبر ٢٠٢٦: موافقة آبل وحدها تكفي لكل الإشعارات (الطلب والعروض)
+        if granted { promo = true; UserDefaults.standard.set(true, forKey: "push.promo"); UIApplication.shared.registerForRemoteNotifications() }
         return granted
     }
 
@@ -83,8 +84,11 @@ final class Push {
     }
     /// عند فتح التطبيق: لو الزبون مشترك نحدّث رمز جهازه (يتغير أحياناً)
     func resumePromo(api: String) {
-        guard promo, !api.isEmpty else { return }
+        guard !api.isEmpty else { return }
         UserDefaults.standard.set(api, forKey: "push.promoApi")
+        // اللي وافق على الإشعارات من قبل (من الطلب) ينضاف للعروض بعد
+        if enabled, !promo { promo = true; UserDefaults.standard.set(true, forKey: "push.promo") }
+        guard promo else { return }
         UIApplication.shared.registerForRemoteNotifications()
     }
     func failed() { pending = [] }
