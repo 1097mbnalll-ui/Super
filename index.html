@@ -1494,7 +1494,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   // تطبيق أندرويد يفتح الموقع الحي نفسه (?app=android) عشان أي تحديث بالموقع أو الصور يوصل التطبيق فوراً بدون نسخة جديدة في قوقل بلاي
   var APPQ = /[?&]app=android(?:&|$)/.test(location.search);
   if (APPQ && /[?&]fcm=1(?:&|$)/.test(location.search)) window.__FCM__ = true;
-  var NATIVE = !!window.__NATIVE_STORE__ || APPQ || !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && !window.OhodApp), SITEB = String(window.__SITE__ || "");
+  var OWNERQ = /[?&]app=owner(?:&|$)/.test(location.search);   // تطبيق المالك: يفتح شاشة كلمة السر على طول
+  var NATIVE = !OWNERQ && (!!window.__NATIVE_STORE__ || APPQ || !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && !window.OhodApp)), SITEB = String(window.__SITE__ || "");
   if (NATIVE && (APPQ || (window.Capacitor && Capacitor.getPlatform && Capacitor.getPlatform() === "android"))) document.documentElement.classList.add("android"); (function(){ var l = document.createElement("link"); l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700&display=swap"; document.head.appendChild(l); var tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = "#DDF1EA"; })();
   // إحساس التطبيق الأصلي (داخل التطبيق بس): بدون تحديد نص أو ظل لمس، وانتقال ينزلق بين الصفحات مثل آيفون (View Transitions)
   if (NATIVE) { document.documentElement.classList.add("native"); var nst = document.createElement("style"); nst.textContent =
@@ -5178,6 +5179,13 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && mode === "store") loadStock(); });
   if (!NATIVE && (location.hash === "#driver" || /[?&]app=driver/.test(location.search) || APP)) openDriver();
+  if (OWNERQ) {   // تطبيق المالك: افتح الدخول على طول، وزر ثابت لو انقفل
+    document.documentElement.classList.add("owner");
+    var ob = document.createElement("button"); ob.type = "button"; ob.textContent = "دخول الإدارة";
+    ob.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + var(--sa-bottom));z-index:40;min-height:52px;padding:0 28px;border:0;border-radius:26px;background:#0D1420;color:#fff;font:700 16px/1 inherit;box-shadow:0 8px 24px rgba(13,20,32,.3)";
+    ob.onclick = function(){ if (!$("pinSheet")) openPin(); }; document.body.appendChild(ob);
+    setTimeout(function(){ if (mode === "store" && !$("pinSheet")) openPin(); }, 300);
+  }
   if (NATIVE) {   // لمسات التطبيق الأصلي: زر الرجوع في أندرويد، واهتزاز خفيف عند إضافة منتج للسلة
     var AppP = nativePlug("App"), HapP = nativePlug("Haptics");
     if (AppP && AppP.addListener) AppP.addListener("backButton", function(){

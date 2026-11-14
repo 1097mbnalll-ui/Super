@@ -1,0 +1,55 @@
+# تطبيق المالك (إدارة أحد): نفس مشروع أندرويد بحزمة وأيقونة ثانية، يفتح الموقع الحي على شاشة كلمة السر.
+# يشتغل بس لما ملف mobile/store/owner-trigger.txt يتغير (دقائق البناء مدفوعة). الناتج على فرع owner-apk برابط مباشر.
+name: android-owner-apk
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [mobile-app]
+    paths: ['mobile/store/owner-trigger.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: npm ci
+        working-directory: mobile
+        run: npm ci
+      - name: build owner app
+        working-directory: mobile
+        env:
+          OWNER_APP: '1'
+        run: |
+          npm run sync
+          cd android
+          for i in 1 2 3; do ./gradlew --no-daemon assembleDebug && exit 0; echo "retry $i"; sleep 20; done; exit 1
+      - name: self-check (owner APK identity, and the customer build still builds)
+        working-directory: mobile/android
+        run: |
+          AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt | tail -1)
+          cp app/build/outputs/apk/debug/app-debug.apk $RUNNER_TEMP/owner.apk
+          $AAPT dump badging $RUNNER_TEMP/owner.apk | grep -E "^package:|application-label:|launchable-activity" | cut -c1-160
+          OWNER_APP= ./gradlew --no-daemon assembleDebug -q
+          $AAPT dump badging app/build/outputs/apk/debug/app-debug.apk | grep -E "^package:|application-label:" | cut -c1-160
+          cp $RUNNER_TEMP/owner.apk app/build/outputs/apk/debug/app-debug.apk
+      - name: publish APK to branch owner-apk (direct download)
+        run: |
+          D=$RUNNER_TEMP/pub; rm -rf "$D"; mkdir -p "$D"; cd "$D"
+          git init -q -b owner-apk
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          cp "$GITHUB_WORKSPACE"/mobile/android/app/build/outputs/apk/debug/app-debug.apk ohod-owner.apk
+          echo "commit ${{ github.sha }}  run ${{ github.run_id }}" > SOURCE.txt
+          git add -A && git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "owner APK ${{ github.run_number }}"
+          git push -q -f origin HEAD:owner-apk

@@ -14,8 +14,9 @@ if (process.env.ANDROID_LOCAL === '1') {
   delete cfg.server.url; delete cfg.server.errorPath;
   console.log('android-remote: وضع محلي (ملفات الفرع)');
 } else {
-  const fcm = fs.existsSync(path.join(app, 'google-services.json'));
-  cfg.server.url = SITE + '?app=android' + (fcm ? '&fcm=1' : '');
+  const owner = process.env.OWNER_APP === '1';
+  const fcm = !owner && fs.existsSync(path.join(app, 'google-services.json'));
+  cfg.server.url = SITE + (owner ? '?app=owner' : '?app=android' + (fcm ? '&fcm=1' : ''));
   cfg.server.errorPath = 'offline.html';
   console.log('android-remote: يفتح', cfg.server.url);
 }

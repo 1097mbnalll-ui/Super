@@ -8,13 +8,16 @@ if (keystoreFile.exists()) keystoreFile.withInputStream { keystoreProps.load(it)
 def signValue = { String env, String prop -> System.getenv(env) ?: keystoreProps.getProperty(prop) }
 // رقم الإصدار لازم يزيد مع كل رفع لقوقل. من البناء السحابي (ANDROID_VERSION_CODE) أو -PversionCode=N
 def versionCodeValue = Integer.parseInt((System.getenv("ANDROID_VERSION_CODE") ?: project.findProperty("versionCode") ?: "1").toString())
+// تطبيق المالك (نفس المشروع، هوية وحزمة ثانية): -PownerApp=1 أو OWNER_APP=1
+def ownerApp = ((System.getenv("OWNER_APP") ?: project.findProperty("ownerApp") ?: "").toString() == "1")
 def versionNameValue = (System.getenv("ANDROID_VERSION_NAME") ?: project.findProperty("versionName") ?: "1.0").toString()
 
 android {
     namespace = "sa.ohod.store"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "sa.ohod.store"
+        applicationId(ownerApp ? "sa.ohod.owner" : "sa.ohod.store")
+        manifestPlaceholders = [appLabel: ownerApp ? "إدارة أحد" : "@string/app_name", actLabel: ownerApp ? "إدارة أحد" : "@string/title_activity_main", appIcon: ownerApp ? "@mipmap/ic_owner" : "@mipmap/ic_launcher", appRoundIcon: ownerApp ? "@mipmap/ic_owner" : "@mipmap/ic_launcher_round"]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode versionCodeValue
