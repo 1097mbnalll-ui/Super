@@ -1,0 +1,42 @@
+# تشخيص مفتاح App Store Connect (بدون طباعة أي قيمة سرية): يفحص شكل الأسرار ويجرّب نداء حقيقي لأبل. يشتغل مع الرفع لفرع ios-diag أو يدوي.
+name: ios-asc-diag
+on:
+  push:
+    branches: [ios-diag]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Diagnose
+        env:
+          KID: ${{ secrets.ASC_KEY_ID }}
+          ISS: ${{ secrets.ASC_ISSUER_ID }}
+          P8: ${{ secrets.ASC_KEY_P8 }}
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          pip install -q pyjwt cryptography requests
+          python3 - <<'PY'
+          import os, re, time, jwt, requests
+          kid, iss, p8, team = (os.environ.get(k, '') for k in ('KID', 'ISS', 'P8', 'TEAM'))
+          ok = lambda c: '✅' if c else '❌'
+          print('KEY_ID  طوله', len(kid), 'وشكله', ok(re.fullmatch(r'[A-Z0-9]{10}', kid)), '(لازم ١٠ حروف وأرقام كبيرة)', '| فيه مسافات أو أسطر زايدة:', kid != kid.strip())
+          print('ISSUER  طوله', len(iss), 'وشكله', ok(re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', iss.strip())), '(لازم UUID فيه شرطات)', '| مسافات زايدة:', iss != iss.strip())
+          print('TEAM_ID طوله', len(team), ok(re.fullmatch(r'[A-Z0-9]{10}', team.strip())))
+          lines = [l for l in p8.replace('\r', '').split('\n')]
+          print('P8 عدد الأسطر', len(lines), '| يبدأ بـ BEGIN PRIVATE KEY', ok(p8.strip().startswith('-----BEGIN PRIVATE KEY-----')), '| ينتهي بـ END', ok(p8.strip().endswith('-----END PRIVATE KEY-----')), '| فيه CR (ويندوز):', '\r' in p8, '| فيه \\n حرفية:', '\\n' in p8)
+          key = p8.replace('\\n', '\n').replace('\r', '').strip() + '\n'
+          if iss.strip() and kid.strip():
+              try:
+                  tok = jwt.encode({'iss': iss.strip(), 'iat': int(time.time()), 'exp': int(time.time()) + 600, 'aud': 'appstoreconnect-v1'}, key, algorithm='ES256', headers={'kid': kid.strip(), 'typ': 'JWT'})
+                  print('توقيع المفتاح محلياً ✅ (ملف الـ p8 سليم)')
+                  r = requests.get('https://api.appstoreconnect.apple.com/v1/apps?limit=1', headers={'Authorization': 'Bearer ' + tok}, timeout=30)
+                  print('نداء أبل /v1/apps → HTTP', r.status_code)
+                  print(r.text[:600])
+                  r2 = requests.get('https://api.appstoreconnect.apple.com/v1/bundleIds?filter[identifier]=sa.ohod.store', headers={'Authorization': 'Bearer ' + tok}, timeout=30)
+                  print('bundleId sa.ohod.store → HTTP', r2.status_code, r2.text[:300])
+              except Exception as e:
+                  print('فشل توقيع المفتاح ❌ ملف الـ p8 تالف أو ناقص:', type(e).__name__, str(e)[:200])
+          PY
