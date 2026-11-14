@@ -394,7 +394,7 @@ export default {
       }
       if (path === "/driver/orders") {
         const since = Date.now() - 3 * 864e5;
-        const rs = await env.DB.prepare("SELECT no, created, updated, status, data, drv FROM orders WHERE src != 'pos' AND (created > ? OR status IN ('new','accepted','onway')) ORDER BY no DESC LIMIT 150").bind(since).all();
+        const rs = { results: await driverOrderRows(env, since) };
         const team = await staffList(env, "driver");
         const nm = staffNames(team);
         const orders = await enrichOperations(env, (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, drv: r.drv || "", drvName: r.drv ? nm[r.drv] || "" : "" })));
@@ -2813,6 +2813,28 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
   return fail('not_found',404);
 }
 
+// قوائم المندوب وكاشير التوصيل تنسحب كل ٨–١٥ ثانية. الاستعلام القديم (ORDER BY no DESC LIMIT مع OR) كان يمسح جدول الطلبات
+// كامل كل مرة يكون فيه أقل من ١٥٠ طلب بآخر ٣ أيام (يعني ٢٥–٤٩ طلب باليوم)، ومع آلاف الطلبات يخلّص حد القراءة اليومي في D1.
+// الحين: نقرأ آخر N طلب (مو من المحل)؛ لو كلهم يطابقون خلصنا، وإلا نكمل الأقدم من فهرس الحالة (orders_upd). نفس النتيجة بالضبط.
+const ACTIVE_SQL = "('new','accepted','onway')", isActive = (st) => st === "new" || st === "accepted" || st === "onway";
+async function driverOrderRows(env, since) {
+  const cols = "no, created, updated, status, data, drv";
+  const top = (await env.DB.prepare("SELECT " + cols + " FROM orders WHERE src != 'pos' ORDER BY no DESC LIMIT 150").all()).results || [];
+  const hit = top.filter((r) => r.created > since || isActive(r.status));
+  if (top.length < 150 || hit.length === 150) return hit;
+  // الطلبات تنحفظ بترتيب وقتها (created ما يتغير)، فاللي أقدم من آخر ١٥٠ وأقدم من ٣ أيام ما يرجع منها إلا الشغّال
+  const older = (await env.DB.prepare("SELECT " + cols + " FROM orders WHERE status IN " + ACTIVE_SQL + " AND src != 'pos' AND no < ? ORDER BY no DESC LIMIT ?").bind(top[top.length - 1].no, 150 - hit.length).all()).results || [];
+  return hit.concat(older);
+}
+async function posOrderRows(env, since) {
+  const sel = "SELECT o.no,o.status,o.created,o.updated,o.data,p.id receipt_id,p.revision receipt_revision,p.fingerprint receipt_fingerprint FROM orders o LEFT JOIN pos_receipts p ON p.id=(SELECT id FROM pos_receipts q WHERE q.no=o.no ORDER BY q.revision DESC LIMIT 1) ";
+  const top = (await env.DB.prepare(sel + "WHERE o.src!='pos' ORDER BY o.no DESC LIMIT 200").all()).results || [];
+  const hit = top.filter((r) => isActive(r.status) || r.updated > since);
+  if (top.length < 200 || hit.length === 200) return hit;
+  const older = (await env.DB.prepare(sel + "WHERE o.no IN (SELECT no FROM orders WHERE status IN " + ACTIVE_SQL + " UNION SELECT no FROM orders WHERE status IN ('delivered','canceled') AND updated>?) AND o.src!='pos' AND o.no<? ORDER BY o.no DESC LIMIT ?").bind(since, top[top.length - 1].no, 200 - hit.length).all()).results || [];
+  return hit.concat(older);
+}
+
 async function enrichOperations(env,orders){
   if(!orders.length)return orders;
   const ids=orders.map(o=>Number(o.no.replace('#',''))-1000), marks=ids.map(()=>'?').join(',');
@@ -2847,7 +2869,7 @@ async function posRoute(env,path,body,who,role){
     return {ok:true,settings:await P('SELECT * FROM pos_settings WHERE id=1').first()};
   }
   if(path==='/admin/pos-orders'){
-    const rows=(await P("SELECT o.no,o.status,o.created,o.updated,o.data,p.id receipt_id,p.revision receipt_revision,p.fingerprint receipt_fingerprint FROM orders o LEFT JOIN pos_receipts p ON p.id=(SELECT id FROM pos_receipts q WHERE q.no=o.no ORDER BY q.revision DESC LIMIT 1) WHERE o.src!='pos' AND (o.status IN ('new','accepted','onway') OR o.updated>?) ORDER BY o.no DESC LIMIT 200",Date.now()-2*864e5).all()).results||[];
+    const rows=await posOrderRows(env,Date.now()-2*864e5);
     const orders=[];
     for(const r of rows){const d=safeJson(r.data),receipt=r.receipt_id?{id:r.receipt_id,revision:r.receipt_revision,fingerprint:r.receipt_fingerprint}:null,document=posDocument(r.data,r.no);orders.push({no:document.orderNo,status:r.status,created:r.created,name:d.name||'',phone:d.phone||'',count:d.count,total:document.total,receipt:receipt?{number:'OH-'+receipt.id,revision:receipt.revision,current:r.status!=='canceled'&&receipt.fingerprint===await tokenHash(JSON.stringify(document))}:null});}
     return {ok:true,orders};

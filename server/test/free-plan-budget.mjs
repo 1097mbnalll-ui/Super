@@ -52,4 +52,32 @@ ok(sq.prepare("SELECT COUNT(*) n FROM subs WHERE role='promo'").get().n === 84, 
 ok(n.put <= 3, 'كتابات KV لإرسال ٩٥ إشعار: ' + n.put);
 const last = JSON.parse(kv.get('apns_last') || '{}'); ok(last.status === 200 || last.status === 410, 'آخر رد من آبل محفوظ للتشخيص: ' + last.status);
 
+// ٤) قائمة المندوب وكاشير التوصيل: نفس نتيجة الاستعلام القديم بالضبط، بدون مسح جدول الطلبات كامل
+const OLD_D = "SELECT no FROM orders WHERE src != 'pos' AND (created > ? OR status IN ('new','accepted','onway')) ORDER BY no DESC LIMIT 150";
+const OLD_P = "SELECT o.no FROM orders o WHERE o.src!='pos' AND (o.status IN ('new','accepted','onway') OR o.updated>?) ORDER BY o.no DESC LIMIT 200";
+const first = await call('/order', { items: { pantry0: 1 }, phone: '0551110001', lat: 24.84, lng: 46.83 }); ok(first.ok, 'طلب حقيقي أول');
+const base = sq.prepare('SELECT * FROM orders ORDER BY no DESC LIMIT 1').get(), cols = Object.keys(base).filter((c) => c !== 'no' && c !== 'cid');
+const ins = sq.prepare(`INSERT INTO orders (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`);
+const ST = ['delivered', 'delivered', 'delivered', 'canceled', 'new', 'accepted', 'onway'];
+let seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+const same = async (label) => {
+  const now = Date.now(), d = (await call('/driver/orders', { pin: '1111' })).orders.map((o) => Number(o.no.slice(1)) - 1000);
+  const p = (await call('/admin/pos-orders', A)).orders.map((o) => Number(o.no.replace(/\D/g, '')) - 1000);
+  const od = sq.prepare(OLD_D).all(now - 3 * 864e5).map((r) => r.no), op = sq.prepare(OLD_P).all(now - 2 * 864e5).map((r) => r.no);
+  ok(JSON.stringify(d) === JSON.stringify(od), `${label}: قائمة المندوب (${d.length}) نفس القديم`);
+  ok(JSON.stringify(p) === JSON.stringify(op), `${label}: قائمة كاشير التوصيل (${p.length}) نفس القديم`);
+};
+await same('طلبات قليلة');
+const add = (count, perDay, activeShare, endAgoDays = 0) => { const now = Date.now(); sq.exec('BEGIN');
+  for (let i = 0; i < count; i++) { const t = now - endAgoDays * 864e5 - (count - i) * 864e5 / perDay; const st = rnd() < activeShare ? ST[4 + Math.floor(rnd() * 3)] : ST[Math.floor(rnd() * 4)];
+    ins.run(...cols.map((c) => c === 'created' ? t : c === 'updated' ? t + rnd() * 4 * 864e5 : c === 'status' ? st : c === 'src' ? (rnd() < 0.05 ? 'pos' : base.src) : base[c])); }
+  sq.exec('COMMIT'); };
+// الطلبات تنحفظ بترتيب وقتها (رقم أكبر = أحدث)، فكل حالة تبدأ من جدول فاضي
+const fresh = () => sq.exec('DELETE FROM orders');
+fresh(); add(2000, 40, 0.01);  await same('٤٠ طلب باليوم (أقل من ١٥٠ بثلاث أيام) مع طلبات شغّالة قديمة');
+fresh(); add(700, 250, 0.02);  await same('٢٥٠ طلب باليوم');
+fresh(); add(2000, 10, 0.002); await same('١٠ طلبات باليوم');
+fresh(); add(140, 40, 0.05);   await same('أقل من ١٥٠ طلب بالجدول كله');
+fresh(); add(1000, 50, 0);     await same('٥٠ طلب باليوم بدون شغّال');
+
 console.log(fails ? fails + ' فحص فشل' : 'كل الفحوص نجحت'); process.exit(fails ? 1 : 0);
