@@ -1,0 +1,89 @@
+# رفع تطبيق الآيفون الأصلي (mobile/ios-native) لـ TestFlight من GitHub بدل Codemagic. مجاني: المستودع عام.
+# يشتغل بس لما ينرفع كود على فرع ios-release، أو يدوي. ما يرسل للمراجعة أبداً.
+# لا يشتغل إلا بأمر المالك «ارفع التحديث».
+# أسرار المستودع (المالك يحطها في Settings ← Secrets and variables ← Actions):
+#   ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (نص ملف AuthKey كامل), APPLE_TEAM_ID
+name: ios-native-testflight
+
+on:
+  push:
+    branches: [ios-release]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-native-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check secrets
+        env:
+          A: ${{ secrets.ASC_KEY_ID }}
+          B: ${{ secrets.ASC_ISSUER_ID }}
+          C: ${{ secrets.ASC_KEY_P8 }}
+          D: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for n in A B C D; do if [ -z "${!n}" ]; then echo "::error::أسرار آبل ناقصة (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8, APPLE_TEAM_ID)"; exit 1; fi; done
+      - name: Select newest Xcode 26
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] || { echo "::error::Xcode 26 مو موجود"; exit 1; }
+          sudo xcode-select -s "$X/Contents/Developer"; xcodebuild -version
+      - name: Install XcodeGen
+        run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Generate project
+        working-directory: mobile/ios-native
+        run: |
+          N=$(date -u +%y%m%d%H%M)
+          echo "OHOD_BUILD_NUMBER=$N" >> "$GITHUB_ENV"
+          OHOD_BUILD_NUMBER=$N xcodegen generate
+      - name: Archive
+        working-directory: mobile/ios-native
+        env:
+          P8: ${{ secrets.ASC_KEY_P8 }}
+          KID: ${{ secrets.ASC_KEY_ID }}
+          ISS: ${{ secrets.ASC_ISSUER_ID }}
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          KEY="$RUNNER_TEMP/AuthKey.p8"; printf '%s\n' "$P8" > "$KEY"
+          xcodebuild -project OhodStore.xcodeproj -scheme OhodStore -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/OhodStore.xcarchive" \
+            -allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$KID" -authenticationKeyIssuerID "$ISS" \
+            DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic CURRENT_PROJECT_VERSION="$OHOD_BUILD_NUMBER" \
+            archive | tail -40
+          test -d "$RUNNER_TEMP/OhodStore.xcarchive"
+      - name: Upload to TestFlight
+        working-directory: mobile/ios-native
+        env:
+          KID: ${{ secrets.ASC_KEY_ID }}
+          ISS: ${{ secrets.ASC_ISSUER_ID }}
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$TEAM</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/OhodStore.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" -authenticationKeyID "$KID" -authenticationKeyIssuerID "$ISS" | tail -30
+      - name: Clean key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
+      - name: Build number
+        run: |
+          echo "رقم البناء: 1.1 ($OHOD_BUILD_NUMBER)"
+          echo "### رقم البناء: 1.1 ($OHOD_BUILD_NUMBER)" >> "$GITHUB_STEP_SUMMARY"
