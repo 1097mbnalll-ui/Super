@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ios-native-check
@@ -38,3 +38,11 @@ jobs:
           name: ios-check
           path: screenshots/
           retention-days: 7
+      # الصور في فرع خاص لكل تشغيل (shots/<رقم>) عشان تنقرا من git (روابط التحميل محجوبة عند الجلسة)
+      - name: Save screenshots to a branch
+        if: always()
+        run: |
+          cd screenshots
+          git init -q -b shots && git add -A
+          git -c user.name=ios-check -c user.email=ios-check@users.noreply.github.com commit -qm "ios-check ${{ github.run_number }}"
+          git push -q "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/shots/${{ github.run_number }}
