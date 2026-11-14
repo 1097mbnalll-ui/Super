@@ -37,7 +37,7 @@
       '<section class="adm-panel" data-panel="cust" id="aCust"></section>' +
       '<section class="adm-panel" data-panel="sign" id="aSign"></section>' +
       '<section class="adm-panel" data-panel="bans" id="aBans"></section>' +
-      '<section class="adm-panel" data-panel="prods"><div class="card" id="aImport"></div><div class="card" id="openItems" hidden></div><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث بالاسم أو الباركود…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
+      '<section class="adm-panel" data-panel="prods"><div class="card" id="aImport"></div><div class="card" id="openItems" hidden></div><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث بالاسم أو الباركود…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-soft" type="button" id="offProds">🔥 منتجات العروض</button><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
         '<p class="hint">«قبل الخصم» اختياري: لو كتبته أكبر من السعر، يطلع المنتج في العروض مع نسبة الخصم. اضغط على الصورة لتغييرها أو رفع صورة من جهازك. الأسهم ترتّب المنتج داخل قسمه.</p></div><div class="alist prods" id="aProds"></div></section>' +
       '<section class="adm-panel" data-panel="cats"><div class="card"><div class="sec-head" style="margin:0"><h2>الأقسام</h2><button class="btn btn-brand" type="button" id="addCat">+ قسم جديد</button></div><p class="hint">الأسهم ترتّب الأقسام في المتجر كله: الدوائر والشبكة وصفحة الأقسام.</p><div class="alist" id="aCats"></div></div></section>' +
       '<section class="adm-panel" data-panel="offers"><div class="card" id="aPromos"></div></section>' +
@@ -125,6 +125,7 @@
     });
     $("aQ").addEventListener("input", function(){ aFilter.q = this.value.trim(); aFilter.show = 0; renderAProds(); });
     $("aCat").addEventListener("change", function(){ aFilter.cat = this.value; aFilter.show = 0; renderAProds(); });
+    $("offProds").addEventListener("click", function(){ aFilter.cat = aFilter.cat === "__offers" ? "all" : "__offers"; aFilter.q = ""; $("aQ").value = ""; aFilter.show = 0; renderAFilter(); renderAProds(); });
     renderImport();
     $("pickClose").addEventListener("click", function(){ $("pickSheet").hidden = true; });
     $("pickSheet").addEventListener("click", function(e){ if (e.target === this) this.hidden = true; });
@@ -297,7 +298,19 @@
   }
   function field(id, label, val, type){ return '<label for="' + id + '">' + label + '<input id="' + id + '" type="' + (type || "text") + '" value="' + esc(val) + '"' + (type === "number" ? ' min="0" step="0.5" inputmode="decimal"' : '') + '></label>'; }
   function catOptions(sel){ return draft.cats.map(function(c){ return '<option value="' + c.id + '"' + (c.id === sel ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join(""); }
-  function renderAFilter(){ $("aCat").innerHTML = '<option value="all">كل الأقسام</option>' + catOptions(aFilter.cat); }
+  // مكان خاص لمنتجات العروض (طلب المالك ١٤ نوفمبر ٢٠٢٦): فلتر «العروض» فوق الأقسام، بأنواعها
+  function offKind(p){
+    if (p.old && Number(p.old) > Number(p.price)) return "sale";
+    if ((draft.store.groups || []).some(function(g){ return g && g.on !== false && (g.ids || []).indexOf(p.id) > -1; })) return "grp";
+    if ((p.packs || []).some(function(k){ return Number(k.n) > 1 && Number(k.price) > 0 && Number(k.price) < Number(k.n) * Number(p.price) - 0.001; })) return "qty";
+    return "";
+  }
+  var OFF_F = { __offers: "🔥 كل منتجات العروض", __sale: "🔥 خصم (عليها «قبل الخصم»)", __qty: "🔥 عروض الكمية (مثل ٣ بـ ١٠)", __grp: "🔥 اختر من أي نوع (مثل ديمة)" };
+  function renderAFilter(){
+    var n = { __offers: 0, __sale: 0, __qty: 0, __grp: 0 };
+    draft.products.forEach(function(p){ var k = offKind(p); if (k) { n.__offers++; n["__" + k]++; } });
+    $("aCat").innerHTML = '<option value="all">كل الأقسام</option><optgroup label="العروض">' + Object.keys(OFF_F).map(function(k){ return '<option value="' + k + '"' + (aFilter.cat === k ? ' selected' : '') + '>' + OFF_F[k] + ' (' + num(n[k]) + ')</option>'; }).join("") + '</optgroup><optgroup label="الأقسام">' + catOptions(aFilter.cat) + '</optgroup>';
+  }
   var LAY_LABEL = { featured: "البنر الثابت فوق (عرض المجموعة)", again: "اطلب مرة ثانية (للزبون اللي طلب قبل)", moment: "حسب وقت اليوم (فطور، غدا، عصرية، سهرة)", promos: "بنرات العروض", catoffers: "عروض الأقسام (مربعات)", free: "بطاقة التوصيل المجاني", catgrid: "الأقسام (مربعات الصور)", offers: "أفضل العروض (صف يتحرك)", deals: "منتجات السعر الرمزي (صف يتحرك)", grid: "الفلاتر والمنتجات" };
   var PROMO_LABEL = { top: "أقوى خصم (تلقائي)", multi: "عرض الكمية (تلقائي)", daily: "عرض اليوم", offers: "عروض الأسبوع", deals: "منتجات السعر الرمزي", bakery: "بطاقة المخبز", free: "التوصيل المجاني", catdeal: "عروض القسم (تلقائي)", night: "طلعات السهرة (المساء بس)", veg: "الخضار والفواكه (قريباً)", welcome: "كود الترحيب (store.welcome)" };
   function mvBtns(kind, id, ends){ return '<span class="mv">' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':-99" aria-label="لأول الصفحة">أول</button>' : '') + '<button type="button" data-mv="' + kind + ':' + id + ':-1" aria-label="فوق">' + ic("up") + '</button><button type="button" data-mv="' + kind + ':' + id + ':1" aria-label="تحت">' + ic("down") + '</button>' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':99" aria-label="لآخر الصفحة">آخر</button>' : '') + '</span>'; }
@@ -510,9 +523,11 @@
   });
   function renderAProds(){
     var words = normAr(aFilter.q).split(/\s+/).filter(Boolean), shown = aFilter.show || 40;
-    var all = draft.products.filter(function(p){ if (aFilter.cat !== "all" && p.cat !== aFilter.cat) return false; if (!words.length) return true; var h = normAr(p.name + " " + (p.bc || "")); return words.every(function(w){ return h.indexOf(w) > -1; }); });
+    var offF = OFF_F[aFilter.cat] ? aFilter.cat : "";
+    var all = draft.products.filter(function(p){ if (offF) { var ok = offKind(p); if (!ok || (offF !== "__offers" && "__" + ok !== offF)) return false; } else if (aFilter.cat !== "all" && p.cat !== aFilter.cat) return false; if (!words.length) return true; var h = normAr(p.name + " " + (p.bc || "")); return words.every(function(w){ return h.indexOf(w) > -1; }); });
     var list = all.slice(0, shown);
-    $("aProds").innerHTML = (all.length > 40 ? '<p class="hint">' + num(all.length) + ' منتج' + (all.length > shown ? '، معروض أول ' + num(shown) + '. استخدم البحث أو القسم عشان توصل للمنتج بسرعة.' : '') + '</p>' : '') + (list.length ? list.map(function(p){
+    var offHint = offF ? '<p class="hint" style="background:#FFF4EA;border-radius:12px;padding:10px 12px">🔥 <b>' + num(all.length) + ' منتج عليه عرض</b>. الخصم: غيّر «السعر» و«قبل الخصم» (امسح «قبل الخصم» عشان تشيل العرض). عروض الكمية من «خيارات بيع إضافية»، وعروض «اختر من أي نوع» من تبويب العروض.</p>' : '';
+    $("aProds").innerHTML = offHint + (all.length > 40 ? '<p class="hint">' + num(all.length) + ' منتج' + (all.length > shown ? '، معروض أول ' + num(shown) + '. استخدم البحث أو القسم عشان توصل للمنتج بسرعة.' : '') + '</p>' : '') + (list.length ? list.map(function(p){
       return '<div class="arow' + (p.stock ? '' : ' off') + '" data-row="' + p.id + '">' +
         '<button class="imgbtn" type="button" data-pick="prod:' + p.id + '" aria-label="تغيير صورة ' + esc(p.name) + '">' + imgTag(p.img, "") + '</button>' +
         '<label>الاسم<input data-f="name" value="' + esc(p.name) + '"></label>' +
