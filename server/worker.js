@@ -18,6 +18,7 @@
 const MAX_FAILS_PER_IP = 5;        // محاولات غلط لكل جهاز
 const IP_LOCK_SECONDS = 15 * 60;   // مدة القفل لكل جهاز
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
+const PROMO_BATCH = 40;            // أجهزة لكل نداء إشعار عروض (حد الخطة المجانية ٥٠ اتصال خارجي لكل نداء)
 
 export default {
   // تقرير آخر اليوم: يشتغل من Cron Trigger في Cloudflare
@@ -304,12 +305,12 @@ export default {
       if (!env.DB) return reply(503, { ok: false, code: 'unavailable' });
       await ensureSchema(env);
       if (path === '/wallet/login') {
-        const locked = await isLocked(env, ip); if (locked) return reply(429, { ok:false, code:'locked', retryAfter:locked });
+        const walletMemo = {}; const locked = await isLocked(env, ip, walletMemo); if (locked) return reply(429, { ok:false, code:'locked', retryAfter:locked });
         const phone = normPhone(body.phone), password = String(body.password || '');
         const account = phone ? await env.DB.prepare('SELECT * FROM wallets WHERE phone = ?').bind(phone).first() : null;
         const hash = await staffPassword(password.length <= 128 ? password : '', account?.salt || 'unknown-wallet-salt');
         if (!account?.password_hash || !sameText(hash, account.password_hash)) { await recordFail(env, ip); return reply(401,{ok:false,code:'bad_credentials'}); }
-        await clearFails(env, ip); const token=randomHex(32), expires=Date.now()+8*3600e3;
+        await clearFails(env, ip, walletMemo); const token=randomHex(32), expires=Date.now()+8*3600e3;
         await env.DB.batch([env.DB.prepare('DELETE FROM wallet_sessions WHERE expires <= ?').bind(Date.now()),env.DB.prepare('INSERT INTO wallet_sessions(token_hash,phone,expires) VALUES(?,?,?)').bind(await tokenHash(token),phone,expires)]);
         return reply(200,{ok:true,token,phone,balance:Math.max(0,account.balance)/100});
       }
@@ -319,7 +320,8 @@ export default {
       const history=(await env.DB.prepare('SELECT at, delta, kind, note FROM wallet_ledger WHERE phone = ? ORDER BY id DESC LIMIT 30').bind(account.phone).all()).results || [];
       return reply(200,{ok:true,phone:account.phone,balance:Math.max(0,account.balance)/100,history});
     }
-    const locked = await isLocked(env, ip);
+    const failMemo = {};
+    const locked = await isLocked(env, ip, failMemo);
     if (locked) return reply(429, { ok: false, code: "locked", retryAfter: locked });
 
     // الدخول الموحد: رقم سري واحد، والرقم نفسه يحدد وين يروح صاحبه (إدارة، مندوب، كاشير المحل، مجهز، مدير…)
@@ -329,13 +331,13 @@ export default {
         const me = await whoIs(env, pin, body);
         // كاشير المحل ما عاد له صفحة (البيع في المحل انشال من الموقع)، فرقمه ما يفتح شي
         if (me && me.role !== "cashier") {
-          await clearFails(env, ip);
+          await clearFails(env, ip, failMemo);
           return reply(200, { ok: true, go: me.role === "admin" ? "admin" : "driver", name: me.role === "admin" ? "" : me.name });
         }
         if (env.DB) {
           await ensureStaffSchema(env);
           const user = await env.DB.prepare("SELECT u.* FROM staff_pins p JOIN staff_users u ON u.id = p.user_id WHERE p.pin_hash = ? AND u.active = 1").bind(await staffPinHash(env, pin)).first();
-          if (user) { await clearFails(env, ip); return reply(200, { ok: true, go: "staff", ...(await openStaffSession(env, user)) }); }
+          if (user) { await clearFails(env, ip, failMemo); return reply(200, { ok: true, go: "staff", ...(await openStaffSession(env, user)) }); }
         }
       }
       await recordFail(env, ip);
@@ -355,7 +357,7 @@ export default {
         await recordFail(env, ip);
         return reply(401, { ok: false, code: "bad_credentials" });
       }
-      await clearFails(env, ip);
+      await clearFails(env, ip, failMemo);
       return reply(200, { ok: true, ...(await openStaffSession(env, user)) });
     }
     if (body.session) {
@@ -376,7 +378,7 @@ export default {
     if (path.startsWith("/driver/")) {
       const me = principal ? { role: "admin", id: "admin", name: body.by || principal.name } : await whoIs(env, body.pin, body);
       if (!me || (me.role !== "driver" && me.role !== "admin")) { await recordFail(env, ip); return reply(401, { ok: false, code: "bad_pin" }); }
-      await clearFails(env, ip);
+      await clearFails(env, ip, failMemo);
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
       const who = me.role === "admin" ? "admin" : "driver";
@@ -483,7 +485,7 @@ export default {
       // موظفينك بجلسة: المدير بصلاحية الإدارة، وموظف الطلبات بصلاحية كاشير
       const me = principal ? { role: principal.role === "manager" ? "admin" : "cashier", id: "u" + principal.id, name: principal.name } : await whoIs(env, body.pin, body);
       if (!me || (me.role !== "cashier" && me.role !== "admin")) { await recordFail(env, ip); return reply(401, { ok: false, code: "bad_pin" }); }
-      await clearFails(env, ip);
+      await clearFails(env, ip, failMemo);
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
       const cid = me.role === "admin" ? "admin" : me.id;
@@ -539,7 +541,7 @@ export default {
       await recordFail(env, ip);
       return reply(401, { ok: false, code: "bad_pin" });
     }
-    await clearFails(env, ip);
+    await clearFails(env, ip, failMemo);
 
     // Legacy owner PIN remains available; staff cannot grant themselves privileges.
     if (path === "/login") return reply(200, { ok: true, role: principal?.role || "owner" });
@@ -631,7 +633,7 @@ export default {
         const sub = await env.DB.prepare("SELECT endpoint FROM subs WHERE endpoint LIKE 'apns:%' ORDER BY created DESC LIMIT 1").first();
         if (!sub) test = { status: 0, reason: "no_device" };
         else {
-          await env.LOCKS.delete("apns_last");
+          await env.LOCKS.delete("apns_last"); apnsLastSeen = null;
           let st = 0; try { st = await apnsPush(env, sub.endpoint.slice(5), { title: "تجربة إشعار ✓", body: "إشعارات متاجر أحد شغّالة", url: "./", tag: "test" }); } catch (e) { await apnsNote(env, { status: 0, reason: "error: " + String(e && e.message || e).slice(0, 200) }); }
           const last = await env.LOCKS.get("apns_last", "json");
           test = st >= 200 && st < 300 ? { status: st, reason: "" } : (last || { status: st, reason: "" });
@@ -940,7 +942,7 @@ export default {
       } catch (e) {
         return reply(e.code === "data_conflict" ? 409 : 502, { ok: false, code: e.code || "github", status: e.status || 0 });
       }
-      if (body.newPin) await env.LOCKS.put("pin", await hashPin(env, String(body.newPin)));
+      if (body.newPin) await setStoredPin(env, await hashPin(env, String(body.newPin)));
       if (body.newDriverPin) {
         const h = await staffHash(env, String(body.newDriverPin));
         await env.LOCKS.put("driver_pin", h);
@@ -1509,17 +1511,37 @@ function sameText(a, b) {
   return d === 0;
 }
 
+// رقم الإدارة المشفّر: نخزنه في ذاكرة الخادم ٦٠ ثانية بدل قراءة KV مع كل نداء من المندوب والإدارة
+// (حد القراءة المجاني ١٠٠ ألف باليوم). KV نفسه ممكن يتأخر لين ٦٠ ثانية بين المواقع، فما يتغير شي في الأمان،
+// وتغيير الرقم من نفس الخادم يحدّث الذاكرة على طول.
+const PIN_CACHE_MS = 60000;
+const pinCache = new WeakMap();
+async function storedPin(env) {
+  if (!env.LOCKS) return null;
+  const c = pinCache.get(env.LOCKS);
+  if (c && Date.now() - c.at < PIN_CACHE_MS) return c.v;
+  const v = await env.LOCKS.get("pin");
+  pinCache.set(env.LOCKS, { v, at: Date.now() });
+  return v;
+}
+async function setStoredPin(env, h) {
+  await env.LOCKS.put("pin", h);
+  pinCache.set(env.LOCKS, { v: h, at: Date.now() });
+}
+
 async function checkPin(env, pin) {
   if (!pin || pin.length > 12) return false;
   const given = await hashPin(env, pin);
-  const stored = env.LOCKS ? await env.LOCKS.get("pin") : null;
+  const stored = await storedPin(env);
   const expected = stored || (await hashPin(env, String(env.ADMIN_PIN)));
   return sameText(given, expected);
 }
 
-async function isLocked(env, ip) {
+// memo (اختياري): يحفظ اللي قريناه عشان clearFails ما يقرأ نفس المفتاح مرة ثانية بنفس الطلب
+async function isLocked(env, ip, memo) {
   if (!env.LOCKS) return 0;
   const mine = await env.LOCKS.get("fail:" + ip, "json");
+  if (memo) { memo.read = true; memo.rec = mine; }
   const now = Date.now();
   if (mine && mine.n >= MAX_FAILS_PER_IP && mine.until > now) return Math.ceil((mine.until - now) / 1000);
   return 0;
@@ -1538,10 +1560,11 @@ async function recordFail(env, ip) {
   await bump(env, "fail:" + ip, IP_LOCK_SECONDS);
 }
 
-async function clearFails(env, ip) {
+async function clearFails(env, ip, memo) {
   if (!env.LOCKS) return;
   // كل delete في KV يُحسب كتابة (الحد المجاني ١٠٠٠ باليوم)، وهالدالة تنادى مع كل طلب ناجح من المندوب والإدارة،
-  // فنمسح بس لو فيه محاولات غلط مسجلة. القراءة رخيصة (١٠٠ ألف باليوم).
+  // فنمسح بس لو فيه محاولات غلط مسجلة. ولو isLocked قرا المفتاح بنفس الطلب (memo) ما نقراه مرة ثانية.
+  if (memo && memo.read) { if (memo.rec) await env.LOCKS.delete("fail:" + ip); return; }
   if (await env.LOCKS.get("fail:" + ip)) await env.LOCKS.delete("fail:" + ip);
 }
 
@@ -1934,11 +1957,21 @@ async function pushTo(env, subs, msg) {
 const pemDer = (pem) => Uint8Array.from(atob(String(pem).replace(/-----[^-]+-----/g, "").replace(/\s+/g, "")), (c) => c.charCodeAt(0));
 const b64uText = (o) => b64u(new TextEncoder().encode(typeof o === "string" ? o : JSON.stringify(o)));
 let apnsJwt = null, fcmTok = null;
+// «آخر رد من آبل» في KV للتشخيص: كل كتابة KV من حد ١٠٠٠ باليوم المجاني، فنكتب مرة كل ٥ دقايق بالأكثر
+// (ونفس الرد كل ٣٠ دقيقة). قبل: كتابة مع كل إشعار آيفون، وإشعار عروض واحد لمئات الأجهزة كان يخلّص حد الكتابة اليومي.
+// كل رد غلط ينحفظ بعد في سجل العمليات (apns_fail)، و«جرّب إشعار» من الإدارة يكتب دايماً.
+let apnsLastSeen = null;
+async function apnsLastPut(env, info) {
+  const sig = info.status + "|" + (info.reason || "") + "|" + (info.host || ""), gap = apnsLastSeen ? Date.now() - apnsLastSeen.at : Infinity;
+  if (gap < 300000 || (apnsLastSeen && apnsLastSeen.sig === sig && gap < 1800000)) return;
+  apnsLastSeen = { sig, at: Date.now() };
+  if (env.LOCKS) await env.LOCKS.put("apns_last", JSON.stringify(info));
+}
 // آخر رد غلط من آبل (للتشخيص في الإدارة وسجل العمليات)
 async function apnsNote(env, info) {
   try {
     info = { ...info, at: Date.now() };
-    if (env.LOCKS) await env.LOCKS.put("apns_last", JSON.stringify(info));
+    await apnsLastPut(env, info);
     if (env.DB) await logStmt(env, "الخادم", "apns_fail", "", info).run();
   } catch {}
 }
@@ -1965,7 +1998,7 @@ async function apnsPush(env, token, msg) {
     headers: { "authorization": "bearer " + apnsJwt.jwt, "apns-topic": env.APNS_TOPIC || "sa.ohod.store", "apns-push-type": "alert", "apns-priority": "10", "apns-expiration": String(now + 86400), "content-type": "application/json" },
     body: JSON.stringify({ aps: { alert: { title: String(msg.title || ""), body: String(msg.body || "") }, sound: "default", "thread-id": String(msg.tag || "") }, url: msg.url || "./", tag: msg.tag || "" }),
   });
-  if (r.status >= 200 && r.status < 300) { try { if (env.LOCKS) await env.LOCKS.put("apns_last", JSON.stringify({ status: r.status, reason: "", host, id: r.headers.get("apns-id") || "", at: Date.now() })); } catch {} return r.status; }
+  if (r.status >= 200 && r.status < 300) { try { await apnsLastPut(env, { status: r.status, reason: "", host, id: r.headers.get("apns-id") || "", at: Date.now() }); } catch {} return r.status; }
   const j = await r.json().catch(() => ({}));
   await apnsNote(env, { status: r.status, reason: j.reason || "", host });
   if (r.status === 410 || j.reason === "BadDeviceToken" || j.reason === "Unregistered" || j.reason === "DeviceTokenNotForTopic") return -410;
@@ -2685,7 +2718,8 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     try{await env.DB.batch([snapshotGuard,P('INSERT INTO day_closures(day,at,who,expected,actual,cash_total,card_total,wallet_total,sales,orders,note) VALUES(?,?,?,?,?,?,?,?,?,?,?)',day,Date.now(),who,report.outstanding,actual,report.cash,report.card,report.wallet,report.sales,report.count,note),...receipts]);}catch{return fail('conflict',409);}
     return {ok:true,difference:actual-report.outstanding};
   }
-  // إرسال إشعار عروض للزبائن المشتركين (التطبيق والموقع). test: لأجهزة الإدارة بس. الحد: ٤ إرسالات في اليوم، وكل نداء يرسل لين ٨٠٠ جهاز (offset للباقي)
+  // إرسال إشعار عروض للزبائن المشتركين (التطبيق والموقع). test: لأجهزة الإدارة بس. الحد: ٤ إرسالات في اليوم، وكل نداء يرسل لين ٤٠ جهاز (offset للباقي، والإدارة تكمل لحالها)
+// ليش ٤٠: الخطة المجانية في Cloudflare تسمح بـ ٥٠ اتصال خارجي بس لكل نداء؛ اللي فوقها كان يفشل بصمت (ويكتب KV وسجل لكل جهاز)
   if(path==='/admin/promo-push'){
     if(!['owner','admin','manager'].includes(role))return fail('forbidden',403);
     const title=String(body.title||'').trim().slice(0,60),text=String(body.body||'').trim().slice(0,180);
@@ -2697,11 +2731,14 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     const done=((await P("SELECT COUNT(*) n FROM alog WHERE act='promo_push' AND at>=?",dayStart).first())||{}).n||0;
     const offset=Math.max(0,Math.floor(Number(body.offset)||0));
     if(!offset&&done>=4)return {ok:false,code:'daily_limit',limit:4,status:429};
-    const rs=await P("SELECT endpoint,p256dh,auth FROM subs WHERE role='promo' ORDER BY created,endpoint LIMIT 800 OFFSET ?",offset).all();
-    const list=(rs.results||[]).map((r)=>({endpoint:r.endpoint,keys:{p256dh:r.p256dh,auth:r.auth}}));
+    // offset = آخر rowid انرسل له (مو عدد): الأجهزة المنتهية تنحذف وقت الإرسال، فالعد كان يخلي اللي بعدها يتخطون
+    const rs=await P("SELECT rowid AS rid,endpoint,p256dh,auth FROM subs WHERE role='promo' AND rowid>? ORDER BY rowid LIMIT ?",offset,PROMO_BATCH).all();
+    const rows=rs.results||[],list=rows.map((r)=>({endpoint:r.endpoint,keys:{p256dh:r.p256dh,auth:r.auth}}));
     const sent=await pushTo(env,list,msg);
     if(!offset)await logStmt(env,who,'promo_push',title,{total,body:text,go}).run();
-    return {ok:true,sent,tried:list.length,total,next:offset+list.length<total?offset+list.length:null};
+    const last=rows.length?rows[rows.length-1].rid:offset;
+    const more=rows.length===PROMO_BATCH&&!!(await P("SELECT 1 FROM subs WHERE role='promo' AND rowid>? LIMIT 1",last).first());
+    return {ok:true,sent,tried:list.length,total,next:more?last:null};
   }
   if(path==='/admin/promos'||path==='/admin/promo-save'){
     if(!['owner','admin','manager'].includes(role))return fail('forbidden',403);

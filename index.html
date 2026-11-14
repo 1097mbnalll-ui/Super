@@ -3354,7 +3354,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       dToast(tr("ما انحفظ، تأكد من النت وجرّب مرة ثانية", "Not saved, check your connection and try again"), true); if (cb) cb(false); return; }
     var o = dOrder(no); if (o) { o.status = st; o.updated = Date.now(); o.drv = j.drv || ""; if (j.drv && drv.me) o.drvName = drv.me.name; drv.seen[no] = "old"; } if (cb) cb(true); geoSync(); }); }
   function dToast(t, bad){ var x = document.createElement("div"); x.className = "dv-toast" + (bad ? " bad" : ""); x.setAttribute("role", "status"); x.textContent = t; document.body.appendChild(x); setTimeout(function(){ x.remove(); }, 2600); }
-  function loadDrvCash(){ api("/driver/cash", { pin: drv.pin }).then(function(j){ if (j.ok) { drv.cash = j; if (drv.view === "list" || drv.view === "cash") drvRender(); } }); }
+  // «حسابي» يقرأ كل الطلبات المسلّمة في الخادم (ثقيل على حد القراءة اليومي في D1)، فيتحدث تلقائياً كل دقيقة بس، وزر «تحديث الحساب» على طول
+  function loadDrvCash(){ drv.cashAt = Date.now(); api("/driver/cash", { pin: drv.pin }).then(function(j){ if (j.ok) { drv.cash = j; if (drv.view === "list" || drv.view === "cash") drvRender(); } }); }
   function drvShell(){ app.innerHTML = '<div class="dv" id="dv"></div>'; drvRender(); loadDrvCash(); appCall("resume"); }
   function drvGroups(){
     var g = { "new": [], pick: [], way: [], done: [] };
@@ -3546,7 +3547,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         drv.orders = j.orders; drv.first = false; if (j.me) drv.me = j.me; drv.team = j.team || []; geoSync();
         if (fresh) { beep(); if (drv.view === "list") drv.tab = "new"; else dToast(drv.mode === "ready" ? tr("فيه طلب جاهز للتوصيل", "An order is ready for delivery") : tr("وصل طلب جديد", "A new order arrived")); }
         if (drv.view !== "list" && cur && nowCur && nowCur.status === "canceled" && cur.status !== "canceled") { dToast(tr("الطلب انلغى من الإدارة", "The order was cancelled by the store"), true); drv.view = "list"; drv.miss = ""; }
-        if (drv.view === "cash") loadDrvCash(); else if (drv.view === "list") drvRender();
+        if (drv.view === "cash") { if (Date.now() - (drv.cashAt || 0) >= 60000) loadDrvCash(); } else if (drv.view === "list") drvRender();
       });
     };
     tick(); drv.timer = setInterval(tick, 8000);
