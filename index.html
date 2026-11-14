@@ -2553,7 +2553,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   /* ---------- الرئيسية الذكية (١٤ نوفمبر ٢٠٢٦): رئيسية لكل جهاز بقواعد بسيطة ببلاش (بدون ذكاء اصطناعي مدفوع) ----------
      سجل الجهاز من الخادم (/mine {dev}: أرقام المنتجات والأعداد بس) + السجل المحلي (ohod-hist)، فيشتغل في الموقع وفي رئيسية التطبيق الحية (dev=).
-     الصفوف: again «طلباتك المعتادة» (٣ طلبات+ أو ٦ أصناف+، وقبلها «الأكثر طلباً عند جيرانك») · due «يمكن خلص عندك؟» · moment (وقت اليوم ورمضان)
+     الصفوف: again «طلباتك المعتادة» (٣ طلبات+ أو ٦ أصناف+، وقبلها «الأكثر طلباً») · due «يمكن خلص عندك؟» · moment (وقت اليوم ورمضان)
      · season (أسبوع الراتب، قبل رمضان، ضيافة العيد) · myoffers «عروض على أغراضك». بالكثير store.smart.max (٤) صفوف مع بعض.
      الحساب بعد أول رسم (smartFill) ويتخزن (SMC)، فالرئيسية ما تثقل. الإعدادات (اختيارية) في store.smart: {max, ramadan:[…], pre, salary:[27,3], rows:{…}} */
   var RAMADAN_DEF = ["2026-02-18", "2027-02-08", "2028-01-28", "2029-01-16", "2030-01-06"];   // تقريبي (حسب رؤية الهلال)، والمالك يقدر يعدّله في store.smart.ramadan
@@ -2662,7 +2662,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       var mo = momentOf(), boost = {}; (mo.subs || []).forEach(function(s){ boost[s] = 1; });
       var cnt = {}, pick = smIndex().top.filter(smOk).map(function(p, i){ return { p: p, s: (Number(p.rk) || 0) * (boost[p.sub] ? 1.5 : 1) }; }).sort(function(a, b){ return b.s - a.s; })
         .filter(function(x){ var k = x.p.sub || x.p.cat; cnt[k] = (cnt[k] || 0) + 1; return cnt[k] <= 2; }).slice(0, 12);
-      if (pick.length >= 4) L.again = { mine: false, items: pick.map(function(x){ return { p: x.p }; }), why: tr("اللي يطلبه أهل " + (sv("area") || "الحي") + " أكثر شي", "What your neighbours order most") };
+      if (pick.length >= 4) L.again = { mine: false, items: pick.map(function(x){ return { p: x.p }; }), why: tr("أكثر الأغراض طلباً من " + (sv("name") || "المتجر"), "Our most ordered items") };
     }
     // صف وقت اليوم والتقويم ما يكرر اللي فوقه (لو بقى فيه ٤ وأكثر)
     var used = {}; ["again", "due"].forEach(function(id){ if (L[id]) L[id].items.forEach(function(x){ used[x.p.id] = 1; }); });
@@ -2690,7 +2690,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     return x.why ? h.replace(/<\/article>$/, '<span class="sm-why">' + esc(x.why) + '</span></article>') : h; }
   var SM_ICON = { again: "cart", due: "clock", myoffers: "tag" };
   function smSecHTML(id){ var R = smLists().rows[id]; if (!R) return "";
-    var t = id === "again" ? (R.mine ? tr("طلباتك المعتادة", "Your usuals") : tr("الأكثر طلباً عند جيرانك", "Popular with your neighbours")) : id === "due" ? tr("يمكن خلص عندك؟", "Running low?") : id === "myoffers" ? tr("عروض على أغراضك", "Offers on your items") : R.title;
+    var t = id === "again" ? (R.mine ? tr("طلباتك المعتادة", "Your usuals") : tr("الأكثر طلباً", "Most ordered")) : id === "due" ? tr("يمكن خلص عندك؟", "Running low?") : id === "myoffers" ? tr("عروض على أغراضك", "Offers on your items") : R.title;
     var head = (SM_ICON[id] ? ic(SM_ICON[id]) : '') + esc(t), own = id === "due" || id === "myoffers" || (id === "again" && R.mine);
     var btn = id === "again" && R.mine ? '<button type="button" data-smaddall>' + tr("أضف المعتاد كله", "Add all usuals") + ic("plus") + '</button>' : '';
     return '<div class="wrap sm-sec" data-smsec="' + id + '"><div class="kq-sec"><h2>' + head + '</h2>' + btn + '</div>' + (R.why ? '<p class="sm-hint">' + esc(R.why) + '</p>' : '') +
