@@ -276,6 +276,8 @@ struct StoreInfo: Sendable {
     var layout: [PromoSlot] = []
     /// عروض المجموعات (store.groups): «أي ٣ علب بـ …» تنختار من صفحة حية من الموقع
     var groups: [ProductGroup] = []
+    /// مرادفات البحث من ملف المتجر (store.syn): الكلمة ← بدائلها بمسافات. نفس الموقع، وأي مرادف جديد يوصل بدون تحديث
+    var syn: [String: String] = [:]
     /// الخانات الحية (store.app.slots): صفحة المنتج والسلة تعرض أجزاء من الموقع (ميزات جديدة بدون تحديث). افتراضياً شغّالة
     var liveProduct = true
     var liveCart = true
@@ -402,6 +404,7 @@ enum CatalogParser {
         store.layout = ((s["layout"] as? [[String: Any]]) ?? []).compactMap { x in
             str(x["id"]).map { PromoSlot(id: $0, on: (x["on"] as? Bool) ?? true) }
         }
+        store.syn = (s["syn"] as? [String: Any] ?? [:]).compactMapValues { $0 as? String }
         store.groups = ((s["groups"] as? [[String: Any]]) ?? []).compactMap { g in
             guard (g["on"] as? Bool) != false, let id = str(g["id"]), let pr = num(g["price"]), let ids = g["ids"] as? [String], !ids.isEmpty else { return nil }
             return ProductGroup(id: id, name: str(g["name"]) ?? "", count: Int(num(g["n"]) ?? 3), price: pr, ids: ids)
@@ -517,5 +520,26 @@ enum ArabicSearch {
 
     static func words(_ query: String) -> [String] {
         normalize(query).split(whereSeparator: { $0 == " " || $0 == "\n" }).map(String.init)
+    }
+    /// «ال» وأخواتها من أول الكلمة الطويلة (مثل stripAl في الموقع)
+    static func stripAl(_ w: String) -> String {
+        guard w.count > 4 else { return w }
+        for pre in ["وال", "بال", "فال", "كال", "لل", "ال"] where w.hasPrefix(pre) { return String(w.dropFirst(pre.count)) }
+        return w
+    }
+    /// فرق حرف واحد (زايد أو ناقص أو مختلف أو حرفين متبادلين)، نفس near1 في الموقع
+    static func near1(_ a: String, _ b: String) -> Bool {
+        let x = Array(a), y = Array(b), la = x.count, lb = y.count
+        if abs(la - lb) > 1 || la < 4 || lb < 4 { return false }
+        var i = 0, j = 0, d = 0
+        while i < la && j < lb {
+            if x[i] == y[j] { i += 1; j += 1; continue }
+            d += 1; if d > 1 { return false }
+            if la == lb {
+                if i + 1 < la, j + 1 < lb, x[i + 1] == y[j], x[i] == y[j + 1] { i += 2; j += 2; continue }
+                i += 1; j += 1
+            } else if la > lb { i += 1 } else { j += 1 }
+        }
+        return d + (la - i) + (lb - j) <= 1
     }
 }
