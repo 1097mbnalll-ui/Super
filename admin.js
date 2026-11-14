@@ -1265,32 +1265,60 @@
       ["🏷️ أسعار نزلت", "🏷️ أسعار نزلت اليوم", "خصومات جديدة على منتجات تحبها 👇 شوفها قبل لا تخلص.", "offers"],
       ["🤝 جارنا العزيز", "🤝 يا جارنا العزيز", "حنا جنبك في حي الرمال 💚 أي شي تحتاجه يوصلك خلال ١٥–٣٠ دقيقة.", ""],
       ["🙏 اعتذار", "🙏 نعتذر منك", "صار ضغط بالطلبات اليوم. شكراً لصبرك، وطلبك الجاي علينا نهتم فيه أكثر 💚", ""]
-    ].filter(Boolean);
+    ].filter(Boolean).map(function(x){ x[4] = PP_SUGG[x[0]] || "all"; return x; });
   }
+  // الشريحة المقترحة لكل عبارة (تنختار لحالها لما يضغط المالك العبارة، ويقدر يغيّرها)
+  var PP_SUGG = { "🛒 سلتك تنتظرك": "cart", "💚 اشتقنا لك": "lapsed", "🔁 اطلب مرة ثانية": "ordered", "⭐ قيّمنا": "ordered", "🙏 اعتذار": "ordered", "🤝 جارنا العزيز": "never", "🎁 كود هدية": "never", "🆕 وصلنا جديد": "all" };
+  // لمين؟ شرائح المشتركين (الخادم يحسبها من جهاز الزبون المجهول: سلته وطلباته، بدون اسم ولا جوال)
+  var PP_SEGS = [["all", "الكل"], ["cart", "سلتهم فيها أغراض وما كمّلوا (من ساعتين وأكثر)"], ["never", "ما طلبوا أبداً"], ["ordered", "طلبوا قبل"], ["lapsed", "طلبوا وانقطعوا"], ["loyal", "الزبائن الدائمين (٣ طلبات وأكثر)"]];
   function promoPushUI(box){
     var wrap = document.createElement("div"); wrap.id = "promoPush"; wrap.style.marginTop = "18px";
     var ph = promoPhrases();
     wrap.innerHTML = '<h2>إشعار للزبائن (التطبيق والموقع)</h2><p class="hint">يوصل للزبائن اللي فعّلوا إشعارات العروض من التطبيق أو الموقع. اختر عبارة جاهزة، عدّلها لو تبي، وجرّبها على جوالك أول. الحد ٤ إرسالات في اليوم عشان ما نزعج الزبون.</p>' +
       '<div class="pp-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">' + ph.map(function(x, i){ return '<button type="button" class="btn btn-soft" data-ppph="' + i + '" style="padding:6px 12px;font-size:12.5px">' + esc(x[0]) + '</button>'; }).join("") + '</div>' +
       '<div class="fields" style="max-width:460px"><label>العنوان (٦٠ حرف)<input id="ppT" maxlength="60" placeholder="مثال: عروض الأسبوع نزلت"></label><label>النص (١٨٠ حرف)<textarea id="ppB" maxlength="180" rows="3" placeholder="نص قصير يشجع الزبون يفتح التطبيق"></textarea></label>' +
+      '<label>لمين؟<select id="ppS">' + PP_SEGS.map(function(g){ return '<option value="' + g[0] + '">' + esc(g[1]) + '</option>'; }).join("") + '</select></label>' +
+      '<label id="ppDw" hidden>ما طلبوا من كم يوم؟ (٣–٩٠)<input id="ppD" type="number" min="3" max="90" step="1" inputmode="numeric" value="14"></label>' +
       '<label>لما يضغط عليه<select id="ppG"><option value="">يفتح الرئيسية</option><option value="offers">يفتح العروض</option>' + D.cats.filter(function(c){ return !c.soon; }).map(function(c){ return '<option value="o:' + esc(c.id) + '">يفتح قسم ' + esc(c.name) + '</option>'; }).join("") + '</select></label></div>' +
-      '<div class="push-stat" id="ppStat">جاري الفحص…</div><div class="actions"><button class="btn btn-soft" type="button" id="ppTest">جرّبها على جوالي</button><button class="btn btn-brand" type="button" id="ppSend">' + ic("bell") + 'أرسل للزبائن</button></div><p class="status" id="ppMsg" style="white-space:pre-line"></p>';
+      '<div class="push-stat" id="ppStat">جاري الفحص…</div><div class="actions"><button class="btn btn-soft" type="button" id="ppTest">جرّبها على جوالي</button><button class="btn btn-brand" type="button" id="ppSend">' + ic("bell") + 'أرسل للزبائن</button></div><p class="status" id="ppMsg" style="white-space:pre-line"></p>' +
+      '<h3 style="margin-top:14px">تذكير السلة التلقائي</h3><p class="hint">لو الزبون حط أغراض بسلته وما كمّل الطلب، يوصله إشعار واحد «🛒 سلتك تنتظرك» بعد المدة اللي تختارها. مرة وحدة لكل سلة، وما يطلع بين ١١ الليل و٩ الصبح ولا والمتجر مقفل.</p>' +
+      '<div class="fields" style="max-width:460px"><label class="chk wide"><input type="checkbox" id="ppR">شغّل التذكير التلقائي</label><label>بعد كم ساعة من آخر تعديل للسلة؟ (١–٤٨)<input id="ppRh" type="number" min="1" max="48" step="1" inputmode="numeric" value="3"></label></div>' +
+      '<div class="actions"><button class="btn btn-soft" type="button" id="ppRs">احفظ التذكير</button></div><p class="status" id="ppRm"></p>';
     box.appendChild(wrap);
-    var T = $("ppT"), B = $("ppB"), G = $("ppG"), M = $("ppMsg");
-    api("/push/status", { pin: adminPin }).then(function(j){ var e = $("ppStat"); if (e) e.innerHTML = '<span class="pchip">' + ic("bell") + 'مشتركين بإشعارات العروض: <b>' + num(j.promo || 0) + '</b></span>'; });
-    wrap.addEventListener("click", function(e){ var b = e.target.closest("[data-ppph]"); if (!b) return; var x = ph[Number(b.dataset.ppph)]; T.value = x[1]; B.value = x[2]; G.value = x[3] || ""; M.textContent = ""; });
+    var T = $("ppT"), B = $("ppB"), G = $("ppG"), M = $("ppMsg"), SG = $("ppS"), DY = $("ppD"), segN = null, segT = 0;
+    var segName = function(){ var g = PP_SEGS.filter(function(x){ return x[0] === SG.value; })[0]; return g ? g[1] : "الكل"; };
+    var paintSegs = function(){ var e = $("ppStat"); if (!e) return;
+      $("ppDw").hidden = SG.value !== "lapsed";
+      if (!segN) return;
+      Array.prototype.forEach.call(SG.options, function(o, i){ o.textContent = PP_SEGS[i][1] + " (" + num(segN[o.value] || 0) + ")"; });
+      e.innerHTML = '<span class="pchip">' + ic("bell") + 'مشتركين بإشعارات العروض: <b>' + num(segN.all || 0) + '</b></span><span class="pchip">بيوصل لـ: <b>' + num(segN[SG.value] || 0) + '</b></span>'; };
+    var loadSegs = function(){ api("/admin/promo-segs", { pin: adminPin, days: Number(DY.value) || 14 }).then(function(j){
+      if (!j.ok) { // خادم قديم: نرجع للعدد الكلي بس، والإرسال للكل
+        SG.value = "all"; SG.disabled = true; $("ppR").disabled = $("ppRs").disabled = true; $("ppRm").textContent = j.code === "not_found" ? "الشرائح والتذكير يحتاجون تحديث كود الخادم في Cloudflare." : "";
+        return api("/push/status", { pin: adminPin }).then(function(k){ var e = $("ppStat"); if (e) e.innerHTML = '<span class="pchip">' + ic("bell") + 'مشتركين بإشعارات العروض: <b>' + num(k.promo || 0) + '</b></span>'; }); }
+      segN = j.segs; if (j.remind && !segT) { $("ppR").checked = !!j.remind.on; $("ppRh").value = j.remind.hours || 3; } segT = 1; paintSegs(); }); };
+    loadSegs();
+    SG.addEventListener("change", paintSegs);
+    var dT = 0; DY.addEventListener("input", function(){ clearTimeout(dT); dT = setTimeout(loadSegs, 600); });
+    $("ppRs").addEventListener("click", function(){ var m = $("ppRm"), h = Math.floor(Number($("ppRh").value)); m.className = "status";
+      if (!(h >= 1 && h <= 48)) { m.className = "status err"; m.textContent = "المدة من ساعة لين ٤٨ ساعة."; return; }
+      m.textContent = "جاري الحفظ…";
+      api("/admin/promo-segs", { pin: adminPin, days: Number(DY.value) || 14, remind: { on: $("ppR").checked, hours: h } }).then(function(j){
+        if (!j.ok) { m.className = "status err"; m.textContent = j.code === "forbidden" ? "ما عندك صلاحية." : "ما انحفظ (" + (j.code || "?") + ")."; return; }
+        segN = j.segs; paintSegs(); m.textContent = j.remind.on ? "تشغّل: التذكير يوصل بعد " + num(j.remind.hours) + " ساعة من آخر تعديل للسلة." : "التذكير التلقائي متوقف."; }); });
+    wrap.addEventListener("click", function(e){ var b = e.target.closest("[data-ppph]"); if (!b) return; var x = ph[Number(b.dataset.ppph)]; T.value = x[1]; B.value = x[2]; G.value = x[3] || ""; if (!SG.disabled) SG.value = x[4] || "all"; paintSegs(); M.textContent = ""; });
     var send = function(test){
       if (!T.value.trim() || !B.value.trim()) { M.className = "status err"; M.textContent = "اكتب العنوان والنص، أو اختر عبارة جاهزة."; return; }
-      var body = { pin: adminPin, title: T.value, body: B.value, go: G.value, test: !!test };
+      var body = { pin: adminPin, title: T.value, body: B.value, go: G.value, test: !!test, seg: SG.disabled ? "all" : SG.value, days: Number(DY.value) || 14 };
       var go = function(offset, sent){ body.offset = offset || 0; return api("/admin/promo-push", body).then(function(j){
         if (!j.ok) { M.className = "status err"; M.textContent = j.code === "daily_limit" ? "وصلت الحد اليومي (٤ إرسالات). جرّب بكرة." : j.code === "bad_message" ? "العنوان والنص مطلوبين." : j.code === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : "ما انرسل (" + (j.code || "?") + ")."; return; }
         if (test) { M.className = "status"; M.textContent = j.sent ? "وصلتك التجربة على " + num(j.sent) + " جهاز." : "ما فيه جهاز إدارة مفعّل الإشعارات. فعّلها من فوق (فعّل الإشعارات على هذا الجهاز) وجرّب."; return; }
         sent += j.sent || 0; if (j.next) return go(j.next, sent);
-        M.className = "status"; M.textContent = "انرسل لـ " + num(sent) + " جهاز من " + num(j.total) + " مشترك."; }); };
+        M.className = "status"; M.textContent = j.total ? "انرسل لـ " + num(sent) + " جهاز من " + num(j.total) + " مشترك (" + segName() + ")." : "ما فيه مشتركين بهالشريحة (" + segName() + ")، وما انحسب من الحد اليومي."; }); };
       return go(0, 0).catch(function(){ M.className = "status err"; M.textContent = "تعذّر الاتصال، جرّب مرة ثانية."; });
     };
     $("ppTest").addEventListener("click", function(){ M.className = "status"; M.textContent = "جاري الإرسال…"; send(true); });
-    $("ppSend").addEventListener("click", function(){ if (!T.value.trim() || !B.value.trim()) return send(false); if (!confirm("ترسل «" + T.value + "» لكل مشتركين العروض؟ ما تقدر تتراجع.")) return; M.className = "status"; M.textContent = "جاري الإرسال…"; send(false); });
+    $("ppSend").addEventListener("click", function(){ if (!T.value.trim() || !B.value.trim()) return send(false); var cnt = segN && !SG.disabled ? segN[SG.value] : null; if (cnt === 0) { M.className = "status err"; M.textContent = "ما فيه مشتركين بهالشريحة (" + segName() + ")."; return; } if (!confirm("ترسل «" + T.value + "» لـ" + (SG.disabled || SG.value === "all" ? "كل مشتركين العروض" : "«" + segName() + "»") + (cnt != null ? " (" + num(cnt) + " جهاز)" : "") + "؟ ما تقدر تتراجع.")) return; M.className = "status"; M.textContent = "جاري الإرسال…"; send(false); });
   }
   function pushStat(){
     api("/push/status", { pin: adminPin }).then(function(j){ var el = $("pushStat"); if (!el) return;

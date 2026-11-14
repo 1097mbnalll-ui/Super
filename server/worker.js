@@ -56,6 +56,7 @@ export default {
     if (request.method === "GET" && path === "/stock") {
       // كل زائر يسأل عن المخزون كل دقيقة؛ مع آلاف المنتجات نخزن النتيجة ١٥ ثانية بدل ما نقرأ القاعدة كل مرة
       if (!stockCache.body || Date.now() - stockCache.at > 15000) stockCache = { at: Date.now(), body: JSON.stringify({ ok: true, stock: env.DB ? await readShownStock(env) : {} }) };
+      if (env.DB) later(cartRemindCheck(env));
       return new Response(stockCache.body, { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=10" } });
     }
     if (request.method === "GET" && path === "/push/key") {
@@ -162,7 +163,7 @@ export default {
           let sid = short();
           if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
           try {
-            orderNo = await dbInsertOrder(env, record, need, Date.now(), false, null, { checkout });
+            orderNo = await dbInsertOrder(env, record, need, Date.now(), false, null, { checkout, dev: body.dev });
           } catch (e) {
             if (checkout) { const repeated = await checkoutResult(env, checkout); if (repeated) return reply(repeated.ok ? 200 : 409, repeated); }
             // ممكن طلب ثاني سبقه على آخر حبة: نشيّك المخزون مرة ثانية
@@ -302,6 +303,18 @@ export default {
       return reply(200, { ok: true });
     }
 
+    // نبضة السلة من جهاز الزبون {dev, n}: عدد المنتجات بس (بدون محتواها). الجهاز يرسلها مرة كل ١٠ دقايق بالأكثر ولما تفضى السلة
+    if (path === "/cart-ping") {
+      const dev = normDev(body.dev), cn = Math.max(0, Math.min(999, Math.floor(Number(body.n) || 0)));
+      if (!dev) return reply(400, { ok: false, code: "bad_request" });
+      if (!env.DB) return reply(200, { ok: true });
+      if (await rateHit(env, "cartp:" + ip, 60, 3600)) return reply(429, { ok: false, code: "slow_down" });
+      const now = Date.now();
+      // cart_at = آخر تعديل للسلة (السلة الفاضية تصفّره). نفس العدد خلال ٥ دقايق ما يكتب شي
+      await env.DB.prepare("INSERT INTO devices (dev, first_seen, last_seen, cart_n, cart_at) VALUES (?1, ?2, ?2, ?3, CASE WHEN ?3 > 0 THEN ?2 ELSE 0 END) ON CONFLICT(dev) DO UPDATE SET last_seen = ?2, cart_n = ?3, cart_at = CASE WHEN ?3 > 0 THEN ?2 ELSE 0 END WHERE devices.cart_n != ?3 OR devices.last_seen < ?2 - 300000")
+        .bind(dev, now, cn).run();
+      return reply(200, { ok: true });
+    }
     // الزبون يفعّل إشعارات حالة طلبه
     if (path === "/push/order") {
       if (!env.DB || !env.LOCKS) return reply(404, { ok: false, code: "no_push" });
@@ -311,7 +324,7 @@ export default {
       await ensureSchema(env);
       const row = await env.DB.prepare("SELECT status FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
       if (!row) return reply(404, { ok: false, code: "not_found" });
-      if (!(await saveSub(env, body.sub, "customer", String(n)))) return reply(400, { ok: false, code: "bad_sub" });
+      if (!(await saveSub(env, body.sub, "customer", String(n), body.dev))) return reply(400, { ok: false, code: "bad_sub" });
       later(pushTo(env, [normSub(body.sub)], { title: "تم تفعيل الإشعارات", body: "بنبلغك أول ما تتغير حالة طلبك #" + (1000 + n), url: "./", tag: "order" + n }));
       return reply(200, { ok: true });
     }
@@ -321,7 +334,7 @@ export default {
       if (await rateHit(env, "promosub:" + ip, 20, 3600)) return reply(429, { ok: false, code: "slow_down" });
       await ensureSchema(env);
       if (body.off) { const sb = normSub(body.sub); if (sb && sb.endpoint) await env.DB.prepare("DELETE FROM subs WHERE endpoint = ? AND role = 'promo'").bind(String(sb.endpoint)).run(); return reply(200, { ok: true, off: true }); }
-      if (!(await saveSub(env, body.sub, "promo", ""))) return reply(400, { ok: false, code: "bad_sub" });
+      if (!(await saveSub(env, body.sub, "promo", "", body.dev))) return reply(400, { ok: false, code: "bad_sub" });
       return reply(200, { ok: true });
     }
     if (path === "/push/unsub") {
@@ -444,6 +457,7 @@ export default {
       if (path === "/driver/cash") return reply(200, { ok: true, ...(await readCash(env, me.role === "driver" ? me.id : (solo || "admin"))) });
       // تطبيق الأندرويد يسأل كل ثواني: آخر رقم طلب، كم طلب جديد، كم طلب في الطريق معي أنا (خفيف: بدون قراءة الطلبات نفسها)
       if (path === "/driver/pending") {
+        later(cartRemindCheck(env));
         const a = await env.DB.prepare("SELECT COALESCE(MAX(no), 0) AS last FROM orders WHERE src != 'pos'").first();
         const b = await env.DB.prepare("SELECT COUNT(*) AS c FROM orders WHERE status = 'new'").first();
         const c = me.role === "driver"
@@ -694,7 +708,7 @@ export default {
       return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
     }
 
-    if (['/admin/promo-push','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/wallet', '/admin/promos', '/admin/promo-save', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
+    if (['/admin/promo-push','/admin/promo-segs','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/wallet', '/admin/promos', '/admin/promo-save', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
       if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
       await ensureSchema(env);
       const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner', later);
@@ -857,6 +871,7 @@ export default {
     if (path === "/admin/orders") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
+      later(cartRemindCheck(env));
       // صفحات: كل طلب ٥٠٠ طلب كحد أعلى عشان الخادم ما يتعب
       const lim = Math.min(500, Math.max(1, Math.floor(Number(body.limit) || 300)));
       const bn = Number(String(body.before || "").replace(/\D/g, ""));
@@ -1038,7 +1053,7 @@ async function ensureSchema(env) {
   if (add.length) await env.DB.batch(add.map((c) => env.DB.prepare(`ALTER TABLE st_day ADD COLUMN ${c} REAL NOT NULL DEFAULT 0`)));
   // سجل الطلبات هو المرجع: أعمدة للأرقام + جدول لسطور كل طلب
   const oh = ((await env.DB.prepare("PRAGMA table_info(orders)").all()).results || []).map((r) => r.name);
-  const ocols = { cost: "REAL NOT NULL DEFAULT 0", day: "TEXT", hour: "INTEGER", total: "REAL", fee: "REAL", items: "INTEGER", pay: "TEXT", ch: "TEXT", tail: "TEXT", dms: "INTEGER NOT NULL DEFAULT 0", anon: "INTEGER NOT NULL DEFAULT 0", drv: "TEXT", src: "TEXT NOT NULL DEFAULT 'web'", cid: "TEXT" };
+  const ocols = { cost: "REAL NOT NULL DEFAULT 0", day: "TEXT", hour: "INTEGER", total: "REAL", fee: "REAL", items: "INTEGER", pay: "TEXT", ch: "TEXT", tail: "TEXT", dms: "INTEGER NOT NULL DEFAULT 0", anon: "INTEGER NOT NULL DEFAULT 0", drv: "TEXT", src: "TEXT NOT NULL DEFAULT 'web'", cid: "TEXT", dev: "TEXT" };
   const oadd = Object.keys(ocols).filter((c) => !oh.includes(c));
   const more = oadd.map((c) => `ALTER TABLE orders ADD COLUMN ${c} ${ocols[c]}`).concat([
     "CREATE TABLE IF NOT EXISTS oline (no INTEGER NOT NULL, k INTEGER NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, price REAL NOT NULL, PRIMARY KEY (no, k))",
@@ -1064,6 +1079,13 @@ async function ensureSchema(env) {
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS orders_upd ON orders (status, updated)"));
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS orders_src ON orders (src, created)"));
   extra.push(env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS orders_cid ON orders (cid) WHERE cid IS NOT NULL"));
+  // جهاز الزبون المجهول (شرائح إشعارات العروض): بدون اسم ولا جوال، بس عدّادات
+  extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS orders_dev ON orders (dev, status) WHERE dev IS NOT NULL"));
+  extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS devices (dev TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, cart_n INTEGER NOT NULL DEFAULT 0, cart_at INTEGER NOT NULL DEFAULT 0, orders_n INTEGER NOT NULL DEFAULT 0, last_order_at INTEGER NOT NULL DEFAULT 0, reminded_at INTEGER NOT NULL DEFAULT 0)"));
+  extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS devices_cart ON devices (cart_at) WHERE cart_n > 0"));
+  const scols = ((await env.DB.prepare("PRAGMA table_info(subs)").all()).results || []).map((r) => r.name);
+  if (!scols.includes("dev")) extra.push(env.DB.prepare("ALTER TABLE subs ADD COLUMN dev TEXT"));
+  extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS subs_dev ON subs (dev) WHERE dev IS NOT NULL"));
   const ccols = ((await env.DB.prepare("PRAGMA table_info(cash)").all()).results || []).map((r) => r.name);
   if (!ccols.includes("drv")) extra.push(env.DB.prepare("ALTER TABLE cash ADD COLUMN drv TEXT NOT NULL DEFAULT 'd0'"));
   // حساب كاش المندوب يبدأ من يوم تركيب هالميزة (الطلبات القديمة ما تنحسب عليه)
@@ -1102,8 +1124,11 @@ async function dbInsertOrder(env, rec, need, now, force, log, opt = {}) {
   const items = (rec.lines || []).reduce((n, l) => n + Number(l.qty || 0), 0);
   const NO = "(SELECT MAX(no) FROM orders)";
   const src = opt.src || (["phone", "whatsapp", "store"].includes(rec.source) ? rec.source : "web");
-  const st = [P("INSERT INTO orders (created, updated, status, phone, data, day, hour, total, fee, items, pay, ch, tail, cost, src, drv, cid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    now, now, opt.status || "new", rec.phone || "", JSON.stringify(rec), day, hour, Number(rec.total), Number(rec.fee || 0), items, rec.pay, ch, String(rec.phone || "").slice(-4), costOf(rec), src, opt.drv || null, opt.cid || null)];
+  const dev = normDev(opt.dev);
+  const st = [P("INSERT INTO orders (created, updated, status, phone, data, day, hour, total, fee, items, pay, ch, tail, cost, src, drv, cid, dev) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    now, now, opt.status || "new", rec.phone || "", JSON.stringify(rec), day, hour, Number(rec.total), Number(rec.fee || 0), items, rec.pay, ch, String(rec.phone || "").slice(-4), costOf(rec), src, opt.drv || null, opt.cid || null, dev)];
+  // جهاز الزبون: الطلب يفضّي سلته ويعيد عدّ طلباته (بنفس الدفعة: يا كلها يا ولا شي)
+  if (dev) st.push(P("INSERT INTO devices (dev, first_seen, last_seen, cart_n, cart_at) VALUES (?, ?, ?, 0, 0) ON CONFLICT(dev) DO UPDATE SET last_seen = excluded.last_seen, cart_n = 0", dev, now, now), devCountStmt(env, dev));
   (rec.lines || []).forEach((l, k) => st.push(P(`INSERT INTO oline (no, k, id, qty, price, cost) VALUES (${NO}, ?, ?, ?, ?, ?)`, k, l.id || "", Number(l.qty), Number(l.price), Number(l.cost || 0))));
   if (log) st.push(env.DB.prepare(`INSERT INTO alog (at, who, act, ref, info) VALUES (?, ?, ?, '#' || (1000 + ${NO}), ?)`).bind(now, log.who, log.act, log.info));
   // المخزون: لو ما يكفي، هالسطر يوقف كل الحفظ (الطلب ما ينحفظ)
@@ -1136,7 +1161,7 @@ async function cleanupOld(env, keepDays) {
 }
 async function changeStatus(env, n, st, now = Date.now(), who = "", actor = null) {
   await ensureSchema(env);
-  const old = await env.DB.prepare("SELECT status, data, created, day, hour, total, dms, drv FROM orders WHERE no = ?").bind(n).first();
+  const old = await env.DB.prepare("SELECT status, data, created, day, hour, total, dms, drv, dev FROM orders WHERE no = ?").bind(n).first();
   if (!old) return null;
   let drv = old.drv || null;
   if (actor) {
@@ -1173,6 +1198,7 @@ async function changeStatus(env, n, st, now = Date.now(), who = "", actor = null
     for (const id of Object.keys(need)) if (cur[id] != null) stmts.push(P("UPDATE stock SET qty = MAX(qty + ?, 0) WHERE id = ?", (back ? 1 : -1) * need[id], id));
     stmts.push(...snapStmts(env, Object.keys(need).filter((id) => cur[id] != null)));
     if (counted) stmts.push(...statsStmts(env, rec, day, hour, back ? -1 : 1, back ? 1 : -1));
+    if (old.dev) stmts.push(devCountStmt(env, old.dev));   // الملغي ما ينحسب من طلبات الجهاز
   }
   const dl = (sign, ms) => P("INSERT INTO st_day (day, orders, revenue, deliv_n, deliv_ms, deliv_rev) VALUES (?, 0, 0, ?, ?, ?) ON CONFLICT(day) DO UPDATE SET deliv_n = deliv_n + excluded.deliv_n, deliv_ms = deliv_ms + excluded.deliv_ms, deliv_rev = deliv_rev + excluded.deliv_rev", day, sign, sign * ms, round2(sign * Number(rec.total || 0)));
   if (counted && old.status === "delivered") stmts.push(dl(-1, Number(old.dms || 0)));
@@ -1964,7 +1990,7 @@ function normSub(sub) {
   }
   return sub;
 }
-async function saveSub(env, sub0, role, ref) {
+async function saveSub(env, sub0, role, ref, dev0) {
   const sub = normSub(sub0);
   if (!sub || typeof sub !== "object") return false;
   if (sub.native && role !== "customer" && role !== "promo") return false;   // التطبيق الأصلي للزبائن بس (الإدارة والمندوب والمجهز ما فيهم)
@@ -1973,9 +1999,78 @@ async function saveSub(env, sub0, role, ref) {
   if (!sub.native && (!/^https:\/\/[^\s]{10,900}$/.test(ep) || !/^[\w-]{80,100}$/.test(p) || !/^[\w-]{16,30}$/.test(a))) return false;
   await ensureSchema(env);
   if (role === "customer") await env.DB.prepare("DELETE FROM subs WHERE role = 'customer' AND created < ?").bind(Date.now() - 3 * 864e5).run();
-  await env.DB.prepare("INSERT INTO subs (endpoint, role, ref, p256dh, auth, created) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(endpoint, role, ref) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth, created = excluded.created")
-    .bind(ep, role, ref || "", p, a, Date.now()).run();
+  const dev = role === "customer" || role === "promo" ? normDev(dev0) : null, now = Date.now();
+  const st = [env.DB.prepare("INSERT INTO subs (endpoint, role, ref, p256dh, auth, created, dev) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(endpoint, role, ref) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth, created = excluded.created, dev = COALESCE(excluded.dev, subs.dev)")
+    .bind(ep, role, ref || "", p, a, now, dev)];
+  if (dev) st.push(env.DB.prepare("INSERT INTO devices (dev, first_seen, last_seen) VALUES (?, ?, ?) ON CONFLICT(dev) DO UPDATE SET last_seen = excluded.last_seen").bind(dev, now, now));
+  await env.DB.batch(st);
   return true;
+}
+// ---- جهاز الزبون المجهول وشرائح إشعارات العروض (قرار المالك ١٤ نوفمبر ٢٠٢٦) ----
+// كل جهاز (الموقع والتطبيق) يسوي رقم عشوائي d-xxxxxxxxxxxxxxxxxxxx أول مرة، وينرسل مع الاشتراك والطلب ونبضة السلة. بدون اسم ولا جوال
+function normDev(x) { const d = String(x || ""); return /^d-[A-Za-z0-9_-]{20}$/.test(d) ? d : null; }
+// عدّ طلبات الجهاز من سجل الطلبات نفسه (الملغي ما ينحسب): يقرأ طلبات هالجهاز بس بالفهرس orders_dev
+function devCountStmt(env, dev) {
+  return env.DB.prepare("UPDATE devices SET orders_n = (SELECT COUNT(*) FROM orders WHERE dev = ?1 AND status != 'canceled'), last_order_at = (SELECT IFNULL(MAX(created), 0) FROM orders WHERE dev = ?1 AND status != 'canceled') WHERE dev = ?1").bind(dev);
+}
+const PROMO_SEGS = ["all", "cart", "never", "ordered", "lapsed", "loyal"];
+const CART_IDLE_MS = 2 * 3600e3;   // سلة متروكة: آخر تعديل قبل ساعتين وأكثر
+function segDays(x) { const d = Math.floor(Number(x) || 14); return Math.min(90, Math.max(3, d)); }
+// شرط الشريحة على subs s LEFT JOIN devices d. الاشتراكات القديمة بدون جهاز في «الكل» بس
+function segSql(seg, now, days) {
+  if (seg === "cart") return { w: "d.cart_n > 0 AND d.cart_at > 0 AND d.cart_at < ? AND d.last_order_at < d.cart_at", a: [now - CART_IDLE_MS] };
+  if (seg === "never") return { w: "d.dev IS NOT NULL AND d.orders_n = 0", a: [] };
+  if (seg === "ordered") return { w: "d.orders_n >= 1", a: [] };
+  if (seg === "lapsed") return { w: "d.orders_n >= 1 AND d.last_order_at < ?", a: [now - segDays(days) * 864e5] };
+  if (seg === "loyal") return { w: "d.orders_n >= 3", a: [] };
+  return { w: "1 = 1", a: [] };
+}
+// عدد المشتركين بكل شريحة: قراءة وحدة لكل اشتراك عروض + جهازه (بالمفتاح)
+async function segCounts(env, days, now = Date.now()) {
+  const cols = PROMO_SEGS.map((g) => { const q = segSql(g, now, days); return { sql: "SUM(CASE WHEN " + q.w + " THEN 1 ELSE 0 END) AS n_" + g, a: q.a }; });
+  const r = await env.DB.prepare("SELECT " + cols.map((c) => c.sql).join(", ") + " FROM subs s LEFT JOIN devices d ON d.dev = s.dev WHERE s.role = 'promo'").bind(...cols.flatMap((c) => c.a)).first();
+  const out = {}; for (const g of PROMO_SEGS) out[g] = (r && r["n_" + g]) || 0;
+  return out;
+}
+// تذكير السلة التلقائي: الإعداد في app_settings (مطفي افتراضياً)، والتأخير بالساعات (افتراضي ٣)
+async function cartRemindSettings(env) {
+  try {
+    const r = await env.DB.prepare("SELECT (SELECT v FROM app_settings WHERE k = 'cart_remind') m, (SELECT v FROM app_settings WHERE k = 'cart_remind_h') h").first();
+    return { on: !!r && r.m === "on", hours: Math.min(48, Math.max(1, Math.floor(Number(r && r.h) || 3))) };
+  } catch { return { on: false, hours: 3 }; }
+}
+// يُستدعى من الاستعلامات المتكررة (المخزون، المندوب، المجهز، الطلبات) مرة كل ٥ دقايق بالأكثر.
+// ما يذكّر بين ١١ الليل و٩ الصبح (توقيت الرياض)، ولا والمتجر مقفل، ومرة وحدة لكل سلة (reminded_at < cart_at)
+let cartCheckedAt = 0;
+async function cartRemindCheck(env, force) {
+  const now = Date.now();
+  if (!force && now - cartCheckedAt < Number(env.CART_CHECK_MS ?? 300000)) return 0;
+  cartCheckedAt = now;
+  if (!env.DB || !env.LOCKS) return 0;
+  await ensureSchema(env);
+  const st = await cartRemindSettings(env);
+  if (!st.on) return 0;
+  const h = riyadhHour(now);
+  if (h >= 23 || h < 9) return 0;
+  let data; try { data = await loadData(env); } catch { return 0; }
+  const S = data.store || {};
+  if (S.closed || !openNow(S, now)) return 0;
+  const cand = (await env.DB.prepare("SELECT dev FROM devices WHERE cart_n > 0 AND cart_at > ? AND cart_at < ? AND reminded_at < cart_at AND last_order_at < cart_at AND EXISTS (SELECT 1 FROM subs s WHERE s.dev = devices.dev AND s.role = 'promo') ORDER BY cart_at LIMIT ?")
+    .bind(now - 48 * 3600e3, now - st.hours * 3600e3, 20).all()).results || [];
+  if (!cand.length) return 0;
+  const ids = cand.map((r) => r.dev), qs = ids.map(() => "?").join(",");
+  // نحجز السلة قبل الإرسال (لو نداءين بنفس اللحظة، واحد بس يرسل)
+  const won = (await env.DB.prepare("UPDATE devices SET reminded_at = ? WHERE dev IN (" + qs + ") AND reminded_at < cart_at RETURNING dev, cart_n").bind(now, ...ids).all()).results || [];
+  if (!won.length) return 0;
+  const nOf = {}; for (const r of won) nOf[r.dev] = r.cart_n;
+  const subs = (await env.DB.prepare("SELECT endpoint, p256dh, auth, dev FROM subs WHERE role = 'promo' AND dev IN (" + won.map(() => "?").join(",") + ")").bind(...won.map((r) => r.dev)).all()).results || [];
+  const counts = await Promise.all(Object.keys(nOf).map((dev) => {
+    const list = subs.filter((s) => s.dev === dev).slice(0, 2).map((s) => ({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }));
+    return list.length ? pushTo(env, list, { title: "🛒 سلتك تنتظرك", body: "باقي فيها " + nOf[dev] + " منتج 👀 كمّل طلبك قبل لا تخلص الكمية.", url: "./?go=cart", tag: "cart" }) : 0;
+  }));
+  const sent = counts.reduce((x, y) => x + y, 0);
+  await logStmt(env, "الخادم", "cart_remind", "", { devices: won.length, sent }).run();
+  return won.length;
 }
 async function notifyRole(env, role, ref, msg) {
   if (!env.DB || !env.LOCKS) return 0;
@@ -2788,20 +2883,34 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     const title=String(body.title||'').trim().slice(0,60),text=String(body.body||'').trim().slice(0,180);
     if(!title||!text)return fail('bad_message');
     const go=String(body.go||'').replace(/[^\w:.\-]/g,'').slice(0,60),msg={title,body:text,url:go?'./?go='+go:'./',tag:'promo'};
-    const total=((await P("SELECT COUNT(*) n FROM subs WHERE role='promo'").first())||{}).n||0;
+    // لمين؟ الشريحة (all/cart/never/ordered/lapsed/loyal). الاشتراك القديم بدون جهاز في «الكل» بس
+    const seg=PROMO_SEGS.includes(body.seg)?body.seg:'all',days=segDays(body.days),sq=segSql(seg,Date.now(),days);
+    const total=((await P("SELECT COUNT(*) n FROM subs s LEFT JOIN devices d ON d.dev=s.dev WHERE s.role='promo' AND "+sq.w,...sq.a).first())||{}).n||0;
     if(body.test)return {ok:true,test:true,sent:await notifyRole(env,'admin',null,msg),total};
     const dayStart=Date.now()-((Date.now()+3*3600e3)%864e5);
     const done=((await P("SELECT COUNT(*) n FROM alog WHERE act='promo_push' AND at>=?",dayStart).first())||{}).n||0;
     const offset=Math.max(0,Math.floor(Number(body.offset)||0));
     if(!offset&&done>=4)return {ok:false,code:'daily_limit',limit:4,status:429};
     // offset = آخر rowid انرسل له (مو عدد): الأجهزة المنتهية تنحذف وقت الإرسال، فالعد كان يخلي اللي بعدها يتخطون
-    const rs=await P("SELECT rowid AS rid,endpoint,p256dh,auth FROM subs WHERE role='promo' AND rowid>? ORDER BY rowid LIMIT ?",offset,PROMO_BATCH).all();
+    if(!total)return {ok:true,sent:0,tried:0,total:0,seg,next:null};
+    const rs=await P("SELECT s.rowid AS rid,s.endpoint,s.p256dh,s.auth FROM subs s LEFT JOIN devices d ON d.dev=s.dev WHERE s.role='promo' AND s.rowid>? AND "+sq.w+" ORDER BY s.rowid LIMIT ?",offset,...sq.a,PROMO_BATCH).all();
     const rows=rs.results||[],list=rows.map((r)=>({endpoint:r.endpoint,keys:{p256dh:r.p256dh,auth:r.auth}}));
     const sent=await pushTo(env,list,msg);
-    if(!offset)await logStmt(env,who,'promo_push',title,{total,body:text,go}).run();
+    if(!offset)await logStmt(env,who,'promo_push',title,{total,body:text,go,seg,...(seg==='lapsed'?{days}:{})}).run();
     const last=rows.length?rows[rows.length-1].rid:offset;
-    const more=rows.length===PROMO_BATCH&&!!(await P("SELECT 1 FROM subs WHERE role='promo' AND rowid>? LIMIT 1",last).first());
-    return {ok:true,sent,tried:list.length,total,next:more?last:null};
+    const more=rows.length===PROMO_BATCH&&!!(await P("SELECT 1 FROM subs s LEFT JOIN devices d ON d.dev=s.dev WHERE s.role='promo' AND s.rowid>? AND "+sq.w+" LIMIT 1",last,...sq.a).first());
+    return {ok:true,sent,tried:list.length,total,seg,next:more?last:null};
+  }
+  // عدد المشتركين بكل شريحة + إعداد تذكير السلة التلقائي (remind: {on, hours})
+  if(path==='/admin/promo-segs'){
+    if(!['owner','admin','manager'].includes(role))return fail('forbidden',403);
+    if(body.remind&&typeof body.remind==='object'){
+      const on=body.remind.on===true,h=Math.floor(Number(body.remind.hours??3));
+      if(!(h>=1&&h<=48))return fail('bad_request');
+      await env.DB.batch([P("INSERT INTO app_settings(k,v) VALUES('cart_remind',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",on?'on':'off'),P("INSERT INTO app_settings(k,v) VALUES('cart_remind_h',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",String(h)),logStmt(env,who,'cart_remind_set','',{on,hours:h})]);
+    }
+    const days=segDays(body.days);
+    return {ok:true,days,segs:await segCounts(env,days),remind:await cartRemindSettings(env)};
   }
   if(path==='/admin/promos'||path==='/admin/promo-save'){
     if(!['owner','admin','manager'].includes(role))return fail('forbidden',403);
@@ -2830,7 +2939,7 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     const st=await prepSettings(env);return {ok:true,mode:st.mode,on:st.on,preparers:st.preparers,lateMin:st.lateMin};
   }
   if(path==='/admin/prep'){
-    later(lateCheck(env));
+    later(lateCheck(env));later(cartRemindCheck(env));
     const rows=(await P("SELECT o.no,o.status,o.created,o.updated AS order_updated,o.data,p.stage,p.checks,p.updated,p.who,p.version FROM orders o LEFT JOIN prep_orders p ON p.no=o.no WHERE o.status IN ('new','accepted') ORDER BY o.created").all()).results||[];
     const nos=rows.map(r=>r.no),offs=nos.length?((await P('SELECT id,no,line_id,to_id,state,created,answered FROM sub_offers WHERE no IN ('+nos.map(()=>'?').join(',')+') ORDER BY id',...nos).all()).results||[]):[],om={};for(const x of offs)(om[x.no]||=[]).push({id:x.id,line:x.line_id,to:x.to_id,state:x.state,at:x.answered||x.created});
     const lm=(await prepSettings(env)).lateMin;

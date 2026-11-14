@@ -1915,7 +1915,37 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   // شاشة كاملة من الموقع داخل التطبيق (screen=home|cats|cat|product|search|cart|checkout|more): أي تعديل على الموقع يطلع في التطبيق بدون تحديث
   var EMBED_SCREEN = qp("screen");
   if (EMBED) { try { cart = window.__APP_CART__ || JSON.parse(qp("cart") || "{}") || {}; } catch(e) { cart = {}; } }
-  function saveCart(){ if (EMBED) { if (EMBED_SCREEN || EMBED_PAGE) toApp({ t: "cart.sync", cart: cart }); return; } try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} }
+  function saveCart(){ if (EMBED) { if (EMBED_SCREEN || EMBED_PAGE) toApp({ t: "cart.sync", cart: cart }); return; } try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} cartPingCheck(); }
+  // جهاز الزبون المجهول (شرائح إشعارات العروض، ١٤ نوفمبر ٢٠٢٦): رقم عشوائي d-… بدون اسم ولا جوال، ينرسل مع الاشتراك والطلب ونبضة السلة.
+  // داخل التطبيق (embed) ياخذ رقم جهاز التطبيق من الرابط (dev=…) عشان يكون نفس الجهاز
+  var DEV_ID = null;
+  function devId(){
+    if (DEV_ID) return DEV_ID;
+    var ok = function(x){ return /^d-[A-Za-z0-9_-]{20}$/.test(String(x || "")); };
+    if (EMBED && ok(qp("dev"))) return (DEV_ID = qp("dev"));
+    try { var v = localStorage.getItem("ohod-dev"); if (ok(v)) return (DEV_ID = v); } catch(e){}
+    var c = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_", r = crypto.getRandomValues(new Uint8Array(20)), id = "d-";
+    for (var i = 0; i < 20; i++) id += c[r[i] & 63];
+    try { localStorage.setItem("ohod-dev", id); } catch(e){}
+    return (DEV_ID = id);
+  }
+  // نبضة السلة {dev, n}: عدد المنتجات بس. مرة كل ١٠ دقايق بالأكثر، وعلى طول لما تفضى السلة. بس للي مشترك بإشعارات العروض (خفيف على الخادم)
+  var CP = { n: -1, at: 0 }, cpTimer = 0; try { var cp0 = JSON.parse(localStorage.getItem("ohod-cp") || "null"); if (cp0 && typeof cp0.n === "number") CP = cp0; } catch(e){}
+  function cartN(){ var n = 0; for (var k in cart) n += Math.max(0, Number(cart[k]) || 0); return n; }
+  function cpSave(){ try { localStorage.setItem("ohod-cp", JSON.stringify(CP)); } catch(e){} }
+  function cartPingSend(){
+    clearTimeout(cpTimer); cpTimer = 0;
+    var n = cartN(); if (n === CP.n || !apiUrl()) return;
+    CP = { n: n, at: Date.now() }; cpSave();
+    try { fetch(apiUrl() + "/cart-ping", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dev: devId(), n: n }) }).catch(function(){}); } catch(e){}
+  }
+  function cartPingCheck(){
+    if (EMBED || !PROMO_ON || !apiUrl() || mode !== "store") return;
+    var n = cartN(); if (n === CP.n) { clearTimeout(cpTimer); cpTimer = 0; return; }
+    var wait = CP.at + 600000 - Date.now();
+    if ((n === 0 && CP.n > 0) || wait <= 0) return cartPingSend();
+    if (!cpTimer) cpTimer = setTimeout(cartPingSend, wait);
+  }
   // البيانات المدمجة بالصفحة قديمة (ما فيها أغلب المنتجات): ما ننظّف السلة المحفوظة إلا بعد ما ينحمّل data.json الحقيقي، وإلا الزبون يفقد سلته كل ما يفتح الموقع
   var dataReady = !(GH || LIVEDATA);
   function normalize(){
@@ -3051,8 +3081,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if ($("toDriver")) $("toDriver").addEventListener("click", openDriver);
     if (screen === "sent") { bindSent(); trkMapInit(); trackPoll(); if ($("pushMe")) $("pushMe").addEventListener("click", function(){ orderPush(this); }); }
     if ($("promoOn")) $("promoOn").addEventListener("click", function(){ var b = this, m = $("promoMsg"); b.disabled = true;
-      pushSub().then(function(sub){ return fetchJSON(apiUrl() + "/push/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub }) }); })
-        .then(function(j){ if (!j.ok) throw j; PROMO_ON = true; try { localStorage.setItem("ohod-promo", "1"); } catch(e){} render(); }).catch(function(e){ b.disabled = false; m.hidden = false; m.textContent = pushErrText(e); }); });
+      pushSub().then(function(sub){ return fetchJSON(apiUrl() + "/push/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub, dev: devId() }) }); })
+        .then(function(j){ if (!j.ok) throw j; PROMO_ON = true; try { localStorage.setItem("ohod-promo", "1"); } catch(e){} cartPingCheck(); render(); }).catch(function(e){ b.disabled = false; m.hidden = false; m.textContent = pushErrText(e); }); });
     if ($("promoOff")) $("promoOff").addEventListener("click", function(){ this.disabled = true; var done = function(){ PROMO_ON = false; try { localStorage.removeItem("ohod-promo"); } catch(e){} render(); };
       navigator.serviceWorker.ready.then(function(r){ return r.pushManager.getSubscription(); }).then(function(sub){ return sub ? fetchJSON(apiUrl() + "/push/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub.toJSON(), off: true }) }) : null; }).then(done, done); });
     if ($("pushPref")) $("pushPref").addEventListener("click", function(){ var b = this, m = $("pushPrefMsg"); b.disabled = true;
@@ -3273,7 +3303,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       payload=JSON.parse(JSON.stringify(checkoutAttempt.payload));items=payload.items;phone=payload.phone;sentCart=null;
     }else if(!checkoutAttempt){var id=opId();payload.requestId=id;payload.walletRequestId=id;saveCheckoutAttempt({signature:signature,payload:payload});}
     else payload=JSON.parse(JSON.stringify(checkoutAttempt.payload));
-    payload.walletToken=walletCustomer&&walletCustomer.phone===payload.phone?walletCustomer.token:'';
+    payload.walletToken=walletCustomer&&walletCustomer.phone===payload.phone?walletCustomer.token:'';payload.dev=devId();
     var usedWallet=Number(payload.walletAmount)||0;
     btn.disabled = true; btn.firstChild.textContent = tr("جاري الإرسال…", "Sending…");
     fetchJSON(apiUrl()+'/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
@@ -3286,6 +3316,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
           if (EMBED) toApp({ t: "order", no: String(j.orderNo), total: Number(j.total) || 0, phone: phone, pay: payload.pay, items: items, lat: payload.lat, lng: payload.lng, track: !!j.track });
+          if(!EMBED){CP.n=0;cpSave();}   // الخادم فضّى عدّ السلة مع الطلب
           if(sentCart&&JSON.stringify(cart)===sentCart)cart={};saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; try { var hp = nativePlug("Haptics"); if (hp && hp.notification) hp.notification({ type: "SUCCESS" }); } catch(e){} render(); loadStock(); window.scrollTo(0, 0); return;
         }
         var c = j.code;
@@ -3432,8 +3463,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     try { if (EMBED || mode !== "store" || !pushCan() || (isIOS() && !isApp()) || localStorage.getItem("ohod-pushask") === "1") return; } catch(e){ return; }
     var perm = Notification.permission;
     if (perm === "denied") return;
-    var subscribe = function(){ return pushSub().then(function(sub){ return fetchJSON(apiUrl() + "/push/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub }) }); })
-      .then(function(j){ if (j && j.ok) { PROMO_ON = true; try { localStorage.setItem("ohod-promo", "1"); } catch(e){} } }).catch(function(){}); };
+    var subscribe = function(){ return pushSub().then(function(sub){ return fetchJSON(apiUrl() + "/push/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub, dev: devId() }) }); })
+      .then(function(j){ if (j && j.ok) { PROMO_ON = true; try { localStorage.setItem("ohod-promo", "1"); } catch(e){} cartPingCheck(); } }).catch(function(){}); };
     try { localStorage.setItem("ohod-pushask", "1"); } catch(e){}
     if (perm === "granted") { if (!PROMO_ON) subscribe(); return; }
     subscribe();
@@ -3444,7 +3475,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function orderPush(btn){
     if (!lastOrder) return;
     if (btn) { btn.disabled = true; btn.lastChild.textContent = tr("جاري التفعيل…", "Turning on…"); }
-    pushSub().then(function(sub){ return api("/push/order", { no: lastOrder.no, phone: lastOrder.phone, sub: sub }); }).then(function(j){
+    pushSub().then(function(sub){ return api("/push/order", { no: lastOrder.no, phone: lastOrder.phone, sub: sub, dev: devId() }); }).then(function(j){
       if (!j.ok) throw j; lastOrder.push = true; saveLast(); if (screen === "sent") render();
     }).catch(function(e){ var el = $("pushMsg"); if (btn) { btn.disabled = false; btn.lastChild.textContent = tr("نبّهني لما تتغير حالة طلبي", "Notify me about my order"); } if (el) { el.hidden = false; el.textContent = pushErrText(e); } });
   }
@@ -4539,7 +4570,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (nd && nd.store && nd.products && nd.imgs) { var hadApi = !!apiUrl(); applyData(nd); if (!hadApi) loadStock(); if (mode === "store" && screen !== "checkout") refresh(); }
     // رابط من إشعار (?go=offers أو o:<قسم>): يفتح العروض أو القسم مرة وحدة
     try { var gp = (location.search.match(/[?&]go=([^&]+)/) || [])[1]; if (gp && !EMBED && mode === "store") { gp = decodeURIComponent(gp); history.replaceState(null, "", location.pathname + location.hash);
-      if (gp === "offers") { chip = "offers"; show("home"); } else if (/^[oc]:/.test(gp) && catOf(gp.slice(2))) { openCat = gp.slice(2); openSub = ""; show("cat"); } } } catch(e){}
+      if (gp === "offers") { chip = "offers"; show("home"); } else if (gp === "cart") { show("cart"); } else if (/^[oc]:/.test(gp) && catOf(gp.slice(2))) { openCat = gp.slice(2); openSub = ""; show("cat"); } } } catch(e){}
   }).catch(function(){ dataReady = true; if (EMBED) refresh(); });
   if (window.claude && claude.use) {
     claude.use("user").then(function(u){ return u ? u.canEdit() : false; }).then(function(ok){
