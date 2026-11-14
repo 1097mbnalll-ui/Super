@@ -1,0 +1,53 @@
+# تشخيص مفتاح App Store Connect (بدون طباعة أي قيمة سرية): يفحص شكل الأسرار ويجرّب نداء حقيقي لأبل. يشتغل مع الرفع لفرع ios-diag أو يدوي.
+name: ios-asc-diag
+on:
+  push:
+    branches: [ios-diag]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Diagnose
+        env:
+          KID: ${{ secrets.ASC_KEY_ID }}
+          ISS: ${{ secrets.ASC_ISSUER_ID }}
+          P8: ${{ secrets.ASC_KEY_P8 }}
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          pip install -q pyjwt cryptography requests
+          python3 - <<'PY'
+          import os, re, time, jwt, requests
+          kid, iss, p8, team = (os.environ.get(k, '') for k in ('KID', 'ISS', 'P8', 'TEAM'))
+          ok = lambda c: '✅' if c else '❌'
+          print('KEY_ID  طوله', len(kid), 'وشكله', ok(re.fullmatch(r'[A-Z0-9]{10}', kid)), '(لازم ١٠ حروف وأرقام كبيرة)', '| فيه مسافات أو أسطر زايدة:', kid != kid.strip())
+          print('ISSUER  طوله', len(iss), 'وشكله', ok(re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', iss.strip())), '(لازم UUID فيه شرطات)', '| مسافات زايدة:', iss != iss.strip())
+          print('TEAM_ID طوله', len(team), ok(re.fullmatch(r'[A-Z0-9]{10}', team.strip())))
+          raw = p8.replace('\r', '')
+          print('P8 شكل كل سطر (بدون كشف المحتوى):')
+          for i, l in enumerate(raw.split('\n')):
+              kind = 'عنوان: ' + l.strip() if re.fullmatch(r'\s*-----[A-Z ]+-----\s*', l) else ('فاضي' if not l.strip() else ('base64 سليم' if re.fullmatch(r'[A-Za-z0-9+/=]+', l.strip()) else 'فيه رموز غريبة، أول حرف كود ' + str(ord(l[0]))))
+              print('  سطر', i + 1, 'طوله', len(l), '→', kind)
+          body = ''.join(l.strip() for l in raw.split('\n') if l.strip() and '-----' not in l)
+          body = re.sub(r'[^A-Za-z0-9+/=]', '', body)
+          print('طول المحتوى بعد التنظيف', len(body), '(المفتاح الصحيح تقريباً ١٨٤ حرف)')
+          key = '-----BEGIN PRIVATE KEY-----\n' + '\n'.join(body[i:i+64] for i in range(0, len(body), 64)) + '\n-----END PRIVATE KEY-----\n'
+          if iss.strip() and kid.strip():
+              try:
+                  tok = jwt.encode({'iss': iss.strip(), 'iat': int(time.time()), 'exp': int(time.time()) + 600, 'aud': 'appstoreconnect-v1'}, key, algorithm='ES256', headers={'kid': kid.strip(), 'typ': 'JWT'})
+                  print('توقيع المفتاح محلياً ✅ (ملف الـ p8 سليم)')
+                  print('KEY_ID أول ٣ وآخر ٢:', kid.strip()[:3] + '…' + kid.strip()[-2:], '| ISSUER أول ٨ وآخر ٤:', iss.strip()[:8] + '…' + iss.strip()[-4:], '(قارنها بصفحة المفاتيح في App Store Connect)')
+                  # مفتاح فردي (Individual) ما له Issuer: توكنه بـ sub=user بدل iss
+                  tok2 = jwt.encode({'iat': int(time.time()), 'exp': int(time.time()) + 600, 'aud': 'appstoreconnect-v1', 'sub': 'user'}, key, algorithm='ES256', headers={'kid': kid.strip(), 'typ': 'JWT'})
+                  r0 = requests.get('https://api.appstoreconnect.apple.com/v1/apps?limit=1', headers={'Authorization': 'Bearer ' + tok2}, timeout=30)
+                  print('تجربة كمفتاح فردي (Individual) → HTTP', r0.status_code)
+                  r = requests.get('https://api.appstoreconnect.apple.com/v1/apps?limit=1', headers={'Authorization': 'Bearer ' + tok}, timeout=30)
+                  print('نداء أبل /v1/apps → HTTP', r.status_code)
+                  print(r.text[:600])
+                  r2 = requests.get('https://api.appstoreconnect.apple.com/v1/bundleIds?filter[identifier]=sa.ohod.store', headers={'Authorization': 'Bearer ' + tok}, timeout=30)
+                  print('bundleId sa.ohod.store → HTTP', r2.status_code, r2.text[:300])
+              except Exception as e:
+                  print('فشل توقيع المفتاح ❌ ملف الـ p8 تالف أو ناقص:', type(e).__name__, str(e)[:200])
+          PY

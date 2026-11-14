@@ -52,7 +52,7 @@ jobs:
           ISS: ${{ secrets.ASC_ISSUER_ID }}
           TEAM: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          KEY="$RUNNER_TEMP/AuthKey.p8"; printf '%s\n' "$P8" > "$KEY"
+          KEY="$RUNNER_TEMP/AuthKey.p8"; B64=$(printf '%s' "$P8" | LC_ALL=C tr -cd 'A-Za-z0-9+/=' | sed -e 's/BEGINPRIVATEKEY//;s/ENDPRIVATEKEY//'); echo "P8 body length: ${#B64}"; { echo '-----BEGIN PRIVATE KEY-----'; printf '%s' "$B64" | fold -w 64; echo; echo '-----END PRIVATE KEY-----'; } > "$KEY"; openssl pkey -in "$KEY" -noout || echo "::warning::ASC_KEY_P8 is not a valid key"
           xcodebuild -project OhodStore.xcodeproj -scheme OhodStore -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/OhodStore.xcarchive" \
             -allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$KID" -authenticationKeyIssuerID "$ISS" \
