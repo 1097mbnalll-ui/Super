@@ -49,6 +49,21 @@ shot() {  # shot <name> <args...>
   xcrun simctl io "$DEVICE" screenshot --type=png "$OUT/$name.png" >/dev/null
   echo "shot $name"
 }
+if [ "${CHECK:-}" = "1" ]; then
+  # فحص شكاوى المالك (١٤ نوفمبر ٢٠٢٦): طلب الإشعارات أول فتحة، أول الفتح بدون صفحة قديمة، الخضار «قريباً»، عرض ديمة
+  WAIT=6 shot c01-first-launch-push
+  xcrun simctl spawn "$DEVICE" defaults write sa.ohod.store push.asked -bool YES
+  WAIT=2 shot c02-home-2s
+  WAIT=5 shot c03-home-5s
+  WAIT=14 shot c04-home-14s
+  shot c05-veg -screen category:veg
+  shot c06-deemah-product -screen product:x6285602019306
+  WAIT=12 shot c07-deemah-picker -screen live:g:deemah:x6285602019306
+  shot c08-bakery -screen category:bakery
+  WAIT=12 shot c09-home-cart -seed-cart
+  shot c10-cart -seed-cart -screen cart
+  ls -la "$OUT"; exit 0
+fi
 WAIT=14 shot 01-home -seed-cart
 shot 02-categories -screen categories
 shot 03-category -screen category:dairy
