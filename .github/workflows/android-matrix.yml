@@ -12,6 +12,32 @@ permissions:
   contents: write
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          ALL = [
+            {"name": "pixel7-android15", "api": 35, "profile": "pixel_7"},
+            {"name": "small-phone-a14", "api": 34, "profile": "Nexus 5X"},
+            {"name": "tablet-android14", "api": 34, "profile": "pixel_tablet"},
+            {"name": "foldable-android15", "api": 35, "profile": "pixel_fold"},
+            {"name": "pixel6-android13", "api": 33, "profile": "pixel_6"},
+            {"name": "pixel8-android16", "api": 36, "profile": "pixel_8"},
+          ]
+          want = None
+          try:
+            for l in open("mobile/store/matrix-trigger.txt"):
+              if l.startswith("devices="): want = [x.strip() for x in l.split("=", 1)[1].split(",") if x.strip()]
+          except Exception: pass
+          sel = [d for d in ALL if not want or d["name"] in want] or ALL
+          print("matrix=" + json.dumps({"include": sel}))
+          PY
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -42,19 +68,12 @@ jobs:
           retention-days: 3
 
   devices:
-    needs: build
+    needs: [plan, build]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { name: pixel7-android15,   api: 35, profile: pixel_7 }
-          - { name: small-phone-a14,    api: 34, profile: "Nexus 5X" }
-          - { name: tablet-android14,   api: 34, profile: pixel_tablet }
-          - { name: foldable-android15, api: 35, profile: pixel_fold }
-          - { name: pixel6-android13,   api: 33, profile: pixel_6 }
-          - { name: pixel8-android16,   api: 36, profile: pixel_8 }
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
