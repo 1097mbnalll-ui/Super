@@ -84,12 +84,19 @@ struct ProductCard: View {
                         .background(Theme.oliveSoft, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                         .padding(.top, 4)
                 }
+                if let brand = product.brand {
+                    Text(verbatim: brand + " ›")
+                        .font(.ui(size: 11.5, weight: .semibold))
+                        .foregroundStyle(Theme.muted)
+                        .lineLimit(1)
+                        .padding(.top, showCategory ? 0 : 4)
+                }
                 Text(tv: product.name)
                     .font(.ui(size: 14.5, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)
-                    .padding(.top, showCategory ? 0 : 4)
+                    .padding(.top, showCategory || product.brand != nil ? 0 : 4)
                 Text(tv: product.unit)
                     .font(.ui(size: 12.5))
                     .foregroundStyle(Theme.muted)

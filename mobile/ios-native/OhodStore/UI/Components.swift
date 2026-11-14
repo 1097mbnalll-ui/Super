@@ -209,7 +209,9 @@ struct NoPhotoTile: View {
     var body: some View {
         let category = catalog.category(product.cat)
         let emoji = NoPhoto.emoji(product, category: category)
-        let parts = NoPhoto.parts(product.name)
+        var parts = NoPhoto.parts(product.name)
+        // الأسماء الجديدة: الحجم في الوحدة (السطر الرمادي) مو في الاسم
+        if parts.size.isEmpty, product.unit.contains(where: \.isNumber) { parts.size = product.unit }
         let tint = Color(hexString: category?.tint) ?? Color(hex: 0xEEF0F3)
         GeometryReader { geo in
             let w = geo.size.width

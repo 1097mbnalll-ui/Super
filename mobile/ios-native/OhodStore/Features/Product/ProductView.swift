@@ -71,7 +71,7 @@ struct ProductView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     if let category {
-                        Text(tv: [product.badge, category.name, catalog.dailyDeal?.product.id == product.id ? "عرض اليوم" : nil].compactMap { $0 }.joined(separator: " · "))
+                        Text(tv: [product.badge, product.brand, category.name, catalog.dailyDeal?.product.id == product.id ? "عرض اليوم" : nil].compactMap { $0 }.joined(separator: " · "))
                             .font(.ui(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.oliveInk)
                             .padding(.horizontal, 9).padding(.vertical, 3)
