@@ -33,4 +33,4 @@ data="120"
 data="11"
 arg="--ignore-timeouts" mCurArgData="null" mNextArg=11 argwas="--ignore-timeouts" nextarg="300"
 Events injected: 300
-## Network stats: elapsed time=15685ms (0ms mobile, 0ms wifi, 15685ms not connected)
+## Network stats: elapsed time=8557ms (0ms mobile, 0ms wifi, 8557ms not connected)

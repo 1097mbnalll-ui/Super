@@ -1,0 +1,23 @@
+11-14 08:21:13.629   565  4160 E ActivityManager: ANR in sa.ohod.store (sa.ohod.store/.MainActivity)
+11-14 08:21:13.629   565  4160 E ActivityManager: PID: 3903
+11-14 08:21:13.629   565  4160 E ActivityManager: Reason: Input dispatching timed out (2c2eec4 sa.ohod.store/sa.ohod.store.MainActivity (server) is not responding. Waited 5006ms for FocusEvent(hasFocus=true)).
+11-14 08:21:13.629   565  4160 E ActivityManager: Parent: sa.ohod.store/.MainActivity
+11-14 08:21:13.629   565  4160 E ActivityManager: ErrorId: e194a801-4288-4b5e-9f9d-66294d19d9b6
+11-14 08:21:13.629   565  4160 E ActivityManager: Frozen: false
+11-14 08:21:13.629   565  4160 E ActivityManager: Load: 35.42 / 11.33 / 3.98
+11-14 08:21:13.629   565  4160 E ActivityManager: ----- Output from /proc/pressure/memory -----
+11-14 08:21:13.629   565  4160 E ActivityManager: some avg10=2.37 avg60=4.03 avg300=1.30 total=4555596
+11-14 08:21:13.629   565  4160 E ActivityManager: full avg10=0.00 avg60=0.04 avg300=0.01 total=217978
+11-14 08:21:13.629   565  4160 E ActivityManager: ----- End output from /proc/pressure/memory -----
+11-14 08:21:13.629   565  4160 E ActivityManager: ----- Output from /proc/pressure/cpu -----
+11-14 08:21:13.629   565  4160 E ActivityManager: some avg10=92.25 avg60=69.06 avg300=22.97 total=79182839
+11-14 08:21:13.629   565  4160 E ActivityManager: full avg10=0.00 avg60=0.00 avg300=0.00 total=0
+11-14 08:21:13.629   565  4160 E ActivityManager: ----- End output from /proc/pressure/cpu -----
+11-14 08:21:13.629   565  4160 E ActivityManager: ----- Output from /proc/pressure/io -----
+11-14 08:21:13.629   565  4160 E ActivityManager: some avg10=10.82 avg60=14.15 avg300=4.93 total=17132152
+11-14 08:21:13.629   565  4160 E ActivityManager: full avg10=0.00 avg60=0.04 avg300=0.03 total=261635
+11-14 08:21:13.629   565  4160 E ActivityManager: ----- End output from /proc/pressure/io -----
+11-14 08:21:13.629   565  4160 E ActivityManager: 
+11-14 08:21:13.629   565  4160 E ActivityManager: CPU usage from 61333ms to -6ms ago (2026-11-14 08:20:11.698 to 2026-11-14 08:21:13.037):
+11-14 08:21:13.629   565  4160 E ActivityManager:   23% 565/system_server: 16% user + 6.8% kernel / faults: 134992 minor 25 major
+11-14 08:21:13.629   565  4160 E ActivityManager:   14% 409/android.hardware.graphics.composer3-service.ranchu: 0.5% user + 13% kernel / faults: 8 minor

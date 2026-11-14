@@ -27,12 +27,12 @@
     "adminVisible": false
   },
   "scroll": {
-    "frames": 153,
-    "avgMs": 77.23,
-    "fps": 12.9,
-    "over33ms": 64,
-    "over50ms": 60,
-    "worstMs": 416.7
+    "frames": 111,
+    "avgMs": 106.76,
+    "fps": 9.4,
+    "over33ms": 58,
+    "over50ms": 53,
+    "worstMs": 1150.1
   },
   "account": {
     "deleteLink": true,

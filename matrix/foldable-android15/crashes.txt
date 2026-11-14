@@ -1,0 +1,1 @@
+11-14 08:21:13.629   565  4160 E ActivityManager: ANR in sa.ohod.store (sa.ohod.store/.MainActivity)

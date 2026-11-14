@@ -1,0 +1,6 @@
+Subject: Input dispatching timed out (2c2eec4 sa.ohod.store/sa.ohod.store.MainActivity (server) is not responding. Waited 5006ms for FocusEvent(hasFocus=true)).
+----- dumping pid: 3903 at 103655
+----- pid 3903 at 2026-11-14 08:21:13.042039682+0000 -----
+Cmd line: sa.ohod.store
+"main" prio=5 tid=1 Native
+  | group="main" sCount=1 ucsCount=0 flags=1 obj=0x73294878 self=0x765f2e444010
