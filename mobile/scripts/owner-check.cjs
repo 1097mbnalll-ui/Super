@@ -18,7 +18,7 @@ async function connect() {
   const page = await connect();
   let st = null;
   for (let i = 0; i < 40; i++) {            // up to ~40 s for the site to load and the login to open
-    st = await page.evaluate(() => ({ url: location.href, pinSheet: !!document.getElementById('pinSheet'), pinInput: !!document.getElementById('pinIn'), capacitor: typeof window.Capacitor, screen: document.body && document.body.getAttribute('data-screen'), title: document.title }));
+    st = await page.evaluate(() => ({ url: location.href, pinSheet: !!document.getElementById('pinSheet'), pinInput: !!document.getElementById('pinIn'), capacitor: typeof window.Capacitor, screen: document.body && document.body.getAttribute('data-screen'), title: document.title, offlineErr: (document.getElementById('e') || {}).textContent || null }));
     if (st && st.pinSheet) break;
     await wait(1000);
   }

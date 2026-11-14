@@ -46,9 +46,11 @@ public class OwnerActivity extends AppCompatActivity {
         "<!doctype html><html lang=ar dir=rtl><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>" +
         "<style>body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;" +
         "background:linear-gradient(#DDF1EA,#fff 60%);color:#0D1420;font:16px/1.7 sans-serif;text-align:center;padding:24px}" +
-        "button{min-height:52px;min-width:200px;border:0;border-radius:16px;background:#0E8A6A;color:#fff;font:700 16px sans-serif}</style></head>" +
-        "<body><h2>ما فيه اتصال بالإنترنت</h2><p>تأكد من الواي فاي أو البيانات وحاول مرة ثانية</p>" +
-        "<button onclick=\"location.href='" + SITE + "'\">جرّب مرة ثانية</button></body></html>";
+        "button{min-height:52px;min-width:200px;border:0;border-radius:16px;background:#0E8A6A;color:#fff;font:700 16px sans-serif}" +
+        "small{color:#596171;direction:ltr}</style></head>" +
+        "<body><h2>ما فيه اتصال بالإنترنت</h2><p>تأكد من الواي فاي أو البيانات، وبنحاول نرجع لك تلقائياً</p>" +
+        "<button onclick=\"location.href='" + SITE + "'\">جرّب مرة ثانية</button><small id=e>%ERR%</small>" +
+        "<script>setInterval(function(){location.href='" + SITE + "'},7000);</script></body></html>";
 
     private WebView web;
     private ValueCallback<Uri[]> fileCb;
@@ -98,7 +100,7 @@ public class OwnerActivity extends AppCompatActivity {
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
-                if (req.isForMainFrame()) view.loadDataWithBaseURL("https://1097mbnalll-ui.github.io/", OFFLINE_HTML, "text/html", "utf-8", null);
+                if (req.isForMainFrame()) view.loadDataWithBaseURL("https://1097mbnalll-ui.github.io/", OFFLINE_HTML.replace("%ERR%", err.getErrorCode() + " " + err.getDescription()), "text/html", "utf-8", null);
             }
         });
         web.setWebChromeClient(new WebChromeClient() {

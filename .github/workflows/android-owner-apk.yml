@@ -95,7 +95,7 @@ jobs:
             D=$RUNNER_TEMP/emu$try; rm -rf "$D"
             git clone -q --depth 1 -b emu-results "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "$D" 2>/dev/null || { mkdir -p "$D" && git -C "$D" init -q -b emu-results && git -C "$D" remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"; }
             T="$D/owner-app"; rm -rf "$T"; mkdir -p "$T"
-            cp mobile/owner-out/*.png mobile/owner-out/owner-report.json "$T"/ 2>/dev/null || true
+            cp mobile/owner-out/*.png mobile/owner-out/owner-report.json mobile/owner-out/net.txt mobile/owner-out/neterr.txt "$T"/ 2>/dev/null || true
             echo "${{ github.sha }} run ${{ github.run_id }}" > "$T/SOURCE.txt"
             git -C "$D" add -A owner-app
             git -C "$D" -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "owner check run ${{ github.run_number }}" || exit 0
