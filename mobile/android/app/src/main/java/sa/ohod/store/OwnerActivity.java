@@ -32,10 +32,13 @@ public class OwnerActivity extends AppCompatActivity {
     private static final String SITE = "https://1097mbnalll-ui.github.io/Super/?app=owner";
     private static final int FILE_REQ = 77;
 
-    // يضغط «حسابي» ثم «الدخول» لين تطلع شاشة كلمة السر (الموقع الجديد يفتحها بنفسه، فما يسوي شي)
+    // يضغط «حسابي» ثم «الدخول» لين تطلع شاشة كلمة السر، ولو اختفت (تحديث بيانات متأخر) يفتحها من جديد
+    // لين تلمس الشاشة أول مرة. الموقع الجديد يفتحها بنفسه.
     private static final String GO_JS =
-        "(function(){if(window.__ownerGo)return;window.__ownerGo=1;var n=0;var iv=setInterval(function(){n++;" +
-        "if(document.getElementById('pinSheet')||n>80){clearInterval(iv);return;}" +
+        "(function(){if(window.__ownerGo)return;window.__ownerGo=1;var touched=false;" +
+        "['touchstart','pointerdown','mousedown','keydown'].forEach(function(e){addEventListener(e,function(){touched=true;},true);});" +
+        "var n=0;var iv=setInterval(function(){n++;if(touched||n>150){clearInterval(iv);return;}" +
+        "if(document.getElementById('pinSheet'))return;" +
         "var t=document.getElementById('toAdmin');if(t){t.click();return;}" +
         "var m=[].slice.call(document.querySelectorAll('[data-nav=\"more\"]')).pop();if(m)m.click();},400);})();";
 

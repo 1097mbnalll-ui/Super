@@ -22,9 +22,13 @@ async function connect() {
     if (st && st.pinSheet) break;
     await wait(1000);
   }
+  // الشاشة لازم تبقى: نراقبها ١٢ ثانية بعد أول ظهور (يمسك حالة «تطلع وتختفي»)
+  const timeline = [];
+  for (const sec of [1, 3, 6, 12]) { await wait((sec - (timeline.length ? timeline[timeline.length - 1].t : 0)) * 1000); const x = await page.evaluate(() => ({ pinSheet: !!document.getElementById('pinSheet'), screen: document.body.getAttribute('data-screen') })); timeline.push({ t: sec, ...x }); }
+  st.timeline = timeline;
   shot('owner-login');
   fs.writeFileSync(`${out}/owner-report.json`, JSON.stringify(st, null, 2));
   console.log(JSON.stringify(st));
   page.close();
-  if (!st || !st.pinSheet || !st.pinInput) { console.error('OWNER LOGIN SCREEN DID NOT OPEN'); process.exit(2); }
+  if (!st || !st.pinSheet || !st.pinInput || (st.timeline || []).some((x) => !x.pinSheet)) { console.error('OWNER LOGIN SCREEN DID NOT OPEN'); process.exit(2); }
 })().catch((e) => { console.error('FAIL', e); try { shot('owner-error'); } catch {} process.exit(1); });
