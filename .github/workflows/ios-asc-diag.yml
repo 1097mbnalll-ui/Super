@@ -25,9 +25,15 @@ jobs:
           print('KEY_ID  طوله', len(kid), 'وشكله', ok(re.fullmatch(r'[A-Z0-9]{10}', kid)), '(لازم ١٠ حروف وأرقام كبيرة)', '| فيه مسافات أو أسطر زايدة:', kid != kid.strip())
           print('ISSUER  طوله', len(iss), 'وشكله', ok(re.fullmatch(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', iss.strip())), '(لازم UUID فيه شرطات)', '| مسافات زايدة:', iss != iss.strip())
           print('TEAM_ID طوله', len(team), ok(re.fullmatch(r'[A-Z0-9]{10}', team.strip())))
-          lines = [l for l in p8.replace('\r', '').split('\n')]
-          print('P8 عدد الأسطر', len(lines), '| يبدأ بـ BEGIN PRIVATE KEY', ok(p8.strip().startswith('-----BEGIN PRIVATE KEY-----')), '| ينتهي بـ END', ok(p8.strip().endswith('-----END PRIVATE KEY-----')), '| فيه CR (ويندوز):', '\r' in p8, '| فيه \\n حرفية:', '\\n' in p8)
-          key = p8.replace('\\n', '\n').replace('\r', '').strip() + '\n'
+          raw = p8.replace('\r', '')
+          print('P8 شكل كل سطر (بدون كشف المحتوى):')
+          for i, l in enumerate(raw.split('\n')):
+              kind = 'عنوان: ' + l.strip() if re.fullmatch(r'\s*-----[A-Z ]+-----\s*', l) else ('فاضي' if not l.strip() else ('base64 سليم' if re.fullmatch(r'[A-Za-z0-9+/=]+', l.strip()) else 'فيه رموز غريبة، أول حرف كود ' + str(ord(l[0]))))
+              print('  سطر', i + 1, 'طوله', len(l), '→', kind)
+          body = ''.join(l.strip() for l in raw.split('\n') if l.strip() and '-----' not in l)
+          body = re.sub(r'[^A-Za-z0-9+/=]', '', body)
+          print('طول المحتوى بعد التنظيف', len(body), '(المفتاح الصحيح تقريباً ١٨٤ حرف)')
+          key = '-----BEGIN PRIVATE KEY-----\n' + '\n'.join(body[i:i+64] for i in range(0, len(body), 64)) + '\n-----END PRIVATE KEY-----\n'
           if iss.strip() and kid.strip():
               try:
                   tok = jwt.encode({'iss': iss.strip(), 'iat': int(time.time()), 'exp': int(time.time()) + 600, 'aud': 'appstoreconnect-v1'}, key, algorithm='ES256', headers={'kid': kid.strip(), 'typ': 'JWT'})
