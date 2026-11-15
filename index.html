@@ -1128,6 +1128,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 @keyframes aspin{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(-2deg) scale(1.06)}}@keyframes atick{from{transform:translate(-50%,-100%) rotate(0)}to{transform:translate(-50%,-100%) rotate(360deg)}}
 @keyframes asteam{0%,100%{opacity:.25;translate:0 6px}50%{opacity:.8;translate:0 -4px}}@keyframes atw{0%,100%{opacity:.25}50%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.artb *{animation:none!important}}
+.fa-box{margin:14px 0 4px;padding:16px;border-radius:22px;background:#EAF6EF;display:grid;gap:8px}.fa-box b{font-family:var(--display);font-size:17px}.fa-box p{margin:0;font-size:13.5px;color:var(--muted,#596171)}.fa-box textarea{width:100%;box-sizing:border-box;border:1.5px solid #CFE6D8;border-radius:16px;padding:12px;font:inherit;font-size:16px;resize:vertical;background:#fff}.fa-box textarea.bad{border-color:#D9472B}.fa-box .btn{justify-content:center}
 .as-sheet{align-items:center!important}.as-box{max-width:360px;margin:0 auto;text-align:center;display:grid;gap:10px;justify-items:center;padding:26px 20px 20px!important;border-radius:28px!important}
 .as-app{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border-radius:20px;background:#F4F5F7;text-align:start}.as-app img{width:64px;height:64px;border-radius:15px;box-shadow:0 2px 8px rgba(0,0,0,.15)}.as-app span{display:grid;gap:2px}.as-app b{font-size:16px}.as-app em{font-style:normal;font-size:12.5px;color:var(--muted,#596171)}.as-badge{display:inline-flex;align-items:center;gap:4px;justify-self:start;margin-top:3px;padding:3px 9px 3px 8px;border-radius:999px;background:#111;color:#fff;font:600 11px/1.4 -apple-system,system-ui,sans-serif;font-style:normal;direction:ltr}.as-badge svg{width:12px;height:12px;fill:#fff}
 .as-box h2{margin:4px 0 0;font-size:21px}.as-sub{margin:0;color:var(--muted,#596171);font-size:14px}
@@ -3008,8 +3009,26 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     }
     return '<div class="aisle-head" style="background:' + tint(c.id) + '">' + imgTag(catPhoto(c), "") + tr('<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="wrap"><div class="topbar" style="padding-top:0"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + tr('</button><button class="sq" type="button" data-nav="search" aria-label="بحث" style="background:rgba(255,255,255,.75)">', '</button><button class="sq" type="button" data-nav="search" aria-label="Search" style="background:rgba(255,255,255,.75)">') + ic("search") + '</button></div>' +
       '<h1>' + esc(nm(c)) + '</h1><p>' + (isPrint ? tr("اطبع أوراقك وتوصلك", "Print your papers, delivered") : catSoon(c) && c.id !== "print" ? tr("قريباً", "Coming soon") : items.length + tr(' منتج · التوصيل ', ' products · delivery ') + esc(sv("eta") || "")) + '</p></div></div>' +
+      (catSoon(c) && c.id !== "print" && waNumber() ? freeAskHTML(c) : '') +
       (isPrint ? printHTML() : catSoon(c) && !items.length ? catSoonBox(c) : subBar + (subs.length && !openSub && items.length > 24 ? aisleRows(subs, items, known, other) : '<div class="wrap" style="margin-top:' + (subBar ? 4 : 16) + 'px"><div class="grid">' + pagedCards(shown, "cat:" + c.id + (openSub ? "|" + openSub : "")).join("") + '</div></div>'));
   }
+  // «اكتب أغراضك» (طلب المالك ١٥ نوفمبر ٢٠٢٦): القسم «قريباً» (الخضار والفواكه) الزبون يكتب أغراضه بالوزن أو العدد وتوصل المحل على الواتساب،
+  // والموظف يدخلها طلب من الإدارة (وتوصله رسالة المتابعة). ما تحتاج الخادم.
+  var freeAskText = "";
+  function freeAskHTML(c){
+    return '<div class="wrap"><div class="fa-box"><b>' + tr("اطلب " + nm(c) + " بالكتابة", "Order " + nm(c) + " by text") + '</b>' +
+      '<p>' + tr("اكتب كل غرض بسطر مع الوزن أو العدد، ونجهزه لك ونرسل لك السعر.", "Write each item on a line with weight or count; we prepare it and send you the price.") + '</p>' +
+      '<textarea id="faText" rows="5" maxlength="800" placeholder="' + tr("مثال:\nطماط ٢ كيلو\nخيار ١ كيلو\nليمون ١٠ حبات\nموز درزن", "Example:\nTomatoes 2 kg\nCucumber 1 kg\nLemons 10") + '">' + esc(freeAskText) + '</textarea>' +
+      '<button class="btn btn-teal" type="button" data-freeask>' + ic("phone") + tr("أرسل طلبي على الواتساب", "Send my list on WhatsApp") + '</button></div></div>';
+  }
+  document.addEventListener("input", function(e){ if (e.target && e.target.id === "faText") freeAskText = e.target.value; });
+  document.addEventListener("click", function(e){
+    if (!e.target.closest || !e.target.closest("[data-freeask]")) return;
+    var t = String(freeAskText || "").trim(), c = catOf(openCat);
+    if (!t) { var ta = $("faText"); if (ta) { ta.focus(); ta.classList.add("bad"); setTimeout(function(){ ta.classList.remove("bad"); }, 1200); } return; }
+    var msg = tr("طلب " + (c ? nm(c) : "") + " من الموقع:", "Order from the website:") + "\n" + t;
+    location.href = "https://wa.me/" + waNumber() + "?text=" + encodeURIComponent(msg);
+  });
   // «الكل» في القسم الكبير: صف لكل قسم فرعي بترتيب الرحلة (أهم ١٢ منتج + «عرض الكل»)، مثل المتاجر الكبيرة
   function aisleRows(subs, items, known, other){
     var rows = subs.filter(function(s){ return known[s.id]; }).map(function(s){ return { id: s.id, name: nm(s), list: items.filter(function(p){ return p.sub === s.id; }) }; });
@@ -4923,11 +4942,12 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   (function(){
     if (EMBED || /[?&]app=/.test(location.search) || location.hash === "#driver" || (S.appSoon && S.appSoon.off)) return;
     // مربع العدّاد (طلب المالك ١٥ نوفمبر ٢٠٢٦: «مربع أول ما يفتح الموقع فيه عداد ورسالة نزول التطبيق بالآيفون»): store.appSoon.at وقت النزول
+    var direct = /[?&](?:t|go)=/.test(location.search);   // الرابط المباشر (متابعة طلب أو قسم): نقراه قبل ما ينمسح من العنوان
     var waitData = function(fn){ if (dataReady || !(GH || LIVEDATA || NATIVE)) fn(); else setTimeout(function(){ waitData(fn); }, 400); };
     waitData(function(){
     if (S.appSoon && S.appSoon.off) return;
     var AT = S.appSoon && S.appSoon.at ? Date.parse(S.appSoon.at) : 0;
-    if (AT && AT > Date.now() && !/[?&](?:t|go)=/.test(location.search)) {
+    if (AT && AT > Date.now() && !direct) {
       var tryOpen = function(){
         if (mode !== "store" || $("appSoonBox")) return;
         if ($("introSheet") || document.querySelector(".sheet")) return setTimeout(tryOpen, 1500);
