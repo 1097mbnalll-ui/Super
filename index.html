@@ -920,7 +920,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kqsky.top.s-noon{--g1:#4FA9E8;--g2:#A7D8F5;--g3:#EFE3CC}.kqsky.top.s-asr{--g1:#6BB6E8;--g2:#F2D49B;--g3:#F3C58A}.kqsky.top.s-maghrib{--g1:#3B2A7A;--g2:#B6407E;--g3:#F38B4C}.kqsky.top.s-night{--g1:#0F0B2E;--g2:#2E1A66;--g3:#5B2A7E}
 .kqsky-st{position:absolute;left:0;right:0;top:0;height:330px;pointer-events:none;background-image:radial-gradient(1.6px 1.6px at 12% 8%,#fff 50%,transparent),radial-gradient(1px 1px at 30% 4%,#fff 50%,transparent),radial-gradient(1.3px 1.3px at 52% 30%,#fff 50%,transparent),radial-gradient(1px 1px at 68% 14%,#fff 50%,transparent),radial-gradient(1.5px 1.5px at 84% 40%,#fff 50%,transparent),radial-gradient(1px 1px at 92% 22%,#fff 50%,transparent),radial-gradient(1.2px 1.2px at 6% 46%,#fff 50%,transparent),radial-gradient(1px 1px at 44% 52%,#fff 50%,transparent);opacity:0;animation:skytw 3.5s ease-in-out infinite}
 .kqsky.top.s-night .kqsky-st{opacity:1}.kqsky.top.s-maghrib .kqsky-st{opacity:.4}
-.kq-head.skyon{background:transparent!important;position:relative}
+.kq-head.skyon{background:transparent!important;position:relative}.kq-head.emb .langbtn{display:none}
 .kqsky.top.s-night .kq-head .kq-meta,.kqsky.top.s-maghrib .kq-head .kq-meta{color:#F5D0FE}.kqsky.top.s-night .kq-logo b,.kqsky.top.s-maghrib .kq-logo b{color:#FDE68A}
 .kqsky-hi2{position:relative;height:120px;overflow:hidden}
 .kqsky-hi2 .city{position:absolute;left:0;right:0;bottom:0;height:66px;width:100%}.kqsky-hi2 .city path{fill:rgba(255,255,255,.62)}.kqsky-hi2 .city .win{fill:transparent}.kqsky.top .kqsky-hi2{margin-bottom:-20px}.kqsky.top .kq-sec-wrap{position:relative;z-index:1}
@@ -2870,12 +2870,17 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     FGB = layF && !layF.on && SEC.featured ? SEC.featured.replace(/^<div class="wrap kq-sec-wrap"[^>]*>/, "").replace(/<\/div>$/, "").replace("kq-ban featured", "kq-ban") : "";
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
     // سما الرياض خلف ديمة والبنرات (store.skyHome): تتغير مع الوقت، وديمة والبنرات زي ما هي
-    if (S.skyHome && !EMBED && (SEC.featured || SEC.promos)) { var sk0 = skyNow();
-      // الموقع: السما من أعلى الصفحة (خلف الشعار والبحث)، وديمة والبنرات تحتها
-      h = '<div class="kqsky top s-' + sk0.k + '"><i class="kqsky-st" aria-hidden="true"></i>' + h.replace('class="kq-head"', 'class="kq-head skyon"') +
+    // رأس الرئيسية (الشعار والبحث ورسالة الإقفال): في الموقع دايماً، وفي التطبيق لما يطلب قسم «head» (store.app.liveHead)
+    var wantHead = !EMBED || EMBED_BLOCKS.indexOf("head") >= 0, stTop = Math.max(0, Math.min(80, Number(qp("st")) || 0));
+    var hh = EMBED ? h.replace('class="kq-head"', 'class="kq-head emb"' + (stTop ? ' style="padding-top:' + (stTop + 8) + 'px"' : '')) : h;
+    if (S.skyHome && wantHead && (SEC.featured || SEC.promos)) { var sk0 = skyNow();
+      // السما من أعلى الصفحة (خلف الشعار والبحث)، وديمة والبنرات تحتها
+      var top = '<div class="kqsky top s-' + sk0.k + '"><i class="kqsky-st" aria-hidden="true"></i>' + hh.replace(/class="kq-head( emb)?"/, 'class="kq-head$1 skyon"') +
         '<div class="kqsky-hi2"><i class="sun" aria-hidden="true"></i><i class="moon" aria-hidden="true"></i><i class="cl c1" aria-hidden="true"></i><i class="cl c2" aria-hidden="true"></i>' + SKYLINE + '<div class="wrap kqsky-hi"><b>' + sk0.t + '</b><span>' + sk0.s + '</span></div></div>' +
         SEC.featured + SEC.promos + '</div>';
+      if (EMBED) SEC.head = top; else h = top;
       SEC.featured = SEC.promos = ""; }
+    else if (EMBED && wantHead) SEC.head = hh;
     if (S.skyHome && (SEC.featured || SEC.promos)) { var sk = skyNow();
       SEC.promos = '<div class="kqsky s-' + sk.k + '"><div class="kqsky-bg" aria-hidden="true"><i class="st"></i><i class="sun"></i><i class="moon"></i><i class="cl c1"></i><i class="cl c2"></i>' + SKYLINE + '</div>' +
         '<div class="wrap kqsky-hi"><b>' + sk.t + '</b><span>' + sk.s + '</span></div>' + SEC.featured + SEC.promos + '</div>';
