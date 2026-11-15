@@ -55,6 +55,8 @@ public class OwnerActivity extends AppCompatActivity {
     private WebView web;
     private ValueCallback<Uri[]> fileCb;
     private long lastBack;
+    private volatile boolean offline = false;
+    private android.net.ConnectivityManager.NetworkCallback netCb;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,12 +97,13 @@ public class OwnerActivity extends AppCompatActivity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                if (url != null && url.startsWith("https://1097mbnalll-ui.github.io/Super")) offline = false;
                 if (url != null && url.startsWith("https://")) view.evaluateJavascript(GO_JS, null);
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
-                if (req.isForMainFrame()) view.loadDataWithBaseURL("https://1097mbnalll-ui.github.io/", offlinePage(err.getErrorCode() + " " + err.getDescription()), "text/html", "utf-8", null);
+                if (req.isForMainFrame()) { view.loadDataWithBaseURL("https://1097mbnalll-ui.github.io/", offlinePage(err.getErrorCode() + " " + err.getDescription()), "text/html", "utf-8", null); offline = true; }
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
@@ -132,7 +135,17 @@ public class OwnerActivity extends AppCompatActivity {
             }
         });
 
-        if (savedInstanceState != null) web.restoreState(savedInstanceState); else web.loadUrl(SITE);
+        if (savedInstanceState != null) web.restoreState(savedInstanceState);
+        else if (!OfflinePage.online(this)) { web.loadDataWithBaseURL("https://1097mbnalll-ui.github.io/", offlinePage("no network"), "text/html", "utf-8", null); offline = true; }
+        else web.loadUrl(SITE);
+        // النت رجع وإحنا على صفحة «ما فيه نت»: نفتح الموقع لحاله
+        android.net.ConnectivityManager cm = getSystemService(android.net.ConnectivityManager.class);
+        if (cm != null) {
+            netCb = new android.net.ConnectivityManager.NetworkCallback() {
+                @Override public void onAvailable(android.net.Network n) { if (offline) web.postDelayed(() -> { if (offline) web.loadUrl(SITE); }, 1500); }
+            };
+            try { cm.registerDefaultNetworkCallback(netCb); } catch (Exception ignored) { netCb = null; }
+        }
     }
 
     // صفحة «ما فيه نت» المشتركة (الشعار بالخوذة) من داخل التطبيق؛ لو ما لقيناها نستخدم النسخة البسيطة
@@ -164,6 +177,8 @@ public class OwnerActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        android.net.ConnectivityManager cm = getSystemService(android.net.ConnectivityManager.class);
+        if (cm != null && netCb != null) { try { cm.unregisterNetworkCallback(netCb); } catch (Exception ignored) { } }
         if (web != null) { web.stopLoading(); web.destroy(); }
         super.onDestroy();
     }

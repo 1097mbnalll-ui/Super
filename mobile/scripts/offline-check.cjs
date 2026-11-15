@@ -1,5 +1,6 @@
 // يقرأ اللي ظاهر في الـWebView (عبر DevTools) ويطبعه: الرابط، العنوان، الصورة، طول النص
-const out = process.argv[2], tag = process.argv[3];
+const out = process.argv[2], tag = process.argv[3], expect = process.argv[4] || '';
+setTimeout(() => { console.log(tag, 'TIMEOUT'); process.exit(3); }, 30000);
 const fs = require('node:fs');
 (async () => {
   let list = [];
@@ -13,4 +14,8 @@ const fs = require('node:fs');
   const line = tag + ' ' + JSON.stringify({ target: t.url, ...v });
   console.log(line); fs.appendFileSync(out + '/dom.txt', line + '\n');
   ws.close();
+  const isOffline = !!(v && v.h1 && v.h1.indexOf('اتصال بالإنترنت') > -1 && v.img > 0);
+  if (expect === 'offline' && !isOffline) { console.log(tag, 'FAIL: offline page not shown'); process.exit(2); }
+  if (expect === 'online' && (isOffline || !v || !/^https:\/\/1097mbnalll-ui\.github\.io\/Super\//.test(v.url))) { console.log(tag, 'FAIL: site did not come back'); process.exit(2); }
+  process.exit(0);
 })().catch((e) => console.log(tag, 'ERR', String(e)));

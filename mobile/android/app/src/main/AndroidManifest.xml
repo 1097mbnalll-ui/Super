@@ -37,6 +37,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- نعرف إذا النت مقطوع فنعرض صفحة «ما فيه نت»، ونرجع للموقع لحاله أول ما يرجع -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- إشعارات حالة الطلب (أندرويد ١٣ وما فوق يطلب إذن) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- الموقع: عشان الزبون يحدد مكان التوصيل على الخريطة -->

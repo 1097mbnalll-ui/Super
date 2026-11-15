@@ -3,6 +3,7 @@ const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const out = process.argv[2] || 'owner-out';
 fs.mkdirSync(out, { recursive: true });
+const guard = setTimeout(() => { console.error('TIMEOUT'); process.exit(3); }, 120000);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = (n) => { const b = execSync('adb exec-out screencap -p', { maxBuffer: 64 * 1024 * 1024 }); const i = b.indexOf(Buffer.from([0x89, 0x50, 0x4e, 0x47])); fs.writeFileSync(`${out}/${n}.png`, i > 0 ? b.subarray(i) : b); };
 async function connect() {
@@ -29,6 +30,7 @@ async function connect() {
   shot('owner-login');
   fs.writeFileSync(`${out}/owner-report.json`, JSON.stringify(st, null, 2));
   console.log(JSON.stringify(st));
-  page.close();
+  page.close(); clearTimeout(guard);
   if (!st || !st.pinSheet || !st.pinInput || (st.timeline || []).some((x) => !x.pinSheet)) { console.error('OWNER LOGIN SCREEN DID NOT OPEN'); process.exit(2); }
+  process.exit(process.exitCode || 0);
 })().catch((e) => { console.error('FAIL', e); try { shot('owner-error'); } catch {} process.exit(1); });
