@@ -2,7 +2,14 @@ import Foundation
 
 // نفس بيانات الموقع: data.json على GitHub Pages (المنتجات والأسعار والصور والإعدادات)
 enum AppConfig {
-    static let site = URL(string: "https://1097mbnalll-ui.github.io/Super/")!
+    static let site: URL = {
+        #if DEBUG
+        // للفحص بس (نسخة المحاكي Debug، مو نسخة المتجر): xcrun simctl launch … -site http://localhost:8765/
+        // يفتح التطبيق على نسخة تجريبية من الموقع قبل تنزيلها (فحص site-safari).
+        if let s = UserDefaults.standard.string(forKey: "site"), let u = URL(string: s), u.host == "localhost" { return u }
+        #endif
+        return URL(string: "https://1097mbnalll-ui.github.io/Super/")!
+    }()
     static let defaultAPI = "https://ohod-admin.1097mbnalll.workers.dev"
     /// الخادم يقبل هذا المصدر (ALLOWED_ORIGIN فيه capacitor://localhost)
     static let origin = "capacitor://localhost"
