@@ -1,5 +1,8 @@
-11-15 11:30:41.611  2244  2432 I chromium: [1115/113041.601772:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
-11-15 11:30:41.616  2244  2432 I chromium: [1115/113041.616943:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
-11-15 11:30:49.488  1080  2031 D com.android.ons.ONSProfileActivator: ERR_AUTO_PROVISIONING_DISABLED
-11-15 11:30:54.387  2493  2528 E chromium: [ERROR:font_unique_name_lookup_android.cc(223)] Received platform font handle invalid, fd: -1
-11-15 11:31:04.506  1080  2031 D com.android.ons.ONSProfileActivator: ERR_AUTO_PROVISIONING_DISABLED
+11-15 12:21:22.932  1067  2315 D com.android.ons.ONSProfileActivator: ERR_AUTO_PROVISIONING_DISABLED
+11-15 12:21:32.835  2826  2907 I chromium: [1115/122132.831988:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-15 12:21:32.839  2826  2907 I chromium: [INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-15 12:21:56.037  1561  3614 I chromium: [1115/122156.036981:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-15 12:21:56.037  1561  3614 I chromium: [1115/122156.037462:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+11-15 12:23:48.517  1561  1839 W A       : Caused by: org.chromium.net.impl.ct: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+11-15 12:23:48.517  1561  1839 W A       : 	at org.chromium.net.impl.CronetUrlRequest.onError(PG:80)
+11-15 12:23:48.517  1561  2004 W A       : Caused by: org.chromium.net.impl.ct: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
