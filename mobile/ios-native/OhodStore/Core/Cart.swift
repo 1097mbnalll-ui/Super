@@ -448,6 +448,7 @@ final class Cart {
         for k in order { if let q = lines[k]?.qty, q > 0 { dict[k] = q } }
         UserDefaults.standard.set(dict, forKey: "cart.items")
         UserDefaults.standard.set(order, forKey: "cart.order")
+        CartPing.shared.changed(count: dict.values.reduce(0, +))
     }
 
     private func restore() {

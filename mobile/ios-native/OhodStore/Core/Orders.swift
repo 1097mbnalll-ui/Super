@@ -2,12 +2,35 @@ import Foundation
 import Observation
 import CoreLocation
 
-/// عنوان التوصيل المحفوظ في الجوال (ما ينرسل لأحد إلا مع الطلب)
-struct DeliveryAddress: Codable, Equatable {
+/// عنوان توصيل محفوظ في الجوال (ما ينرسل لأحد إلا مع الطلب). الزبون يحفظ أكثر من واحد باسم (البيت، الدوام، …) مثل ohod-addrs في الموقع
+struct DeliveryAddress: Codable, Equatable, Identifiable {
+    var id: String
+    var label: String
     var lat: Double
     var lng: Double
-    var details: String = ""
+    var details: String
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: lat, longitude: lng) }
+    /// الاسم اللي يطلع للزبون
+    var title: String {
+        let t = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? "عنوان" : t
+    }
+
+    init(id: String = UUID().uuidString, label: String = "البيت", lat: Double, lng: Double, details: String = "") {
+        self.id = id; self.label = label; self.lat = lat; self.lng = lng; self.details = details
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, label, lat, lng, details }
+
+    /// العنوان القديم (قبل العناوين المتعددة) ما فيه id ولا label: ياخذ «البيت»
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? "البيت"
+        lat = try c.decode(Double.self, forKey: .lat)
+        lng = try c.decode(Double.self, forKey: .lng)
+        details = try c.decodeIfPresent(String.self, forKey: .details) ?? ""
+    }
 }
 
 /// طلب انرسل من هالجوال (للمتابعة و«اطلب مرة ثانية»)
@@ -35,10 +58,44 @@ struct SavedOrder: Codable, Identifiable, Equatable {
     var walletCents: Int? = nil
     /// نص الطباعة: بعد الطلب يرسل الملف على واتساب برقم الطلب
     var printText: String? = nil
+    /// تقييم الزبون بعد التوصيل (من /track أو /rate)، وهل يقدر يقيّم/يعدّل الحين (canRate من الخادم)
+    var rating: OrderRating? = nil
+    var canRate: Bool? = nil
+    /// الزبون قفل تذكير «قيّم طلبك»
+    var rateSkip: Bool? = nil
     var id: String { no }
     var count: Int { lines?.reduce(0) { $0 + $1.qty } ?? items.values.reduce(0, +) }
     /// طلب شغّال: حالته مفتوحة وعمره أقل من ١٢ ساعة (مثل activeOrder في الموقع)
     var isActive: Bool { ["new", "accepted", "onway"].contains(status) && Date().timeIntervalSince(at) < 12 * 3600 && track != false }
+}
+
+/// تقييم الطلب (نفس حقول الخادم: stars ١–٥، tags، note، at، until بالملي ثانية)
+struct OrderRating: Codable, Equatable {
+    var stars: Int
+    var tags: [String]
+    var note: String
+    var at: Date
+    /// آخر وقت للتعديل (٢٤ ساعة من أول تقييم)
+    var until: Date
+
+    static func parse(_ raw: Any?) -> OrderRating? {
+        guard let x = raw as? [String: Any], let s = CatalogParser.num(x["stars"]) else { return nil }
+        let ms = { (k: String) in Date(timeIntervalSince1970: (CatalogParser.num(x[k]) ?? 0) / 1000) }
+        return OrderRating(stars: Int(s), tags: (x["tags"] as? [Any] ?? []).compactMap { $0 as? String },
+                           note: x["note"] as? String ?? "", at: ms("at"), until: ms("until"))
+    }
+    var editable: Bool { Date() < until }
+}
+
+/// اختيارات التقييم السريعة (نفس مفاتيح الموقع والخادم). good = مزايا (٤–٥ نجوم)، غيرها مشاكل (١–٢)، و٣ نجوم الكل
+enum RateTag {
+    static let all: [(id: String, title: String, good: Bool)] = [
+        ("driver", "المندوب ممتاز", true), ("fast", "وصل بسرعة", true), ("fresh", "المنتجات طازجة", true), ("packing", "تغليف مرتب", true),
+        ("late", "تأخر", false), ("missing", "منتج ناقص", false), ("wrong", "منتج غلط", false), ("damaged", "منتج تالف", false),
+    ]
+    static func forStars(_ n: Int) -> [(id: String, title: String, good: Bool)] { all.filter { n == 3 || (n >= 4 ? $0.good : !$0.good) } }
+    static func title(_ id: String) -> String { all.first { $0.id == id }?.title ?? "" }
+    static func word(_ n: Int) -> String { ["اختر عدد النجوم", "سيئة", "مو زينة", "عادية", "حلوة", "ممتازة"][max(0, min(5, n))] }
 }
 
 struct SavedLine: Codable, Equatable, Identifiable {
@@ -132,7 +189,12 @@ enum OrderError: Error, Equatable {
 @MainActor
 @Observable
 final class OrderCenter {
-    private(set) var address: DeliveryAddress? { didSet { Self.store(address, "order.address") } }
+    /// العناوين المحفوظة (أقصى ١٠) والمختار منها للطلب
+    private(set) var addresses: [DeliveryAddress] = [] { didSet { persistAddresses() } }
+    private(set) var selectedAddressID: String? = nil { didSet { persistAddresses() } }
+    /// عنوان الطلب: المختار، وإلا أول عنوان
+    var address: DeliveryAddress? { addresses.first { $0.id == selectedAddressID } ?? addresses.first }
+    static let maxAddresses = 10
     var name: String = UserDefaults.standard.string(forKey: "order.name") ?? "" {
         didSet { UserDefaults.standard.set(name, forKey: "order.name") }
     }
@@ -157,12 +219,28 @@ final class OrderCenter {
     @ObservationIgnored private var attempt: Attempt? { didSet { Self.store(attempt, "order.attempt") } }
 
     init() {
-        address = Self.load("order.address")
+        if let saved: [DeliveryAddress] = Self.load("order.addresses") {
+            addresses = saved
+            selectedAddressID = UserDefaults.standard.string(forKey: "order.addressID")
+        } else if let old: DeliveryAddress = Self.load("order.address") {
+            // أول مرة بعد التحديث: العنوان الوحيد القديم يصير «البيت»
+            addresses = [old]
+            selectedAddressID = old.id
+        }
+        persistAddresses()
         orders = Self.load("order.history") ?? []
         attempt = Self.load("order.attempt")
     }
 
     var current: SavedOrder? { orders.first(where: \.isActive) }
+    /// آخر طلب وصل (آخر ٣ أيام) وينتظر تقييم، أو انقيّم وباقي وقت تعديله: بطاقة التقييم في «حسابي» (مثل rateHTML في الموقع)
+    var rateCard: SavedOrder? {
+        guard let o = orders.first(where: { $0.status == "delivered" && $0.track != false }), Date().timeIntervalSince(o.at) < 3 * 86400 else { return nil }
+        if let r = o.rating { return r.editable && o.canRate != false ? o : nil }
+        return o.canRate == true && o.rateSkip != true ? o : nil
+    }
+    /// تذكير «قيّم طلبك» في الرئيسية: ما انقيّم وما قفله الزبون (rateDue في الموقع)
+    var rateDue: SavedOrder? { rateCard.flatMap { $0.rating == nil ? $0 : nil } }
     var hasPendingAttempt: Bool { attempt != nil }
 
     /// طلب انرسل من شاشة الموقع داخل التطبيق: نحفظه هنا عشان المتابعة والإشعارات وطلباتي
@@ -175,17 +253,59 @@ final class OrderCenter {
         orders.insert(o, at: 0)
     }
 
+    /// يحفظ العنوان (جديد أو تعديل) ويختاره للطلب، مع الجوال والاسم
     func save(address: DeliveryAddress, phone: String, name: String) {
-        self.address = address
+        saveAddress(address)
         self.phone = Self.normalizedPhone(phone) ?? phone
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// إضافة أو تعديل عنوان (بنفس id) ويصير المختار
+    func saveAddress(_ address: DeliveryAddress) {
+        var a = address
+        a.details = a.details.trimmingCharacters(in: .whitespacesAndNewlines)
+        a.label = a.label.trimmingCharacters(in: .whitespacesAndNewlines)
+        if a.label.isEmpty { a.label = nextLabel.isEmpty ? "عنوان \(addresses.count + 1)" : nextLabel }
+        var list = addresses
+        if let i = list.firstIndex(where: { $0.id == a.id }) { list[i] = a }
+        else { list.append(a); if list.count > Self.maxAddresses { list.removeFirst(list.count - Self.maxAddresses) } }
+        addresses = list
+        selectedAddressID = a.id
+    }
+
+    func selectAddress(_ id: String) {
+        guard addresses.contains(where: { $0.id == id }) else { return }
+        selectedAddressID = id
+    }
+
+    /// حذف عنوان. لو كان المختار: نختار أول عنوان باقي
+    func deleteAddress(_ id: String) {
+        addresses.removeAll { $0.id == id }
+        if selectedAddressID == id || !addresses.contains(where: { $0.id == selectedAddressID }) { selectedAddressID = addresses.first?.id }
+    }
+
+    /// اسم مقترح للعنوان الجديد: «البيت» ثم «الدوام» (مثل nextLabel في الموقع)
+    var nextLabel: String {
+        !addresses.contains { $0.label == "البيت" } ? "البيت" : !addresses.contains { $0.label == "الدوام" } ? "الدوام" : ""
+    }
+
+    /// العنوان برّا منطقة التوصيل (المرسومة أو maxKm)؟
+    static func outside(_ a: DeliveryAddress, _ store: StoreInfo) -> Bool {
+        !inZone(a.coordinate, store.zone) || tooFar(a.coordinate, store) != nil
+    }
+
+    private func persistAddresses() {
+        Self.store(addresses, "order.addresses")
+        UserDefaults.standard.set(selectedAddressID, forKey: "order.addressID")
+        // نسخة من المختار بالمفتاح القديم (لو رجع الزبون لنسخة أقدم من التطبيق)
+        Self.store(address, "order.address")
     }
 
     /// للتصوير على المحاكي بس (-seed-order)
     func seedPreview(_ order: SavedOrder, driver: DriverInfo? = nil) {
         orders = [order]
         drivers[order.no] = driver
-        if address == nil { address = DeliveryAddress(lat: 24.845, lng: 46.815, details: "فيلا ١٢، الباب الأخضر") }
+        if address == nil { saveAddress(DeliveryAddress(lat: 24.845, lng: 46.815, details: "فيلا ١٢، الباب الأخضر")) }
     }
 
     /// للتصوير بس (-seed-sub)
@@ -244,6 +364,8 @@ final class OrderCenter {
 
         // توكن المحفظة ما ينحفظ مع المحاولة، ينضاف وقت الإرسال بس
         body["walletToken"] = (wallet?.phone == body["phone"] as? String) ? (wallet?.token ?? "") : ""
+        // جهاز الزبون المجهول (شرائح إشعارات العروض): نفس الموقع
+        body["dev"] = Device.id
         sending = true
         defer { sending = false }
         let (status, json) = await API.post(catalog.apiBase, "/order", body)
@@ -272,6 +394,7 @@ final class OrderCenter {
             if !resendingOld { cart.note = "" }
             if !orders.contains(where: { $0.no == no }) { orders.insert(order2, at: 0) }
             if orders.count > 30 { orders.removeLast(orders.count - 30) }
+            CartPing.shared.orderPlaced()   // الخادم صفّر عدّ السلة مع الطلب
             cart.remove(sent: sent, catalog: catalog)
             if order2.track != false { Push.shared.register(no: no, phone: order2.phone, api: catalog.apiBase) }
             Haptics.success()
@@ -359,7 +482,8 @@ final class OrderCenter {
     // MARK: متابعة وإلغاء
 
     func refresh(catalog: CatalogStore) async {
-        for order in orders where order.isActive {
+        // الطلبات الشغالة، والطلب اللي وصل وما نعرف حالة تقييمه (مرة وحدة)
+        for order in orders where order.isActive || (order.status == "delivered" && order.canRate == nil && order.track != false && Date().timeIntervalSince(order.at) < 7 * 86400) {
             let (_, json) = await API.post(catalog.apiBase, "/track", ["no": order.no, "phone": order.phone])
             if let d = json["driver"] as? [String: Any], let la = CatalogParser.num(d["lat"]), let ln = CatalogParser.num(d["lng"]) {
                 drivers[order.no] = DriverInfo(lat: la, lng: ln, eta: CatalogParser.num(d["eta"]).map { Int($0.rounded()) },
@@ -375,6 +499,11 @@ final class OrderCenter {
                     if list.count > (subs[order.no] ?? []).count { Haptics.warning() }
                     subs[order.no] = list.isEmpty ? nil : list
                 }
+            }
+            // تقييم الطلب الواصل (الخادم القديم ما يرجعه: نخليه مجهول)
+            if json["ok"] as? Bool == true, json["canRate"] != nil, let i = orders.firstIndex(where: { $0.no == order.no }) {
+                let r = OrderRating.parse(json["rating"]), can = json["canRate"] as? Bool ?? false
+                if orders[i].rating != r || orders[i].canRate != can { orders[i].rating = r; orders[i].canRate = can }
             }
             guard json["ok"] as? Bool == true, let st = json["status"] as? String,
                   let i = orders.firstIndex(where: { $0.no == order.no }), orders[i].status != st else { continue }
@@ -407,6 +536,39 @@ final class OrderCenter {
         case "slow_down": return "محاولات كثيرة، جرّب بعد شوي."
         default: return status == 0 ? "ما قدرنا نوصل للمحل. تأكد من النت." : "ما قدرنا نلغي الطلب. اتصل على المحل."
         }
+    }
+
+    /// تقييم الطلب بعد التوصيل (/rate). nil = وصل، غير كذا رسالة الخطأ
+    func rate(_ order: SavedOrder, stars: Int, tags: [String], note: String, catalog: CatalogStore) async -> String? {
+        let clean = String(note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(300))
+        let (status, json) = await API.post(catalog.apiBase, "/rate", ["no": order.no, "phone": order.phone, "stars": stars, "tags": tags, "note": clean])
+        let i = orders.firstIndex(where: { $0.no == order.no })
+        if json["ok"] as? Bool == true {
+            if let i { orders[i].rating = OrderRating.parse(json["rating"]); orders[i].canRate = json["canRate"] as? Bool ?? false }
+            Haptics.success()
+            return nil
+        }
+        switch json["code"] as? String {
+        case "locked", "too_old":
+            if let i {
+                if let r = OrderRating.parse(json["rating"]) { orders[i].rating = r }
+                orders[i].canRate = false
+            }
+            return json["code"] as? String == "locked" ? "انتهت مدة تعديل التقييم (٢٤ ساعة)." : "انتهت مدة تقييم هالطلب."
+        case "slow_down": return "محاولات كثيرة، جرّب بعد شوي."
+        default: return status == 0 ? "ما وصل تقييمك. تأكد من النت وجرّب مرة ثانية." : "ما وصل تقييمك. جرّب مرة ثانية."
+        }
+    }
+
+    /// الزبون قفل تذكير «قيّم طلبك»
+    func skipRating(_ order: SavedOrder) {
+        if let i = orders.firstIndex(where: { $0.no == order.no }) { orders[i].rateSkip = true }
+    }
+
+    /// للتصوير بس (-seed-delivered)
+    func seedDelivered() {
+        guard !orders.isEmpty else { return }
+        orders[0].status = "delivered"; orders[0].canRate = true; orders[0].rating = nil; orders[0].rateSkip = nil
     }
 
     /// رد الزبون على بديل المندوب. nil = تم، غير كذا رسالة الخطأ

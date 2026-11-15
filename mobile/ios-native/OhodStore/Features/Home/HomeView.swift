@@ -6,14 +6,20 @@ struct HomeView: View {
     @Binding var path: NavigationPath
     @Environment(CatalogStore.self) private var catalog
     @Environment(OrderCenter.self) private var orders
+    /// الرأس الحي من الموقع انعرض فعلاً (store.app.liveHead والصفحة فتحت)
+    @State private var headShown = false
+    private var liveHeadOn: Bool { catalog.store.liveHead && headShown }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                HomeHeader(path: $path)
-                if catalog.store.isClosedNow {
-                    ClosedNotice(message: catalog.store.closedNowMessage)
-                        .padding(.horizontal, 16).padding(.top, 12)
+                // رأس الموقع الحي (store.app.liveHead): الشعار والبحث ورسالة الإقفال تجي من الموقع داخل أول قسم حي («head»)
+                if !catalog.store.liveHead {
+                    HomeHeader(path: $path)
+                    if catalog.store.isClosedNow {
+                        ClosedNotice()
+                            .padding(.horizontal, 16).padding(.top, 12)
+                    }
                 }
                 // ترتيب أقسام الرئيسية من الإدارة (store.layout) مثل الموقع
                 ForEach(sections, id: \.self) { id in section(id) }
@@ -24,17 +30,59 @@ struct HomeView: View {
         .background(Theme.pageBG)
         .refreshable { await catalog.refresh() }
         .toolbar(.hidden, for: .navigationBar)
+        .overlay {
+            // شريط ضبابي ثابت ورا الساعة لما الرأس الحي ظاهر: الساعة والبطارية (سود) تنقرا فوق أي سما، حتى الليل والمغرب
+            if liveHeadOn {
+                Rectangle().fill(.ultraThinMaterial)
+                    .frame(height: topInset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .ignoresSafeArea(edges: .top)
+                    .allowsHitTesting(false)
+            }
+        }
         .overlay(alignment: .bottomLeading) {
             if let order = orders.current {
                 OrderBubble(order: order) { tab = .account }
                     .padding(.leading, 16).padding(.bottom, 14)
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
+            } else if let due = orders.rateDue {
+                // طلب وصل وما انقيّم: تذكير خفيف (rateDue في الموقع)، يفتح «حسابي» أو ينقفل بـ×
+                RateReminder(order: due, open: { tab = .account }, close: { orders.skipRating(due) })
+                    .padding(.horizontal, 16).padding(.bottom, 14)
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: orders.current?.no)
+        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: orders.rateDue?.no)
+    }
+
+    /// ارتفاع شريط الساعة من نافذة التطبيق: رأس الموقع الحي يمتد خلفه (السما لين أعلى الشاشة) ومحتواه ينزل تحته بـ st
+    private var topInset: CGFloat {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let win = scenes.compactMap(\.keyWindow).first ?? scenes.flatMap(\.windows).first
+        return win?.safeAreaInsets.top ?? 0
+    }
+
+    /// لون أعلى سما الرياض حسب الوقت (skyNow و.kqsky.top --g1 في الموقع، بنفس شروطه بالضبط حتى قبل ٤ الفجر)
+    static func skyTop(_ d: Date) -> Color {
+        let h = (d.timeIntervalSince1970 / 3600 + 3).truncatingRemainder(dividingBy: 24)
+        if h < 4 { return Color(hex: 0x0F0B2E) }
+        if h < 11 { return Color(hex: 0x8FD0F5) }
+        if h < 15 { return Color(hex: 0x4FA9E8) }
+        if h < 17.5 { return Color(hex: 0x6BB6E8) }
+        if h < 19 { return Color(hex: 0x3B2A7A) }
+        return Color(hex: 0x0F0B2E)
     }
 
     private var sections: [String] {
+        let base = layoutSections
+        guard catalog.store.liveHead else { return base }
+        // «head» أول قسم حي دايماً. مع سما الرياض (skyHome) الموقع يحط ديمة والبنرات داخل السما فوق، فتنسحب مع الرأس
+        let pulled = catalog.store.skyHome ? base.filter { $0 == "featured" || $0 == "promos" } : []
+        return ["head"] + pulled + base.filter { $0 != "head" && !pulled.contains($0) }
+    }
+
+    private var layoutSections: [String] {
         let lay = catalog.store.layout
         if lay.isEmpty { return ["promos", "catoffers", "free", "catgrid", "grid"] }   // العروض و٠٫٩٥ مخفية افتراضياً
         // الأقسام اللي التطبيق ما يعرفها (جديدة في الموقع، مثل «عروض الأقسام») تنعرض من الموقع مع البنرات (الرئيسية الحية)
@@ -61,9 +109,22 @@ struct HomeView: View {
         case _ where !Self.native.contains(id):
             // الرئيسية الحية: كل أقسام الموقع المتتالية في مربع واحد مكان أولها
             if let run = liveRun(startingAt: id) {
-                LiveHomeBlocks(blocks: run, tab: $tab, path: $path) {
-                    if run.contains("promos") {
+                // الرأس الحي يمتد لين أعلى الشاشة: st = ارتفاع الساعة عشان محتواه ينزل تحتها والسما وراها
+                LiveHomeBlocks(blocks: run, tab: $tab, path: $path, st: run.contains("head") ? topInset : nil,
+                               shown: run.contains("head") ? $headShown : nil) {
+                    if run.contains("head") {
+                        HeadFallback(run: run, path: $path)
+                    } else if run.contains("promos") {
                         BannerCarousel(path: $path).padding(.horizontal, 16).padding(.top, 4)
+                    }
+                }
+                .background(alignment: .top) {
+                    // سحب الصفحة لتحت فوق أولها: يطلع لون أعلى السما (مو لون الصفحة)
+                    if run.contains("head"), liveHeadOn, catalog.store.skyHome {
+                        TimelineView(.periodic(from: .now, by: 300)) { ctx in
+                            HomeView.skyTop(ctx.date).frame(height: 600).offset(y: -600 - topInset)
+                        }
+                        .allowsHitTesting(false)
                     }
                 }
             }
@@ -147,7 +208,61 @@ struct HomeView: View {
     }
 }
 
+/// بديل الرأس الحي (store.app.liveHead): لو الموقع ما فتح أو وهو يحمّل، الرأس الأصلي ورسالة الإقفال ما يغيبون أبداً.
+/// البنرات الأصلية بس لو الموقع ما فتح؛ وهو يحمّل مكانها فاضي (مثل البنرات الحية)
+private struct HeadFallback: View {
+    let run: [String]
+    @Binding var path: NavigationPath
+    @Environment(CatalogStore.self) private var catalog
+    @Environment(\.liveHomeLoading) private var loading
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HomeHeader(path: $path)
+            if catalog.store.isClosedNow {
+                ClosedNotice().padding(.horizontal, 16).padding(.top, 12)
+            }
+            if run.contains("featured") || run.contains("promos") {
+                if loading { LiveLoading().padding(.top, 8) }
+                else if run.contains("promos") { BannerCarousel(path: $path).padding(.horizontal, 16).padding(.top, 12) }
+            }
+        }
+    }
+}
+
 /// دائرة الطلب الشغّال في الرئيسية: أيقونة الحالة والدقايق الباقية، تضغطها تروح لطلبك
+/// «وصلك طلبك؟ قيّم تجربتك» فوق الرئيسية بعد التوصيل
+private struct RateReminder: View {
+    let order: SavedOrder
+    let open: () -> Void
+    let close: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: open) {
+                HStack(spacing: 10) {
+                    Image(systemName: "star.fill").font(.ui(size: 18, weight: .bold)).foregroundStyle(Color(hex: 0xF5A524))
+                        .frame(width: 38, height: 38).background(.white.opacity(0.14), in: Circle())
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(tv: "وصلك طلبك \(order.no)؟ قيّم تجربتك").font(.ui(size: 14, weight: .bold)).foregroundStyle(.white).lineLimit(1)
+                        Text("ثواني وتساعدنا نصير أحسن").font(.ui(size: 12)).foregroundStyle(.white.opacity(0.75))
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle(scale: 0.97))
+            Button(action: close) {
+                Image(systemName: "xmark").font(.ui(size: 12, weight: .bold)).foregroundStyle(.white)
+                    .frame(width: 30, height: 30).background(.white.opacity(0.14), in: Circle())
+            }
+            .accessibilityLabel("إخفاء")
+        }
+        .padding(.leading, 10).padding(.trailing, 8).padding(.vertical, 8)
+        .background(Theme.ink, in: Capsule())
+        .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
+    }
+}
+
 private struct OrderBubble: View {
     let order: SavedOrder
     let action: () -> Void
@@ -629,20 +744,44 @@ private struct QuickChips: View {
     }
 }
 
+/// رسالة «المحل مقفل» مثل بطاقة الموقع (closedBarHTML، ١٥ نوفمبر ٢٠٢٦): «نفتح بعد ساعتين و١١ دقيقة» بعدّاد يتحدث كل ٣٠ ثانية،
+/// و«الساعة ١٢ الظهر · جهّز سلتك الحين واطلبها أول ما نفتح». المقفل اليدوي: «المحل مقفل مؤقتاً» + رسالة المالك
 struct ClosedNotice: View {
-    let message: String
+    @Environment(CatalogStore.self) private var catalog
+
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "moon.zzz.fill").foregroundStyle(Theme.copperInk)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("المتجر مقفل الحين").font(.kufi(13, .bold))
-                Text(tv: message.isEmpty ? "تقدر تتصفح وتجهّز سلتك، ونستقبل الطلبات وقت الفتح." : message)
-                    .font(.ui(size: 13)).foregroundStyle(Theme.muted)
+        TimelineView(.periodic(from: .now, by: 30)) { ctx in
+            let store = catalog.store, t = store.openInMinutes(now: ctx.date)
+            HStack(spacing: 12) {
+                Image(systemName: "moon.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0xFDE68A))
+                    .frame(width: 42, height: 42)
+                    .background(LinearGradient(colors: [Color(hex: 0x1E1B4B), Color(hex: 0x4C1D95)], startPoint: .top, endPoint: .bottom),
+                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    if t < 0 {
+                        Text("المحل مقفل مؤقتاً").font(.kufi(15, .bold)).foregroundStyle(Color(hex: 0x1C1917))
+                        Text(tv: store.closedMessage.isEmpty ? "تقدر تتصفح المنتجات، والطلب يرجع يشتغل لما نفتح." : store.closedMessage)
+                            .font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Color(hex: 0x57534E))
+                    } else {
+                        (Text(verbatim: "نفتح بعد ").foregroundStyle(Color(hex: 0x1C1917))
+                         + Text(verbatim: StoreInfo.durationText(t)).foregroundStyle(Color(hex: 0xC2410C)))
+                            .font(.kufi(15, .bold))
+                            .contentTransition(.numericText())
+                        Text(verbatim: "الساعة \(StoreInfo.timeText(store.openAt ?? "")) · جهّز سلتك الحين واطلبها أول ما نفتح")
+                            .font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Color(hex: 0x57534E))
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(.white.opacity(0.7)))
+            .shadow(color: Color(hex: 0x0F0B2E).opacity(0.12), radius: 11, y: 8)
+            .accessibilityElement(children: .combine)
         }
-        .padding(12)
-        .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

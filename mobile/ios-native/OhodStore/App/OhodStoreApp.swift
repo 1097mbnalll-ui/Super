@@ -8,6 +8,7 @@ struct OhodStoreApp: App {
     @State private var cart = Cart()
     @State private var orders = OrderCenter()
     @State private var wallet = WalletCenter()
+    @State private var favorites = Favorites()
 
     var body: some Scene {
         WindowGroup {
@@ -16,6 +17,7 @@ struct OhodStoreApp: App {
                 .environment(cart)
                 .environment(orders)
                 .environment(wallet)
+                .environment(favorites)
                 .environment(\.layoutDirection, AppLang.direction)
                 .environment(\.locale, AppLang.locale)   // عربي بأرقام إنجليزية (قرار المالك)، أو إنجليزي من «حسابي»
                 .tint(Theme.brand)
@@ -33,12 +35,16 @@ struct RootView: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(Cart.self) private var cart
     @Environment(OrderCenter.self) private var orders
+    @Environment(Favorites.self) private var favorites
     @Environment(\.scenePhase) private var scenePhase
     @State private var previewAddress = false
     @State private var previewPlaced: SavedOrder?
     @State private var previewDetails: SavedOrder?
     @State private var tab: AppTab = .home
     @State private var seenSubs: Set<Int> = []
+    /// تعريف أول فتحة (IntroView): يطلع فوق كل شي، وسؤال الإشعارات ينتظره
+    @State private var showIntro = false
+    @State private var introChecked = false
     private struct PendingSub: Identifiable { let offer: SubOffer; let order: SavedOrder; var id: Int { offer.id } }
     private var pendingSub: PendingSub? {
         for o in orders.orders where o.isActive { if let s = (orders.subs[o.no] ?? []).first(where: { !seenSubs.contains($0.id) }) { return PendingSub(offer: s, order: o) } }
@@ -75,6 +81,18 @@ struct RootView: View {
         .id(catalog.lookVersion)
         .environment(\.zoomNamespace, zoom)
         .environment(\.liveTab, $tab)
+        .overlay {
+            if showIntro {
+                IntroView { withAnimation(.smooth(duration: 0.3)) { showIntro = false } }
+                    .transition(.opacity)
+                    .zIndex(10)
+            }
+        }
+        .onAppear {
+            guard !introChecked else { return }
+            introChecked = true
+            showIntro = IntroView.shouldShow(hasOrders: !orders.orders.isEmpty)
+        }
         .task {
             await catalog.load()
             applyLaunchArguments()
@@ -85,6 +103,11 @@ struct RootView: View {
         .task {
             guard !UserDefaults.standard.bool(forKey: "push.asked"), !ProcessInfo.processInfo.arguments.contains("-no-push") else { return }
             try? await Task.sleep(for: .seconds(1.5))
+            // التعريف مفتوح: سؤال آبل يطلع بعد ما يقفله (ما يطلع فوق البطاقات)
+            if showIntro {
+                while showIntro, !Task.isCancelled { try? await Task.sleep(for: .milliseconds(300)) }
+                try? await Task.sleep(for: .seconds(0.6))
+            }
             let ok = await Push.shared.enable()
             UserDefaults.standard.set(true, forKey: "push.asked")
             guard ok else { return }
@@ -150,11 +173,13 @@ struct RootView: View {
         return name
     }
 
-    /// للتصوير الآلي على المحاكي (Codemagic): -screen home|categories|category:<id>|product:<id>|cart|offers|account|address|placed و -seed-cart و -seed-order
+    /// للتصوير الآلي على المحاكي (Codemagic): -screen home|categories|category:<id>|product:<id>|cart|offers|account|address|addresses|favorites|placed و -seed-cart و -seed-order و -seed-fav و -seed-addresses
+    /// و -seed-delivered (الطلب وصل وينتظر تقييم) و -intro (تعريف أول فتحة)
     /// وجهة إشعار العروض: العروض أو قسم معيّن
     private func openGo(_ go: String) {
         UserDefaults.standard.removeObject(forKey: "push.go")
         if go == "offers" { tab = .offers }
+        else if go == "cart" { tab = .cart }   // تذكير السلة «🛒 سلتك تنتظرك»
         else if go.hasPrefix("o:") || go.hasPrefix("c:") { tab = .categories; categoriesPath = NavigationPath(); categoriesPath.append(Route.category(String(go.dropFirst(2)))) }
     }
 
@@ -169,6 +194,14 @@ struct RootView: View {
         if args.contains("-seed-group"), let g = catalog.store.groups.first {
             let ids = g.ids.filter { id in catalog.product(id).map(catalog.isAvailable) == true }
             if let a = ids.first { cart.set(a, 2) }; if ids.count > 1 { cart.set(ids[1], 1) } else if let a = ids.first { cart.set(a, 3) }
+        }
+        if args.contains("-seed-fav"), favorites.ids.isEmpty, let index = catalog.index {
+            for p in index.featured.prefix(5).reversed() { favorites.set(p.id, on: true) }
+            if let out = index.catalog.products.first(where: { !catalog.isAvailable($0) && !$0.isPrint && !catalog.isSoon($0) }) { favorites.set(out.id, on: true) }
+        }
+        if args.contains("-seed-addresses"), orders.addresses.isEmpty {
+            orders.saveAddress(DeliveryAddress(label: "البيت", lat: 24.845, lng: 46.815, details: "فيلا ١٢، الباب الأخضر"))
+            orders.saveAddress(DeliveryAddress(label: "الدوام", lat: 24.840, lng: 46.805, details: "برج الأعمال، الدور ٣"))
         }
         if args.contains("-seed-cart"), cart.isEmpty, let index = catalog.index {
             for (i, p) in index.featured.prefix(4).enumerated() { cart.set(p.id, i == 0 ? 2 : 1) }
@@ -186,6 +219,7 @@ struct RootView: View {
             o.details = "فيلا ١٢، الباب الأخضر"; o.sub = "swap"; o.lat = 24.8452; o.lng = 46.8148
             orders.seedPreview(o, driver: DriverInfo(lat: 24.8418, lng: 46.8102, eta: 8, before: 1, near: false))
         }
+        if args.contains("-seed-delivered") { orders.seedDelivered() }
         if args.contains("-seed-sub"), let o = orders.orders.first, let index = catalog.index, index.featured.count > 6 {
             let a = index.featured[0], b = index.featured[6]
             orders.seedSubs(o.no, [SubOffer(id: 1, name: a.name, qty: 1, price: a.price, toID: b.id, toName: b.name, toUnit: b.unit,
@@ -202,6 +236,8 @@ struct RootView: View {
         else if value == "deals" { tab = .home; homePath.append(Route.deals) }
         else if value == "daily" { tab = .home; homePath.append(Route.daily) }
         else if value == "bundle" { tab = .home; homePath.append(Route.banner("pv-bundle")) }
+        else if value == "favorites" { tab = .account; accountPath.append(Route.favorites) }
+        else if value == "addresses" { tab = .account; accountPath.append(Route.addresses) }
         else if value == "orderdetails" { tab = .account; previewDetails = orders.orders.first }
         else if value == "search" { tab = .home; homePath.append(Route.search) }
         else if value.hasPrefix("live:") { tab = .home; homePath.append(Route.live(String(value.dropFirst(5)))) }
@@ -243,6 +279,8 @@ struct TabStack<Root: View>: View {
                     case .daily: DailyDealView()
                     case .banner(let id): RemoteScreen(key: "banner", page: "b:" + id, path: $path) { BannerProductsView(bannerID: id) }
                     case .live(let page): LiveScreen(page: page, path: $path)
+                    case .favorites: FavoritesView()
+                    case .addresses: AddressBookView()
                     }
                 }
                 .environment(\.livePath, $path)

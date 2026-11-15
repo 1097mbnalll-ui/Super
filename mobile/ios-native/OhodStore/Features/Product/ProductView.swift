@@ -23,6 +23,12 @@ struct ProductView: View {
         .modifier(ZoomDestination(id: productID))
         .onAppear { Analytics.shared.view(productID) }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // المفضلة (مثل القلب أعلى صفحة المنتج في الموقع)
+            if let p = catalog.product(productID), !catalog.isSoon(p) {
+                ToolbarItem(placement: .topBarTrailing) { FavoriteButton(productID: productID, large: true) }
+            }
+        }
     }
 
     @ViewBuilder
@@ -37,9 +43,21 @@ struct ProductView: View {
             VStack(alignment: .leading, spacing: 0) {
                 ZStack(alignment: .bottomLeading) {
                     Theme.softGradient
-                    RemoteImage(url: product.imageURL, maxPixel: 900)
-                        .padding(36)
-                        .opacity(available ? 1 : 0.5)
+                    if product.imageURL == nil {
+                        // بدون صورة: بلاطة مائلة بلون القسم (مثل الموقع)
+                        NoPhotoTile(product: product, large: true)
+                            .frame(width: 220, height: 220)
+                            .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
+                            .shadow(color: Theme.ink.opacity(0.16), radius: 17, y: 11)
+                            .rotationEffect(.degrees(-4))
+                            .saturation(available ? 1 : 0.15)
+                            .opacity(available ? 1 : 0.6)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        RemoteImage(url: product.imageURL, maxPixel: 900)
+                            .padding(36)
+                            .opacity(available ? 1 : 0.5)
+                    }
                     if available, let badge = product.offerBadge {
                         Label(tr(badge), systemImage: "percent")
                             .font(.kufi(12, .bold))
@@ -53,7 +71,7 @@ struct ProductView: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     if let category {
-                        Text(tv: [product.badge, category.name, catalog.dailyDeal?.product.id == product.id ? "عرض اليوم" : nil].compactMap { $0 }.joined(separator: " · "))
+                        Text(tv: [product.badge, product.brand, category.name, catalog.dailyDeal?.product.id == product.id ? "عرض اليوم" : nil].compactMap { $0 }.joined(separator: " · "))
                             .font(.ui(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.oliveInk)
                             .padding(.horizontal, 9).padding(.vertical, 3)

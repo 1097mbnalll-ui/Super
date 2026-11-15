@@ -9,6 +9,8 @@ struct CartView: View {
     @Environment(WalletCenter.self) private var wallet
     @State private var confirmClear = false
     @State private var showAddress = false
+    /// اختيار عنوان من «عناويني» (لو فيه عناوين محفوظة)
+    @State private var showBook = false
     @State private var sendAfterAddress = false
     @State private var errorText: String?
     @State private var placed: SavedOrder?
@@ -31,12 +33,15 @@ struct CartView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        DeliveryCard(eta: catalog.store.eta, area: catalog.store.area, address: orders.address) { sendAfterAddress = false; showAddress = true }
+                        DeliveryCard(eta: catalog.store.eta, area: catalog.store.area, address: orders.address) {
+                            sendAfterAddress = false
+                            if orders.addresses.isEmpty { showAddress = true } else { showBook = true }
+                        }
                         if totals.freeOver > 0 {
                             FreeDeliveryBar(remaining: totals.freeRemaining, progress: totals.freeProgress)
                         }
                         if catalog.store.isClosedNow {
-                            ClosedNotice(message: catalog.store.closedNowMessage)
+                            ClosedNotice()
                         }
                         if let err = totals.quoteError {
                             // الخادم يقول العرض ناقص (مثل «اختر ٣ علب»): زر يكمّل من الصفحة الحية
@@ -119,6 +124,10 @@ struct CartView: View {
             }
             .interactiveDismissDisabled(orders.sending)
         }
+        .sheet(isPresented: $showBook) {
+            NavigationStack { AddressBookView(picking: true) }
+                .presentationDetents([.medium, .large])
+        }
         .alert("ما انرسل الطلب", isPresented: Binding(get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
             if fixAddress {
                 Button("عدّل العنوان") { fixAddress = false; sendAfterAddress = true; showAddress = true }
@@ -188,7 +197,7 @@ private struct DeliveryCard: View {
                 .frame(width: 40, height: 40)
                 .background(Theme.mint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(tv: address == nil ? "التوصيل إلى \(area)" : "التوصيل إلى البيت")
+                Text(tv: address.map { "التوصيل إلى \($0.title)" } ?? "التوصيل إلى \(area)")
                     .font(.ui(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
                 Text(tv: address.map { $0.details.isEmpty ? "على الموقع المحدد في الخريطة" : $0.details } ?? "حدد بيتك على الخريطة")
                     .font(.ui(size: 13)).foregroundStyle(address == nil ? Theme.copperInk : Theme.muted)

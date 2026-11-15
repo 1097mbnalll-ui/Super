@@ -2,7 +2,14 @@ import Foundation
 
 // نفس بيانات الموقع: data.json على GitHub Pages (المنتجات والأسعار والصور والإعدادات)
 enum AppConfig {
-    static let site = URL(string: "https://1097mbnalll-ui.github.io/Super/")!
+    static let site: URL = {
+        #if DEBUG
+        // للفحص بس (نسخة المحاكي Debug، مو نسخة المتجر): xcrun simctl launch … -site http://localhost:8765/
+        // يفتح التطبيق على نسخة تجريبية من الموقع قبل تنزيلها (فحص site-safari).
+        if let s = UserDefaults.standard.string(forKey: "site"), let u = URL(string: s), u.host == "localhost" { return u }
+        #endif
+        return URL(string: "https://1097mbnalll-ui.github.io/Super/")!
+    }()
     static let defaultAPI = "https://ohod-admin.1097mbnalll.workers.dev"
     /// الخادم يقبل هذا المصدر (ALLOWED_ORIGIN فيه capacitor://localhost)
     static let origin = "capacitor://localhost"
@@ -78,6 +85,8 @@ struct Product: Hashable, Sendable, Identifiable {
     var isPrint = false
     /// منتج «قريباً» (soon في data.json): ينشاف بدون سعر ولا إضافة
     var soon = false
+    /// الماركة الصغيرة فوق الاسم (مثل «المراعي ›»)، عربي بس
+    var brand: String? = nil
 
     var imageURL: URL? { AppConfig.asset(image) }
     var hasPhoto: Bool { image?.hasPrefix("p/") == true }
@@ -238,6 +247,32 @@ struct StoreInfo: Sendable {
         guard let a = openAt, let b = closeAt else { return "" }
         return "نستقبل الطلبات يومياً من \(StoreInfo.timeText(a)) لين \(StoreInfo.timeText(b)). تقدر تتصفح الحين وتطلب وقت الفتح."
     }
+    /// كم دقيقة لين نفتح (openInMin في الموقع): -1 لو المقفل يدوي أو ما فيه موعد فتح
+    func openInMinutes(now: Date = Date()) -> Int {
+        guard !closed, let a = openAt else { return -1 }
+        let m = Int((now.timeIntervalSince1970 / 60 + 180).truncatingRemainder(dividingBy: 1440))
+        return ((StoreInfo.minutes(a) - m) % 1440 + 1440) % 1440
+    }
+    /// مدة بالعربي مثل الموقع (durAr): «ساعتين و١١ دقيقة»
+    static func durationText(_ t: Int) -> String {
+        let h = t / 60, m = t % 60
+        var hs = "", ms = ""
+        switch h {
+        case 0: hs = ""
+        case 1: hs = "ساعة"
+        case 2: hs = "ساعتين"
+        default: hs = h <= 10 ? "\(h) ساعات" : "\(h) ساعة"
+        }
+        switch m {
+        case 0: ms = ""
+        case 1: ms = "دقيقة"
+        case 2: ms = "دقيقتين"
+        default: ms = m <= 10 ? "\(m) دقايق" : "\(m) دقيقة"
+        }
+        if !hs.isEmpty && !ms.isEmpty { return hs + " و" + ms }
+        if !hs.isEmpty { return hs }
+        return ms.isEmpty ? "شوي" : ms
+    }
     static func minutes(_ x: String) -> Int { let q = x.split(separator: ":"); return (Int(q.first ?? "") ?? 0) * 60 + (q.count > 1 ? Int(q[1]) ?? 0 : 0) }
     static func openNow(_ a: String?, _ b: String?, now: Date = Date()) -> Bool {
         guard let a, let b else { return true }
@@ -286,6 +321,10 @@ struct StoreInfo: Sendable {
     /// شاشات التطبيق اللي تنعرض من الموقع (store.app.web): true = كل الشاشات، أو قائمة مثل ["home","cat","product","cart"].
     /// المالك يقلبها من data.json فأي تعديل في الموقع يطلع في التطبيق بدون تحديث
     var webScreens: Set<String> = []
+    /// رأس الرئيسية من الموقع (store.app.liveHead): سما الرياض والشعار والبحث ورسالة الإقفال فوق لين أعلى الشاشة. افتراضياً مطفي
+    var liveHead = false
+    /// سما الرياض في رئيسية الموقع (store.skyHome): ديمة والبنرات تنعرض داخل السما فوق، مع الرأس
+    var skyHome = false
     /// خدمة الطباعة (store.print): «قريباً»، وأقل طلب لو السلة طباعة بس
     var printSoon = false
     var printMinOrder: Double? = nil
@@ -404,6 +443,7 @@ enum CatalogParser {
         store.layout = ((s["layout"] as? [[String: Any]]) ?? []).compactMap { x in
             str(x["id"]).map { PromoSlot(id: $0, on: (x["on"] as? Bool) ?? true) }
         }
+        store.skyHome = (s["skyHome"] as? Bool) ?? false
         store.syn = (s["syn"] as? [String: Any] ?? [:]).compactMapValues { $0 as? String }
         store.groups = ((s["groups"] as? [[String: Any]]) ?? []).compactMap { g in
             guard (g["on"] as? Bool) != false, let id = str(g["id"]), let pr = num(g["price"]), let ids = g["ids"] as? [String], !ids.isEmpty else { return nil }
@@ -414,6 +454,7 @@ enum CatalogParser {
             store.liveCart = (slots["cart"] as? Bool) ?? true
         }
         if let app = s["app"] as? [String: Any] {
+            store.liveHead = (app["liveHead"] as? Bool) ?? false
             if (app["web"] as? Bool) == true { store.webScreens = ["*"] }
             else if let l = app["web"] as? [Any] { store.webScreens = Set(l.compactMap { str($0) }) }
         }
@@ -457,7 +498,7 @@ enum CatalogParser {
                            barcode: str(p["bc"]), max: num(p["max"]).map { Int($0) },
                            badge: str(en ? (p["badge_en"] ?? p["badge"]) : p["badge"]), sugg: (p["sugg"] as? [Any])?.compactMap { str($0) } ?? [],
                            nameEN: str(en ? p["name"] : p["name_en"]), isPrint: p["print"] != nil && !(p["print"] is NSNull) && (p["print"] as? Bool) != false,
-                           soon: soon)
+                           soon: soon, brand: en ? nil : str(p["brand"]))
         }
         return Catalog(store: store, categories: cats, products: products)
     }

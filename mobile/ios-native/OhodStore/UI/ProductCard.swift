@@ -33,10 +33,17 @@ struct ProductCard: View {
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 13, style: .continuous)
                         .fill(Theme.surface)
-                    RemoteImage(url: product.imageURL, maxPixel: 300)
-                        .padding(12)
-                        .padding(.bottom, 12)
-                        .opacity(available ? 1 : 0.45)
+                    if product.imageURL == nil {
+                        // بدون صورة: بلاطة بلون القسم ورمزه واسم مختصر والحجم (مثل الموقع)
+                        NoPhotoTile(product: product)
+                            .saturation(available ? 1 : 0.15)
+                            .opacity(available ? 1 : 0.6)
+                    } else {
+                        RemoteImage(url: product.imageURL, maxPixel: 300)
+                            .padding(12)
+                            .padding(.bottom, 12)
+                            .opacity(available ? 1 : 0.45)
+                    }
                     if available, let badge = badgeText {
                         Text(tv: badge)
                             .font(.kufi(10.5, .bold, relativeTo: .caption2))
@@ -46,13 +53,14 @@ struct ProductCard: View {
                             .background(Theme.copper, in: UnevenRoundedRectangle(bottomTrailingRadius: 10, topTrailingRadius: 0, style: .continuous))
                     }
                     if available, let low = catalog.lowLeft(product) {
+                        // تحت على اليمين (مثل الموقع)، عشان فوق على اليسار للقلب
                         Text(tv: "باقي \(low) بس")
                             .font(.ui(size: 10, weight: .bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 6).padding(.vertical, 2)
                             .background(Theme.copperInk, in: Capsule())
                             .padding(5)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                     }
                     if !available {
                         Text(catalog.isSoon(product) ? "قريباً" : "نفد")
@@ -76,12 +84,19 @@ struct ProductCard: View {
                         .background(Theme.oliveSoft, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                         .padding(.top, 4)
                 }
+                if let brand = product.brand {
+                    Text(verbatim: brand + " ›")
+                        .font(.ui(size: 11.5, weight: .semibold))
+                        .foregroundStyle(Theme.muted)
+                        .lineLimit(1)
+                        .padding(.top, showCategory ? 0 : 4)
+                }
                 Text(tv: product.name)
                     .font(.ui(size: 14.5, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                     .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)
-                    .padding(.top, showCategory ? 0 : 4)
+                    .padding(.top, showCategory || product.brand != nil ? 0 : 4)
                 Text(tv: product.unit)
                     .font(.ui(size: 12.5))
                     .foregroundStyle(Theme.muted)
@@ -125,6 +140,10 @@ struct ProductCard: View {
             Color.clear
                 .aspectRatio(1, contentMode: .fit)
                 .padding(6)
+                // القلب (المفضلة) فوق الصورة بالزاوية المقابلة للشارة، حتى للمنتج النافد (يقدر يحفظه لين يرجع)
+                .overlay(alignment: .topTrailing) {
+                    if !catalog.isSoon(product) { FavoriteButton(productID: product.id).padding(-4) }
+                }
                 .overlay(alignment: .bottom) {
                     if available {
                         if kind == .deal, !cart.dealUnlocked(catalog) {
