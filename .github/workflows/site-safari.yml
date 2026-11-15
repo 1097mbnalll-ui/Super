@@ -43,11 +43,14 @@ jobs:
           DEV=$(xcrun simctl list devices available -j | python3 -c "import sys,json;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
           echo "device $DEV"; xcrun simctl boot "$DEV" || true; xcrun simctl bootstatus "$DEV" -b || true
           mkdir -p out/sim
+          # Safari أول مرة يتأخر: نفتحه ونستنى قبل الصور
+          xcrun simctl openurl "$DEV" "http://localhost:8765/index.html?warm=1" || true; sleep 40
+          xcrun simctl io "$DEV" screenshot "out/sim/warm.png" || true
           i=0
           for u in "index.html" "index.html?sky=night" "index.html?embed=1&blocks=head,featured,promos&st=47&sky=maghrib"; do
             i=$((i+1))
             xcrun simctl openurl "$DEV" "http://localhost:8765/$u" || echo "openurl failed"
-            sleep 5;  xcrun simctl io "$DEV" screenshot "out/sim/u${i}_05s.png" || echo "shot failed"
+            sleep 6;  xcrun simctl io "$DEV" screenshot "out/sim/u${i}_05s.png" || echo "shot failed"
             sleep 8;  xcrun simctl io "$DEV" screenshot "out/sim/u${i}_13s.png" || true
             sleep 12; xcrun simctl io "$DEV" screenshot "out/sim/u${i}_25s.png" || true
           done

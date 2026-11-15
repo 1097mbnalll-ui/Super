@@ -42,9 +42,10 @@ for (const c of cases) {
         const box = el.getBoundingClientRect();
         const holder = el.firstElementChild.classList.contains('kq-track') ? el.firstElementChild : el;
         const rs = Array.from(holder.children).map(x => x.getBoundingClientRect());
-        const k = rs.findIndex(q => Math.abs(q.left - box.left) < 3 && Math.abs(q.width - box.width) < 3);
+        const onIx = Array.from(holder.children).findIndex(x => x.classList.contains('on'));
+        const k = onIx >= 0 ? onIx : rs.findIndex(q => Math.abs(q.left - box.left) < 3 && Math.abs(q.width - box.width) < 3);
         const near = rs.reduce((m, q, ix) => Math.abs(q.left - box.left) < Math.abs(rs[m].left - box.left) ? ix : m, 0);
-        r.ban = { n: rs.length, k: k >= 0 ? k : near, off: Math.round(rs[near].left - box.left), snapped: k >= 0 };
+        r.ban = { n: rs.length, k: k >= 0 ? k : near, off: onIx >= 0 ? 0 : Math.round(rs[near].left - box.left), snapped: k >= 0 };
         const slide = holder.children[r.ban.k];
         r.ban.centerSlide = slide ? (slide.dataset.bid || String(slide.className).slice(0, 40)) : 'NONE';
         if (slide) {
@@ -77,7 +78,8 @@ for (const c of cases) {
       const holder = el.firstElementChild.classList.contains('kq-track') ? el.firstElementChild : el;
       const box = el.getBoundingClientRect();
       const rs = Array.from(holder.children).map(x => x.getBoundingClientRect());
-      res.push(rs.findIndex(q => Math.abs(q.left - box.left) < 3 && Math.abs(q.width - box.width) < 3));
+      const onIx = Array.from(holder.children).findIndex(x => x.classList.contains('on'));
+      res.push(onIx >= 0 ? onIx : rs.findIndex(q => Math.abs(q.left - box.left) < 3 && Math.abs(q.width - box.width) < 3));
     }
     window.scrollTo(0, 0);
     return { idx: res };
