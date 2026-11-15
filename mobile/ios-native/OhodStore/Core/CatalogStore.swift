@@ -122,6 +122,8 @@ final class CatalogStore {
             if r.page.isEmpty || r.page == "native" { return nil }
             let page = r.page.replacingOccurrences(of: "{id}", with: p.id).replacingOccurrences(of: "{group}", with: g?.id ?? "")
                 .replacingOccurrences(of: "{cat}", with: p.cat)
+            // التطبيق منفصل عن الموقع (قرار المالك ١٥ نوفمبر ٢٠٢٦): الصفحة لازم يكون لها شاشة أصلية، وإلا التصرف الأصلي
+            guard NativePage.supports(page) else { return nil }
             return (page, r.label)
         }
         if let g, on == "add" || on == "buy" { return ("g:\(g.id):\(p.id)", nil) }
@@ -131,7 +133,8 @@ final class CatalogStore {
     func products(in category: String) -> [Product] { index?.byCategory[category] ?? [] }
 
     /// هل الشاشة تنعرض من الموقع (store.app.web)
-    func web(_ key: String) -> Bool { store.webScreens.contains("*") || store.webScreens.contains(key) }
+    /// قرار المالك ١٥ نوفمبر ٢٠٢٦ (خط أحمر): التطبيق ما يخلط الموقع فيه أبداً، فكل الشاشات أصلية مهما كان store.app.web
+    func web(_ key: String) -> Bool { false }
 
     /// «قريباً»: منتج جديد بدون سعر أو في قسم قريباً، ينعرض بدون إضافة
     func isSoon(_ p: Product) -> Bool { !isAvailable(p) && (p.soon || category(p.cat)?.soon == true) }

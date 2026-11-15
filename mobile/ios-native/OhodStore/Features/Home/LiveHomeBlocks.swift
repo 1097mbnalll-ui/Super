@@ -100,28 +100,10 @@ struct LiveHomeBlocks<Fallback: View>: View {
         return q
     }
 
+    /// قرار المالك ١٥ نوفمبر ٢٠٢٦ (خط أحمر): التطبيق منفصل عن الموقع، فما ينعرض شي من الموقع داخله. البديل الأصلي دايماً
     var body: some View {
-        let top = st ?? 0
-        ZStack(alignment: .top) {
-            if failed { VStack(spacing: 0) { fallback() } }
-            else {
-                LiveWeb(url: LiveBridge.url(items, cart: cart, version: catalog.dataTag),
-                        fit: true, height: $height, failed: $failed, script: catalog.liveScript,
-                        onMessage: LiveBridge(path: $path, tab: $tab, cart: cart, catalog: catalog, favorites: favorites).handle)
-                    .frame(height: height > 0 ? height : 1)
-                    .opacity(height > 0 ? 1 : 0)
-                    // الرأس: يرتفع فوق بقد الساعة (المحتوى داخله نازل بـ st)
-                    .padding(.top, st != nil && height > 0 ? -top : 0)
-                if height == 0 {
-                    if st != nil { VStack(spacing: 0) { fallback() }.environment(\.liveHomeLoading, true) }
-                    // وهو يحمّل: مكان فاضي بنفس حجم البنر، مو البنرات الأصلية القديمة (كانت تطلع «صفحة قديمة» أول ما ينفتح التطبيق)
-                    else if blocks.contains("promos") { LiveLoading() }
-                }
-            }
-        }
-        .padding(.top, st == nil ? 12 : 0)
-        .task(id: catalog.version) { failed = false }
-        .onChange(of: height > 0 && !failed, initial: true) { _, v in shown?.wrappedValue = v }
+        VStack(spacing: 0) { fallback() }
+            .onAppear { shown?.wrappedValue = false }
     }
 }
 
@@ -161,11 +143,8 @@ struct RemoteScreen<Native: View>: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(\.livePath) private var livePath
 
-    var body: some View {
-        if catalog.web(key) {
-            LiveScreen(page: page ?? "screen:\(key):\(id)", path: path ?? livePath ?? .constant(NavigationPath()), fallback: AnyView(native()))
-        } else { native() }
-    }
+    /// دايماً الشاشة الأصلية (التطبيق ما يعرض صفحات الموقع، قرار المالك ١٥ نوفمبر ٢٠٢٦)
+    var body: some View { native() }
 }
 
 /// مسار التنقل الحالي (يحطه TabStack) عشان الخانات الحية تفتح المنتجات والصفحات
@@ -185,94 +164,20 @@ struct LiveSlot: View {
     @State private var height: CGFloat = 0
     @State private var failed = false
 
-    var body: some View {
-        if !failed {
-            // السلة بعد # (cart=…): لما تتغير الصفحة تعيد الرسم بنفسها (hashchange) بدون تحميل جديد. كان رقم السلة في v فتنزل الصفحة كاملة مع كل «+»
-            LiveWeb(url: LiveBridge.url([URLQueryItem(name: "slot", value: slot), URLQueryItem(name: "id", value: id)], cart: cart, version: catalog.dataTag),
-                    fit: true, height: $height, failed: $failed, script: catalog.liveScript,
-                    onMessage: LiveBridge(path: livePath ?? .constant(NavigationPath()), tab: nil, cart: cart, catalog: catalog, favorites: favorites).handle)
-                .frame(height: height > 4 ? height : 0)
-                .clipped()
-        }
-    }
+    /// ما تنعرض: التطبيق منفصل عن الموقع (قرار المالك ١٥ نوفمبر ٢٠٢٦). الخانة باقية عشان الكود يتجمّع بس
+    var body: some View { EmptyView() }
 }
 
-/// صفحة حية كاملة من الموقع (مثل «اختر ٣ علب من أي نوع»)
+/// كانت صفحة حية من الموقع. من ١٥ نوفمبر ٢٠٢٦ (خط أحمر من المالك): كل صفحة (page) لها شاشة أصلية في NativePageView
 struct LiveScreen: View {
     let page: String
     @Binding var path: NavigationPath
     var fallback: AnyView? = nil
-    @Environment(CatalogStore.self) private var catalog
-    @Environment(Cart.self) private var cart
-    @Environment(OrderCenter.self) private var orders
-    @Environment(\.liveTab) private var liveTab
-    @Environment(Favorites.self) private var favorites
-    @State private var height: CGFloat = 0
-    @State private var failed = false
-    @State private var url: URL? = nil
-    @State private var rev = -1
 
-    var body: some View {
-        Group {
-            if failed, let fallback { fallback }
-            else if failed {
-                VStack(spacing: 10) {
-                    Image("OfflineHardhat").resizable().scaledToFit().frame(maxWidth: 220).accessibilityHidden(true)
-                    Text("ما قدرنا نفتح الصفحة. تأكد من النت وجرّب مرة ثانية.").font(.ui(size: 14)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
-                    Button("جرّب مرة ثانية") { failed = false; url = nil }
-                }.padding(30)
-            } else if let url {
-                LiveWeb(url: url, fit: false, edge: isHome, height: $height, failed: $failed, script: catalog.liveScript,
-                        onMessage: LiveBridge(path: $path, tab: liveTab, cart: cart, catalog: catalog, close: { if !path.isEmpty { path.removeLast() } }, orders: orders, favorites: favorites).handle)
-                    .ignoresSafeArea(edges: isHome ? .top : [])
-            } else { ProgressView() }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.pageBG)
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-        // الرئيسية من الموقع: بدون شريط العنوان الأبيض (المالك ١٥ نوفمبر: «شريط ابيض فوق ثابت كأنه موقع»)؛ رأس الصفحة وسما الرياض من الموقع نفسه
-        .toolbar(isHome ? .hidden : .automatic, for: .navigationBar)
-        .task(id: failed) { if url == nil { load() } }
-        // السلة تغيّرت من شاشة ثانية: نعيد فتح الصفحة بالسلة الجديدة لما ترجع لها
-        .onAppear { if rev != -1, rev != cart.revision { load() } }
-    }
-
-    private func load() {
-        rev = cart.revision
-        if page.hasPrefix("screen:") {
-            let p = page.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
-            let key = p.count > 1 ? (p[1] == "account" ? "more" : p[1]) : "home"
-            // الرئيسية من أعلى الشاشة: st = ارتفاع منطقة الساعة، والموقع ينزّل الشعار تحتها والسما وراها
-            let st = key == "home" ? Int((UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.safeAreaInsets.top ?? 47).rounded()) : 0
-            url = LiveBridge.url([URLQueryItem(name: "screen", value: key), URLQueryItem(name: "id", value: p.count > 2 ? p[2] : "")] + (st > 0 ? [URLQueryItem(name: "st", value: String(st))] : []), cart: cart, version: catalog.dataTag)
-        } else {
-            url = LiveBridge.url([URLQueryItem(name: "page", value: page)], cart: cart, version: catalog.dataTag)
-        }
-    }
-
-    private var isHome: Bool { page == "screen:home:" || page == "screen:home" }
-
-    private var title: String {
-        if page.hasPrefix("screen:") {
-            let p = page.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
-            let key = p.count > 1 ? p[1] : "", id = p.count > 2 ? p[2] : ""
-            switch key {
-            case "cat": return catalog.category(id)?.name ?? ""
-            case "product": return catalog.product(id)?.name ?? ""
-            case "cart": return "السلة"
-            case "search": return "البحث"
-            case "cats": return "الأقسام"
-            case "account": return "حسابي"
-            default: return catalog.store.name
-            }
-        }
-        if page == "offers" { return "العروض" }
-        if page.hasPrefix("g:"), let g = catalog.store.groups.first(where: { $0.id == page.split(separator: ":").dropFirst().first.map(String.init) }) { return "عرض " + g.name }
-        return catalog.store.name
-    }
+    var body: some View { NativePageView(page: page, path: $path) }
 }
 
+/// (ما يُستخدم) عارض صفحات الموقع القديم، باقي للرجوع له بس
 private struct LiveWeb: UIViewRepresentable {
     let url: URL
     let fit: Bool

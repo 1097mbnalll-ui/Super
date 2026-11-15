@@ -44,15 +44,16 @@ struct CartView: View {
                             ClosedNotice()
                         }
                         if let err = totals.quoteError {
-                            // الخادم يقول العرض ناقص (مثل «اختر ٣ علب»): زر يكمّل من الصفحة الحية
+                            // الخادم يقول العرض ناقص (مثل «اختر ٣ علب»): زر يكمّل من نافذة الاختيار الأصلية
                             HStack(spacing: 10) {
                                 Label(err, systemImage: "exclamationmark.circle").font(.ui(size: 13.5, weight: .semibold)).foregroundStyle(Theme.copperInk)
                                 if let g = totals.quoteGroup { Spacer(minLength: 0); NavigationLink("كمّل", value: Route.live("g:" + g)).font(.ui(size: 13.5, weight: .bold)) }
                             }
                             .padding(12).background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        } else {
+                            // عرض المجموعة ناقص (مثل علبتين من ديمة): «أضف ١ وتحصل على العرض» بدون ما يقفل الطلب (مثل سلة الموقع)
+                            GroupNudges()
                         }
-                        // خانة حية من الموقع (أضف واحد وتوصيلك مجاني، وأي ميزة جديدة للسلة بدون تحديث)
-                        if catalog.store.liveCart { LiveSlot(slot: "cart") }
                         if !catalog.dealProducts.isEmpty {
                             NavigationLink(value: Route.deals) { DealLockBox(totals: totals) }
                                 .buttonStyle(PressableStyle(scale: 0.98))

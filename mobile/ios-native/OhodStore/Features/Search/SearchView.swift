@@ -108,21 +108,24 @@ private struct FlowChips: View {
 
 /// كل المنتجات اللي عليها عرض أو خيار شراء أوفر
 struct OffersView: View {
+    /// عروض قسم واحد بس («عروض الأقسام» وبنر «عروض القسم»، o:<قسم> في الموقع)
+    var cat: String? = nil
     @Environment(CatalogStore.self) private var catalog
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if let index = catalog.index {
-                    if index.offers.isEmpty {
+                    let offers = cat.map { c in index.offers.filter { $0.cat == c } } ?? index.offers
+                    if offers.isEmpty {
                         ContentUnavailableView("ما فيه عروض الحين", systemImage: "tag",
                                                description: Text("ارجع لنا قريب، العروض تتجدد."))
                             .padding(.top, 60)
                     } else {
-                        Text("\(index.offers.count) عرض")
+                        Text("\(offers.count) عرض")
                             .font(.ui(size: 13)).foregroundStyle(Theme.muted)
                             .padding(.horizontal, 16).padding(.vertical, 10)
-                        ProductGrid(products: index.offers, showCategory: true)
+                        ProductGrid(products: offers, showCategory: true)
                     }
                 } else {
                     LoadingGrid().padding(.top, 16)
@@ -132,7 +135,7 @@ struct OffersView: View {
         }
         .scrollIndicators(.hidden)
         .background(Theme.pageBG)
-        .navigationTitle("العروض")
+        .navigationTitle(cat.flatMap { catalog.category($0)?.name }.map { "عروض " + $0 } ?? "العروض")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable { await catalog.refresh() }
     }

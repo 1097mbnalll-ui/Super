@@ -311,6 +311,7 @@ struct StoreInfo: Sendable {
     var layout: [PromoSlot] = []
     /// عروض المجموعات (store.groups): «أي ٣ علب بـ …» تنختار من صفحة حية من الموقع
     var groups: [ProductGroup] = []
+    var welcome: WelcomeGift? = nil
     /// مرادفات البحث من ملف المتجر (store.syn): الكلمة ← بدائلها بمسافات. نفس الموقع، وأي مرادف جديد يوصل بدون تحديث
     var syn: [String: String] = [:]
     /// الخانات الحية (store.app.slots): صفحة المنتج والسلة تعرض أجزاء من الموقع (ميزات جديدة بدون تحديث). افتراضياً شغّالة
@@ -349,6 +350,17 @@ struct ProductGroup: Sendable, Hashable {
     let count: Int
     let price: Double
     let ids: [String]
+    /// اسم الوحدة جمع ومفرد («علب» / «العلبة») للبنر ونافذة الاختيار، وtop = false يخفيه من بنر الرئيسية
+    var w = "حبات"
+    var w1 = "الحبة"
+    var top = true
+}
+
+/// هدية أول طلب (store.welcome = {code, amount, min}): بنر «هديتك»
+struct WelcomeGift: Sendable, Hashable {
+    let code: String
+    let amount: Double
+    let min: Double
 }
 
 struct Catalog: Sendable {
@@ -447,7 +459,11 @@ enum CatalogParser {
         store.syn = (s["syn"] as? [String: Any] ?? [:]).compactMapValues { $0 as? String }
         store.groups = ((s["groups"] as? [[String: Any]]) ?? []).compactMap { g in
             guard (g["on"] as? Bool) != false, let id = str(g["id"]), let pr = num(g["price"]), let ids = g["ids"] as? [String], !ids.isEmpty else { return nil }
-            return ProductGroup(id: id, name: str(g["name"]) ?? "", count: Int(num(g["n"]) ?? 3), price: pr, ids: ids)
+            return ProductGroup(id: id, name: str(g["name"]) ?? "", count: Int(num(g["n"]) ?? 3), price: pr, ids: ids,
+                                w: str(g["w"]) ?? "حبات", w1: str(g["w1"]) ?? "الحبة", top: (g["top"] as? Bool) ?? true)
+        }
+        if let wg = s["welcome"] as? [String: Any], let code = str(wg["code"]), !code.isEmpty {
+            store.welcome = WelcomeGift(code: code, amount: num(wg["amount"]) ?? 0, min: num(wg["min"]) ?? 0)
         }
         if let app = s["app"] as? [String: Any], let slots = app["slots"] as? [String: Any] {
             store.liveProduct = (slots["product"] as? Bool) ?? true

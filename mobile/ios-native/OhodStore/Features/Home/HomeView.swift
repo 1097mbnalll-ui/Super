@@ -1,28 +1,22 @@
 import SwiftUI
 
-/// الرئيسية (design/mix-01-home.webp)
+/// الرئيسية (design/mix-01-home.webp). من ١٥ نوفمبر ٢٠٢٦ (قرار المالك، خط أحمر): كلها شاشات أصلية بدون أي شي من الموقع.
+/// أولها «سما الرياض» (SkyHome) من أعلى الشاشة ورا الساعة: الرأس والبحث ورسالة الإقفال وديمة والبنرات
 struct HomeView: View {
     @Binding var tab: AppTab
     @Binding var path: NavigationPath
     @Environment(CatalogStore.self) private var catalog
     @Environment(OrderCenter.self) private var orders
-    /// الرأس الحي من الموقع انعرض فعلاً (store.app.liveHead والصفحة فتحت)
-    @State private var headShown = false
-    private var liveHeadOn: Bool { catalog.store.liveHead && headShown }
+    /// وقت السما (يتحدث كل دقيقة)
+    @State private var sky = SkyKey.at(.now)
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                // رأس الموقع الحي (store.app.liveHead): الشعار والبحث ورسالة الإقفال تجي من الموقع داخل أول قسم حي («head»)
-                if !catalog.store.liveHead {
-                    HomeHeader(path: $path)
-                    if catalog.store.isClosedNow {
-                        ClosedNotice()
-                            .padding(.horizontal, 16).padding(.top, 12)
-                    }
-                }
-                // ترتيب أقسام الرئيسية من الإدارة (store.layout) مثل الموقع
-                ForEach(sections, id: \.self) { id in section(id) }
+                SkyHome(key: sky, showFeatured: sections.contains("featured"), showPromos: sections.contains("promos"),
+                        tab: $tab, path: $path)
+                // ترتيب أقسام الرئيسية من الإدارة (store.layout) مثل الموقع. الأقسام اللي ما لها شاشة أصلية (الرئيسية الذكية) ما تنعرض
+                ForEach(sections.filter { Self.native.contains($0) }, id: \.self) { id in section(id) }
             }
             .padding(.bottom, 24)
         }
@@ -31,10 +25,12 @@ struct HomeView: View {
         .refreshable { await catalog.refresh() }
         .toolbar(.hidden, for: .navigationBar)
         .overlay {
-            // شريط ضبابي ثابت ورا الساعة لما الرأس الحي ظاهر: الساعة والبطارية (سود) تنقرا فوق أي سما، حتى الليل والمغرب
-            if liveHeadOn {
+            // المغرب والليل: شريط ضبابي فاتح ورا الساعة بس، عشان الساعة والبطارية (سود) تنقرا فوق السما الغامقة
+            if sky.isDark {
                 Rectangle().fill(.ultraThinMaterial)
-                    .frame(height: topInset)
+                    .environment(\.colorScheme, .light)
+                    .opacity(0.85)
+                    .frame(height: SkyInsets.top)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea(edges: .top)
                     .allowsHitTesting(false)
@@ -54,80 +50,37 @@ struct HomeView: View {
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: orders.current?.no)
         .animation(.spring(response: 0.45, dampingFraction: 0.7), value: orders.rateDue?.no)
+        .task {
+            while !Task.isCancelled {
+                let k = SkyKey.at(.now)
+                if k != sky { withAnimation(.easeInOut(duration: 0.6)) { sky = k } }
+                try? await Task.sleep(for: .seconds(60))
+            }
+        }
     }
 
-    /// ارتفاع شريط الساعة من نافذة التطبيق: رأس الموقع الحي يمتد خلفه (السما لين أعلى الشاشة) ومحتواه ينزل تحته بـ st
-    private var topInset: CGFloat {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let win = scenes.compactMap(\.keyWindow).first ?? scenes.flatMap(\.windows).first
-        return win?.safeAreaInsets.top ?? 0
-    }
-
-    /// لون أعلى سما الرياض حسب الوقت (skyNow و.kqsky.top --g1 في الموقع، بنفس شروطه بالضبط حتى قبل ٤ الفجر)
-    static func skyTop(_ d: Date) -> Color {
-        let h = (d.timeIntervalSince1970 / 3600 + 3).truncatingRemainder(dividingBy: 24)
-        if h < 4 { return Color(hex: 0x0F0B2E) }
-        if h < 11 { return Color(hex: 0x8FD0F5) }
-        if h < 15 { return Color(hex: 0x4FA9E8) }
-        if h < 17.5 { return Color(hex: 0x6BB6E8) }
-        if h < 19 { return Color(hex: 0x3B2A7A) }
-        return Color(hex: 0x0F0B2E)
-    }
+    /// لون أعلى سما الرياض حسب الوقت
+    static func skyTop(_ d: Date) -> Color { SkyKey.at(d).colors.0 }
 
     private var sections: [String] {
-        let base = layoutSections
-        guard catalog.store.liveHead else { return base }
-        // «head» أول قسم حي دايماً. مع سما الرياض (skyHome) الموقع يحط ديمة والبنرات داخل السما فوق، فتنسحب مع الرأس
-        let pulled = catalog.store.skyHome ? base.filter { $0 == "featured" || $0 == "promos" } : []
-        return ["head"] + pulled + base.filter { $0 != "head" && !pulled.contains($0) }
-    }
-
-    private var layoutSections: [String] {
         let lay = catalog.store.layout
-        if lay.isEmpty { return ["promos", "catoffers", "free", "catgrid", "grid"] }   // العروض و٠٫٩٥ مخفية افتراضياً
-        // الأقسام اللي التطبيق ما يعرفها (جديدة في الموقع، مثل «عروض الأقسام») تنعرض من الموقع مع البنرات (الرئيسية الحية)
+        if lay.isEmpty { return ["featured", "promos", "catoffers", "free", "catgrid", "grid"] }   // العروض و٠٫٩٥ مخفية افتراضياً
         var out = lay.filter { $0.on }.map(\.id)
         // اللي مو بالترتيب (جديد) ينضاف بعد، ما عدا العروض و٠٫٩٥
         for id in ["promos", "free", "catgrid", "grid"] where !lay.contains(where: { $0.id == id }) { out.append(id) }
-        // «عروض الأقسام» جديدة: لو ما هي في ترتيب المالك تنحط بعد البنرات (مثل الموقع)
+        if !lay.contains(where: { $0.id == "featured" }) { out.insert("featured", at: 0) }
+        // «عروض الأقسام»: لو ما هي في ترتيب المالك تنحط بعد البنرات (مثل الموقع)
         if !lay.contains(where: { $0.id == "catoffers" }), let i = out.firstIndex(of: "promos") { out.insert("catoffers", at: i + 1) }
         return out
     }
 
-    static let native: Set<String> = ["free", "catgrid", "offers", "deals", "grid"]
-    /// الأقسام اللي تنعرض من الموقع: كل مجموعة متتالية منها (بين أقسام التطبيق) في مربع حي واحد، بنفس ترتيب الإدارة
-    private func liveRun(startingAt id: String) -> [String]? {
-        let all = sections
-        guard let i = all.firstIndex(of: id), i == 0 || Self.native.contains(all[i - 1]) else { return nil }
-        var run: [String] = []
-        for x in all[i...] { if Self.native.contains(x) { break }; run.append(x) }
-        return run
-    }
+    /// أقسام الرئيسية اللي لها شاشة أصلية تحت السما (featured وpromos داخل السما نفسها)
+    static let native: Set<String> = ["catoffers", "free", "catgrid", "offers", "deals", "grid"]
 
     @ViewBuilder private func section(_ id: String) -> some View {
         switch id {
-        case _ where !Self.native.contains(id):
-            // الرئيسية الحية: كل أقسام الموقع المتتالية في مربع واحد مكان أولها
-            if let run = liveRun(startingAt: id) {
-                // الرأس الحي يمتد لين أعلى الشاشة: st = ارتفاع الساعة عشان محتواه ينزل تحتها والسما وراها
-                LiveHomeBlocks(blocks: run, tab: $tab, path: $path, st: run.contains("head") ? topInset : nil,
-                               shown: run.contains("head") ? $headShown : nil) {
-                    if run.contains("head") {
-                        HeadFallback(run: run, path: $path)
-                    } else if run.contains("promos") {
-                        BannerCarousel(path: $path).padding(.horizontal, 16).padding(.top, 4)
-                    }
-                }
-                .background(alignment: .top) {
-                    // سحب الصفحة لتحت فوق أولها: يطلع لون أعلى السما (مو لون الصفحة)
-                    if run.contains("head"), liveHeadOn, catalog.store.skyHome {
-                        TimelineView(.periodic(from: .now, by: 300)) { ctx in
-                            HomeView.skyTop(ctx.date).frame(height: 600).offset(y: -600 - topInset)
-                        }
-                        .allowsHitTesting(false)
-                    }
-                }
-            }
+        case "catoffers":
+            CatOffersGrid(path: $path, tab: $tab)
         case "free":
             if catalog.store.freeOver > 0 {
                 // كرت التوصيل المجاني (SEC.free في الموقع)
@@ -205,28 +158,6 @@ struct HomeView: View {
         if catalog.store.forOnly, !picks.isEmpty { return picks }
         let ids = Set(picks.map(\.id))
         return picks + index.featured.filter { !ids.contains($0.id) }
-    }
-}
-
-/// بديل الرأس الحي (store.app.liveHead): لو الموقع ما فتح أو وهو يحمّل، الرأس الأصلي ورسالة الإقفال ما يغيبون أبداً.
-/// البنرات الأصلية بس لو الموقع ما فتح؛ وهو يحمّل مكانها فاضي (مثل البنرات الحية)
-private struct HeadFallback: View {
-    let run: [String]
-    @Binding var path: NavigationPath
-    @Environment(CatalogStore.self) private var catalog
-    @Environment(\.liveHomeLoading) private var loading
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HomeHeader(path: $path)
-            if catalog.store.isClosedNow {
-                ClosedNotice().padding(.horizontal, 16).padding(.top, 12)
-            }
-            if run.contains("featured") || run.contains("promos") {
-                if loading { LiveLoading().padding(.top, 8) }
-                else if run.contains("promos") { BannerCarousel(path: $path).padding(.horizontal, 16).padding(.top, 12) }
-            }
-        }
     }
 }
 
@@ -328,83 +259,6 @@ private struct OrderBubble: View {
     }
 }
 
-private struct HomeHeader: View {
-    @Binding var path: NavigationPath
-    @Environment(CatalogStore.self) private var catalog
-
-    /// شكل الرأس من «شكل التطبيق» في الإدارة: أخضر غامق (الافتراضي) أو فاتح
-    private var lightHeader: Bool { AppLook.current.header == "light" }
-    private var headerText: Color { lightHeader ? Theme.ink : .white }
-    @ViewBuilder private var headerBackground: some View {
-        if lightHeader { Theme.softGradient } else { Theme.headerGradient }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                HStack(spacing: 8) {
-                    Image("Logo")
-                        .resizable()
-                        .frame(width: 42, height: 42)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
-                    Text(tv: catalog.store.name)
-                        .font(.kufi(24, .bold, relativeTo: .title))
-                        .foregroundStyle(lightHeader ? Theme.brandDeep : .white)
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 6) {
-                    Label(tr(catalog.store.eta), systemImage: "bolt.fill")
-                        .font(.kufi(12.5, .semibold, relativeTo: .caption))
-                        .foregroundStyle(headerText)
-                        .lineLimit(1)
-                        .fixedSize()
-                        .padding(.horizontal, 11).padding(.vertical, 7)
-                        .background(lightHeader ? Theme.brand.opacity(0.1) : .white.opacity(0.16), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(lightHeader ? Theme.brand.opacity(0.25) : .white.opacity(0.3)))
-                    HStack(spacing: 4) {
-                        Image(systemName: "mappin.and.ellipse")
-                        Text("التوصيل في \(catalog.store.area)")
-                    }
-                    .font(.ui(size: 14.5, weight: .medium))
-                    .foregroundStyle(headerText.opacity(0.95))
-                }
-            }
-            Button {
-                path.append(Route.search)
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass").font(.ui(size: 18, weight: .semibold))
-                    // نص البحث يتبدل كل ٣ ثواني (مثل الموقع)
-                    TimelineView(.periodic(from: .now, by: 3.2)) { ctx in
-                        let list = ["وش ناقص بيتك اليوم؟", "قهوتك ناقصها حلا؟ ابحث عن الشوكولاتة…", "جهز جمعتك.. ابحث عن المشروبات…", "خبز حار؟ حليب؟ بيض؟ ابحث هنا…"]
-                        Text(tv: list[Int(ctx.date.timeIntervalSince1970 / 3.2) % list.count]).font(.ui(size: 16))
-                            .lineLimit(1).contentTransition(.opacity)
-                    }
-                    Spacer()
-                }
-                .foregroundStyle(Theme.muted)
-                .padding(.horizontal, 16)
-                .frame(height: 52)
-                .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
-            }
-            .buttonStyle(PressableStyle(scale: 0.98))
-            .accessibilityLabel("ابحث")
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 6)
-        .padding(.bottom, 18)
-        .background(alignment: .top) {
-            // الأخضر يمتد لفوق خلف الساعة (بدون شريط أبيض)، وحتى لو سحب الزبون الصفحة لتحت
-            headerBackground
-                .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 28, bottomTrailingRadius: 28, style: .continuous))
-                .padding(.top, -600)
-        }
-    }
-}
-
 /// بنر في الرئيسية: من العروض الحقيقية (أقوى خصم، عرض كمية، كل العروض) + بنرات المالك
 private struct HomeBanner: Identifiable {
     /// نفس أسماء تصاميم الموقع (لوحة الإدارة): night ليلي، shelf رف، calm هادي، split نص ونص، glass ناعم
@@ -422,57 +276,100 @@ private struct HomeBanner: Identifiable {
     var darkText = false
     var picture: URL? = nil
     var showText = true
+    /// بدل route: يفتح تبويب (السلة لبنر التوصيل المجاني والهدية)، أو بنر عرض المجموعة (ديمة) بتصميمه
+    var tab: AppTab? = nil
+    var group: ProductGroup? = nil
 }
 
-/// بنرات تتصفحها بالسحب (بدون تقليب تلقائي: احترام «تقليل الحركة» والقراءة على راحتك)
-private struct BannerCarousel: View {
+/// البنرات المتحركة (kqBanners في الموقع) بشاشة أصلية: بنر واحد بعرض الشاشة كل مرة، تسحب تتنقل صفحة صفحة (ما يوقف بين بنرين أبداً)،
+/// وتتقلب لحالها كل ٥ ثواني، ولو لمسها الزبون تنتظر ٦ ثواني. النقاط تحت. الضغط يفتح نفس وجهة بنر الموقع
+struct BannerCarousel: View {
     @Binding var path: NavigationPath
+    var tab: Binding<AppTab>? = nil
+    /// عرض المجموعة (ديمة) أول البنرات لو قسمه مطفي في ترتيب الرئيسية
+    var featured: ProductGroup? = nil
     @Environment(CatalogStore.self) private var catalog
+    @Environment(Cart.self) private var cart
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var current: String?
+    /// آخر بنر قلّبه المؤقت (عشان نفرّق بين تقليب المؤقت وسحب الزبون)
+    @State private var autoTarget: String?
+    @State private var touched = Date.distantPast
+    @State private var moved = Date()
+
+    static let height: CGFloat = 176
 
     var body: some View {
         let banners = makeBanners()
-        VStack(spacing: 8) {
-            ScrollView(.horizontal) {
-                LazyHStack(spacing: 10) {
-                    ForEach(banners) { banner in
-                        Button { if let r = banner.route { path.append(r) } } label: { BannerCard(banner: banner) }
-                            .buttonStyle(PressableStyle(scale: 0.98))
-                            .containerRelativeFrame(.horizontal)
-                            .id(banner.id)
+        let shown = current ?? banners.first?.id
+        if !banners.isEmpty {
+            VStack(spacing: 8) {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 0) {
+                        ForEach(banners) { banner in
+                            page(banner)
+                                .padding(.horizontal, 16)
+                                .containerRelativeFrame(.horizontal)
+                                .id(banner.id)
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .scrollTargetBehavior(.paging)
+                .scrollIndicators(.hidden)
+                .scrollPosition(id: $current)
+                .frame(height: Self.height)
+                .onChange(of: current) { _, new in
+                    // تغيّر بدون المؤقت = الزبون سحب: التقليب يوقف ٦ ثواني
+                    if new != autoTarget { touched = Date() }
+                    autoTarget = nil
+                    moved = Date()
+                }
+                .task(id: banners.map(\.id)) {
+                    guard banners.count > 1, !reduceMotion else { return }
+                    moved = Date()
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .seconds(1))
+                        guard !Task.isCancelled else { return }
+                        let now = Date()
+                        guard now.timeIntervalSince(moved) >= 5, now.timeIntervalSince(touched) >= 6 else { continue }
+                        let i = banners.firstIndex { $0.id == (current ?? banners.first?.id) } ?? 0
+                        let next = banners[(i + 1) % banners.count].id
+                        autoTarget = next
+                        moved = now
+                        withAnimation(.smooth(duration: 0.45)) { current = next }
                     }
                 }
-                .scrollTargetLayout()
-            }
-            .scrollTargetBehavior(.viewAligned)
-            .scrollIndicators(.hidden)
-            .scrollPosition(id: $current)
-            .frame(height: 150)
-            .task(id: banners.map(\.id)) {
-                // تقليب كل ٥ ثواني مثل الموقع (إلا لو «تقليل الحركة» مفعّل)
-                guard banners.count > 1, !reduceMotion else { return }
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(5))
-                    guard !Task.isCancelled else { return }
-                    let i = banners.firstIndex { $0.id == (current ?? banners.first?.id) } ?? 0
-                    withAnimation(.smooth) { current = banners[(i + 1) % banners.count].id }
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
-            if banners.count > 1 {
-                HStack(spacing: 5) {
-                    ForEach(banners) { b in
-                        Capsule()
-                            .fill((current ?? banners.first?.id) == b.id ? Theme.brandDeep : Theme.brand.opacity(0.25))
-                            .frame(width: (current ?? banners.first?.id) == b.id ? 16 : 6, height: 6)
+                if banners.count > 1 {
+                    HStack(spacing: 5) {
+                        ForEach(banners) { b in
+                            Capsule()
+                                .fill(shown == b.id ? Theme.ink : Color(hex: 0xD5DBE1))
+                                .frame(width: shown == b.id ? 18 : 6, height: 6)
+                        }
                     }
+                    .animation(.snappy, value: shown)
+                    .accessibilityHidden(true)
                 }
-                .animation(.snappy, value: current)
-                .accessibilityHidden(true)
             }
+            .padding(.top, 4)
         }
+    }
+
+    @ViewBuilder private func page(_ banner: HomeBanner) -> some View {
+        if let g = banner.group {
+            DeemahBanner(group: g) { open(banner) }
+        } else {
+            Button { open(banner) } label: { BannerCard(banner: banner) }
+                .buttonStyle(PressableStyle(scale: 0.98))
+        }
+    }
+
+    private func open(_ banner: HomeBanner) {
+        if let g = banner.group { path.append(Route.live("g:" + g.id)) }
+        else if let t = banner.tab { tab?.wrappedValue = t }
+        else if let r = banner.route { path.append(r) }
     }
 
     /// البنرات من إعدادات لوحة الإدارة (نفس الموقع): الترتيب والإخفاء والنصوص واللون والتصميم والصور.
@@ -551,6 +448,49 @@ private struct BannerCarousel: View {
                                        button: "اطلبه حار", style: .light, products: items, route: .category("bakery"))
             }
         }
+        // التوصيل المجاني بشريط السلة (free في الموقع): يفتح السلة
+        if store.freeOver > 0 {
+            let have = cart.totals(catalog).subtotal, left = Swift.max(0, store.freeOver - have)
+            built["free"] = make("free", kicker: "🛵 توصيل مجاني", title: left > 0 ? "باقي \(Money.short(left))\nوتوصيلك مجاني" : "توصيلك صار مجاني 🎉",
+                                 subtitle: "لطلباتك فوق \(Money.short(store.freeOver))", button: left > 0 ? "كمّل سلتك" : "شوف سلتك",
+                                 style: .deep, products: [], route: nil)
+            built["free"]?.tab = .cart
+        }
+        // القسم اللي فيه أكثر عروض (catdeal): يفتح عروض القسم بس
+        var perCat: [String: (n: Int, pct: Int, pics: [Product])] = [:]
+        for p in offers {
+            var c = perCat[p.cat] ?? (n: 0, pct: 0, pics: [])
+            c.n += 1; c.pct = Swift.max(c.pct, CatOffersGrid.pct(p)); if p.hasPhoto { c.pics.append(p) }
+            perCat[p.cat] = c
+        }
+        if let best = perCat.filter({ $0.value.pics.count >= 2 && catalog.category($0.key) != nil }).max(by: { $0.value.n < $1.value.n }),
+           let cat = catalog.category(best.key) {
+            built["catdeal"] = make("catdeal", kicker: "🏷️ عروض القسم", title: "عروض \(cat.name)",
+                                    subtitle: best.value.pct > 0 ? "خصم لين \(best.value.pct)٪ · \(best.value.n) منتج" : "\(best.value.n) منتج عليها عرض",
+                                    button: "شوف العروض", style: .glass, products: best.value.pics, route: .live("o:" + cat.id))
+        }
+        // السهرة (night): من ٧ المساء لين ٢ بالليل، شبس ومشروب
+        let hr = Calendar.current.component(.hour, from: Date())
+        if hr >= 19 || hr < 2 {
+            let all = index.catalog.products
+            if let ch = all.first(where: { $0.sub == "chips" && $0.hasPhoto && catalog.isAvailable($0) }) {
+                let so = all.first(where: { $0.sub == "soft" && $0.hasPhoto && catalog.isAvailable($0) })
+                built["night"] = make("night", kicker: "🌙 السهرة", title: "طلعات السهرة\nلين بابك", subtitle: "شبس ومشروبات باردة",
+                                      button: "تسوّق الحين", style: .night, products: [ch] + (so.map { [$0] } ?? []), route: .category(ch.cat))
+            }
+        }
+        // قسم «قريباً» فيه ٣ صور وفوق (veg: الخضار والفواكه)
+        if let vc = catalog.categories.first(where: { $0.soon && $0.id != "print" && catalog.products(in: $0.id).filter(\.hasPhoto).count >= 3 }) {
+            built["veg"] = make("veg", kicker: "قريباً", title: vc.name, subtitle: "قريباً في \(store.name) إن شاء الله",
+                                button: "شوف القسم", style: .light, products: catalog.products(in: vc.id).filter(\.hasPhoto), route: .category(vc.id))
+        }
+        // هدية أول طلب (store.welcome): يفتح السلة
+        if let wg = store.welcome {
+            built["welcome"] = make("welcome", kicker: "🎁 هديتك", title: wg.amount > 0 ? "خصم \(Money.short(wg.amount))\nعلى أول طلب" : "هدية أول طلب",
+                                    subtitle: "الكود \(wg.code)" + (wg.min > 0 ? " · لطلبك فوق \(Money.short(wg.min))" : ""),
+                                    button: "اطلب الحين", style: .hot, products: [], route: nil)
+            built["welcome"]?.tab = .cart
+        }
         // بنرات المالك الخاصة
         for b in store.banners {
             var route: Route? = nil
@@ -583,10 +523,14 @@ private struct BannerCarousel: View {
         }
 
         // الترتيب والإخفاء من «ترتيب الواجهة» في الإدارة؛ الجديد اللي ما له ترتيب ينضاف آخر شي
-        let defaults = ["top", "multi", "daily", "offers", "deals", "bakery"] + store.banners.map(\.id)
+        let defaults = ["top", "multi", "daily", "offers", "deals", "bakery", "free", "catdeal", "night", "veg", "welcome"] + store.banners.map(\.id)
         var order = store.promos.filter { defaults.contains($0.id) }
         for id in defaults where !order.contains(where: { $0.id == id }) { order.append(PromoSlot(id: id, on: true)) }
-        return order.filter(\.on).compactMap { built[$0.id] }
+        var list = order.filter(\.on).compactMap { built[$0.id] }
+        if let g = featured {
+            list.insert(HomeBanner(id: "featured", kicker: "", title: g.name, subtitle: "", button: "", style: .deep, images: [], route: nil, group: g), at: 0)
+        }
+        return list
     }
 }
 
@@ -637,7 +581,7 @@ private struct BannerCard: View {
             }
             }
         }
-        .frame(height: 150)
+        .frame(height: BannerCarousel.height)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
@@ -747,9 +691,14 @@ private struct QuickChips: View {
 /// رسالة «المحل مقفل» مثل بطاقة الموقع (closedBarHTML، ١٥ نوفمبر ٢٠٢٦): «نفتح بعد ساعتين و١١ دقيقة» بعدّاد يتحدث كل ٣٠ ثانية،
 /// و«الساعة ١٢ الظهر · جهّز سلتك الحين واطلبها أول ما نفتح». المقفل اليدوي: «المحل مقفل مؤقتاً» + رسالة المالك
 struct ClosedNotice: View {
+    /// زجاجي فوق سما المغرب والليل (closedbar.v2 داخل .kqsky.ktop.s-night في الموقع)
+    var glass = false
     @Environment(CatalogStore.self) private var catalog
 
     var body: some View {
+        let title = glass ? Color.white : Color(hex: 0x1C1917)
+        let em = glass ? Color(hex: 0xFDE68A) : Color(hex: 0xC2410C)
+        let sub = glass ? Color(hex: 0xE9D5FF) : Color(hex: 0x57534E)
         TimelineView(.periodic(from: .now, by: 30)) { ctx in
             let store = catalog.store, t = store.openInMinutes(now: ctx.date)
             HStack(spacing: 12) {
@@ -757,29 +706,43 @@ struct ClosedNotice: View {
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Color(hex: 0xFDE68A))
                     .frame(width: 42, height: 42)
-                    .background(LinearGradient(colors: [Color(hex: 0x1E1B4B), Color(hex: 0x4C1D95)], startPoint: .top, endPoint: .bottom),
-                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background {
+                        if glass {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(hex: 0xFDE68A).opacity(0.16))
+                        } else {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(LinearGradient(colors: [Color(hex: 0x1E1B4B), Color(hex: 0x4C1D95)], startPoint: .top, endPoint: .bottom))
+                        }
+                    }
                 VStack(alignment: .leading, spacing: 2) {
                     if t < 0 {
-                        Text("المحل مقفل مؤقتاً").font(.kufi(15, .bold)).foregroundStyle(Color(hex: 0x1C1917))
+                        Text("المحل مقفل مؤقتاً").font(.kufi(15, .bold)).foregroundStyle(title)
                         Text(tv: store.closedMessage.isEmpty ? "تقدر تتصفح المنتجات، والطلب يرجع يشتغل لما نفتح." : store.closedMessage)
-                            .font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Color(hex: 0x57534E))
+                            .font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(sub)
                     } else {
-                        (Text(verbatim: "نفتح بعد ").foregroundStyle(Color(hex: 0x1C1917))
-                         + Text(verbatim: StoreInfo.durationText(t)).foregroundStyle(Color(hex: 0xC2410C)))
+                        (Text(verbatim: "نفتح بعد ").foregroundStyle(title)
+                         + Text(verbatim: StoreInfo.durationText(t)).foregroundStyle(em))
                             .font(.kufi(15, .bold))
                             .contentTransition(.numericText())
                         Text(verbatim: "الساعة \(StoreInfo.timeText(store.openAt ?? "")) · جهّز سلتك الحين واطلبها أول ما نفتح")
-                            .font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Color(hex: 0x57534E))
+                            .font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(sub)
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(.white.opacity(0.7)))
-            .shadow(color: Color(hex: 0x0F0B2E).opacity(0.12), radius: 11, y: 8)
+            .background {
+                if glass {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.ultraThinMaterial)
+                        .environment(\.colorScheme, .dark)
+                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.white.opacity(0.08)))
+                } else {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.white.opacity(0.94))
+                }
+            }
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(.white.opacity(glass ? 0.28 : 0.7)))
+            .shadow(color: Color(hex: 0x0F0B2E).opacity(glass ? 0 : 0.12), radius: 11, y: 8)
             .accessibilityElement(children: .combine)
         }
     }

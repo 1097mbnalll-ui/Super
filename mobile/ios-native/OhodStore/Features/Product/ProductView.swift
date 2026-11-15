@@ -133,8 +133,6 @@ struct ProductView: View {
                         .padding(.horizontal, 16)
                 }
 
-                // خانة حية من الموقع (عرض المجموعة، «ينشرى معه»، وأي ميزة جديدة لصفحة المنتج بدون تحديث)
-                if catalog.store.liveProduct { LiveSlot(slot: "product", id: product.id).padding(.top, 14) }
 
                 // «يحلى معه» من اختيار المالك (sugg)، وإلا «ممكن يعجبك» من نفس القسم
                 let picked = product.sugg.compactMap { catalog.product($0) }.filter { $0.id != product.id && catalog.isAvailable($0) }
