@@ -3897,14 +3897,19 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   try { drv.sound = localStorage.getItem("ohod-drv-sound") !== "0"; drv.push = localStorage.getItem("ohod-drv-push") === "1" && "Notification" in window && Notification.permission === "granted"; } catch(e){}
   var audioCtx = null;
+  // صوت إنذار قوي للطلب الجديد (طلب المالك ١٥ نوفمبر ٢٠٢٦: «صوت إشعار قوي عشان ينتبه»): صفّارة متقطعة عالية ٣ مرات + اهتزاز طويل
   function beep(){
     if (!drv.sound) return;
-    try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      [0, 0.22].forEach(function(t0){ var o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = "sine"; o.frequency.value = 880;
-        g.gain.setValueAtTime(0.0001, audioCtx.currentTime + t0); g.gain.exponentialRampToValueAtTime(0.4, audioCtx.currentTime + t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + t0 + 0.18);
-        o.connect(g); g.connect(audioCtx.destination); o.start(audioCtx.currentTime + t0); o.stop(audioCtx.currentTime + t0 + 0.2); });
+    try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.resume) audioCtx.resume();
+      var t = audioCtx.currentTime, comp = audioCtx.createDynamicsCompressor(); comp.connect(audioCtx.destination);
+      for (var r = 0; r < 3; r++) for (var i = 0; i < 6; i++) {
+        var t0 = t + r * 1.4 + i * 0.16, o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = "square"; o.frequency.setValueAtTime(i % 2 ? 1320 : 990, t0);
+        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.9, t0 + 0.01); g.gain.setValueAtTime(0.9, t0 + 0.12); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.15);
+        o.connect(g); g.connect(comp); o.start(t0); o.stop(t0 + 0.16);
+      }
     } catch(e){}
-    try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch(e){}
+    try { navigator.vibrate && navigator.vibrate([600, 200, 600, 200, 600, 200, 900]); } catch(e){}
   }
   var ST = { "new": tr("جديد", "New"), accepted: tr("استلمه المندوب", "Picked up"), onway: tr("في الطريق", "On the way"), delivered: tr("تم التوصيل", "Delivered"), canceled: tr("ملغي", "Cancelled") };
   function ago(t){ var m = Math.max(0, Math.round((drv.now - t) / 60000)); return m < 1 ? tr("الحين", "Just now") : m < 60 ? tr("قبل ", "") + m + tr(" د", " min ago") : m < 1440 ? tr("قبل ", "") + Math.floor(m / 60) + tr(" س", " h ago") : tr("قبل ", "") + Math.floor(m / 1440) + tr(" يوم", " d ago"); }
@@ -3942,7 +3947,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   var geo = { watch: null, pos: null, sentAt: 0, sentPos: null, st: "", wake: null, admin: false, share: false, busy: false };
   function geoMeters(a, b){ var r = Math.PI / 180, x = (b.lng - a.lng) * r * Math.cos((a.lat + b.lat) / 2 * r), y = (b.lat - a.lat) * r; return Math.sqrt(x * x + y * y) * 6371000; }
   // «أنا في الدوام» (طلب المالك ١٣ نوفمبر ٢٠٢٦): المندوب يشارك موقعه مع الإدارة طول الدوام، مو بس وهو يوصّل. الزبون ما يشوفه إلا وطلبه في الطريق
-  var DUTY = false; try { DUTY = localStorage.getItem("ohod-duty") === "1"; } catch(e){}
+  // ١٥ نوفمبر ٢٠٢٦ (المالك): زر «أنا في الدوام» انشال، والمندوب موقعه ظاهر للإدارة على طول ما دام داخل صفحته
+  var DUTY = true;
   function setDuty(v){ DUTY = !!v; try { localStorage.setItem("ohod-duty", DUTY ? "1" : "0"); } catch(e){} geoSync(); }
   // طلب المالك ١٤ نوفمبر ٢٠٢٦: الموقع ينرسل من أول ما المندوب يمسك الطلب (رايح يستلمه)، مو بس وهو في الطريق للزبون
   function drvBusy(){ return (drv.orders || []).some(function(o){ return mine(o) && (o.status === "accepted" || o.status === "onway"); }); }
@@ -4001,7 +4007,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var old = $("dvGeo"); if (old) old.remove();
     var box = $("dv"); if (mode !== "driver" || !box || !box.firstElementChild) return;
     if (!drvGroups().way.length) { if (APP || geo.admin || drv.view !== "list") return;
-      box.firstElementChild.insertAdjacentHTML("afterend", DUTY ? '<div class="dv-geo ' + (geo.st === "denied" ? "bad" : "ok") + '" id="dvGeo" role="status"><i></i><span><b>' + (geo.st === "denied" ? tr("اسمح بالموقع عشان الإدارة تشوفك", "Allow location so the store can see you") : tr("أنت في الدوام · الإدارة تشوف موقعك", "On shift · the store can see your location")) + '</b><span>' + tr("الزبون ما يشوفك إلا وطلبه في الطريق", "Customers only see you while their order is on the way") + '</span></span><button class="btn btn-soft" type="button" data-dutyoff>' + tr("انهِ الدوام", "End shift") + '</button></div>'
+      box.firstElementChild.insertAdjacentHTML("afterend", true ? '<div class="dv-geo ' + (geo.st === "denied" ? "bad" : "ok") + '" id="dvGeo" role="status"><i></i><span><b>' + (geo.st === "denied" ? tr("اسمح بالموقع عشان الإدارة تشوفك", "Allow location so the store can see you") : tr("أنت في الدوام · الإدارة تشوف موقعك", "On shift · the store can see your location")) + '</b><span>' + tr("الزبون ما يشوفك إلا وطلبه في الطريق", "Customers only see you while their order is on the way") + '</span></span><button class="btn btn-soft" type="button" data-dutyoff>' + tr("انهِ الدوام", "End shift") + '</button></div>'
         : '<div class="dv-geo mid" id="dvGeo" role="status"><i></i><span><b>' + tr("بديت الدوام؟", "Starting your shift?") + '</b><span>' + tr("شارك موقعك مع الإدارة طول الدوام", "Share your location with the store during your shift") + '</span></span><button class="btn btn-brand" type="button" data-dutyon>' + tr("أنا في الدوام", "I\'m on shift") + '</button></div>');
       return; }
     var h, cls = "", btn = "";
