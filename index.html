@@ -1093,7 +1093,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .artb .abtn{position:absolute;font:800 13px Tajawal,'Readex Pro',sans-serif;border-radius:12px;padding:7px 14px;white-space:nowrap}
 .artb .kb-p.art{position:absolute;object-fit:contain;filter:drop-shadow(0 10px 12px rgba(0,0,0,.28));animation:none}.artb .kb-p.art.boxed{background:#fff;border-radius:14px;padding:5px}
 .artb .acookie{position:absolute;left:104px;top:10px;width:76px;height:76px;border-radius:50%;background:#D99A4E;box-shadow:inset -6px -6px 0 #B8752F;display:grid;place-items:center;text-align:center;font:400 15px/1.05 Lalezar;color:#3A1F12;transform:rotate(-10deg);animation:apop .6s ease-out}
-.artb .areceipt{position:absolute;left:16px;top:12px;width:150px;padding:10px 12px 14px;background:#fff;font:700 12px Tajawal;color:#444;box-shadow:0 8px 18px rgba(0,0,0,.12);transform:rotate(-4deg)}
+.artb .areceipt{position:absolute;left:16px;top:12px;width:min(150px,38%);padding:10px 12px 14px;background:#fff;font:700 12px Tajawal;color:#444;box-shadow:0 8px 18px rgba(0,0,0,.12);transform:rotate(-4deg)}
 .artb .arow{display:flex;justify-content:space-between;gap:6px;border-bottom:1px dashed #ccc;padding:3px 0}.artb .arow.tot{border:0;margin-top:6px;font:400 19px Lalezar;color:#7C3AED}
 .artb .aslot{position:absolute;left:14px;top:28px;display:flex;gap:6px;background:#FDE68A;padding:8px;border-radius:16px;box-shadow:0 0 0 4px #F59E0B}.artb .aslot i{width:58px;height:84px;background:#fff;border-radius:10px;position:relative;overflow:hidden;display:block}
 .artb .atag{position:absolute;background:#fff;border:2.5px solid #1B1B1B;border-radius:10px 10px 10px 3px;padding:3px 10px;font:400 19px Lalezar;color:#E11D48;direction:ltr}
@@ -2516,7 +2516,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       function(x){ return '<div class="abg" style="background:#F3E8FF"></div><div class="areceipt">' + aT(tr('فاتورة', 'Receipt'), 'text-align:center;color:#111;margin-bottom:4px') +
         x.ids.slice(0, 3).map(function(){ return '<div class="arow"><span>' + esc(x.short) + '</span><s>' + num(x.unit) + SR + '</s></div>'; }).join('') +
         '<div class="arow tot"><span>' + tr('الكل', 'Total') + '</span><b>' + num(x.price) + SR + '</b></div></div>' +
-        aBox('right:18px;top:18px;width:48%;color:#3B0764', aT(esc(x.name), 'color:#7C3AED') + aH(x.n + ' ' + esc(x.w) + '<br>' + tr('بسعر مغري', 'for less'), 30) + aT(x.was, 'margin-top:4px;font-weight:600')) + aBtn(x.go, 'right:18px;bottom:14px;background:#7C3AED;color:#fff'); },
+        aBox('right:18px;top:14px;width:48%;color:#3B0764', aT(esc(x.name), 'color:#7C3AED') + aH(x.n + ' ' + esc(x.w) + '<br>' + tr('بسعر مغري', 'for less'), 26) + aT(String(x.was).replace(' ر.س ', ' ر.س<br>'), 'margin-top:4px;font-weight:600;font-size:11.5px;line-height:1.35;white-space:normal')) + aBtn(x.go, 'right:18px;bottom:14px;background:#7C3AED;color:#fff'); },
       function(x){ return '<div class="abg" style="background:#FFE4EC"></div>' + aH(num(x.n), 250, 'position:absolute;left:-6px;top:-40px;color:#FB7185;line-height:1') +
         aimg(x.ids[0], 'left:36px;top:40px;width:96px;transform:rotate(-10deg)') + aimg(x.ids[1] || x.ids[0], 'left:92px;top:92px;width:90px;transform:rotate(8deg)') +
         aBox('right:18px;top:22px;color:#881337', aH(esc(x.name), 20) + aH(num(x.price) + SR, 44, 'line-height:1') + aT(tr('بدل ', 'instead of ') + num(x.before) + SR, 'font-weight:600') + aT(x.was, 'font-weight:500;opacity:.85')) + aBtn(x.go, 'right:18px;bottom:14px;background:#881337;color:#fff'); },
@@ -2878,14 +2878,14 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
     // سما الرياض خلف ديمة والبنرات (store.skyHome): تتغير مع الوقت، وديمة والبنرات زي ما هي
     // رأس الرئيسية (الشعار والبحث ورسالة الإقفال): في الموقع دايماً، وفي التطبيق لما يطلب قسم «head» (store.app.liveHead)
-    var wantHead = !EMBED || EMBED_BLOCKS.indexOf("head") >= 0, stTop = Math.max(0, Math.min(80, Number(qp("st")) || 0));
+    var wantHead = !EMBED || !!EMBED_SCREEN || EMBED_BLOCKS.indexOf("head") >= 0, stTop = Math.max(0, Math.min(80, Number(qp("st")) || 0));
     var hh = EMBED ? h.replace('class="kq-head"', 'class="kq-head emb"' + (stTop ? ' style="padding-top:' + (stTop + 8) + 'px"' : '')) : h;
     if (S.skyHome && wantHead && (SEC.featured || SEC.promos)) { var sk0 = skyNow();
       // السما من أعلى الصفحة (خلف الشعار والبحث)، وديمة والبنرات تحتها
       var top = '<div class="kqsky ktop s-' + sk0.k + '"><i class="kqsky-st" aria-hidden="true"></i>' + hh.replace(/class="kq-head( emb)?"/, 'class="kq-head$1 skyon"') +
         '<div class="kqsky-hi2"><i class="sun" aria-hidden="true"></i><i class="moon" aria-hidden="true"></i><i class="cl c1" aria-hidden="true"></i><i class="cl c2" aria-hidden="true"></i>' + SKYLINE + '<div class="wrap kqsky-hi"><b>' + sk0.t + '</b><span>' + sk0.s + '</span></div></div>' +
         SEC.featured + SEC.promos + '</div>';
-      if (EMBED) SEC.head = top; else h = top;
+      if (EMBED && !EMBED_SCREEN) SEC.head = top; else h = top;
       SEC.featured = SEC.promos = ""; }
     else if (EMBED && wantHead) SEC.head = hh;
     if (S.skyHome && (SEC.featured || SEC.promos)) { var sk = skyNow();
