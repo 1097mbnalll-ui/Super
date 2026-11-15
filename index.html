@@ -901,7 +901,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-head .wrap{display:grid;gap:12px}
 .kq-row{display:flex;align-items:center;gap:10px}
 .kq-logo{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-.kq-logo img{width:44px;height:44px;border-radius:50%;box-shadow:0 0 0 2px #fff}
+.kq-logo img{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.18))}
 .kq-logo b{font-family:var(--display);font-weight:700;font-size:19px;color:var(--teal-deep);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kq-meta{display:grid;justify-items:end;gap:4px}
 .kq-sched{display:inline-flex;align-items:center;gap:5px;border:1.5px dashed #E8394F;background:#FFF1F3;color:#C42A3F;border-radius:10px;padding:3px 9px;font-size:11.5px;font-weight:700;white-space:nowrap}
@@ -2851,7 +2851,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span>' + (lastOrder.subs && lastOrder.subs.length ? '<em class="trk-sub">' + tr("فيه بديل ينتظر موافقتك", "A replacement needs your answer") + '</em>' : '') + '</span>' + ic("fwd") + '</button>' :
         rateDue() ? '<div class="ratebar"><button class="trackbar" type="button" data-nav="sent"><span class="ic">★</span><span class="t"><b>' + tr("وصلك طلبك ", "How was order ") + esc(lastOrder.no) + tr("؟ قيّم تجربتك", "? Rate it") + '</b><span>' + tr("ثواني وتساعدنا نصير أحسن", "Takes seconds and helps us improve") + '</span></span>' + ic("fwd") + '</button><button type="button" class="ratebar-x" data-rateskip aria-label="' + tr("إخفاء", "Hide") + '">×</button></div>' : '') +
       (isClosed() ? closedBarHTML() : '') +
-      '<div class="kq-row"><div class="kq-logo"><img src="' + D.imgs.logo + '" alt=""><b>' + esc(sv("name")) + '</b></div>' +
+      '<div class="kq-row"><div class="kq-logo"><img src="logo-cut.webp" alt=""><b>' + esc(sv("name")) + '</b></div>' +
       '<div class="kq-meta"><span class="kq-sched">' + ic("truck") + esc(sv("eta")) + '</span><span class="kq-loc">' + ic("pin") + esc(sv("area")) + ic("down") + '</span></div>' +
       '<button class="langbtn" type="button" data-lang="' + (LANG === "en" ? "ar" : "en") + '" aria-label="' + tr("English", "العربية") + '">' + (LANG === "en" ? "ع" : "EN") + '</button></div>' +
       '<button class="kq-search" type="button" data-nav="search">' + ic("search") + '<span id="ph">' + tr("قهوتك ناقصها حلا؟ ابحث عن الشوكولاتة…", "Your coffee needs something sweet? Search…") + '</span></button></div></div>';
@@ -2908,7 +2908,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   function catsHTML(){
     var deals = dealsList(), t = totals();
-    return '<div class="kq-head slim"><div class="wrap"><div class="kq-row"><div class="kq-logo"><img src="' + D.imgs.logo + '" alt=""><b>' + esc(sv("name")) + '</b></div><div class="kq-meta"><span class="kq-loc">' + ic("pin") + esc(sv("area")) + '</span></div></div>' +
+    return '<div class="kq-head slim"><div class="wrap"><div class="kq-row"><div class="kq-logo"><img src="logo-cut.webp" alt=""><b>' + esc(sv("name")) + '</b></div><div class="kq-meta"><span class="kq-loc">' + ic("pin") + esc(sv("area")) + '</span></div></div>' +
       '<button class="kq-search" type="button" data-nav="search">' + ic("search") + '<span>' + tr("ابحث في كل الأقسام…", "Search all categories…") + '</span></button></div></div><div class="wrap">' +
       (deals.length ? '<button type="button" class="kq-recipe" data-chip="deals"><span class="ic">' + ic("tag") + '</span><span class="t"><b>' + tr("كل منتج بـ ", "Everything for ") + num(DEAL.price) + ' ' + tr("ر.س", "SAR") + '</b><span>' + (t.unlocked ? tr("انفتحت لك، ضيف اللي تبغاه", "Unlocked, add what you like") : tr("لطلبات فوق ", "For orders over ") + rial(DEAL.min)) + '</span></span>' + ic("fwd") + '</button>' : '') +
       '<div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-chip="for">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div>' +
