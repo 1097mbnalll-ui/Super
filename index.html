@@ -1130,6 +1130,14 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 @media (prefers-reduced-motion:reduce){.artb *{animation:none!important}}
 .fa-ord .fa-text{display:block;white-space:pre-line;margin-top:4px;font-weight:600;line-height:1.6}.dv-note.fa-ord{background:#EAF6EF;color:#14532D;align-items:flex-start;font-size:14px}.dv-card .note.fa-ord{background:#EAF6EF;color:#14532D}
 .fa-line .nm{display:grid;gap:6px}.fa-line .fa-text{white-space:pre-line;font-size:13.5px;line-height:1.6;color:var(--ink,#1d2433)}.fa-line textarea{width:100%;box-sizing:border-box;border:1.5px solid #CFE6D8;border-radius:12px;padding:8px 10px;font:inherit;font-size:14px}.fa-acts{display:flex;gap:8px;flex-wrap:wrap}.fa-acts .btn{min-height:34px;padding:0 14px;font-size:13px}.fa-note{margin:0;font-size:12.5px;color:var(--muted,#596171)}
+.khero{position:relative;isolation:isolate;overflow:hidden;border-radius:0 0 30px 30px;padding-bottom:12px;margin-bottom:6px;background:#1E1B4B}
+.kh-l{position:absolute;inset:0;z-index:-1;opacity:0;transition:opacity .7s ease;background-repeat:no-repeat}.kh-l.on{opacity:1}
+.khero::after{content:"";position:absolute;inset:auto 0 0;height:40%;z-index:-1;background:linear-gradient(transparent,rgba(0,0,0,.12));pointer-events:none}
+.khero .kq-head{background:transparent!important}.khero.dark .kq-logo b,.khero.dark .kq-loc,.khero.dark .kq-meta{color:#fff!important}
+.khero .kq-search{box-shadow:0 6px 18px rgba(0,0,0,.15)}
+.khero .kq-sec-wrap{padding-left:0!important;padding-right:0!important;margin-top:0}
+.khero .kq-bans{border-radius:0;margin-top:2px}.khero .kq-ban{border-radius:0;min-height:236px}
+.khero .kq-dots i{background:rgba(255,255,255,.45)}.khero .kq-dots i.on{background:#fff}
 .howto{margin:12px 0 4px;padding:16px;border-radius:22px;background:#fff;box-shadow:0 2px 14px rgba(19,33,60,.08);display:grid;gap:8px}.howto>b{font-family:var(--display);font-size:18px}.howto ol{list-style:none;margin:0;padding:0;display:grid;gap:6px}.howto li{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600}.howto li i{font-style:normal;width:26px;height:26px;border-radius:50%;background:var(--teal,#0E8A6A);color:#fff;display:grid;place-items:center;font-size:14px;flex:none}.howto p{margin:0;font-size:13px;color:var(--muted,#596171)}.howto-b{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}.howto-b .btn{justify-content:center}
 .fa-more{display:grid;gap:8px}.fa-more p{margin:0;font-size:13px;opacity:.85}.fa-more textarea{width:100%;box-sizing:border-box;border-radius:14px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit;padding:10px;font:inherit;font-size:16px}.fa-was{font-weight:700}.fa-new{width:100%;text-align:start;border:1.5px dashed #9fd3b6!important;background:#F4FBF7!important;cursor:pointer;font:inherit}
 .fa-box{margin:14px 0 4px;padding:16px;border-radius:22px;background:#EAF6EF;display:grid;gap:8px}.fa-box b{font-family:var(--display);font-size:17px}.fa-box p{margin:0;font-size:13.5px;color:var(--muted,#596171)}.fa-box textarea{width:100%;box-sizing:border-box;border:1.5px solid #CFE6D8;border-radius:16px;padding:12px;font:inherit;font-size:16px;resize:vertical;background:#fff}.fa-box textarea.bad{border-color:#D9472B}.fa-box .btn{justify-content:center}
@@ -2927,7 +2935,11 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     // رأس الرئيسية (الشعار والبحث ورسالة الإقفال): في الموقع دايماً، وفي التطبيق لما يطلب قسم «head» (store.app.liveHead)
     var wantHead = !EMBED || !!EMBED_SCREEN || EMBED_BLOCKS.indexOf("head") >= 0, stTop = Math.max(0, Math.min(80, Number(qp("st")) || 0));
     var hh = EMBED ? h.replace('class="kq-head"', 'class="kq-head emb"' + (stTop ? ' style="padding-top:' + (stTop + 8) + 'px"' : '')) : h;
-    if (S.skyHome && wantHead && (SEC.featured || SEC.promos)) { var sk0 = skyNow();
+    // «واجهة حية» (المالك ١٥ نوفمبر ٢٠٢٦: «البنرات ومتعة النظر»): البنرات بعرض الشاشة من فوق خلف الشعار والبحث، ولون أعلى الصفحة يتبدّل مع كل بنر (store.banHero)
+    if (S.banHero && !EMBED && wantHead && SEC.promos) {
+      h = '<div class="khero" id="kHero"><i class="kh-l on" aria-hidden="true"></i><i class="kh-l" aria-hidden="true"></i>' + hh.replace(/class="kq-head"/, 'class="kq-head heroon"') + SEC.promos + '</div>';
+      SEC.promos = ""; if (FGB) SEC.featured = ""; }
+    else if (S.skyHome && wantHead && (SEC.featured || SEC.promos)) { var sk0 = skyNow();
       // السما من أعلى الصفحة (خلف الشعار والبحث)، وديمة والبنرات تحتها
       var top = '<div class="kqsky ktop s-' + sk0.k + '"><i class="kqsky-st" aria-hidden="true"></i>' + hh.replace(/class="kq-head( emb)?"/, 'class="kq-head$1 skyon"') +
         '<div class="kqsky-hi2"><i class="sun" aria-hidden="true"></i><i class="moon" aria-hidden="true"></i><i class="cl c1" aria-hidden="true"></i><i class="cl c2" aria-hidden="true"></i>' + SKYLINE + '<div class="wrap kqsky-hi"><b>' + sk0.t + '</b><span>' + sk0.s + '</span></div></div>' +
@@ -3607,6 +3619,16 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     timers.push(setInterval(function(){ if (!document.body.contains(root) || paused || document.hidden) return; next(1); }, 5000));
   }
   try { history.scrollRestoration = "manual"; } catch(e){}
+  // الواجهة الحية: خلفية أعلى الصفحة = خلفية البنر الظاهر (تتلاشى من وحدة للثانية)، ولون الشعار حسب غمق الخلفية
+  function heroBg(slide){
+    var hero = $("kHero"); if (!hero || !slide) return;
+    var src = slide.querySelector(".abg") || slide, cs = getComputedStyle(src), bg = cs.backgroundImage && cs.backgroundImage !== "none" ? cs.backgroundImage : "", col = cs.backgroundColor;
+    var L = hero.querySelectorAll(".kh-l"), cur = L[0].classList.contains("on") ? 0 : 1, nx = 1 - cur;
+    L[nx].style.backgroundColor = col; L[nx].style.backgroundImage = bg; L[nx].style.backgroundSize = cs.backgroundSize; L[nx].style.backgroundPosition = cs.backgroundPosition;
+    L[nx].classList.add("on"); L[cur].classList.remove("on");
+    var m = String(bg + " " + col).match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/), lum = m ? (0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3]) : 255;
+    hero.classList.toggle("dark", lum < 150);
+  }
   function kqBanners(){
     // كل البنرات فوق بعض في نفس المكان (داخل الشاشة دايماً)، والظاهر واحد يتبدّل فوراً بـ visibility بس.
     // ليش: آيفون ما يرسم البنر اللي كان خارج الشاشة لما يدخل بالتمرير أو transform، وتطبيق الآيفون (WKWebView داخل SwiftUI)
@@ -3616,7 +3638,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var sl = track.children, n = sl.length, i = 0, dir = LANG === "en" ? -1 : 1, x0 = null, y0 = 0, dx = 0, drag = false, held = false, last = 0;
     function place(k){ i = (k + n) % n;
       for (var j = 0; j < n; j++) { sl[j].classList.toggle("on", j === i); sl[j].setAttribute("aria-hidden", j === i ? "false" : "true"); if (j !== i) sl[j].setAttribute("tabindex", "-1"); else sl[j].removeAttribute("tabindex"); }
-      for (var d = 0; d < dots.children.length; d++) dots.children[d].className = d === i ? "on" : ""; }
+      for (var d = 0; d < dots.children.length; d++) dots.children[d].className = d === i ? "on" : "";
+      heroBg(sl[i]); }
     place(0);
     if (n < 2) return;
     el.addEventListener("touchstart", function(e){ if (e.touches.length !== 1) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; drag = false; held = true; }, { passive: true });
