@@ -62,6 +62,7 @@ for (const c of cases) {
     });
     samples.push({ t, ...m });
     await p.screenshot({ path: `${out}/${c.id}-${String(t).padStart(5, '0')}.png` });
+    try { const bn = await p.$('#kqBans'); if (bn) await bn.screenshot({ path: `${out}/ban-${c.id}-${String(t).padStart(5, '0')}.png` }); } catch (e) {}
   }
   // سحب بالإصبع على البنرات (مثل الزبون): بعده لازم يوقف على بنر كامل
   const swipe = await p.evaluate(async () => {

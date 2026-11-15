@@ -47,12 +47,13 @@ jobs:
           xcrun simctl openurl "$DEV" "http://localhost:8765/index.html?warm=1" || true; sleep 40
           xcrun simctl io "$DEV" screenshot "out/sim/warm.png" || true
           i=0
-          for u in "index.html" "index.html?sky=night" "index.html?embed=1&blocks=head,featured,promos&st=47&sky=maghrib"; do
+          for u in "index.html" "index.html?sky=night" "index.html?embed=1&blocks=head,featured,promos&st=47&sky=maghrib" "index.html?embed=1&blocks=promos"; do
             i=$((i+1))
             xcrun simctl openurl "$DEV" "http://localhost:8765/$u" || echo "openurl failed"
             sleep 6;  xcrun simctl io "$DEV" screenshot "out/sim/u${i}_05s.png" || echo "shot failed"
             sleep 8;  xcrun simctl io "$DEV" screenshot "out/sim/u${i}_13s.png" || true
             sleep 12; xcrun simctl io "$DEV" screenshot "out/sim/u${i}_25s.png" || true
+            if [ $i = 4 ]; then for t in 30 35 40 45 50; do sleep 5; xcrun simctl io "$DEV" screenshot "out/sim/u4_${t}s.png" || true; done; fi
           done
           ls -la out/sim
       - name: Save results to a branch
