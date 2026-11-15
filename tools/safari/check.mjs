@@ -62,17 +62,39 @@ for (const c of cases) {
     samples.push({ t, ...m });
     await p.screenshot({ path: `${out}/${c.id}-${String(t).padStart(5, '0')}.png` });
   }
+  // سحب بالإصبع على البنرات (مثل الزبون): بعده لازم يوقف على بنر كامل
+  const swipe = await p.evaluate(async () => {
+    const el = document.getElementById('kqBans'); if (!el) return null;
+    el.scrollIntoView({ block: 'center' }); await new Promise(r => setTimeout(r, 300));
+    const b = el.getBoundingClientRect(), y = b.top + b.height / 2;
+    const mk = (type, x) => { let ev; try { const t = new Touch({ identifier: 1, target: el, clientX: x, clientY: y }); ev = new TouchEvent(type, { touches: type === 'touchend' ? [] : [t], changedTouches: [t], bubbles: true, cancelable: true }); } catch (e) { return false; } el.dispatchEvent(ev); return true; };
+    const res = [];
+    for (const dir of [1, 1, -1, 1]) {
+      const sx = b.left + b.width * (dir > 0 ? 0.25 : 0.75);
+      if (!mk('touchstart', sx)) return { unsupported: true };
+      for (let s = 1; s <= 6; s++) { mk('touchmove', sx + dir * s * 25); await new Promise(r => setTimeout(r, 16)); }
+      mk('touchend', sx + dir * 150); await new Promise(r => setTimeout(r, 900));
+      const holder = el.firstElementChild.classList.contains('kq-track') ? el.firstElementChild : el;
+      const box = el.getBoundingClientRect();
+      const rs = Array.from(holder.children).map(x => x.getBoundingClientRect());
+      res.push(rs.findIndex(q => Math.abs(q.left - box.left) < 3 && Math.abs(q.width - box.width) < 3));
+    }
+    window.scrollTo(0, 0);
+    return { idx: res };
+  });
+  if (swipe && !swipe.unsupported) samples.push({ swipe });
   // تقييم
   const issues = [];
   if (errs.length) issues.push('أخطاء جافاسكربت: ' + errs.slice(0, 3).join(' | '));
-  if (samples.some(s => s.scrollY > 2)) issues.push('الصفحة نزلت لحالها (scrollY=' + Math.max(...samples.map(s => s.scrollY)) + ')');
+  if (swipe && swipe.idx && swipe.idx.some(k => k < 0)) issues.push('بعد السحب البنرات وقفت بين بنرين: ' + swipe.idx.join(','));
+  if (samples.filter(s => s.t).some(s => s.scrollY > 2)) issues.push('الصفحة نزلت لحالها (scrollY=' + Math.max(...samples.map(s => s.scrollY)) + ')');
   if (!c.url.includes('embed=1') || c.url.includes('head')) {
     const s0 = samples[0];
     if (s0.searchVisible === false) issues.push('مربع البحث مو ظاهر أول ما تفتح الصفحة');
   }
-  const bad = samples.filter(s => s.ban && !s.ban.snapped);
+  const bad = samples.filter(s => s.t && s.ban && !s.ban.snapped);
   if (bad.length) issues.push('البنرات واقفة بين بنرين: ' + bad.map(s => s.t + 'ms off=' + s.ban.off).join(', '));
-  const blank = samples.filter(s => s.ban && (String(s.ban.centerSlide).startsWith('NONE') || s.ban.visibleKids < 3 || s.ban.imgsBroken));
+  const blank = samples.filter(s => s.t && s.ban && (String(s.ban.centerSlide).startsWith('NONE') || s.ban.visibleKids < 3 || s.ban.imgsBroken));
   if (blank.length) issues.push('بنر فاضي/مكسور: ' + blank.map(s => s.t + 'ms ' + s.ban.centerSlide + ' kids=' + s.ban.visibleKids + ' broken=' + s.ban.imgsBroken).join(', '));
   const cov = samples.filter(s => s.greetCovered);
   if (cov.length) issues.push('التحية مغطاة بـ: ' + cov[0].greetCovered);
