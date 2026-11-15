@@ -87,4 +87,14 @@ ok(st.ok && sq.prepare('SELECT status FROM orders WHERE no = 5').get().status ==
 const dl = await call('/driver/status', { ...A, no: '#1001', status: 'delivered' });
 ok(dl.ok, 'توصيل طلب مسعّر بسطور من عندي: ' + JSON.stringify(dl.code || 'ok'));
 const v = await call('/admin/verify', A); ok(v.ok && v.clean, 'التحليل مطابق (verifyStats): ' + JSON.stringify(v.ok && { d: v.dayDiffCount, i: v.itemDiffs, h: v.hourDiffs, p: v.pairDiffs }));
+// الزبون يضيف لطلبه بعد ما طلب (/order-add)
+r = await call('/order', { items: { pantry0: 1 }, free: 'بصل ١ كيلو', phone: '0557100009', ...loc });
+ok(r.ok, 'طلب للإضافة');
+let ad = await call('/order-add', { no: r.orderNo, phone: '0557100009', text: 'خبز ٢\nحليب' });
+ok(ad.ok && rec(r.orderNo).free === 'بصل ١ كيلو\n➕ خبز ٢\nحليب', 'الإضافة انضافت للقائمة: ' + JSON.stringify(ad.ok ? rec(r.orderNo).free : ad.code));
+ad = await call('/order-add', { no: r.orderNo, phone: '0550000000', text: 'x' }); ok(!ad.ok && ad.code === 'not_found', 'جوال غلط مرفوض');
+ad = await call('/order-add', { no: r.orderNo, phone: '0557100009', text: '' }); ok(!ad.ok, 'نص فاضي مرفوض');
+r = await call('/order', { items: { pantry0: 3 }, phone: '0557100010', ...loc });
+ad = await call('/order-add', { no: r.orderNo, phone: '0557100010', text: 'ماء' });
+ok(ad.ok && rec(r.orderNo).free === 'ماء', 'طلب بدون قائمة: الإضافة تصير القائمة');
 console.log(fails ? fails + ' فشل' : 'كل الفحوص نجحت'); process.exit(fails ? 1 : 0);

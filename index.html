@@ -1130,6 +1130,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 @media (prefers-reduced-motion:reduce){.artb *{animation:none!important}}
 .fa-ord .fa-text{display:block;white-space:pre-line;margin-top:4px;font-weight:600;line-height:1.6}.dv-note.fa-ord{background:#EAF6EF;color:#14532D;align-items:flex-start;font-size:14px}.dv-card .note.fa-ord{background:#EAF6EF;color:#14532D}
 .fa-line .nm{display:grid;gap:6px}.fa-line .fa-text{white-space:pre-line;font-size:13.5px;line-height:1.6;color:var(--ink,#1d2433)}.fa-line textarea{width:100%;box-sizing:border-box;border:1.5px solid #CFE6D8;border-radius:12px;padding:8px 10px;font:inherit;font-size:14px}.fa-acts{display:flex;gap:8px;flex-wrap:wrap}.fa-acts .btn{min-height:34px;padding:0 14px;font-size:13px}.fa-note{margin:0;font-size:12.5px;color:var(--muted,#596171)}
+.fa-more{display:grid;gap:8px}.fa-more p{margin:0;font-size:13px;opacity:.85}.fa-more textarea{width:100%;box-sizing:border-box;border-radius:14px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit;padding:10px;font:inherit;font-size:16px}.fa-was{font-weight:700}.fa-new{width:100%;text-align:start;border:1.5px dashed #9fd3b6!important;background:#F4FBF7!important;cursor:pointer;font:inherit}
 .fa-box{margin:14px 0 4px;padding:16px;border-radius:22px;background:#EAF6EF;display:grid;gap:8px}.fa-box b{font-family:var(--display);font-size:17px}.fa-box p{margin:0;font-size:13.5px;color:var(--muted,#596171)}.fa-box textarea{width:100%;box-sizing:border-box;border:1.5px solid #CFE6D8;border-radius:16px;padding:12px;font:inherit;font-size:16px;resize:vertical;background:#fff}.fa-box textarea.bad{border-color:#D9472B}.fa-box .btn{justify-content:center}
 .as-sheet{align-items:center!important}.as-box{max-width:360px;margin:0 auto;text-align:center;display:grid;gap:10px;justify-items:center;padding:26px 20px 20px!important;border-radius:28px!important}
 .as-app{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border-radius:20px;background:#F4F5F7;text-align:start}.as-app img{width:64px;height:64px;border-radius:15px;box-shadow:0 2px 8px rgba(0,0,0,.15)}.as-app span{display:grid;gap:2px}.as-app b{font-size:16px}.as-app em{font-style:normal;font-size:12.5px;color:var(--muted,#596171)}.as-badge{display:inline-flex;align-items:center;gap:4px;justify-self:start;margin-top:3px;padding:3px 9px 3px 8px;border-radius:999px;background:#111;color:#fff;font:600 11px/1.4 -apple-system,system-ui,sans-serif;font-style:normal;direction:ltr}.as-badge svg{width:12px;height:12px;fill:#fff}
@@ -2053,7 +2054,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function setFree(v){ freeList = freeClean(v); try { if (freeList) localStorage.setItem("ohod-free", freeList); else localStorage.removeItem("ohod-free"); } catch(e){} cartPingCheck(); }
   var freeEdit = false;
   function freeCardHTML(){
-    if (!freeList) return "";
+    // «ما لقيت غرضك؟» (الافتتاح التجريبي): أي غرض مو موجود بالموقع يكتبه الزبون وينضاف للسلة كطلب بالكتابة
+    if (!freeList && !freeEdit) return EMBED ? "" : '<button type="button" class="line fa-new" data-freenew><span class="plate" style="background:#EAF6EF;font-size:24px;display:grid;place-items:center">✍️</span><span class="nm"><b>' + tr("ما لقيت غرضك؟ اكتبه", "Can't find it? Write it") + '</b><span>' + tr("أي غرض مو موجود بالموقع، بالوزن أو العدد، ونجيبه لك", "Any item not listed, by weight or count") + '</span></span></button>';
     return '<div class="line fa-line"><span class="plate" style="background:#EAF6EF;font-size:26px;display:grid;place-items:center">🥬</span><span class="nm"><b>' + tr("طلب بالكتابة", "Your written list") + '<span class="ltag day">' + tr("يتحدد سعره عند التجهيز", "Priced when prepared") + '</span></b>' +
       (freeEdit ? '<textarea id="cfText" rows="4" maxlength="' + FREE_MAX + '">' + esc(freeList) + '</textarea>' : '<span class="fa-text">' + esc(freeList) + '</span>') +
       '<span class="fa-acts">' + (freeEdit ? '<button type="button" class="btn btn-teal" data-freesave>' + tr("احفظ", "Save") + '</button>' : '<button type="button" class="btn btn-soft" data-freeedit>' + tr("عدّل", "Edit") + '</button>') +
@@ -3047,6 +3049,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   document.addEventListener("click", function(e){
     if (!e.target.closest) return;
     if (e.target.closest("[data-freeedit]")) { freeEdit = true; refresh(); var ce = $("cfText"); if (ce) ce.focus(); return; }
+    if (e.target.closest("[data-freenew]")) { freeEdit = true; refresh(); setTimeout(function(){ var c = $("cfText"); if (c) c.focus(); }, 50); return; }
     if (e.target.closest("[data-freesave]")) { var ct = $("cfText"); setFree(ct ? ct.value : freeList); freeAskText = null; freeEdit = false; saveCart(); refresh(); sToast(freeList ? tr("انحفظت أغراضك", "Saved") : tr("انشال الطلب بالكتابة", "List removed")); return; }
     if (e.target.closest("[data-freedel]")) { setFree(""); freeAskText = null; freeEdit = false; saveCart(); refresh(); sToast(tr("انشال الطلب بالكتابة", "List removed")); return; }
     if (!e.target.closest("[data-freeask]")) return;
@@ -3240,7 +3243,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var t = totals();
     var head = tr('<div class="wrap"><div class="topbar"><button class="sq" type="button" data-nav="back" aria-label="رجوع">', '<div class="wrap"><div class="topbar"><button class="sq" type="button" data-nav="back" aria-label="Back">') + ic("back") + tr('</button><h1>سلتك', '</button><h1>Your cart') + (t.n ? ' <span style="font-size:14px;color:var(--muted);font-weight:500">(' + t.n + ')</span>' : '') + '</h1>' +
       (t.n || t.dn || t.fl ? tr('<button class="sq" type="button" id="emptyCart" aria-label="إفراغ السلة" style="color:var(--sale)">', '<button class="sq" type="button" id="emptyCart" aria-label="Empty cart" style="color:var(--sale)">') + ic("trash") + '</button>' : '<span class="sq" style="visibility:hidden"></span>') + '</div>';
-    if (!Object.keys(cart).length && !freeList) return head + '<div class="empty"><span class="big">' + ic("cart") + '</span><b>' + tr('السلة فارغة', 'Your cart is empty') + '</b><button class="btn btn-teal kq-browse" type="button" data-nav="home">' + ic("cart") + tr('تصفّح المنتجات', 'Browse products') + '</button></div></div>';
+    if (!Object.keys(cart).length && !freeList && !freeEdit) return head + (EMBED ? '' : '<div class="wrap" style="margin-top:14px"><div class="lines">' + freeCardHTML() + '</div></div>') + '<div class="empty"><span class="big">' + ic("cart") + '</span><b>' + tr('السلة فارغة', 'Your cart is empty') + '</b><button class="btn btn-teal kq-browse" type="button" data-nav="home">' + ic("cart") + tr('تصفّح المنتجات', 'Browse products') + '</button></div></div>';
     var h = head + '<div style="display:grid;gap:12px;margin-top:16px">';
     // «باقي X وتوصيلك مجاني»: منتجات تكمّل المبلغ (سعرها قريب من الباقي)
     var gap = S.freeOver && t.fee ? Math.round((S.freeOver - t.s) * 100) / 100 : 0, fillL = [];
@@ -3303,13 +3306,31 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       (o.status === "delivered" ? tr('<p>وصل طلبك. بالعافية عليك!</p>', '<p>Your order has been delivered. Enjoy!</p>') : o.status === "onway" ? tr('<p>المندوب في الطريق لموقعك الحين.</p>', '<p>The driver is on the way to you now.</p>') : tr('<p>بنتصل عليك على <b dir="ltr" style="color:#fff">', '<p>We will call you at <b dir="ltr" style="color:#fff">') + esc(o.phone || "") + tr('</b> لو احتجنا،<br>والمندوب يجيك على الموقع اللي حددته.</p>', '</b> if needed,<br>and the driver will come to the location you picked.</p>')) +
       tr('<div class="card"><div class="r"><span>رقم الطلب</span><b dir="ltr">', '<div class="card"><div class="r"><span>Order number</span><b dir="ltr">') + esc(o.no || "") + '</b></div>' +
       (o.printText && waNumber() && o.status !== "canceled" ? '<div class="card pr-wa"><b>' + tr("باقي خطوة: أرسل ملف الطباعة", "One more step: send your print file") + '</b><p>' + tr("أرسل الملف على واتساب المحل برقم طلبك ونبدأ نطبعه.", "Send the file on the shop's WhatsApp with your order number and we start printing.") + '</p><a class="btn btn-teal" target="_blank" rel="noopener" href="https://wa.me/' + waNumber() + '?text=' + encodeURIComponent("السلام عليكم، طلب طباعة رقم " + (o.no || "") + "\n" + o.printText + "\nالملف مرفق 👇") + '">' + tr("أرسل الملف على واتساب", "Send the file on WhatsApp") + '</a></div>' : '') +
-      stepsHTML(o.status || "new") + rateHTML(o) + subsHTML(o) + cancelHTML(o) +
+      stepsHTML(o.status || "new") + rateHTML(o) + subsHTML(o) + addMoreHTML(o) + cancelHTML(o) +
       (o.status === "onway" && o.track && apiUrl() ? '<div class="trk"><div class="trk-map" id="trkMap"></div><div class="trk-info" id="trkInfo">' + trkInfo() + '</div></div>' : '') +
       (o.track && apiUrl() && o.status !== "delivered" && o.status !== "canceled" ? (o.push ? '<div class="r push-on">' + ic("bell") + '<span>' + tr("بيوصلك إشعار مع كل تغيير في حالة طلبك", "You will get a notification for every status change") + '</span></div>' :
         '<button class="btn btn-ghost pushbtn" type="button" id="pushMe">' + ic("bell") + '<span>' + tr("نبّهني لما تتغير حالة طلبي", "Notify me about my order") + '</span></button><p class="pushmsg" id="pushMsg"' + (pushWhy() && (isIOS() && !isApp()) ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</p>') : '') +
       (o.total || !o.viaLink ? tr('<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>الإجمالي · ', '<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>Total · ') + (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + tr(' عند الاستلام</span><b>', ' on delivery</span><b>') + rial(o.total || 0) + '</b></div>' : '') + '</div>' +
       (o.walletCents ? '<p>مدفوع بالمحفظة '+moneyFromCents(o.walletCents)+' · المتبقي عند الاستلام '+moneyFromCents(Math.max(0,Math.round(o.total*100)-o.walletCents))+'</p>' : '') + '<div class="acts"><a class="btn btn-orange" href="tel:' + esc(S.phone) + '">' + ic("phone") + tr('اتصل على المحل</a><button class="btn btn-ghost" type="button" data-nav="home">رجوع للمتجر</button></div></div></div>', 'Call the store</a><button class="btn btn-ghost" type="button" data-nav="home">Back to store</button></div></div></div>');
   }
+  // «أضف لطلبك» (الافتتاح التجريبي ١٥ نوفمبر ٢٠٢٦): الزبون يضيف أغراض بالكتابة لطلبه بعد ما طلب، قبل التوصيل (/order-add)
+  function addMoreHTML(o){
+    if (!o || !o.no || !o.phone || !o.track || ["new", "accepted", "onway"].indexOf(o.status || "new") < 0) return "";
+    return '<div class="card fa-more"><b>' + tr("نسيت شي؟ أضفه لطلبك", "Forgot something? Add it") + '</b><p>' + tr("اكتب الغرض والوزن أو العدد، ويوصل المحل مع طلبك نفسه.", "Write the item with weight or count; it joins this order.") + '</p>' +
+      (o.free ? '<p class="fa-was">' + tr("مضاف لطلبك: ", "Added: ") + esc(o.free).replace(/\n/g, " · ") + '</p>' : '') +
+      '<textarea id="amText" rows="2" maxlength="600" placeholder="' + tr("مثال: خبز ٢، حليب ١ لتر", "e.g. Bread 2, Milk 1L") + '"></textarea>' +
+      '<button class="btn btn-teal" type="button" data-addmore>' + tr("أضف لطلبي", "Add to my order") + '</button><span class="status" id="amMsg" aria-live="polite"></span></div>';
+  }
+  document.addEventListener("click", function(e){
+    if (!e.target.closest || !e.target.closest("[data-addmore]") || !lastOrder) return;
+    var ta = $("amText"), v = ta ? ta.value.trim() : "", m = $("amMsg"); if (!v) { if (ta) ta.focus(); return; }
+    m.className = "status"; m.textContent = tr("جاري الإرسال…", "Sending…");
+    fetch(String(apiUrl()).replace(/\/+$/, "") + "/order-add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: lastOrder.no, phone: lastOrder.phone, text: v }) })
+      .then(function(r){ return r.json(); }).then(function(j){
+        if (j.ok) { lastOrder.free = j.free; saveLast(); sToast(tr("وصلت إضافتك للمحل مع طلبك", "Added to your order")); render(); return; }
+        m.className = "status err"; m.textContent = j.code === "closed" ? tr("الطلب خلص، اطلب طلب جديد.", "This order is finished; place a new one.") : j.code === "not_found" ? tr("ما قدرنا نضيف، كلم المحل.", "Could not add; call the store.") : tr("ما قدرنا نضيف، جرّب بعد شوي.", "Could not add, try again.");
+      }).catch(function(){ m.className = "status err"; m.textContent = tr("ما فيه اتصال، جرّب مرة ثانية.", "No connection, try again."); });
+  });
   // المندوب اقترح بديل لمنتج ناقص: الزبون يوافق أو يشيله
   function subsHTML(o){
     if (!o.subs || !o.subs.length || ["delivered", "canceled"].indexOf(o.status) > -1) return "";
@@ -4984,7 +5005,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var AT = S.appSoon && S.appSoon.at ? Date.parse(S.appSoon.at) : 0;
     if (AT && AT > Date.now() && !direct) {
       var tryOpen = function(){
-        if (mode !== "store" || $("appSoonBox")) return;
+        if (mode !== "store" || screen !== "home" || $("appSoonBox")) return;
         if ($("introSheet") || document.querySelector(".sheet")) return setTimeout(tryOpen, 1500);
         var w = document.createElement("div");
         w.innerHTML = '<div class="sheet as-sheet" id="appSoonBox" role="dialog" aria-modal="true" aria-labelledby="asT"><div class="panel as-box">' +

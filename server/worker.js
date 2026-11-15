@@ -210,6 +210,35 @@ export default {
       return reply(200, out);
     }
 
+    // الزبون يضيف أغراض لطلبه بعد ما طلب (طلب المالك ١٥ نوفمبر ٢٠٢٦، الافتتاح التجريبي): رقم الطلب + نفس الجوال، نص حر (الوزن أو العدد)
+    // ينضاف لـ «طلب بالكتابة» في الطلب نفسه، والموظف يسعّره من «تعديل الطلب». قبل التوصيل بس، وينبّه الإدارة.
+    if (path === "/order-add") {
+      if (!env.DB) return reply(404, { ok: false, code: "no_tracking" });
+      const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000, phone = normPhone(body.phone);
+      const add = String(body.text || "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "").trim().slice(0, 600);
+      if (!(n > 0) || !phone || !add) return reply(400, { ok: false, code: "bad_request" });
+      if (await rateHit(env, "oa:" + ip, 12, 600)) return reply(429, { ok: false, code: "slow_down" });
+      await ensureSchema(env);
+      const row = await env.DB.prepare("SELECT status, data FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
+      if (!row) return reply(404, { ok: false, code: "not_found" });
+      if (!["new", "accepted", "onway"].includes(row.status)) return reply(409, { ok: false, code: "closed", status: row.status });
+      const rec = safeJson(row.data), was = String(rec.free || "");
+      const free = (was ? was + "\n➕ " : "") + add;
+      if (free.length > 1800) return reply(409, { ok: false, code: "too_long" });
+      await env.DB.batch([
+        env.DB.prepare("UPDATE orders SET data = json_set(data, '$.free', ?), updated = ? WHERE no = ?").bind(free, Date.now(), n),
+        logStmt(env, "الزبون", "order_add", "#" + (1000 + n), { add: add.slice(0, 200) }),
+      ]);
+      later((async () => {
+        const title = "➕ الزبون أضاف لطلبه #" + (1000 + n);
+        await notifyRole(env, "admin", null, { title, body: add.slice(0, 140), url: "./", tag: "add" + n }).catch(() => {});
+        await notifyRole(env, "driver", null, { title, body: add.slice(0, 140), url: "./#driver", tag: "add" + n }).catch(() => {});
+        const chat = env.TELEGRAM_BOT_TOKEN && env.LOCKS ? await env.LOCKS.get("tg_chat") : null;
+        if (chat) await tgSend(env, chat, "➕ <b>" + esc(title) + "</b>\n" + esc(add)).catch(() => {});
+      })());
+      return reply(200, { ok: true, free });
+    }
+
     // الزبون يلغي طلبه (رقم الطلب + نفس الجوال). السماح حسب إعداد المحل: قبل التجهيز (الافتراضي)، قبل ما يطلع المندوب، أو ما يلغي.
     if (path === "/cancel") {
       if (!env.DB) return reply(404, { ok: false, code: "no_tracking" });
