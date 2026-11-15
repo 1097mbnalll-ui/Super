@@ -1146,7 +1146,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 @media (prefers-reduced-motion:no-preference){.kb-p.ready{animation:kbFloat 5s ease-in-out infinite}}
 @keyframes kbFloat{50%{translate:0 -4px}}
 body.is-embed .embed.page{padding:12px 0 90px}body.is-embed.scr:not([data-screen=checkout]):not([data-screen=sent]) [data-nav="back"]{visibility:hidden}body.is-embed.scr{padding-bottom:90px!important}body.is-embed .embed.page .kq-grid{display:grid}
-body.is-embed.scr .kq-chips{position:static!important;background:transparent!important}body.is-embed{background:transparent!important;padding:0!important;margin:0}body.is-embed .embed{padding:0 0 4px}body.is-embed .embed .wrap{padding-left:16px;padding-right:16px}body.is-embed #splash{display:none}
+body.is-embed:not(.scr) .kqsky:not(.ktop) .kqsky-bg::before{content:"";position:absolute;left:0;right:0;top:0;height:90px;background:linear-gradient(var(--appbrand,#2B8AD8),transparent);z-index:0}body.is-embed.scr .kq-chips{position:static!important;background:transparent!important}body.is-embed{background:transparent!important;padding:0!important;margin:0}body.is-embed .embed{padding:0 0 4px}body.is-embed .embed .wrap{padding-left:16px;padding-right:16px}body.is-embed #splash{display:none}
 /* 0 hero (نمط المتاجر الكبيرة: لون قوي، رقم الخصم كبير، المنتجات على صحن) */
 .kb.s-hero{background:linear-gradient(135deg,var(--bc,#0B7A5A) 0%,color-mix(in srgb,var(--bc,#0B7A5A) 72%,#000) 100%);color:#fff}
 .kb.s-hero .kh-blob{position:absolute;width:70%;aspect-ratio:1;inset-inline-end:-18%;top:-38%;border-radius:50%;background:rgba(255,255,255,.10);z-index:0}
@@ -3382,7 +3382,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var noNav = screen === "product" || screen === "checkout" || screen === "sent" || screen === "cart" || screen === "addr";
     document.body.style.paddingBottom = noNav ? "0" : ""; document.body.setAttribute("data-screen", screen);
     app.innerHTML = h + (noNav || EMBED ? "" : navBar());
-    if (EMBED) { document.body.classList.add("is-embed"); if (EMBED_SCREEN) document.body.classList.add("scr"); setTimeout(embedHeight, 0); }
+    if (EMBED) { document.body.classList.add("is-embed"); if (EMBED_SCREEN) document.body.classList.add("scr"); if (S.app && /^#[0-9a-f]{6}$/i.test(S.app.brand || "")) document.body.style.setProperty("--appbrand", S.app.brand); setTimeout(embedHeight, 0); }
     if (screen === "home" && mode === "store") { if (smPend) smartFill(); setTimeout(function(){ mineLoad(); }, 0); }
     if (screen === "home") { timers.push(setInterval(function(){ var el = $("cd"); if (el) el.textContent = countdown(); }, 1000)); kqBanners(); kqStories(); kqDeck(); kqPlaceholder(); applyCuts($("kqBans")); applyCuts($("kqSt")); applyCuts($("kqDk")); }
     if (screen === "search") { renderSearch(); var qi = $("q"); qi.focus(); qi.addEventListener("input", function(){ q = this.value.trim(); renderSearch(); }); qi.addEventListener("change", function(){ var v = this.value.trim(); if (v) { recent = [v].concat(recent.filter(function(r){ return r !== v; })).slice(0, 8); try { localStorage.setItem("ohod-recent", JSON.stringify(recent)); } catch(e){} } }); }
