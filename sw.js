@@ -1,6 +1,12 @@
-// متاجر أحد: إشعارات الطلبات بس. ما يحفظ نسخة من الموقع، عشان التحديثات توصل على طول.
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
+// متاجر أحد: إشعارات الطلبات، وصفحة «ما فيه نت» لو انقطع النت. ما يحفظ نسخة من الموقع، عشان التحديثات توصل على طول:
+// فتح الصفحة يروح للشبكة دايماً، وما نرجع للنسخة المحفوظة (offline.html) إلا لو الشبكة فشلت.
+const OFFLINE = "ohod-offline-v1";
+self.addEventListener("install", (e) => { e.waitUntil(caches.open(OFFLINE).then((c) => c.add(new Request("offline.html", { cache: "reload" }))).catch(() => {}).then(() => self.skipWaiting())); });
+self.addEventListener("fetch", (e) => {
+  if (e.request.mode !== "navigate") return;
+  e.respondWith(fetch(e.request).catch(() => caches.open(OFFLINE).then((c) => c.match("offline.html")).then((r) => r || Response.error())));
+});
+self.addEventListener("activate", (e) => e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.indexOf("ohod-offline-") === 0 && k !== OFFLINE).map((k) => caches.delete(k)))).then(() => self.clients.claim())));
 self.addEventListener("push", (e) => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : "" }; }

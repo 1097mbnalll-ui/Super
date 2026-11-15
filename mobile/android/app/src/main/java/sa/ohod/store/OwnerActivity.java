@@ -100,7 +100,7 @@ public class OwnerActivity extends AppCompatActivity {
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
-                if (req.isForMainFrame()) view.loadDataWithBaseURL("https://1097mbnalll-ui.github.io/", OFFLINE_HTML.replace("%ERR%", err.getErrorCode() + " " + err.getDescription()), "text/html", "utf-8", null);
+                if (req.isForMainFrame()) view.loadDataWithBaseURL("https://1097mbnalll-ui.github.io/", offlinePage(err.getErrorCode() + " " + err.getDescription()), "text/html", "utf-8", null);
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
@@ -133,6 +133,17 @@ public class OwnerActivity extends AppCompatActivity {
         });
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState); else web.loadUrl(SITE);
+    }
+
+    // صفحة «ما فيه نت» المشتركة (الشعار بالخوذة) من داخل التطبيق؛ لو ما لقيناها نستخدم النسخة البسيطة
+    private String offlinePage(String err) {
+        try (java.io.InputStream in = getAssets().open("public/offline.html")) {
+            java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream(); byte[] b = new byte[16384]; int n;
+            while ((n = in.read(b)) > 0) o.write(b, 0, n);
+            return o.toString("UTF-8").replace("__RETRY__", SITE).replace("__ERR__", err);
+        } catch (Exception e) {
+            return OFFLINE_HTML.replace("%ERR%", err);
+        }
     }
 
     @Override
