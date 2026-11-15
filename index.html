@@ -915,6 +915,36 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-sf{width:36px;height:36px;border-radius:50%;border:0;background:var(--tile);display:grid;place-items:center;cursor:pointer;color:var(--ink)}
 .kq-stop{display:flex;align-items:center;gap:10px;padding-top:14px}
 .kq-stop .kq-search{flex:1}
+.kqsky{position:relative;isolation:isolate}
+.kqsky-bg{position:absolute;left:0;right:0;top:0;height:300px;z-index:-1;overflow:hidden;-webkit-mask:linear-gradient(#000 55%,transparent);mask:linear-gradient(#000 55%,transparent)}
+.kqsky.s-morning .kqsky-bg{background:linear-gradient(180deg,#8FD0F5,#CDEBFA 55%,#F7E7C6)}
+.kqsky.s-noon .kqsky-bg{background:linear-gradient(180deg,#4FA9E8,#A7D8F5 60%,#EFE3CC)}
+.kqsky.s-asr .kqsky-bg{background:linear-gradient(180deg,#6BB6E8,#F2D49B 65%,#F3C58A)}
+.kqsky.s-maghrib .kqsky-bg{background:linear-gradient(180deg,#3B2A7A,#B6407E 45%,#F38B4C 75%,#FBC26B)}
+.kqsky.s-night .kqsky-bg{background:linear-gradient(180deg,#0F0B2E,#2E1A66 55%,#5B2A7E)}
+.kqsky-bg i{position:absolute;display:block}
+.kqsky-bg .st{inset:0;background-image:radial-gradient(1.6px 1.6px at 12% 18%,#fff 50%,transparent),radial-gradient(1px 1px at 30% 8%,#fff 50%,transparent),radial-gradient(1.3px 1.3px at 52% 26%,#fff 50%,transparent),radial-gradient(1px 1px at 68% 12%,#fff 50%,transparent),radial-gradient(1.5px 1.5px at 84% 30%,#fff 50%,transparent),radial-gradient(1px 1px at 92% 10%,#fff 50%,transparent),radial-gradient(1.2px 1.2px at 6% 40%,#fff 50%,transparent),radial-gradient(1px 1px at 44% 42%,#fff 50%,transparent);opacity:0;animation:skytw 3.5s ease-in-out infinite}
+.kqsky.s-night .st{opacity:1}.kqsky.s-maghrib .st{opacity:.45}
+@keyframes skytw{50%{filter:brightness(.55)}}
+.kqsky-bg .sun{left:28px;top:20px;width:46px;height:46px;border-radius:50%;background:#FDE047;box-shadow:0 0 0 10px rgba(253,224,71,.22),0 0 34px 6px rgba(251,191,36,.7);display:none;animation:skysun 4s ease-in-out infinite}
+.kqsky.s-morning .sun,.kqsky.s-noon .sun{display:block}.kqsky.s-asr .sun{display:block;top:46px;background:#FDBA4D}.kqsky.s-maghrib .sun{display:block;top:96px;background:#FB923C;box-shadow:0 0 40px 10px rgba(251,146,60,.7)}
+@keyframes skysun{50%{box-shadow:0 0 0 14px rgba(253,224,71,.16),0 0 44px 10px rgba(251,191,36,.6)}}
+.kqsky-bg .moon{left:34px;top:24px;width:34px;height:34px;border-radius:50%;box-shadow:-9px 6px 0 0 #FDE68A;transform:rotate(-20deg);display:none}
+.kqsky.s-night .moon{display:block}
+.kqsky-bg .cl{width:90px;height:26px;border-radius:30px;background:rgba(255,255,255,.75);display:none;animation:skycl 40s linear infinite}
+.kqsky-bg .cl:before{content:"";position:absolute;width:40px;height:40px;border-radius:50%;background:inherit;left:16px;top:-18px}
+.kqsky-bg .c1{top:34px;right:-100px}.kqsky-bg .c2{top:70px;right:-180px;transform:scale(.7);animation-duration:55s;animation-delay:-20s}
+.kqsky.s-morning .cl,.kqsky.s-noon .cl,.kqsky.s-asr .cl{display:block}
+@keyframes skycl{to{right:110%}}
+.kqsky-bg .city{position:absolute;left:0;right:0;top:64px;height:66px;width:100%}
+.kqsky-bg .city path{fill:rgba(255,255,255,.55)}.kqsky.s-asr .city path{fill:rgba(140,90,40,.28)}.kqsky.s-maghrib .city path{fill:#2A1442}.kqsky.s-night .city path{fill:#0B0820}
+.kqsky-bg .city .win{fill:transparent}.kqsky.s-night .city .win,.kqsky.s-maghrib .city .win{fill:#FDE68A;animation:skywin 6s steps(1) infinite}.kqsky .city .win:nth-child(3n){animation-delay:-2s}.kqsky .city .win:nth-child(4n){animation-delay:-4s}
+@keyframes skywin{70%{fill-opacity:.25}}
+.kqsky-hi{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding-top:12px;padding-bottom:4px;min-height:122px}
+.kqsky-hi b{font:900 19px/1.2 var(--display,Tajawal);color:#0F2A44}.kqsky-hi span{font-size:12.5px;font-weight:700;color:#24496B}
+.kqsky.s-maghrib .kqsky-hi b,.kqsky.s-night .kqsky-hi b{color:#FFF}.kqsky.s-maghrib .kqsky-hi span,.kqsky.s-night .kqsky-hi span{color:#F5D0FE}
+.kqsky .kq-sec-wrap{position:relative}
+@media (prefers-reduced-motion:reduce){.kqsky-bg *,.kqsky-bg .city .win{animation:none!important}}
 .kst{margin-top:6px}.kst-row{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:4px 2px 10px;margin:0 -16px;padding-inline:16px}.kst-row::-webkit-scrollbar{display:none}
 .kst-c{flex:0 0 auto;width:68px;display:grid;justify-items:center;gap:5px;background:none;border:0;padding:0;font:inherit;cursor:pointer;color:var(--ink)}
 .kst-c .ring{width:64px;height:64px;border-radius:50%;padding:3px;background:conic-gradient(#F59E0B,#E11D48,#7C3AED,#F59E0B);display:grid;place-items:center;transition:transform .2s}
@@ -2534,6 +2564,15 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   // البنر الفني: يرجع "" لو ما فيه تصميم أو البيانات ناقصة (فيرجع البنر القديم)
   function artBan(id, x, act, tag){ var L = ART[id]; if (!L || !L.length || S.banArtOff) return ""; var h = ""; try { h = L[artPick(id, L.length)](x); } catch(e){ h = ""; } if (!h) return "";
     tag = tag || "button"; return '<' + tag + (tag === "button" ? ' type="button"' : '') + ' class="kq-ban kb artb" data-bid="' + esc(id) + '" ' + act + '>' + h + '</' + tag + '>'; }
+  /* ---------- سما الرياض (١٥ نوفمبر ٢٠٢٦) ---------- */
+  var SKYLINE = '<svg class="city" viewBox="0 0 342 60" preserveAspectRatio="none"><path d="M0 60V42h18v-8h14v8h10V28h12v14h16V34h10v-6h8v6h12v8h14V20h10v22h18V38h12v-10h6l4-8 4 8h6v10h12v4h20V14h4l8-14 8 14h4v28h16V32h22v10h14V24h10v18h18v-6h16v6h14v18z"/>' +
+    [[94, 26], [102, 32], [140, 30], [200, 20], [204, 30], [276, 34], [300, 28], [318, 40], [60, 34], [24, 46]].map(function(w){ return '<rect class="win" x="' + w[0] + '" y="' + w[1] + '" width="3" height="3"/>'; }).join("") + '</svg>';
+  function skyNow(){
+    var f = (location.search.match(/[?&]sky=(\w+)/) || [])[1], h = (Date.now() / 36e5 + 3) % 24;
+    var k = f || (h >= 4 && h < 11 ? "morning" : h < 15 ? "noon" : h < 17.5 ? "asr" : h < 19 ? "maghrib" : "night");
+    return { k: k, t: { morning: tr("صباح الخير", "Good morning"), noon: tr("الظهر", "Noon"), asr: tr("العصر", "Afternoon"), maghrib: tr("المغرب", "Sunset"), night: tr("مساء الخير", "Good evening") }[k],
+      s: { morning: tr("فطورك ناقصه شي؟ نوصله لبابك", "Breakfast delivered to your door"), noon: tr("غداك يبيله مقاضي؟ احنا جاهزين", "Lunch groceries, ready"), asr: tr("وقت القهوة والحلا", "Coffee and sweets time"), maghrib: tr("جهّز عشاك قبل الزحمة", "Get dinner sorted early"), night: tr("السهرة بدت، وعروضها جاهزة", "Night snacks are on") }[k] };
+  }
   var FGB = "";
   function banners(){
     var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), bakery = catOf("bakery") || D.cats[0];
@@ -2789,6 +2828,11 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var layF = orderOf(S.layout, LAYOUT_DEF).filter(function(x){ return x.id === "featured"; })[0];
     FGB = layF && !layF.on && SEC.featured ? SEC.featured.replace(/^<div class="wrap kq-sec-wrap"[^>]*>/, "").replace(/<\/div>$/, "").replace("kq-ban featured", "kq-ban") : "";
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
+    // سما الرياض خلف ديمة والبنرات (store.skyHome): تتغير مع الوقت، وديمة والبنرات زي ما هي
+    if (S.skyHome && (SEC.featured || SEC.promos)) { var sk = skyNow();
+      SEC.promos = '<div class="kqsky s-' + sk.k + '"><div class="kqsky-bg" aria-hidden="true"><i class="st"></i><i class="sun"></i><i class="moon"></i><i class="cl c1"></i><i class="cl c2"></i>' + SKYLINE + '</div>' +
+        '<div class="wrap kqsky-hi"><b>' + sk.t + '</b><span>' + sk.s + '</span></div>' + SEC.featured + SEC.promos + '</div>';
+      SEC.featured = ""; }
     SEC.free = S.freeOver ? '<div class="wrap kq-sec-wrap"><button type="button" class="kq-free" data-chip="for"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("احصل على توصيلك المجاني!", "Get free delivery!") + ' <em>' + tr("مجاني", "Free") + '</em></b><span>' + tr("لطلباتك فوق ", "On orders over ") + rial(S.freeOver) + '</span></span>' + ic("fwd") + '</button></div>' : '';
     SEC.catgrid = '<div class="wrap"><div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-nav="cats">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="kq-cats krow">' + D.cats.filter(function(c){ return !catSoon(c); }).map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div></div>';
     SEC.offers = offers.length ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + offers.map(function(p){ return card(p); }).join("") + '</div></div>' : '';
