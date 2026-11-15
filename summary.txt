@@ -1,0 +1,6 @@
+✅ site-morning
+✅ site-maghrib
+❌ site-night
+   - بنر فاضي/مكسور: 23000ms offers kids=2 broken=0
+✅ app-head-night
+✅ app-head-morning
