@@ -1,4 +1,2 @@
-2 packets transmitted, 0 received, 100% packet loss, time 1029ms
-
-2 packets transmitted, 0 received, 100% packet loss, time 1005ms
-
+connect: Network is unreachable
+ping: unknown host 1097mbnalll-ui.github.io
