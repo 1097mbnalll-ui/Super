@@ -217,7 +217,7 @@ struct LiveScreen: View {
             if failed, let fallback { fallback }
             else if failed {
                 VStack(spacing: 10) {
-                    Image(systemName: "wifi.exclamationmark").font(.system(size: 34)).foregroundStyle(Theme.muted)
+                    Image("OfflineHardhat").resizable().scaledToFit().frame(maxWidth: 220).accessibilityHidden(true)
                     Text("ما قدرنا نفتح الصفحة. تأكد من النت وجرّب مرة ثانية.").font(.ui(size: 14)).foregroundStyle(Theme.muted).multilineTextAlignment(.center)
                     Button("جرّب مرة ثانية") { failed = false; url = nil }
                 }.padding(30)

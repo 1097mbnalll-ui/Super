@@ -132,7 +132,7 @@ def main(data_path, xlsx, dry=False):
         np = {'id': 'x' + code if good else _aid, 'name': name,
               'unit': UNIT.get(unit, 'حبة'), 'price': price, 'cat': cat, 'stock': qty > 0}
         if good: np['bc'] = code
-        if cat == 'misc' and sub: np['sub'] = sub
+        if sub: np['sub'] = sub   # misc:<فرعي> أو clean:disposable من classify.py
         qty_of[np['id']] = max(0, int(qty))
         ps.append(np); by_id[np['id']] = np; names.add(key(name)); rep['added'] += 1
         if good: by_bc[code] = np
