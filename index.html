@@ -1128,6 +1128,12 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 @keyframes aspin{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(-2deg) scale(1.06)}}@keyframes atick{from{transform:translate(-50%,-100%) rotate(0)}to{transform:translate(-50%,-100%) rotate(360deg)}}
 @keyframes asteam{0%,100%{opacity:.25;translate:0 6px}50%{opacity:.8;translate:0 -4px}}@keyframes atw{0%,100%{opacity:.25}50%{opacity:1}}
 @media (prefers-reduced-motion:reduce){.artb *{animation:none!important}}
+.as-sheet{align-items:center!important}.as-box{max-width:360px;margin:0 auto;text-align:center;display:grid;gap:10px;justify-items:center;padding:26px 20px 20px!important;border-radius:28px!important}
+.as-logo{width:58px;height:58px;border-radius:18px;background:#111;display:grid;place-items:center}.as-logo svg{width:30px;height:30px;fill:#fff}
+.as-box h2{margin:4px 0 0;font-size:21px}.as-sub{margin:0;color:var(--muted,#596171);font-size:14px}
+.as-cd{display:flex;gap:8px;justify-content:center;margin:6px 0}.as-cd span{min-width:62px;padding:10px 4px;border-radius:16px;background:#111;color:#fff;display:grid;gap:2px}
+.as-cd b{font:800 26px/1 var(--display,inherit);font-variant-numeric:tabular-nums}.as-cd i{font-style:normal;font-size:11px;opacity:.75}
+.as-note{margin:0 0 6px;font-size:13.5px;color:var(--muted,#596171)}.as-box .btn{width:100%;justify-content:center}
 .as-bar{position:fixed;left:50%;bottom:calc(98px + env(safe-area-inset-bottom,0px));z-index:9000;display:flex;align-items:center;gap:9px;max-width:calc(100% - 32px);padding:10px 14px 10px 12px;border:0;border-radius:999px;background:#111;color:#fff;font:600 13.5px inherit;box-shadow:0 10px 28px rgba(0,0,0,.25);cursor:pointer;opacity:0;transform:translate(-50%,16px);transition:opacity .3s,transform .35s cubic-bezier(.2,1.3,.3,1)}
 .as-bar.on{opacity:1;transform:translate(-50%,0)}.as-bar svg{width:17px;height:17px;fill:#fff;flex:none;margin-top:-2px}.as-bar span{white-space:nowrap}.as-bar b{font-weight:800}.as-bar i{font-style:normal;opacity:.55;font-size:11px;margin-inline-start:4px}
 .sarw{display:inline}.skel{background:linear-gradient(90deg,#F1F3F5 25%,#E7EBEF 50%,#F1F3F5 75%);background-size:200% 100%;animation:skel 1.2s linear infinite}@keyframes skel{to{background-position:-200% 0}}svg.sar{width:.8em;height:.8em;fill:currentColor;vertical-align:-.08em;margin:0 .12em;display:inline-block;flex:none}
@@ -4916,6 +4922,37 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   // «التطبيق قريباً» (طلب المالك ١٣ نوفمبر ٢٠٢٦: بسيط جداً، يطلع كل ما يفتح الموقع، بشعار آبل، ومو إعلان رسمي): شريط صغير تحت، يختفي بعد ٨ ثواني أو بالضغط
   (function(){
     if (EMBED || /[?&]app=/.test(location.search) || location.hash === "#driver" || (S.appSoon && S.appSoon.off)) return;
+    // مربع العدّاد (طلب المالك ١٥ نوفمبر ٢٠٢٦: «مربع أول ما يفتح الموقع فيه عداد ورسالة نزول التطبيق بالآيفون»): store.appSoon.at وقت النزول
+    var waitData = function(fn){ if (dataReady || !(GH || LIVEDATA || NATIVE)) fn(); else setTimeout(function(){ waitData(fn); }, 400); };
+    waitData(function(){
+    if (S.appSoon && S.appSoon.off) return;
+    var AT = S.appSoon && S.appSoon.at ? Date.parse(S.appSoon.at) : 0;
+    if (AT && AT > Date.now() && !/[?&](?:t|go)=/.test(location.search)) {
+      var tryOpen = function(){
+        if (mode !== "store" || $("appSoonBox")) return;
+        if ($("introSheet") || document.querySelector(".sheet")) return setTimeout(tryOpen, 1500);
+        var w = document.createElement("div");
+        w.innerHTML = '<div class="sheet as-sheet" id="appSoonBox" role="dialog" aria-modal="true" aria-labelledby="asT"><div class="panel as-box">' +
+          '<span class="as-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16.37 12.77c-.03-2.69 2.2-3.98 2.3-4.04-1.25-1.83-3.2-2.08-3.9-2.11-1.66-.17-3.24.98-4.08.98-.84 0-2.14-.96-3.52-.93-1.81.03-3.48 1.05-4.41 2.67-1.88 3.26-.48 8.09 1.35 10.73.89 1.29 1.96 2.75 3.36 2.7 1.35-.05 1.86-.87 3.49-.87 1.63 0 2.09.87 3.51.84 1.45-.02 2.37-1.32 3.26-2.62 1.03-1.5 1.45-2.95 1.47-3.02-.03-.01-2.82-1.09-2.85-4.33zM13.69 4.86c.74-.9 1.24-2.15 1.11-3.39-1.07.04-2.36.71-3.13 1.61-.69.79-1.29 2.06-1.13 3.27 1.19.09 2.41-.6 3.15-1.49z"/></svg></span>' +
+          '<h2 id="asT">' + tr("تطبيق متاجر أحد للآيفون", "Matajer Ohod iPhone app") + '</h2><p class="as-sub">' + tr("ينزل في متجر آبل بعد", "Coming to the App Store in") + '</p>' +
+          '<div class="as-cd" id="asCd"></div>' +
+          '<p class="as-note">' + tr("أسرع وأسهل، وتوصلك العروض أول بأول", "Faster, easier, and offers first") + '</p>' +
+          '<button class="btn btn-ink" type="button" id="asOk">' + tr("تمام", "OK") + '</button></div></div>';
+        document.body.appendChild(w.firstChild);
+        var box = $("appSoonBox"), cd = $("asCd");
+        var lab = [tr("يوم", "days"), tr("ساعة", "hours"), tr("دقيقة", "min"), tr("ثانية", "sec")];
+        var paint = function(){
+          var l = Math.max(0, AT - Date.now()), v = [Math.floor(l / 864e5), Math.floor(l / 36e5) % 24, Math.floor(l / 6e4) % 60, Math.floor(l / 1e3) % 60];
+          cd.innerHTML = v.map(function(x, i){ return '<span><b>' + (x < 10 ? "0" : "") + x + '</b><i>' + lab[i] + '</i></span>'; }).join("");
+        };
+        paint(); var tm = setInterval(paint, 1000);
+        var close = function(){ clearInterval(tm); if (box) box.remove(); };
+        $("asOk").addEventListener("click", close);
+        box.addEventListener("click", function(e){ if (e.target === box) close(); });
+      };
+      setTimeout(tryOpen, 1200);
+      return;
+    }
     setTimeout(function(){
       if (mode !== "store" || $("appSoon") || $("introSheet")) return;
       var w = document.createElement("button"); w.type = "button"; w.id = "appSoon"; w.className = "as-bar"; w.setAttribute("aria-label", "تطبيق متاجر أحد للآيفون قريباً");
@@ -4924,6 +4961,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       var close = function(){ w.classList.remove("on"); setTimeout(function(){ w.remove(); }, 350); };
       w.addEventListener("click", close); setTimeout(close, 8000);
     }, 2400);
+    });
   })();
   // أول زيارة (طلب المالك ١٤ نوفمبر ٢٠٢٦): تعريف قصير بـ٣ بطاقات، مرة وحدة بس ويتخطاه بضغطة. نفس بطاقات تطبيق الآيفون.
   // ما يطلع داخل التطبيق (embed) ولا مع الروابط المباشرة (#… أو ?go=) ولا للزبون اللي طلب أو زار قبل. سؤال الإشعارات ينتظر لين يقفل
