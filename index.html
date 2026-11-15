@@ -1574,6 +1574,9 @@ body[data-screen="driver"]{background:#F3F4F6}
 .kq-card{grid-template-columns:minmax(0,1fr)}
 .kq-card .kq-save{white-space:normal;max-width:100%;justify-self:start;line-height:1.3;border-radius:14px;padding:3px 9px;text-align:start}
 .kq-card .kq-price{min-width:0}
+/* زر المفضلة (القلب) فوق يسار بالإنجليزي، وشارة الخصم كانت بنفس الزاوية: بالإنجليزي الشارة تروح يمين (بالعربي ما تغيّر شي) */
+[dir="ltr"] .kq-card .kq-badge{left:auto;right:8px}
+html.android[dir="ltr"] .kq-card .kq-badge{left:auto;right:6px}
 .kq-nav{height:66px;border-radius:33px;background:rgba(255,255,255,.88);grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:0 6px;box-shadow:0 10px 30px rgba(23,33,43,.16)}
 .kq-nav button{display:grid;justify-items:center;gap:2px;color:var(--ink);font-size:10.5px;font-weight:600;padding:6px 0;border-radius:24px;position:relative}
 .kq-nav button .ico{position:relative;display:grid}
