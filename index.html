@@ -931,9 +931,9 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kqsky-hi2 .moon{left:30px;top:12px;width:32px;height:32px;border-radius:50%;box-shadow:-9px 6px 0 0 #FDE68A;transform:rotate(-20deg);display:none}.kqsky.top.s-night .moon{display:block}
 .kqsky-hi2 .cl{width:80px;height:22px;border-radius:30px;background:rgba(255,255,255,.75);display:none;animation:skycl 40s linear infinite}
 .kqsky-hi2 .cl:before{content:"";position:absolute;width:34px;height:34px;border-radius:50%;background:inherit;left:14px;top:-15px}
-.kqsky-hi2 .c1{top:22px;right:-100px}.kqsky-hi2 .c2{top:46px;right:-180px;transform:scale(.7);animation-duration:55s;animation-delay:-20s}
+.kqsky-hi2 .c1{top:6px;right:-100px}.kqsky-hi2 .c2{top:58px;right:-180px;transform:scale(.7);animation-duration:55s;animation-delay:-20s}
 .kqsky.top.s-morning .cl,.kqsky.top.s-noon .cl,.kqsky.top.s-asr .cl{display:block}
-.kqsky-hi2 .kqsky-hi{position:relative;min-height:0;padding-top:4px}
+.kqsky-hi2 .kqsky-hi{position:relative;z-index:3;min-height:0;padding-top:4px}.kqsky-hi2 .cl,.kqsky-hi2 .sun,.kqsky-hi2 .moon,.kqsky-hi2 .city{z-index:0}.kqsky-hi2 .cl{opacity:.85}
 @media (prefers-reduced-motion:reduce){.kqsky-st,.kqsky-hi2 *{animation:none!important}}
 
 .kqsky-bg{position:absolute;left:0;right:0;top:0;height:300px;z-index:-1;overflow:hidden;-webkit-mask:linear-gradient(#000 55%,transparent);mask:linear-gradient(#000 55%,transparent)}
@@ -984,7 +984,8 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .ktk-i{background:none;border:0;color:#FDE68A;font:800 13px Tajawal,sans-serif;padding:0 4px;cursor:pointer}.ktk-d{color:#DC2626;font-size:8px;padding:0 8px}
 @keyframes ktk{from{transform:translateX(0)}to{transform:translateX(50%)}}[dir=ltr] .ktk-t{animation-name:ktkl}@keyframes ktkl{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.ktk-t,.ktk-b{animation:none}.kdk-c{transition:none}}
-.kq-bans{display:grid;grid-auto-flow:column;grid-auto-columns:100%;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin-top:6px;border-radius:24px}
+.kq-bans{overflow:hidden;margin-top:6px;border-radius:24px;touch-action:pan-y;-webkit-user-select:none;user-select:none}
+.kq-track{display:grid}.kq-track>*{grid-area:1/1;min-width:0;opacity:0;visibility:hidden;transition:opacity .45s ease,visibility 0s linear .45s,transform .25s ease}.kq-track>.on{opacity:1;visibility:visible;transition:opacity .45s ease,visibility 0s linear 0s,transform .25s ease}
 .kq-bans::-webkit-scrollbar{display:none}
 .kq-ban{scroll-snap-align:start;position:relative;overflow:hidden;border-radius:24px;min-height:var(--banh,200px);border:0;text-align:start;font:inherit;cursor:pointer;padding:18px 18px 16px;color:#fff;display:flex}
 .kq-ban .t{position:relative;z-index:2;display:grid;gap:5px;align-content:start;max-width:60%}
@@ -1630,7 +1631,7 @@ body[data-screen="cart"] .empty b{color:#9AA3AC;font-weight:600;font-size:16px}
   .kq-head{border-radius:0 0 32px 32px;max-width:1180px;margin:0 auto}
   .kq-head .wrap{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);align-items:center}
   .kq-head .trackbar{grid-column:1/-1}
-  .kq-bans{grid-auto-columns:calc((100% - 10px) / 2)}
+
   .kq-grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:24px 16px}
   .kq-cats{grid-template-columns:repeat(8,minmax(0,1fr))}
   .kq-nav{grid-template-columns:none}
@@ -2535,7 +2536,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       function(x){ return '<div class="abg" style="background:#DBEAFE"></div>' + x.ids.slice(0, 4).map(function(id, i){ return aimg(id, ['left:16px;top:20px;width:62px;transform:rotate(-12deg)', 'left:82px;top:12px;width:72px;transform:rotate(10deg)', 'left:36px;top:94px;width:84px;transform:rotate(6deg)', 'left:124px;top:90px;width:60px;transform:rotate(-14deg)'][i] + ';filter:drop-shadow(3px 3px 0 #fff) drop-shadow(-3px -3px 0 #fff) drop-shadow(0 6px 8px rgba(0,0,0,.25))'); }).join('') +
         aBox('right:18px;top:20px;color:#1E3A8A', aT(num(x.count) + tr(' منتج عليه خصم', ' items on sale')) + aH(tr('العروض<br>لزقت!', 'Deals<br>stick!'), 38, 'line-height:1')) + aBtn(tr('شوفها', 'See them'), 'right:18px;bottom:14px;background:#1E3A8A;color:#fff'); }
 ,
-      function(x){ var dn = paperDay(); return '<div class="abg" style="background:#EFE6D4"></div><img class="apman" src="ban/paper-man.webp" alt="" loading="lazy" decoding="async"><div class="apman-sh"></div>' +
+      function(x){ var dn = paperDay(); return '<div class="abg" style="background:#EFE6D4"></div><img class="apman" src="ban/paper-man.webp" alt="" decoding="async" fetchpriority="high"><div class="apman-sh"></div>' +
         aBox('right:16px;top:14px;color:#1C1917;width:42%;z-index:2', aT('📰 ' + tr('جريدة ', 'The ') + esc(sv('name')) + ' · ' + tr('العدد ', 'No. ') + num(dn.no), 'color:#7C5A2E;font-size:11.5px;white-space:nowrap') +
           aH(tr('خصم حتى', 'Up to') + '<br><span style="color:#C81E1E;font-size:1.35em">' + num(x.pct) + '٪</span>', 28, 'line-height:1;margin-top:4px') +
           aT(tr('على ', 'on ') + num(x.count) + tr(' منتج', ' items'), 'font-weight:700;color:#57534E;margin-top:4px')) +
@@ -2614,6 +2615,12 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     return { k: k, t: { morning: tr("صباح الخير", "Good morning"), noon: tr("الظهر", "Noon"), asr: tr("العصر", "Afternoon"), maghrib: tr("المغرب", "Sunset"), night: tr("مساء الخير", "Good evening") }[k],
       s: { morning: tr("فطورك ناقصه شي؟ نوصله لبابك", "Breakfast delivered to your door"), noon: tr("غداك يبيله مقاضي؟ احنا جاهزين", "Lunch groceries, ready"), asr: tr("وقت القهوة والحلا", "Coffee and sweets time"), maghrib: tr("جهّز عشاك قبل الزحمة", "Get dinner sorted early"), night: tr("السهرة بدت، وعروضها جاهزة", "Night snacks are on") }[k] };
   }
+  // البنرات المتحركة (١٥ نوفمبر ٢٠٢٦، إصلاح من الجذور): بدون تمرير المتصفح وscroll-snap (كان في آيفون يوقف بين بنرين أو يطلع فاضي).
+  // الحركة بـ transform نتحكم فيها كلها: البنر دايماً يوقف كامل في مكانه، والسحب بالإصبع يحرّك بنر واحد بالضبط.
+  function carouselHTML(list){
+    return '<div class="kq-bans" id="kqBans" role="region" aria-roledescription="carousel"><div class="kq-track">' + list.join("") + '</div></div>' +
+      '<div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
+  }
   var FGB = "";
   function banners(){
     var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), bakery = catOf("bakery") || D.cats[0];
@@ -2674,8 +2681,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var tk = S.banTicker ? banTicker(ids, list) : "";
     if (S.banMode === "stories") return tk + banStories(ids, list);
     if (S.banMode === "deck") return tk + banDeck(ids, list);
-    if (tk) return tk + '<div class="kq-bans" id="kqBans">' + list.join("") + '</div><div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
-    return '<div class="kq-bans" id="kqBans">' + list.join("") + '</div><div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
+    if (tk) return tk + carouselHTML(list);
+    return carouselHTML(list);
   }
   /* ---------- الرئيسية الذكية (١٤ نوفمبر ٢٠٢٦): رئيسية لكل جهاز بقواعد بسيطة ببلاش (بدون ذكاء اصطناعي مدفوع) ----------
      سجل الجهاز من الخادم (/mine {dev}: أرقام المنتجات والأعداد بس) + السجل المحلي (ohod-hist)، فيشتغل في الموقع وفي رئيسية التطبيق الحية (dev=).
@@ -3500,13 +3507,32 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (n < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     timers.push(setInterval(function(){ if (!document.body.contains(root) || paused || document.hidden) return; next(1); }, 5000));
   }
+  try { history.scrollRestoration = "manual"; } catch(e){}
   function kqBanners(){
+    // كل البنرات فوق بعض في نفس المكان (داخل الشاشة دايماً)، والظاهر واحد بتلاشي ناعم.
+    // ليش: آيفون (Safari وWKWebView) ما يرسم البنر اللي كان خارج الشاشة لما يدخل بالتمرير أو transform، فيطلع فاضي أو طرفه بس.
     var el = $("kqBans"), dots = $("kqDots"); if (!el || !dots) return;
-    var n = dots.children.length, i = 0;
-    el.addEventListener("scroll", function(){ var k = Math.round(Math.abs(el.scrollLeft) / (el.firstChild.offsetWidth + 10)); i = k; for (var j = 0; j < n; j++) dots.children[j].className = j === k ? "on" : ""; }, { passive: true });
-    if (n < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    timers.push(setInterval(function(){ if (!document.body.contains(el)) return; i = (i + 1) % n; el.scrollTo({ left: (LANG === "en" ? 1 : -1) * i * (el.firstChild.offsetWidth + 10), behavior: "smooth" }); }, 5000));
+    var track = el.firstElementChild; if (!track || !track.classList.contains("kq-track")) return;
+    var sl = track.children, n = sl.length, i = 0, dir = LANG === "en" ? -1 : 1, x0 = null, y0 = 0, dx = 0, drag = false, held = false, last = 0;
+    function place(k){ i = (k + n) % n;
+      for (var j = 0; j < n; j++) { sl[j].classList.toggle("on", j === i); sl[j].style.transform = ""; sl[j].setAttribute("aria-hidden", j === i ? "false" : "true"); if (j !== i) sl[j].setAttribute("tabindex", "-1"); else sl[j].removeAttribute("tabindex"); }
+      for (var d = 0; d < dots.children.length; d++) dots.children[d].className = d === i ? "on" : ""; }
+    place(0);
+    if (n < 2) return;
+    el.addEventListener("touchstart", function(e){ if (e.touches.length !== 1) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; drag = false; held = true; }, { passive: true });
+    el.addEventListener("touchmove", function(e){ if (x0 == null) return; var mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+      if (!drag && Math.abs(mx) > 8 && Math.abs(mx) > Math.abs(my) * 1.2) drag = true;
+      if (drag) { dx = mx; sl[i].style.transform = "translate3d(" + Math.round(dx * 0.35) + "px,0,0)"; } }, { passive: true });
+    function end(){ if (x0 == null) return; var w = el.clientWidth; x0 = null; held = false; last = Date.now();
+      if (drag && Math.abs(dx) > Math.min(50, w * 0.15)) place(i + (dx * dir > 0 ? 1 : -1)); else sl[i].style.transform = ""; drag = false; setTimeout(function(){ dx = 0; }, 50); }
+    el.addEventListener("touchend", end, { passive: true }); el.addEventListener("touchcancel", end, { passive: true });
+    el.addEventListener("click", function(e){ if (Math.abs(dx) > 8) { e.preventDefault(); e.stopPropagation(); } }, true);
+    Array.prototype.forEach.call(dots.children, function(d, k){ d.addEventListener("click", function(){ last = Date.now(); place(k); }); });
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    timers.push(setInterval(function(){ if (!document.body.contains(el) || held || document.hidden || Date.now() - last < 6000) return; place(i + 1); }, 5000));
   }
+
+
   function kqPlaceholder(){
     var el = $("ph"); if (!el) return;
     var list = LANG === "en" ? ["Your coffee needs something sweet? Search…", "Need bread, milk or eggs?", "Search for this week's offers…"] : ["قهوتك ناقصها حلا؟ ابحث عن الشوكولاتة…", "جهز جمعتك.. ابحث عن المشروبات…", "خبز حار؟ حليب؟ بيض؟ ابحث هنا…"];
