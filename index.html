@@ -915,6 +915,25 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-sf{width:36px;height:36px;border-radius:50%;border:0;background:var(--tile);display:grid;place-items:center;cursor:pointer;color:var(--ink)}
 .kq-stop{display:flex;align-items:center;gap:10px;padding-top:14px}
 .kq-stop .kq-search{flex:1}
+.kst{margin-top:6px}.kst-row{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:4px 2px 10px;margin:0 -16px;padding-inline:16px}.kst-row::-webkit-scrollbar{display:none}
+.kst-c{flex:0 0 auto;width:68px;display:grid;justify-items:center;gap:5px;background:none;border:0;padding:0;font:inherit;cursor:pointer;color:var(--ink)}
+.kst-c .ring{width:64px;height:64px;border-radius:50%;padding:3px;background:conic-gradient(#F59E0B,#E11D48,#7C3AED,#F59E0B);display:grid;place-items:center;transition:transform .2s}
+.kst-c.seen .ring{background:#D5DBE1}.kst-c.on .ring{transform:scale(1.08)}
+.kst-c .in{width:100%;height:100%;border-radius:50%;background:#fff;border:2.5px solid #fff;overflow:hidden;display:grid;place-items:center}
+.kst-c .in img{width:100%;height:100%;object-fit:cover}.kst-c .in em{font-style:normal;font-size:26px}
+.kst-c b{font-size:11.5px;font-weight:700;line-height:1.2;max-width:70px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.kst-c.on b{color:var(--teal-deep,#0F766E)}
+.kst-bars{display:flex;gap:4px;margin:0 2px 8px}.kst-bars i{flex:1;height:3.5px;border-radius:9px;background:#E5E7EB;overflow:hidden}.kst-bars b{display:block;height:100%;width:0;background:var(--ink);border-radius:9px}
+.kst-view{position:relative}.kst-s>.kq-ban,.kdk-c>.kq-ban{width:100%}.kst-s{display:none}.kst-s.on{display:block;animation:kstin .35s ease}@keyframes kstin{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
+.kdk{position:relative;height:calc(max(176px,var(--banh,176px)) + 22px);margin-top:6px}
+.kdk-c{position:absolute;left:0;right:0;top:0;transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .45s;transform-origin:50% 100%}
+.kdk-c.k0{z-index:4}.kdk-c.k1{z-index:3;transform:translateY(11px) scale(.94);opacity:.92}.kdk-c.k2{z-index:2;transform:translateY(22px) scale(.88);opacity:.7}.kdk-c.k3{z-index:1;transform:translateY(22px) scale(.88);opacity:0}
+.kdk-c.k1,.kdk-c.k2,.kdk-c.k3{pointer-events:none}.kdk-c.out{transform:translateX(var(--ox,-115%)) rotate(var(--or,-9deg));opacity:0;z-index:5}
+.ktk{display:flex;align-items:center;gap:8px;background:#1C1917;color:#fff;border-radius:14px;padding:7px 8px;margin-top:8px;overflow:hidden}
+.ktk-b{flex:0 0 auto;background:#DC2626;color:#fff;font:800 12px Tajawal,sans-serif;border-radius:8px;padding:3px 9px;animation:ktkb 1.4s ease-in-out infinite}@keyframes ktkb{50%{opacity:.6}}
+.ktk-m{flex:1;overflow:hidden;mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}.ktk-t{display:inline-flex;align-items:center;white-space:nowrap;animation:ktk 30s linear infinite}
+.ktk-i{background:none;border:0;color:#FDE68A;font:800 13px Tajawal,sans-serif;padding:0 4px;cursor:pointer}.ktk-d{color:#DC2626;font-size:8px;padding:0 8px}
+@keyframes ktk{from{transform:translateX(0)}to{transform:translateX(50%)}}[dir=ltr] .ktk-t{animation-name:ktkl}@keyframes ktkl{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ktk-t,.ktk-b{animation:none}.kdk-c{transition:none}}
 .kq-bans{display:grid;grid-auto-flow:column;grid-auto-columns:100%;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin-top:6px;border-radius:24px}
 .kq-bans::-webkit-scrollbar{display:none}
 .kq-ban{scroll-snap-align:start;position:relative;overflow:hidden;border-radius:24px;min-height:var(--banh,200px);border:0;text-align:start;font:inherit;cursor:pointer;padding:18px 18px 16px;color:#fff;display:flex}
@@ -2567,9 +2586,15 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var vc = D.cats.filter(function(c){ return catSoon(c) && c.id !== "print"; }).map(function(c){ return { c: c, ids: D.products.filter(function(p){ return p.cat === c.id && hasPic(p.img); }).map(function(p){ return p.id; }) }; }).filter(function(v){ return v.ids.length >= 3; })[0];
     if (vc) B.veg = artBan("veg", { name: nm(vc.c), ids: vc.ids.slice(0, 6) }, 'data-opencat="' + vc.c.id + '"');
     if (S.welcome && S.welcome.code) B.welcome = artBan("welcome", { code: S.welcome.code, amount: Number(S.welcome.amount) || 0, min: Number(S.welcome.min) || 0 }, 'data-nav="cart"');
-    var list = orderOf(S.promos, promoDefs()).filter(function(x){ return x.on && B[x.id]; }).map(function(x){ return B[x.id]; });
-    if (FGB) list.unshift(FGB);
+    var ord = orderOf(S.promos, promoDefs()).filter(function(x){ return x.on && B[x.id]; });
+    var ids = ord.map(function(x){ return x.id; }), list = ord.map(function(x){ return B[x.id]; });
+    if (FGB) { list.unshift(FGB); ids.unshift("featured"); }
     if (!list.length) return "";
+    // أنظمة العرض (store.banMode): carousel (الافتراضي) / stories (قصص العروض) / deck (رزمة كروت)، و store.banTicker شريط «عاجل»
+    var tk = S.banTicker ? banTicker(ids, list) : "";
+    if (S.banMode === "stories") return tk + banStories(ids, list);
+    if (S.banMode === "deck") return tk + banDeck(ids, list);
+    if (tk) return tk + '<div class="kq-bans" id="kqBans">' + list.join("") + '</div><div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
     return '<div class="kq-bans" id="kqBans">' + list.join("") + '</div><div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
   }
   /* ---------- الرئيسية الذكية (١٤ نوفمبر ٢٠٢٦): رئيسية لكل جهاز بقواعد بسيطة ببلاش (بدون ذكاء اصطناعي مدفوع) ----------
@@ -3253,7 +3278,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     app.innerHTML = h + (noNav || EMBED ? "" : navBar());
     if (EMBED) { document.body.classList.add("is-embed"); if (EMBED_SCREEN) document.body.classList.add("scr"); setTimeout(embedHeight, 0); }
     if (screen === "home" && mode === "store") { if (smPend) smartFill(); setTimeout(function(){ mineLoad(); }, 0); }
-    if (screen === "home") { timers.push(setInterval(function(){ var el = $("cd"); if (el) el.textContent = countdown(); }, 1000)); kqBanners(); kqPlaceholder(); applyCuts($("kqBans")); }
+    if (screen === "home") { timers.push(setInterval(function(){ var el = $("cd"); if (el) el.textContent = countdown(); }, 1000)); kqBanners(); kqStories(); kqDeck(); kqPlaceholder(); applyCuts($("kqBans")); applyCuts($("kqSt")); applyCuts($("kqDk")); }
     if (screen === "search") { renderSearch(); var qi = $("q"); qi.focus(); qi.addEventListener("input", function(){ q = this.value.trim(); renderSearch(); }); qi.addEventListener("change", function(){ var v = this.value.trim(); if (v) { recent = [v].concat(recent.filter(function(r){ return r !== v; })).slice(0, 8); try { localStorage.setItem("ohod-recent", JSON.stringify(recent)); } catch(e){} } }); }
     if (screen === "checkout") initCheckout();
     if (screen === "addr") initAddrEdit();
@@ -3327,6 +3352,58 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       else if (t.dataset.opencat) toApp({ t: "category", id: t.dataset.opencat });
       else if (t.dataset.chip) toApp({ t: "chip", id: t.dataset.chip });
       else toApp({ t: "nav", id: t.dataset.nav }); }, true); }
+  /* ---------- أنظمة عرض البنرات (١٥ نوفمبر ٢٠٢٦) ---------- */
+  var BANLAB = { offers: ["الجريدة", "📰"], free: ["توصيل مجاني", "🛵"], catdeal: ["عروض القسم", "🏷️"], veg: ["الخضار", "🥬"], daily: ["عرض اليوم", "⏰"], top: ["أقوى خصم", "🔥"], multi: ["عرض كمية", "📦"], night: ["السهرة", "🌙"], welcome: ["هديتك", "🎁"], deals: ["٠٫٩٥", "🔒"], bakery: ["المخبز", "🥖"], featured: ["العرض المميز", "⭐"] };
+  function banLab(id){ var b = (S.bans || []).filter(function(x){ return x.id === id; })[0]; if (b) return [b.title || tr("عرض", "Offer"), "🏷️"]; return BANLAB[id] || [tr("عرض", "Offer"), "🏷️"]; }
+  function banImg(h){ var m = /<img[^>]+src="([^"]+)"/.exec(h); return m ? m[1].replace(/&amp;/g, "&") : ""; }
+  function banHead(h){ var re = /class="ah"[^>]*>([\s\S]*?)<\/div>|<h2[^>]*>([\s\S]*?)<\/h2>/g, m, best = "";
+    while ((m = re.exec(h))) { var t = (m[1] || m[2] || "").replace(/<br\s*\/?>/g, " ").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(); if (t.length > best.length) best = t; }
+    return best; }
+  function banAct(h){ var m = /(data-(?:chip|open|opencat|nav|addbund|openpack)="[^"]*")/.exec(h); return m ? m[1] : ""; }
+  function stDay(){ var d = new Date(Date.now() + 3 * 36e5); return d.toISOString().slice(0, 10); }
+  function stSeen(){ try { return JSON.parse(localStorage.getItem("ohod-stseen") || "{}") || {}; } catch(e){ return {}; } }
+  function stMark(id){ try { var o = stSeen(); o[id] = stDay(); localStorage.setItem("ohod-stseen", JSON.stringify(o)); } catch(e){} }
+  function banStories(ids, list){
+    var seen = stSeen(), day = stDay();
+    return '<div class="kst" id="kqSt"><div class="kst-row">' + ids.map(function(id, i){ var L = banLab(id), im = banImg(list[i]);
+        return '<button type="button" class="kst-c' + (seen[id] === day ? ' seen' : '') + (i ? '' : ' on') + '" data-st="' + i + '"><span class="ring"><span class="in">' + (im ? '<img src="' + esc(im) + '" alt=""' + (/paper-man/.test(im) ? ' style="object-position:17% 30%"' : '') + '>' : '<em>' + L[1] + '</em>') + '</span></span><b>' + esc(L[0]) + '</b></button>'; }).join("") +
+      '</div><div class="kst-bars">' + list.map(function(){ return '<i><b></b></i>'; }).join("") + '</div><div class="kst-view">' + list.map(function(h, i){ return '<div class="kst-s' + (i ? '' : ' on') + '" data-sid="' + esc(ids[i]) + '">' + h + '</div>'; }).join("") + '</div></div>';
+  }
+  function banDeck(ids, list){
+    return '<div class="kdk" id="kqDk">' + list.map(function(h, i){ return '<div class="kdk-c k' + Math.min(i, 3) + '">' + h + '</div>'; }).join("") + '</div><div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
+  }
+  function banTicker(ids, list){
+    var items = ids.map(function(id, i){ var t = banHead(list[i]) || banLab(id)[0]; return t ? '<button type="button" class="ktk-i" ' + banAct(list[i]) + '>' + esc(t) + '</button>' : ''; }).filter(Boolean);
+    if (!items.length) return "";
+    var row = items.join('<span class="ktk-d">●</span>') + '<span class="ktk-d">●</span>';
+    return '<div class="ktk"><b class="ktk-b">' + tr("عاجل", "Live") + '</b><div class="ktk-m"><div class="ktk-t" style="animation-duration:' + Math.max(18, items.length * 6) + 's">' + row + row + '</div></div></div>';
+  }
+  function swipeOn(el, fn, hold){ var x0 = null; el.addEventListener("touchstart", function(e){ x0 = e.touches[0].clientX; if (hold) hold(true); }, { passive: true });
+    el.addEventListener("touchend", function(e){ if (hold) hold(false); if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 40) fn((dx > 0) === (LANG !== "en") ? 1 : -1); }, { passive: true }); }
+  function kqStories(){
+    var root = $("kqSt"); if (!root) return;
+    var cs = root.querySelectorAll(".kst-c"), ss = root.querySelectorAll(".kst-s"), bs = root.querySelectorAll(".kst-bars i"), row = root.querySelector(".kst-row"), n = ss.length, i = 0, paused = false, t0 = Date.now(), el = 0, DUR = 5500;
+    var still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    function show(k){ i = (k + n) % n; for (var j = 0; j < n; j++){ ss[j].classList.toggle("on", j === i); cs[j].classList.toggle("on", j === i); bs[j].firstChild.style.width = j < i ? "100%" : "0"; }
+      el = 0; t0 = Date.now(); stMark(ss[i].dataset.sid); cs[i].classList.add("seen");
+      var a = cs[i].getBoundingClientRect(), r = row.getBoundingClientRect(); row.scrollBy({ left: a.left + a.width / 2 - (r.left + r.width / 2), behavior: "smooth" }); }
+    Array.prototype.forEach.call(cs, function(c){ c.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); show(Number(c.dataset.st)); }); });
+    swipeOn(root.querySelector(".kst-view"), function(d){ show(i + d); }, function(h){ paused = h; });
+    stMark(ss[0].dataset.sid);
+    if (n < 2) return;
+    timers.push(setInterval(function(){ if (!document.body.contains(root)) return; if (paused || still || document.hidden) { t0 = Date.now() - el; return; }
+      el = Date.now() - t0; bs[i].firstChild.style.width = Math.min(100, el / DUR * 100) + "%"; if (el >= DUR) show(i + 1); }, 100));
+  }
+  function kqDeck(){
+    var root = $("kqDk"), dots = $("kqDots"); if (!root) return;
+    var cards = Array.prototype.slice.call(root.children), n = cards.length, busy = false, paused = false;
+    function lay(){ cards.forEach(function(c, k){ c.className = "kdk-c k" + Math.min(k, 3); }); if (dots) { var top = Array.prototype.indexOf.call(root.children, cards[0]); for (var j = 0; j < dots.children.length; j++) dots.children[j].className = j === top ? "on" : ""; } }
+    function next(d){ if (busy || n < 2) return; busy = true; var c = cards[0]; c.style.setProperty("--ox", (d > 0 ? (LANG === "en" ? "-" : "") : (LANG === "en" ? "" : "-")) + "115%"); c.style.setProperty("--or", (d > 0 ? (LANG === "en" ? "-" : "") : (LANG === "en" ? "" : "-")) + "9deg"); c.classList.add("out");
+      setTimeout(function(){ cards.push(cards.shift()); lay(); busy = false; }, 380); }
+    swipeOn(root, next, function(h){ paused = h; });
+    if (n < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    timers.push(setInterval(function(){ if (!document.body.contains(root) || paused || document.hidden) return; next(1); }, 5000));
+  }
   function kqBanners(){
     var el = $("kqBans"), dots = $("kqDots"); if (!el || !dots) return;
     var n = dots.children.length, i = 0;
