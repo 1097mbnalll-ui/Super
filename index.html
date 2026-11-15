@@ -2611,12 +2611,12 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     [[94, 26], [102, 32], [140, 30], [200, 20], [204, 30], [276, 34], [300, 28], [318, 40], [60, 34], [24, 46]].map(function(w){ return '<rect class="win" x="' + w[0] + '" y="' + w[1] + '" width="3" height="3"/>'; }).join("") + '</svg>';
   function skyNow(){
     var f = (location.search.match(/[?&]sky=(\w+)/) || [])[1], h = (Date.now() / 36e5 + 3) % 24;
-    var k = f || (h >= 4 && h < 11 ? "morning" : h < 15 ? "noon" : h < 17.5 ? "asr" : h < 19 ? "maghrib" : "night");
+    var k = f || (h < 4 ? "night" : h < 11 ? "morning" : h < 15 ? "noon" : h < 17.5 ? "asr" : h < 19 ? "maghrib" : "night");
     return { k: k, t: { morning: tr("صباح الخير", "Good morning"), noon: tr("الظهر", "Noon"), asr: tr("العصر", "Afternoon"), maghrib: tr("المغرب", "Sunset"), night: tr("مساء الخير", "Good evening") }[k],
       s: { morning: tr("فطورك ناقصه شي؟ نوصله لبابك", "Breakfast delivered to your door"), noon: tr("غداك يبيله مقاضي؟ احنا جاهزين", "Lunch groceries, ready"), asr: tr("وقت القهوة والحلا", "Coffee and sweets time"), maghrib: tr("جهّز عشاك قبل الزحمة", "Get dinner sorted early"), night: tr("السهرة بدت، وعروضها جاهزة", "Night snacks are on") }[k] };
   }
   // البنرات المتحركة (١٥ نوفمبر ٢٠٢٦، إصلاح من الجذور): بدون تمرير المتصفح وscroll-snap (كان في آيفون يوقف بين بنرين أو يطلع فاضي).
-  // الحركة بـ transform نتحكم فيها كلها: البنر دايماً يوقف كامل في مكانه، والسحب بالإصبع يحرّك بنر واحد بالضبط.
+  // البنرات كلها فوق بعض في خانة وحدة والظاهر يتلاشى (آيفون ما يرسم البنر اللي كان برّا الشاشة لو دخلها بتمرير أو transform).
   function carouselHTML(list){
     return '<div class="kq-bans" id="kqBans" role="region" aria-roledescription="carousel"><div class="kq-track">' + list.join("") + '</div></div>' +
       '<div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
