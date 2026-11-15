@@ -23,7 +23,7 @@
     if (staffAuth && staffAuth.user.role === "preparer") { preparerShell(); return; }
     if (ordersOnly()) { ordersShell(); return; }
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
-    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
+    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["rates","تقييمات الطلبات","spark"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
       '<aside class="adm-side"><div class="adm-brand"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b>' + esc(D.store.name) + '</b><span>لوحة الإدارة</span></div></div>' +
       '<nav class="adm-nav" aria-label="أقسام الإدارة">' + TABS.map(function(x){ return '<button type="button" data-atab="' + x[0] + '"' + (x[0] === aTab ? ' aria-current="page"' : '') + '>' + ic(x[2]) + '<span>' + x[1] + '</span>' + (x[0] === "prods" ? '<em class="n">' + draft.products.length + '</em>' : x[0] === "cats" ? '<em class="n">' + draft.cats.length + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
@@ -35,6 +35,7 @@
       '<section class="adm-panel" data-panel="olist" id="aOList"></section>' +
       '<section class="adm-panel" data-panel="log" id="aLog"></section>' +
       '<section class="adm-panel" data-panel="cust" id="aCust"></section>' +
+      '<section class="adm-panel" data-panel="rates" id="aRates"></section>' +
       '<section class="adm-panel" data-panel="sign" id="aSign"></section>' +
       '<section class="adm-panel" data-panel="bans" id="aBans"></section>' +
       '<section class="adm-panel" data-panel="prods"><div class="card" id="aImport"></div><div class="card" id="openItems" hidden></div><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث بالاسم أو الباركود…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-soft" type="button" id="offProds">🔥 منتجات العروض</button><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
@@ -170,6 +171,7 @@
     if (id === "olist") { if (!staffCache && apiUrl()) loadStaff(function(){ if (aTab === "olist") renderOList(); }); renderOList(); }
     if (id === "log") renderLog();
     if (id === "cust") renderWinback();
+    if (id === "rates") renderRatings(true);
     if (id === "sign") renderSign();
     if (id === "orders") { renderCash(); renderStaff(); if ($("apkCopy")) $("apkCopy").onclick = function(){ var u = new URL("driver-app.apk", location.href).href, m = $("apkMsg"); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function(){ m.className = "status"; m.textContent = "اننسخ الرابط. أرسله للمندوب بالواتساب."; }, function(){ m.className = "status"; m.textContent = u; }); }; }
     if (id === "bans") renderBans();
@@ -312,7 +314,7 @@
     draft.products.forEach(function(p){ var k = offKind(p); if (k) { n.__offers++; n["__" + k]++; } });
     $("aCat").innerHTML = '<option value="all">كل الأقسام</option><optgroup label="العروض">' + Object.keys(OFF_F).map(function(k){ return '<option value="' + k + '"' + (aFilter.cat === k ? ' selected' : '') + '>' + OFF_F[k] + ' (' + num(n[k]) + ')</option>'; }).join("") + '</optgroup><optgroup label="الأقسام">' + catOptions(aFilter.cat) + '</optgroup>';
   }
-  var LAY_LABEL = { featured: "البنر الثابت فوق (عرض المجموعة)", again: "اطلب مرة ثانية (للزبون اللي طلب قبل)", moment: "حسب وقت اليوم (فطور، غدا، عصرية، سهرة)", promos: "بنرات العروض", catoffers: "عروض الأقسام (مربعات)", free: "بطاقة التوصيل المجاني", catgrid: "الأقسام (مربعات الصور)", offers: "أفضل العروض (صف يتحرك)", deals: "منتجات السعر الرمزي (صف يتحرك)", grid: "الفلاتر والمنتجات" };
+  var LAY_LABEL = { featured: "البنر الثابت فوق (عرض المجموعة)", again: "طلباتك المعتادة (وللجديد: الأكثر طلباً)", due: "يمكن خلص عندك؟ (حسب عادة الزبون)", moment: "حسب وقت اليوم (فطور، غدا، عصرية، سهرة، ورمضان)", season: "التقويم (مقاضي الشهر، تجهيزات رمضان، ضيافة العيد)", myoffers: "عروض على أغراض الزبون", promos: "بنرات العروض", catoffers: "عروض الأقسام (مربعات)", free: "بطاقة التوصيل المجاني", catgrid: "الأقسام (مربعات الصور)", offers: "أفضل العروض (صف يتحرك)", deals: "منتجات السعر الرمزي (صف يتحرك)", grid: "الفلاتر والمنتجات" };
   var PROMO_LABEL = { top: "أقوى خصم (تلقائي)", multi: "عرض الكمية (تلقائي)", daily: "عرض اليوم", offers: "عروض الأسبوع", deals: "منتجات السعر الرمزي", bakery: "بطاقة المخبز", free: "التوصيل المجاني", catdeal: "عروض القسم (تلقائي)", night: "طلعات السهرة (المساء بس)", veg: "الخضار والفواكه (قريباً)", welcome: "كود الترحيب (store.welcome)" };
   function mvBtns(kind, id, ends){ return '<span class="mv">' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':-99" aria-label="لأول الصفحة">أول</button>' : '') + '<button type="button" data-mv="' + kind + ':' + id + ':-1" aria-label="فوق">' + ic("up") + '</button><button type="button" data-mv="' + kind + ':' + id + ':1" aria-label="تحت">' + ic("down") + '</button>' + (ends ? '<button type="button" class="mv-end" data-mv="' + kind + ':' + id + ':99" aria-label="لآخر الصفحة">آخر</button>' : '') + '</span>'; }
   function renderLayout(){
@@ -1208,47 +1210,115 @@
     pushStat(); promoPushUI(box);
   }
   /* ---------- إشعار للزبائن (العروض وغيرها) بعبارات جاهزة (طلب المالك ١٣ نوفمبر ٢٠٢٦) ---------- */
+  // عبارات جاهزة تجذب (طلب المالك ١٤ نوفمبر ٢٠٢٦): قصيرة، بلهجتنا، وفيها أرقام حقيقية من المتجر (أقوى خصم، اسم المنتج وسعره، عرض المجموعة)
   function promoPhrases(){
-    var offs = D.products.filter(function(p){ return p.stock && p.old && Number(p.old) > Number(p.price); }), mx = offs.reduce(function(m, p){ return Math.max(m, Math.round((1 - p.price / p.old) * 100)); }, 0);
-    var g = (D.store.groups || [])[0], fo = D.store.freeOver ? num(D.store.freeOver) : "30", nm = D.store.name || "متاجر أحد";
+    var S = D.store, nm = S.name || "متاجر أحد", fo = S.freeOver ? num(S.freeOver) : "30";
+    var offs = D.products.filter(function(p){ return p.stock && p.old && Number(p.old) > Number(p.price); })
+      .map(function(p){ return { p: p, pct: Math.round((1 - p.price / p.old) * 100) }; }).sort(function(a, b){ return b.pct - a.pct; });
+    var mx = offs.length ? offs[0].pct : 30, top = offs[0] && offs[0].p, sh = function(p){ var n = String(p.name); return n.length <= 32 ? n : n.split(" ").slice(0, 5).join(" "); };
+    var g = (S.groups || []).filter(function(x){ return x && x.on !== false; })[0];
+    var cc = {}; offs.forEach(function(o){ cc[o.p.cat] = (cc[o.p.cat] || 0) + 1; });
+    var bestCat = Object.keys(cc).sort(function(a, b){ return cc[b] - cc[a]; })[0], bc = bestCat && D.cats.filter(function(c){ return c.id === bestCat; })[0];
     return [
-      ["عروض الأسبوع", "عروض الأسبوع نزلت", "خصم حتى " + (mx ? num(mx) : "٣٠") + "٪ على منتجات مختارة. شوفها قبل لا تخلص.", "offers"],
-      g ? ["عرض " + (g.name || "المجموعة"), (g.name || "عرض") + ": أي " + num(g.n) + " بـ " + num(g.price), "اخلط النكهات اللي تعجبك. العرض لفترة محدودة.", ""] : null,
-      ["توصيل مجاني", "توصيلك مجاني اليوم", "على أي طلب فوق " + fo + " ر.س. اطلب الحين ونوصّله لين بابك.", ""],
-      ["كود خصم", "كود خصم لك", "اكتب الكود في السلة وخذ خصمك على طلبك. (غيّر الكود قبل الإرسال)", ""],
-      ["منتجات جديدة", "وصلتنا أصناف جديدة", "تصفّح المنتجات الجديدة في " + nm + " واطلب مقاضيك.", ""],
-      ["الخبز والمخبز", "الخبز الحار جاهز", "اطلبه الحين ويوصلك وهو دافي.", ""],
-      ["وقت الغدا", "وش على غداك اليوم؟", "اطلب مقاضيك من " + nm + " ونوصّلها لك بسرعة.", ""],
-      ["السهرة", "جهّز سهرتك", "سناكس ومشروبات وكل اللي تحتاجه. نوصلك لين آخر الليل.", ""],
-      ["فتحنا", "فتحنا، حيّاك الله", "اطلب الحين، نستقبل طلباتك من الساعة ١٢ الظهر.", ""],
-      ["اعتذار", "نعتذر عن التأخير", "واجهنا ضغط في الطلبات. شكراً لصبرك، ونرجع لخدمتك بأسرع وقت.", ""],
-      ["التطبيق نزل", "تطبيق " + nm + " صار على آب ستور", "حمّله الحين واطلب بضغطة، وتابع مندوبك لين بابك.", ""]
-    ].filter(Boolean);
+      ["🔥 أقوى خصم", "🔥 خصم " + num(mx) + "٪ ينتظرك!", top ? sh(top) + " صار بـ " + num(top.price) + " ر.س بدل " + num(top.old) + ". الكمية محدودة، الحق عليه 👀" : "عروض نار على منتجات مختارة. الحق قبل لا تخلص 👀", "offers"],
+      ["⏰ قبل لا تخلص", "⏰ باقي كم حبة بس!", "العروض اللي عجبتك قاربت تخلص. افتح واطلب قبل غيرك.", "offers"],
+      g ? ["🍪 " + (g.name || "عرض المجموعة"), "🍪 " + (g.name || "العرض") + ": أي " + num(g.n) + " بـ " + num(g.price) + " ر.س", "اخلط النكهات على كيفك 😋 العرض لفترة محدودة.", ""] : null,
+      bc ? ["🛒 عروض " + bc.name, "🛒 عروض " + bc.name + " نزلت", num(cc[bestCat]) + " منتج عليها خصم في " + bc.name + ". شوفها الحين 👇", "o:" + bc.id] : null,
+      ["🛵 توصيل مجاني", "🛵 التوصيل علينا اليوم!", "أي طلب فوق " + fo + " ر.س يوصلك مجاناً لين باب بيتك 🏠", ""],
+      ["🎁 كود هدية", "🎁 عندك هدية منا", "اكتب الكود (اكتبه هنا) في السلة وخذ خصمك على طلبك الجاي 💚", ""],
+      ["☕ صباح الخير", "☕ صباح الخير يا جار!", "حليب طازج وخبز حار وقهوتك… اطلبها وتوصلك قبل لا تبرد.", ""],
+      ["🍽️ الغدا", "🍽️ وش ناقص غداك؟", "طماطم؟ رز؟ زيت؟ اطلب اللي ناقصك بدقيقة ونوصله لك بسرعة 🛵", ""],
+      ["🌙 السهرة", "🌙 السهرة ما تحلى بدونها", "شيبس ومشروبات وحلا 🍫 جهّز سهرتك ونوصلك لين آخر الليل.", ""],
+      ["🏠 جمعة العائلة", "🏠 جمعتكم اليوم؟", "خلّ المقاضي علينا: كل اللي تحتاجه للعزيمة يوصلك لين الباب.", "offers"],
+      ["🆕 وصلنا جديد", "🆕 وصلتنا أصناف جديدة", "تشكيلة جديدة في " + nm + " 😍 أول من يشوفها أنت.", ""],
+      ["💚 اشتقنا لك", "💚 اشتقنا لك!", "صار لك فترة ما طلبت. رجّعنا لك عروض حلوة، تعال شوفها 👀", "offers"],
+      ["⚡ عرض اليوم بس", "⚡ عرض اليوم بس!", "ينتهي الليلة 🕛 لا يفوتك.", "offers"],
+      ["🟢 فتحنا", "🟢 فتحنا وحيّاك الله!", "نستقبل طلباتك من الحين. اطلب ونوصلك خلال ١٥–٣٠ دقيقة.", ""],
+      ["📱 التطبيق", "📱 " + nm + " صار بجوالك", "حمّل التطبيق واطلب بضغطة، وتابع مندوبك لين بابك 🛵", ""],
+      ["💸 الراتب نزل", "💸 الراتب نزل!", "دلّع بيتك: عروض المقاضي الشهرية جاهزة، وتوصيلك علينا 🛵", "offers"],
+      ["🎉 الويكند", "🎉 جاك الويكند", "جمعتكم الليلة؟ كل اللي تحتاجه للعزيمة يوصلك لين الباب 🏠", ""],
+      ["🌧️ جو مطر", "🌧️ جو مطر ☔", "لا تطلع من بيتك… مقاضيك توصلك وأنت مرتاح بالبيت.", ""],
+      ["🥵 حر اليوم", "🥵 الحر ما يرحم!", "موية باردة وعصيرات وآيسكريم 🍦 نوصلها لك قبل لا تذوب.", "o:drinks"],
+      ["⚽ مباراة الليلة", "⚽ المباراة الليلة!", "جهّز القعدة: شيبس ومشروبات ومكسرات 🥜 تصلك قبل صافرة البداية.", ""],
+      ["🧺 مقاضي الأسبوع", "🧺 مقاضي الأسبوع بضغطة", "رز، زيت، حليب، بيض… اطلبها كلها مرة وحدة ونوصلها لين بابك.", ""],
+      // ——— المزيد (طلب المالك «كثّرها»)
+      ["🥚 البيض والحليب", "🥚 خلص البيض؟", "لا تنزل للبقالة… بيض وحليب طازج يوصلك خلال دقايق 🛵", "o:dairy"],
+      ["🍞 خبز حار", "🍞 الخبز حار الحين!", "طالع من الفرن 🔥 اطلبه ويوصلك وهو دافي.", ""],
+      ["🍫 حلا", "🍫 نفسك بحلا؟", "شوكولاتة وبسكويت وكيك… دلّع نفسك اليوم 😋", "o:sweets"],
+      ["🥤 مشروبات باردة", "🥤 شي بارد؟", "مشروبات غازية وعصيرات وموية باردة، توصلك على طول ❄️", "o:drinks"],
+      ["🧼 المنظفات", "🧼 وقت التنظيف!", "منظفات ومعطرات بأسعار حلوة… بيتك يلمع وأنت مرتاح ✨", "o:clean"],
+      ["🍗 الدجاج واللحم", "🍗 وش طبختك اليوم؟", "دجاج ولحوم طازجة ومجمدة، اطلب وتوصلك بسرعة 🛵", "o:meat"],
+      ["👶 الأطفال", "👶 أغراض الصغار", "حفايض ومناديل وحليب أطفال… كل اللي يحتاجه صغيرك يوصلك لين الباب 💚", "o:care"],
+      ["🍳 الفطور", "🍳 فطور اليوم علينا", "بيض، جبن، لبنة، خبز… كل الفطور بطلب واحد ☀️", ""],
+      ["🫖 الشاي والقهوة", "🫖 قهوة العصر؟", "قهوة وشاي وتمر ☕ اطلبها الحين وتلحق على العصرية.", ""],
+      ["🍿 فيلم الليلة", "🍿 فيلم الليلة؟", "فشار وشيبس ومشروبات… جهّز السهرة بضغطة 🎬", "o:sweets"],
+      ["📦 كرتون أوفر", "📦 الكرتون أوفر!", "اشترِ بالكرتون ووفّر أكثر على مشروباتك ومقاضيك 💰", "o:cartons"],
+      ["🔁 اطلب مرة ثانية", "🔁 طلبك المعتاد؟", "رجّع نفس طلبك اللي فات بضغطة وحدة من «حسابي» ⚡", ""],
+      ["🛒 سلتك تنتظرك", "🛒 نسيت شي؟", "سلتك لسا فيها أغراض 👀 كمّل طلبك قبل لا تخلص الكمية.", ""],
+      ["⭐ قيّمنا", "⭐ رأيك يهمنا", "كيف كان طلبك الأخير؟ قيّمه بثانيتين وساعدنا نصير أحسن 💚", ""],
+      ["🕛 نوصل لين متأخر", "🕛 ساهر؟ حنا موجودين", "نوصلك لين آخر الليل 🌙 أي شي ناقصك اطلبه الحين.", ""],
+      ["🧊 آيسكريم", "🧊 آيسكريم؟ ليش لا!", "أنواع الآيسكريم توصلك وهي باردة 🍦", "o:sweets"],
+      ["🥗 صحي", "🥗 تبي تاكل صحي؟", "زبادي وحليب قليل الدسم ومكسرات… خيارات صحية توصلك اليوم 💪", ""],
+      ["🏫 المدرسة", "🏫 لفّة المدرسة جاهزة؟", "عصيرات وبسكويت وسناكس للفسحة 🎒 اطلبها من الليل.", ""],
+      ["🕌 الجمعة", "🕌 جمعة مباركة", "غداء الجمعة على كيفك… كل المقاضي توصلك قبل الصلاة 🍽️", ""],
+      ["🎁 هدية الطلب", "🎁 طلبك اليوم فيه مفاجأة", "اطلب اليوم وخذ هدية مع طلبك 🎁 (غيّر النص حسب الهدية)", ""],
+      ["🏷️ أسعار نزلت", "🏷️ أسعار نزلت اليوم", "خصومات جديدة على منتجات تحبها 👇 شوفها قبل لا تخلص.", "offers"],
+      ["🤝 جارنا العزيز", "🤝 يا جارنا العزيز", "حنا جنبك في حي الرمال 💚 أي شي تحتاجه يوصلك خلال ١٥–٣٠ دقيقة.", ""],
+      ["🙏 اعتذار", "🙏 نعتذر منك", "صار ضغط بالطلبات اليوم. شكراً لصبرك، وطلبك الجاي علينا نهتم فيه أكثر 💚", ""]
+    ].filter(Boolean).map(function(x){ x[4] = PP_SUGG[x[0]] || "all"; return x; });
   }
+  // الشريحة المقترحة لكل عبارة (تنختار لحالها لما يضغط المالك العبارة، ويقدر يغيّرها)
+  var PP_SUGG = { "🛒 سلتك تنتظرك": "cart", "💚 اشتقنا لك": "lapsed", "🔁 اطلب مرة ثانية": "ordered", "⭐ قيّمنا": "ordered", "🙏 اعتذار": "ordered", "🤝 جارنا العزيز": "never", "🎁 كود هدية": "never", "🆕 وصلنا جديد": "all" };
+  // لمين؟ شرائح المشتركين (الخادم يحسبها من جهاز الزبون المجهول: سلته وطلباته، بدون اسم ولا جوال)
+  var PP_SEGS = [["all", "الكل"], ["cart", "سلتهم فيها أغراض وما كمّلوا (من ساعتين وأكثر)"], ["never", "ما طلبوا أبداً"], ["ordered", "طلبوا قبل"], ["lapsed", "طلبوا وانقطعوا"], ["loyal", "الزبائن الدائمين (٣ طلبات وأكثر)"]];
   function promoPushUI(box){
     var wrap = document.createElement("div"); wrap.id = "promoPush"; wrap.style.marginTop = "18px";
     var ph = promoPhrases();
     wrap.innerHTML = '<h2>إشعار للزبائن (التطبيق والموقع)</h2><p class="hint">يوصل للزبائن اللي فعّلوا إشعارات العروض من التطبيق أو الموقع. اختر عبارة جاهزة، عدّلها لو تبي، وجرّبها على جوالك أول. الحد ٤ إرسالات في اليوم عشان ما نزعج الزبون.</p>' +
       '<div class="pp-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">' + ph.map(function(x, i){ return '<button type="button" class="btn btn-soft" data-ppph="' + i + '" style="padding:6px 12px;font-size:12.5px">' + esc(x[0]) + '</button>'; }).join("") + '</div>' +
       '<div class="fields" style="max-width:460px"><label>العنوان (٦٠ حرف)<input id="ppT" maxlength="60" placeholder="مثال: عروض الأسبوع نزلت"></label><label>النص (١٨٠ حرف)<textarea id="ppB" maxlength="180" rows="3" placeholder="نص قصير يشجع الزبون يفتح التطبيق"></textarea></label>' +
+      '<label>لمين؟<select id="ppS">' + PP_SEGS.map(function(g){ return '<option value="' + g[0] + '">' + esc(g[1]) + '</option>'; }).join("") + '</select></label>' +
+      '<label id="ppDw" hidden>ما طلبوا من كم يوم؟ (٣–٩٠)<input id="ppD" type="number" min="3" max="90" step="1" inputmode="numeric" value="14"></label>' +
       '<label>لما يضغط عليه<select id="ppG"><option value="">يفتح الرئيسية</option><option value="offers">يفتح العروض</option>' + D.cats.filter(function(c){ return !c.soon; }).map(function(c){ return '<option value="o:' + esc(c.id) + '">يفتح قسم ' + esc(c.name) + '</option>'; }).join("") + '</select></label></div>' +
-      '<div class="push-stat" id="ppStat">جاري الفحص…</div><div class="actions"><button class="btn btn-soft" type="button" id="ppTest">جرّبها على جوالي</button><button class="btn btn-brand" type="button" id="ppSend">' + ic("bell") + 'أرسل للزبائن</button></div><p class="status" id="ppMsg" style="white-space:pre-line"></p>';
+      '<div class="push-stat" id="ppStat">جاري الفحص…</div><div class="actions"><button class="btn btn-soft" type="button" id="ppTest">جرّبها على جوالي</button><button class="btn btn-brand" type="button" id="ppSend">' + ic("bell") + 'أرسل للزبائن</button></div><p class="status" id="ppMsg" style="white-space:pre-line"></p>' +
+      '<h3 style="margin-top:14px">تذكير السلة التلقائي</h3><p class="hint">لو الزبون حط أغراض بسلته وما كمّل الطلب، يوصله إشعار واحد «🛒 سلتك تنتظرك» بعد المدة اللي تختارها. مرة وحدة لكل سلة، وما يطلع بين ١١ الليل و٩ الصبح ولا والمتجر مقفل.</p>' +
+      '<div class="fields" style="max-width:460px"><label class="chk wide"><input type="checkbox" id="ppR">شغّل التذكير التلقائي</label><label>بعد كم ساعة من آخر تعديل للسلة؟ (١–٤٨)<input id="ppRh" type="number" min="1" max="48" step="1" inputmode="numeric" value="3"></label></div>' +
+      '<div class="actions"><button class="btn btn-soft" type="button" id="ppRs">احفظ التذكير</button></div><p class="status" id="ppRm"></p>';
     box.appendChild(wrap);
-    var T = $("ppT"), B = $("ppB"), G = $("ppG"), M = $("ppMsg");
-    api("/push/status", { pin: adminPin }).then(function(j){ var e = $("ppStat"); if (e) e.innerHTML = '<span class="pchip">' + ic("bell") + 'مشتركين بإشعارات العروض: <b>' + num(j.promo || 0) + '</b></span>'; });
-    wrap.addEventListener("click", function(e){ var b = e.target.closest("[data-ppph]"); if (!b) return; var x = ph[Number(b.dataset.ppph)]; T.value = x[1]; B.value = x[2]; G.value = x[3] || ""; M.textContent = ""; });
+    var T = $("ppT"), B = $("ppB"), G = $("ppG"), M = $("ppMsg"), SG = $("ppS"), DY = $("ppD"), segN = null, segT = 0;
+    var segName = function(){ var g = PP_SEGS.filter(function(x){ return x[0] === SG.value; })[0]; return g ? g[1] : "الكل"; };
+    var paintSegs = function(){ var e = $("ppStat"); if (!e) return;
+      $("ppDw").hidden = SG.value !== "lapsed";
+      if (!segN) return;
+      Array.prototype.forEach.call(SG.options, function(o, i){ o.textContent = PP_SEGS[i][1] + " (" + num(segN[o.value] || 0) + ")"; });
+      e.innerHTML = '<span class="pchip">' + ic("bell") + 'مشتركين بإشعارات العروض: <b>' + num(segN.all || 0) + '</b></span><span class="pchip">بيوصل لـ: <b>' + num(segN[SG.value] || 0) + '</b></span>'; };
+    var loadSegs = function(){ api("/admin/promo-segs", { pin: adminPin, days: Number(DY.value) || 14 }).then(function(j){
+      if (!j.ok) { // خادم قديم: نرجع للعدد الكلي بس، والإرسال للكل
+        SG.value = "all"; SG.disabled = true; $("ppR").disabled = $("ppRs").disabled = true; $("ppRm").textContent = j.code === "not_found" ? "الشرائح والتذكير يحتاجون تحديث كود الخادم في Cloudflare." : "";
+        return api("/push/status", { pin: adminPin }).then(function(k){ var e = $("ppStat"); if (e) e.innerHTML = '<span class="pchip">' + ic("bell") + 'مشتركين بإشعارات العروض: <b>' + num(k.promo || 0) + '</b></span>'; }); }
+      segN = j.segs; if (j.remind && !segT) { $("ppR").checked = !!j.remind.on; $("ppRh").value = j.remind.hours || 3; } segT = 1; paintSegs(); }); };
+    loadSegs();
+    SG.addEventListener("change", paintSegs);
+    var dT = 0; DY.addEventListener("input", function(){ clearTimeout(dT); dT = setTimeout(loadSegs, 600); });
+    $("ppRs").addEventListener("click", function(){ var m = $("ppRm"), h = Math.floor(Number($("ppRh").value)); m.className = "status";
+      if (!(h >= 1 && h <= 48)) { m.className = "status err"; m.textContent = "المدة من ساعة لين ٤٨ ساعة."; return; }
+      m.textContent = "جاري الحفظ…";
+      api("/admin/promo-segs", { pin: adminPin, days: Number(DY.value) || 14, remind: { on: $("ppR").checked, hours: h } }).then(function(j){
+        if (!j.ok) { m.className = "status err"; m.textContent = j.code === "forbidden" ? "ما عندك صلاحية." : "ما انحفظ (" + (j.code || "?") + ")."; return; }
+        segN = j.segs; paintSegs(); m.textContent = j.remind.on ? "تشغّل: التذكير يوصل بعد " + num(j.remind.hours) + " ساعة من آخر تعديل للسلة." : "التذكير التلقائي متوقف."; }); });
+    wrap.addEventListener("click", function(e){ var b = e.target.closest("[data-ppph]"); if (!b) return; var x = ph[Number(b.dataset.ppph)]; T.value = x[1]; B.value = x[2]; G.value = x[3] || ""; if (!SG.disabled) SG.value = x[4] || "all"; paintSegs(); M.textContent = ""; });
     var send = function(test){
       if (!T.value.trim() || !B.value.trim()) { M.className = "status err"; M.textContent = "اكتب العنوان والنص، أو اختر عبارة جاهزة."; return; }
-      var body = { pin: adminPin, title: T.value, body: B.value, go: G.value, test: !!test };
+      var body = { pin: adminPin, title: T.value, body: B.value, go: G.value, test: !!test, seg: SG.disabled ? "all" : SG.value, days: Number(DY.value) || 14 };
       var go = function(offset, sent){ body.offset = offset || 0; return api("/admin/promo-push", body).then(function(j){
         if (!j.ok) { M.className = "status err"; M.textContent = j.code === "daily_limit" ? "وصلت الحد اليومي (٤ إرسالات). جرّب بكرة." : j.code === "bad_message" ? "العنوان والنص مطلوبين." : j.code === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : "ما انرسل (" + (j.code || "?") + ")."; return; }
         if (test) { M.className = "status"; M.textContent = j.sent ? "وصلتك التجربة على " + num(j.sent) + " جهاز." : "ما فيه جهاز إدارة مفعّل الإشعارات. فعّلها من فوق (فعّل الإشعارات على هذا الجهاز) وجرّب."; return; }
         sent += j.sent || 0; if (j.next) return go(j.next, sent);
-        M.className = "status"; M.textContent = "انرسل لـ " + num(sent) + " جهاز من " + num(j.total) + " مشترك."; }); };
+        M.className = "status"; M.textContent = j.total ? "انرسل لـ " + num(sent) + " جهاز من " + num(j.total) + " مشترك (" + segName() + ")." : "ما فيه مشتركين بهالشريحة (" + segName() + ")، وما انحسب من الحد اليومي."; }); };
       return go(0, 0).catch(function(){ M.className = "status err"; M.textContent = "تعذّر الاتصال، جرّب مرة ثانية."; });
     };
     $("ppTest").addEventListener("click", function(){ M.className = "status"; M.textContent = "جاري الإرسال…"; send(true); });
-    $("ppSend").addEventListener("click", function(){ if (!T.value.trim() || !B.value.trim()) return send(false); if (!confirm("ترسل «" + T.value + "» لكل مشتركين العروض؟ ما تقدر تتراجع.")) return; M.className = "status"; M.textContent = "جاري الإرسال…"; send(false); });
+    $("ppSend").addEventListener("click", function(){ if (!T.value.trim() || !B.value.trim()) return send(false); var cnt = segN && !SG.disabled ? segN[SG.value] : null; if (cnt === 0) { M.className = "status err"; M.textContent = "ما فيه مشتركين بهالشريحة (" + segName() + ")."; return; } if (!confirm("ترسل «" + T.value + "» لـ" + (SG.disabled || SG.value === "all" ? "كل مشتركين العروض" : "«" + segName() + "»") + (cnt != null ? " (" + num(cnt) + " جهاز)" : "") + "؟ ما تقدر تتراجع.")) return; M.className = "status"; M.textContent = "جاري الإرسال…"; send(false); });
   }
   function pushStat(){
     api("/push/status", { pin: adminPin }).then(function(j){ var el = $("pushStat"); if (!el) return;
@@ -1754,6 +1824,42 @@
     if ((t = e.target.closest("[data-wbf]"))) { var k = t.dataset.wbf.split(":"); wb[k[0]] = k[0] === "days" ? Number(k[1]) : k[1]; wb.data = null; renderWinback(); return; }
     if ((t = e.target.closest("[data-wbsend]"))) { var ch = t.dataset.wbsend; api("/admin/winback-mark", { pin: adminPin, ch: ch, tail: t.dataset.tail });
       (wb.data && wb.data.list || []).forEach(function(c){ if (c.ch === ch) { c.cat = Date.now(); c.cwho = STAFF || ""; } }); setTimeout(function(){ if (aTab === "cust") renderWinback(); }, 300); }
+  });
+
+  /* ---------- تقييمات الطلبات (الزبون يقيّم بعد التوصيل) ---------- */
+  var rt = { days: 30, low: false, data: null, loading: false };
+  var RT_TAG = { driver: "المندوب ممتاز", fast: "وصل بسرعة", fresh: "المنتجات طازجة", packing: "تغليف مرتب", late: "تأخر", missing: "منتج ناقص", wrong: "منتج غلط", damaged: "منتج تالف" };
+  function rtStars(n){ var h = ""; for (var i = 1; i <= 5; i++) h += '<i class="' + (i <= n ? "on" : "") + '">★</i>'; return '<span class="rt-st" role="img" aria-label="' + num(n) + ' من ٥">' + h + '</span>'; }
+  function renderRatings(force){
+    var box = $("aRates"); if (!box) return;
+    if (!apiUrl()) { box.innerHTML = '<div class="card"><p class="hint">هذي الميزة تحتاج خادم الطلبات.</p></div>'; return; }
+    if ((!rt.data || force) && !rt.loading) { rt.loading = true; api("/admin/ratings", { pin: adminPin, days: rt.days, low: rt.low }).then(function(j){ rt.loading = false; rt.data = j; if (aTab === "rates") renderRatings(); }); }
+    var seg = function(arr, key){ return '<div class="pays seg mini" role="group">' + arr.map(function(x){ return '<button type="button" data-rtf="' + key + ':' + x[0] + '" aria-pressed="' + (String(rt[key]) === String(x[0])) + '">' + x[1] + '</button>'; }).join("") + '</div>'; };
+    var h = '<div class="card"><h2>تقييمات الطلبات</h2><p class="hint">بعد ما يوصل الطلب، الزبون يقيّمه من ١ لـ ٥ نجوم ويختار ملاحظة سريعة. التقييم ٢ أو أقل يوصلك تنبيه على طول (الإشعارات وتيليجرام).</p>' +
+      '<div class="wb-f">' + seg([[7, "آخر أسبوع"], [30, "آخر شهر"], [90, "آخر ٣ شهور"]], "days") + seg([["false", "كل التقييمات"], ["true", "المنخفضة بس (٢ أو أقل)"]], "low") + '</div></div>';
+    var j = rt.data;
+    if (!j) { box.innerHTML = h + '<div class="card"><p class="hint">جاري التحميل…</p></div>'; return; }
+    if (!j.ok) { box.innerHTML = h + '<div class="card"><p class="status err">' + (j.code === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : j.code === "forbidden" ? "ما عندك صلاحية تشوف التقييمات." : "ما قدرنا نجيب التقييمات (" + esc(j.code || "?") + ").") + '</p></div>'; return; }
+    var S2 = j.summary || {}, dist = S2.dist || [0, 0, 0, 0, 0], mx = Math.max(1, Math.max.apply(null, dist));
+    var trend = S2.prevN ? (S2.avg > S2.prevAvg + 0.05 ? '<em class="up">أحسن من قبل (' + num(S2.prevAvg) + ')</em>' : S2.avg < S2.prevAvg - 0.05 ? '<em class="down">أقل من قبل (' + num(S2.prevAvg) + ')</em>' : '<em>نفس الفترة اللي قبل</em>') : '';
+    h += '<div class="card"><div class="wb-res"><div><b>' + (S2.n ? num(S2.avg) + ' ★' : '—') + '</b><span>متوسط التقييم ' + trend + '</span></div><div><b>' + num(S2.n || 0) + '</b><span>تقييم' + (S2.delivered ? ' من ' + num(S2.delivered) + ' طلب وصل (' + num(Math.round((S2.n || 0) / S2.delivered * 100)) + '٪)' : '') + '</span></div><div class="' + (S2.low ? 'bad' : 'ok') + '"><b>' + num(S2.low || 0) + '</b><span>تقييم منخفض (٢ أو أقل)</span></div></div>' +
+      '<div class="rt-dist">' + [5, 4, 3, 2, 1].map(function(k){ var n = dist[k - 1] || 0; return '<div><span>' + num(k) + ' ★</span><i><b style="width:' + Math.round(n / mx * 100) + '%"></b></i><span>' + num(n) + '</span></div>'; }).join("") + '</div>' +
+      ((j.tags || []).length ? '<p class="hint" style="margin-top:10px">أكثر الملاحظات</p><div class="rt-tags">' + j.tags.map(function(t){ return '<span class="' + (["late", "missing", "wrong", "damaged"].indexOf(t.t) > -1 ? 'bad' : '') + '">' + esc(RT_TAG[t.t] || t.t) + ' <b>' + num(t.n) + '</b></span>'; }).join("") + '</div>' : '') +
+      ((j.drivers || []).length > 1 || ((j.drivers || [])[0] && (j.drivers[0].name || "")) ? '<p class="hint" style="margin-top:10px">حسب المندوب</p><div class="rt-tags">' + j.drivers.map(function(d){ return '<span><b>' + esc(d.name || (d.id === "admin" ? "الإدارة" : "مندوب")) + '</b>: ' + num(d.avg) + '★ من ' + num(d.n) + ' تقييم' + (d.low ? '، منها ' + num(d.low) + ' منخفض' : '') + '</span>'; }).join("") + '</div>' : '') + '</div>';
+    h += '<div class="card"><div class="sec-head" style="margin:0"><b>' + num(j.list.length) + (j.low ? ' تقييم منخفض' : ' تقييم') + '</b><button class="btn btn-soft" type="button" id="rtRef">تحديث</button></div>' +
+      (j.list.length ? '<div class="wbl">' + j.list.map(function(r){ var d = new Date(r.at);
+        return '<div class="wbr rtr' + (r.stars <= 2 ? ' bad' : '') + '"><span class="t">' + rtStars(r.stars) + '<b>طلب ' + esc(r.no) + (r.name ? ' · ' + esc(r.name) : '') + (r.total != null ? ' · ' + num(r.total) + ' ر.س' : '') + '</b>' +
+          ((r.tags || []).length ? '<span>' + r.tags.map(function(t){ return esc(RT_TAG[t] || t); }).join(" · ") + '</span>' : '') + (r.note ? '<span class="rt-note">«' + esc(r.note) + '»</span>' : '') +
+          '<span>' + esc(d.toLocaleDateString("ar-SA-u-nu-latn", { weekday: "long", day: "numeric", month: "long" })) + ' ' + esc(d.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" })) + (r.drvName ? ' · المندوب: ' + esc(r.drvName) : '') + (r.edits ? ' · عدّله الزبون' : '') + '</span>' +
+          (r.stars <= 2 && r.phone ? contactButtons(r.phone) : '') + '</span></div>'; }).join("") + '</div>'
+        : '<p class="empty">' + (j.low ? 'ما فيه تقييمات منخفضة بهالفترة 👌' : 'ما فيه تقييمات بهالفترة للحين.') + '</p>') + '</div>';
+    box.innerHTML = h;
+    if ($("rtRef")) $("rtRef").onclick = function(){ rt.data = null; renderRatings(true); };
+  }
+  document.addEventListener("click", function(e){
+    if (mode !== "admin" || !draft) return;
+    var t = e.target.closest("[data-rtf]"); if (!t) return;
+    var k = t.dataset.rtf.split(":"); rt[k[0]] = k[0] === "days" ? Number(k[1]) : k[1] === "true"; rt.data = null; renderRatings(true);
   });
 
   /* ---------- printable in-store offer sign ---------- */
