@@ -87,9 +87,9 @@ export default {
       let promo = 0, promoCode = "";
       if (body.promo && env.DB) { const pc = await promoCheck(env, body.promo, normPhone(body.phone) || null, pr.subtotal); if (!pc.error) { promo = promoAmount(pc.rule, pr.subtotal); promoCode = pc.rule.code; } else promoCode = "!" + pc.error; }
       const gift = !promo ? (pr.gift || 0) : 0;
-      const S = data.store || {}, onlyPrint = pr.lines.every((l) => l.p.print), minOrder = onlyPrint && S.print && S.print.minOrder != null ? Number(S.print.minOrder) || 0 : Number(S.minOrder) || 0;
+      const S = data.store || {}, onlyPrint = pr.lines.length > 0 && pr.lines.every((l) => l.p.print), minOrder = onlyPrint && S.print && S.print.minOrder != null ? Number(S.print.minOrder) || 0 : Number(S.minOrder) || 0;
       return reply(200, { ok: true, subtotal: pr.subtotal, fee: pr.fee, gift, promo, promoCode, total: round2(pr.subtotal + pr.fee - gift - promo), count: pr.count,
-        min: minOrder, belowMin: minOrder > 0 && pr.subtotal < minOrder,
+        min: minOrder, belowMin: !pr.free && minOrder > 0 && pr.subtotal < minOrder, ...(pr.free ? { free: pr.free } : {}),
         lines: pr.lines.map((l) => ({ id: l.p.id, qty: l.qty, price: l.price, tag: l.tag || "" })) });
     }
     if (path === "/promo/check") {
@@ -1124,7 +1124,8 @@ function orderRecord(o, body) {
   return {
     lines: o.lines.map((l) => ({ id: l.p.id, name: l.p.name, unit: l.p.unit, qty: l.qty, price: l.price, regularPrice: Math.max(Number(l.price), Number(l.p.price)||0, Number(l.p.old)||0), tag: l.tag || "", ...(l.p.per ? { per: l.p.per } : {}) })),
     subtotal: o.subtotal, fee: o.fee, ...(o.gift > 0 ? { gift: o.gift } : {}), ...(o.promo ? { promo: o.promo, promoAmt: o.promoAmt, promoRule: o.promoRule } : {}), total: o.total, count: o.count, phone: o.phone,
-    name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
+    name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: noteOf(body, o.free),
+    ...(o.free ? { free: o.free } : {}),
     pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
     st: 1, // انحسب في التحليل
     sub: ["swap", "remove", "call"].includes(body.sub) ? body.sub : "call", // لو منتج ناقص: بدّله، شيله، أو اتصلوا
@@ -1295,6 +1296,13 @@ async function editOrder(env, data, body, who) {
   const oldBy = {}; for (const l of rec.lines || []) oldBy[l.id] = l;
   const lines = [];
   for (const x of Array.isArray(body.lines) ? body.lines.slice(0, 200) : []) {
+    // سطر من عندي (تسعير الأغراض المكتوبة عند التجهيز مثلاً)
+    if (x && x.custom) {
+      const c = customLine(x); if (!c) return { error: "bad_line" };
+      const same = lines.find((l) => l.id === c.id && l.price === c.price);
+      if (same) same.qty += c.qty; else lines.push({ ...c, cost: 0 });
+      continue;
+    }
     const id = String(x.id || ""), q = Math.floor(Number(x.qty)), pr = Number(x.price);
     const p = byId[id] || oldBy[id];
     if (!p || !(q > 0 && q <= (p.print || oldBy[id] ? 5000 : 500)) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
@@ -1302,7 +1310,9 @@ async function editOrder(env, data, body, who) {
     const nm = typeof x.name === "string" && x.name.trim() ? x.name.trim().slice(0, 120) : (oldBy[id] && oldBy[id].name) || p.name;
     lines.push({ id, name: nm, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined, ...(oldBy[id] && oldBy[id].per ? { per: Number(oldBy[id].per) } : {}) });
   }
-  if (!lines.length) return { error: "empty" };
+  // «طلب بالكتابة» يبقى مع الطلب لين الموظف يشيله (body.free = "") أو يعدّله
+  const free = body.free === undefined || body.free === null ? String(rec.free || "") : freeText(body.free);
+  if (!lines.length && !free) return { error: "empty" };
   const fee = Math.max(0, Number(body.fee ?? rec.fee) || 0);
   const subtotal = round2(lines.reduce((s, l) => s + l.qty * l.price, 0));
   // هدية الاعتذار تبقى بعد التعديل ما دام المنتجات ٣٠ وفوق
@@ -1313,6 +1323,7 @@ async function editOrder(env, data, body, who) {
     edits: (rec.edits || []).concat([{ at: Date.now(), before: rec.total, after: round2(subtotal + fee - gift - promoAmt) }]).slice(-20) };
   if (gift) nr.gift = gift; else delete nr.gift;
   if (rec.promo) nr.promoAmt = promoAmt;
+  if (free) nr.free = free; else delete nr.free;
   await withCost(env, nr, true);
   const P = (q, ...a) => env.DB.prepare(q).bind(...a);
   const day = old.day || riyadhDateAt(old.created), hour = old.hour ?? riyadhHour(old.created);
@@ -1418,6 +1429,7 @@ function priceOrder(data, body, quote) {
   if (!quote && !phone) return { error: "bad_phone" };
   const lat = Number(body.lat), lng = Number(body.lng);
   if (!quote && !(lat >= 16 && lat <= 33 && lng >= 34 && lng <= 56)) return { error: "bad_location" };
+  const free = freeText(body.free);
 
   const DEAL = S.deal95 && S.deal95.on ? S.deal95 : null;
   const DAILY = S.daily && S.daily.on ? S.daily : null;
@@ -1507,17 +1519,44 @@ function priceOrder(data, body, quote) {
     const max = Math.floor(Number((byId[id] || {}).max || 0));
     if (max > 0 && qty > max) return {error:'item_limit',id,max};
   }
-  if (!count) return { error: "empty" };
+  // «طلب بالكتابة» (الخضار بالوزن...): يكفي لحاله، وسعره يتحدد عند التجهيز فما يدخل في أقل طلب
+  if (!count && !free) return { error: "empty" };
   if (!quote && (S.closed || !openNow(S))) return { error: "closed" };
   const onlyPrint = lines.length > 0 && lines.every((l) => l.p.print), PR = S.print && typeof S.print === "object" ? S.print : null;
   const minOrder = onlyPrint && PR && PR.minOrder != null ? Number(PR.minOrder) || 0 : Number(S.minOrder) || 0;
   // التسعير للتطبيق (/quote) يرجع الأسعار والعروض حتى لو السلة تحت أقل طلب، عشان الخصم يطلع في السلة من أول منتج (الحد يُفرض في /order)
-  if (!quote && minOrder > 0 && base + dealSum < minOrder) return { error: "min_order", min: minOrder };
+  if (!quote && !free && minOrder > 0 && base + dealSum < minOrder) return { error: "min_order", min: minOrder };
   const subtotal = round2(base + dealSum);
   const fee = S.freeOver && subtotal >= S.freeOver ? 0 : Number(S.fee || 0);
   const gift = giftAsked(body.note) && Date.now() < GIFT.until && subtotal >= GIFT.min ? GIFT.amount : 0;
-  return { lines, subtotal, fee, gift, total: round2(subtotal + fee - gift), count, phone };
+  return { lines, subtotal, fee, gift, total: round2(subtotal + fee - gift), count, phone, ...(free ? { free } : {}) };
 }
+// «طلب بالكتابة» (طلب المالك ١٥ نوفمبر ٢٠٢٦): أغراض بالوزن أو العدد يكتبها الزبون، وسعرها يتحدد عند التجهيز (الموظف يعدّل الطلب)
+function freeText(v) {
+  return String(v == null ? "" : v).replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000B-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "").replace(/\n{3,}/g, "\n\n").trim().slice(0, 600).trim();
+}
+// الموقع يرسل نسخة من القائمة في الملاحظات (للخادم القديم): نشيلها لو الخادم استلم القائمة نفسها
+function noteOf(body, free) {
+  let n = String(body.note || "");
+  if (free) {
+    const full = "🥬 " + free;
+    for (let i = n.indexOf("🥬 "); i >= 0; i = n.indexOf("🥬 ", i + 1)) {
+      const tail = n.slice(i).replace(/\r/g, "");
+      if (tail.length >= 3 && full.startsWith(tail.replace(/\s+$/, ""))) { n = n.slice(0, i).replace(/\s+$/, ""); break; }
+    }
+  }
+  return n.slice(0, 300);
+}
+// سطر من عندي (الإدارة): منتج مو في المتجر باسم ووحدة وسعر يكتبها الموظف. معرّفه c:<بصمة الاسم والوحدة>، وما يمس المخزون ولا سعر الشراء
+function customLine(x) {
+  const name = String(x && x.name || "").replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+  const unit = String(x && x.unit || "").replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim().slice(0, 20);
+  const q = Math.floor(Number(x && x.qty)), pr = Number(x && x.price);
+  if (!name || !(q > 0 && q <= 500) || !(pr >= 0 && pr < 100000)) return null;
+  let h = 2166136261; for (const ch of name + "|" + unit) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  return { id: "c:" + h.toString(36), name, unit, qty: q, price: round2(pr), regularPrice: round2(pr), tag: "", custom: true };
+}
+function isCustomId(id) { return String(id || "").startsWith("c:"); }
 
 // وحدة بيع ثانية لنفس المنتج: «<المنتج>~<رقم الخيار>»، سعرها من بيانات المتجر، والمخزون ينخصم بعدد حباتها من المنتج الأساسي
 function packProduct(byId, key) {
@@ -1538,13 +1577,15 @@ function money(n) { return (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$
 function orderText(data, o, body, orderNo) {
   const pay = body.pay === "card" ? "شبكة عند الاستلام" : "كاش عند الاستلام";
   const lines = o.lines.map((l) => `• ${esc(l.p.name)} (${esc(l.p.unit)}) × ${l.qty} = ${money(l.qty * l.price)}${l.tag ? " [" + esc(l.tag) + "]" : ""}`).join("\n");
+  const note = noteOf(body, o.free);
   const t = new Date(Date.now() + 3 * 3600e3).toISOString().slice(11, 16);
   return [
     `🛒 <b>طلب جديد ${esc(orderNo)}</b>  · ${t}`,
     "",
-    lines,
+    lines || null,
+    o.free ? `🥬 <b>طلب بالكتابة</b> (يتحدد سعره عند التجهيز):\n${esc(o.free)}` : null,
     "",
-    `المنتجات: ${money(o.subtotal)}`,
+    `المنتجات: ${money(o.subtotal)}${o.free ? " + الأغراض المكتوبة" : ""}`,
     `التوصيل: ${o.fee ? money(o.fee) : "مجاني"}`,
     o.gift ? `🎁 هدية اعتذار: −${money(o.gift)}` : null,
     o.promoAmt ? `🏷️ كود خصم ${esc(o.promo)}: −${money(o.promoAmt)}` : null,
@@ -1555,7 +1596,7 @@ function orderText(data, o, body, orderNo) {
     body.name ? `الاسم: ${esc(String(body.name).slice(0, 60))}` : null,
     `📍 الموقع: ${mapsUrl(body.lat, body.lng)}`,
     body.details ? `🏠 تفاصيل البيت: ${esc(String(body.details).slice(0, 200))}` : null,
-    body.note ? `📝 ملاحظات: ${esc(String(body.note).slice(0, 300))}` : null,
+    note ? `📝 ملاحظات: ${esc(note)}` : null,
   ].filter((x) => x !== null).join("\n");
 }
 
@@ -1713,7 +1754,7 @@ async function saveToGitHub(env, file, text, message, baseVersion) {
 
 function asciiDigits(value) { return String(value??'').replace(/[٠-٩۰-۹]/g,c=>String(c.charCodeAt(0)-(c<='٩'?0x660:0x6f0))); }
 async function checkoutFingerprint(body) {
-  return dataVersion({items:body.items||{},phone:normPhone(body.phone),pay:body.pay==='card'?'card':'cash',name:String(body.name||''),details:String(body.details||''),note:String(body.note||''),sub:body.sub||'call',promo:normCode(body.promo),lat:Number(body.lat),lng:Number(body.lng),wallet:moneyCents(body.walletAmount||0)});
+  return dataVersion({items:body.items||{},phone:normPhone(body.phone),pay:body.pay==='card'?'card':'cash',name:String(body.name||''),details:String(body.details||''),note:String(body.note||''),sub:body.sub||'call',promo:normCode(body.promo),lat:Number(body.lat),lng:Number(body.lng),wallet:moneyCents(body.walletAmount||0),...(freeText(body.free)?{free:freeText(body.free)}:{})});
 }
 async function checkoutResult(env, checkout) {
   const old=await env.DB.prepare('SELECT k.fingerprint,o.no,o.total FROM checkout_keys k JOIN orders o ON o.no=k.no WHERE k.request_id=?').bind(checkout.id).first();
@@ -1731,7 +1772,7 @@ const STATUS_MSG = {
 };
 function needOf(rec) {
   const need = {};
-  for (const l of rec.lines || []) if (l.id) { const b = baseOf(l.id); need[b] = (need[b] || 0) + Number(l.qty || 0) * (Number(l.per) || 1); }
+  for (const l of rec.lines || []) if (l.id && !isCustomId(l.id)) { const b = baseOf(l.id); need[b] = (need[b] || 0) + Number(l.qty || 0) * (Number(l.per) || 1); }
   return need;
 }
 let stockCache = { at: 0, body: "" };
@@ -1817,7 +1858,7 @@ async function afterOrder(env, data, rec, orderNo, before, quiet) {
   if (!env.LOCKS) return;
   const n = Number(String(orderNo).replace(/\D/g, ""));
   if (!quiet) {
-  const msg = { title: "طلب جديد " + ({ phone: "(اتصال) ", whatsapp: "(واتساب) ", store: "(من المحل) " }[rec.source] || "") + orderNo, body: rec.count + " منتج · " + money(rec.total) + " · " + (rec.pay === "card" ? "شبكة" : "كاش") + (rec.name ? " · " + rec.name : ""), url: "./#driver", tag: "new" + n };
+  const msg = { title: "طلب جديد " + ({ phone: "(اتصال) ", whatsapp: "(واتساب) ", store: "(من المحل) " }[rec.source] || "") + orderNo, body: (rec.count ? rec.count + " منتج" + (rec.free ? " + طلب بالكتابة" : "") : "طلب بالكتابة 🥬") + " · " + money(rec.total) + " · " + (rec.pay === "card" ? "شبكة" : "كاش") + (rec.name ? " · " + rec.name : ""), url: "./#driver", tag: "new" + n };
   const pm = env.DB ? await prepMode(env) : false;
   await Promise.all([notifyRole(env, "admin", null, msg), pm ? notifyRole(env, "prep", null, { ...msg, title: "طلب جديد للتجهيز " + orderNo, tag: "prep" + orderNo }) : notifyRole(env, "driver", null, msg)]);
   }
@@ -2276,12 +2317,19 @@ function manualOrder(data, body) {
   const byId = {}; for (const p of data.products || []) byId[p.id] = p;
   const lines = [];
   for (const x of Array.isArray(body.lines) ? body.lines.slice(0, 200) : []) {
+    if (x && x.custom) {
+      const c = customLine(x); if (!c) return { error: "bad_line" };
+      const same = lines.find((l) => l.id === c.id && l.price === c.price);
+      if (same) same.qty += c.qty; else lines.push(c);
+      continue;
+    }
     const p = byId[String(x.id || "")], q = Math.floor(Number(x.qty)), pr = x.price == null ? Number(p && p.price) : Number(x.price);
     if (!p || !(q > 0 && q <= 500) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
     const same = lines.find((l) => l.id === p.id && l.price === round2(pr));
     if (same) same.qty += q; else lines.push({ id: p.id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr),Number(p.price)||0,Number(p.old)||0), tag: "" });
   }
-  if (!lines.length) return { error: "empty" };
+  const free = freeText(body.free);
+  if (!lines.length && !free) return { error: "empty" };
   const raw = String(body.phone || "").trim(), phone = raw ? normPhone(raw) : "";
   if (raw && !phone) return { error: "bad_phone" };
   const subtotal = round2(lines.reduce((s, l) => s + l.qty * l.price, 0));
@@ -2299,6 +2347,7 @@ function manualOrder(data, body) {
   return { rec: {
     lines, subtotal, fee, total: round2(subtotal + fee), count: lines.reduce((s, l) => s + l.qty, 0), phone,
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: String(body.note || "").slice(0, 300),
+    ...(free ? { free } : {}),
     pay: body.pay === "card" ? "card" : "cash", lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng, map,
     source: src, st: 1, sub: ["swap", "remove", "call"].includes(body.sub) ? body.sub : "call",
   } };
@@ -2323,7 +2372,7 @@ async function setCosts(env, map) {
 // يحط سعر الشراء وقت الطلب على كل سطر، عشان الربح القديم ما يتغير لو تغيّر سعر الشراء بعدين
 async function withCost(env, rec, keepOld) {
   const costs = await readCosts(env);
-  for (const l of rec.lines || []) { if (keepOld && l.cost != null) continue; l.cost = round2(Number(costs[baseOf(l.id)] || 0) * (Number(l.per) || 1)); }
+  for (const l of rec.lines || []) { if (keepOld && l.cost != null) continue; if (isCustomId(l.id)) { l.cost = 0; continue; } l.cost = round2(Number(costs[baseOf(l.id)] || 0) * (Number(l.per) || 1)); }
   return rec;
 }
 function costOf(rec) { return round2((rec.lines || []).reduce((s, l) => s + Number(l.qty || 0) * Number(l.cost || 0), 0)); }
@@ -2983,7 +3032,7 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     const rows=(await P("SELECT o.no,o.status,o.created,o.updated AS order_updated,o.data,p.stage,p.checks,p.updated,p.who,p.version FROM orders o LEFT JOIN prep_orders p ON p.no=o.no WHERE o.status IN ('new','accepted') ORDER BY o.created").all()).results||[];
     const nos=rows.map(r=>r.no),offs=nos.length?((await P('SELECT id,no,line_id,to_id,state,created,answered FROM sub_offers WHERE no IN ('+nos.map(()=>'?').join(',')+') ORDER BY id',...nos).all()).results||[]):[],om={};for(const x of offs)(om[x.no]||=[]).push({id:x.id,line:x.line_id,to:x.to_id,state:x.state,at:x.answered||x.created});
     const lm=(await prepSettings(env)).lateMin;
-    return {ok:true,lateMin:lm,orders:rows.map(r=>{const d=safeJson(r.data);return {no:'#'+(1000+r.no),status:r.status,created:r.created,orderUpdated:r.order_updated,stage:r.stage||'waiting',checks:safeJson(r.checks||'{}'),version:r.version||0,who:r.who||'',updated:r.updated,lines:(d.lines||[]).map((l,i)=>({key:String(i),id:l.id,name:l.name,unit:l.unit,qty:l.qty})),note:d.note||'',sub:d.sub||'call',subs:om[r.no]||[]};})};
+    return {ok:true,lateMin:lm,orders:rows.map(r=>{const d=safeJson(r.data);return {no:'#'+(1000+r.no),status:r.status,created:r.created,orderUpdated:r.order_updated,stage:r.stage||'waiting',checks:safeJson(r.checks||'{}'),version:r.version||0,who:r.who||'',updated:r.updated,lines:(d.lines||[]).map((l,i)=>({key:String(i),id:l.id,name:l.name,unit:l.unit,qty:l.qty})),note:d.note||'',free:d.free||'',sub:d.sub||'call',subs:om[r.no]||[]};})};
   }
   if(path==='/admin/prep-sub'){const r=await prepSub(env,body,who,later);return r.ok?r:fail(r.code,r.status||400);}
   if(path==='/admin/prep-save'){
@@ -3071,7 +3120,7 @@ function posDocument(raw,no){
   });
   const subtotal=moneyCents(order.subtotal),fee=moneyCents(order.fee||0),gift=moneyCents(Number(order.gift||0)+Number(order.promoAmt||0)),total=moneyCents(order.total),gross=lines.reduce((s,l)=>s+l.regular*l.qty,0);
   if(!lines.length||subtotal===null||fee===null||gift===null||total===null||lines.reduce((s,l)=>s+l.total,0)!==subtotal||subtotal+fee-gift!==total)throw Error('bad_order');
-  return {orderNo:'#'+(1000+no),lines,gross,discount:gross-subtotal,subtotal,fee,...(gift?{gift}:{}),total};
+  return {orderNo:'#'+(1000+no),lines,gross,discount:gross-subtotal,subtotal,fee,...(gift?{gift}:{}),total,...(order.free?{free:String(order.free)}:{})};
 }
 async function latestPosReceipt(env,no){return env.DB.prepare('SELECT * FROM pos_receipts WHERE no=? ORDER BY revision DESC LIMIT 1').bind(no).first();}
 async function posRoute(env,path,body,who,role){
