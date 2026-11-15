@@ -1,0 +1,13 @@
+❌ site-morning
+   - بنر فاضي/مكسور: 1500ms offers kids=2 broken=0, 4000ms offers kids=2 broken=0, 18000ms veg kids=1 broken=0
+❌ site-maghrib
+   - بنر فاضي/مكسور: 1500ms offers kids=2 broken=0, 4000ms offers kids=2 broken=0, 18000ms veg kids=1 broken=0
+❌ site-night
+   - بنر فاضي/مكسور: 1500ms offers kids=2 broken=0, 4000ms offers kids=2 broken=0, 18000ms veg kids=1 broken=0
+❌ app-head-night
+   - بنر فاضي/مكسور: 1500ms offers kids=2 broken=0, 4000ms offers kids=2 broken=0, 18000ms veg kids=1 broken=0
+❌ app-head-morning
+   - بنر فاضي/مكسور: 1500ms offers kids=2 broken=0, 4000ms offers kids=2 broken=0, 18000ms veg kids=1 broken=0
+✅ app-blocks
+
+5 حالة فيها مشاكل
