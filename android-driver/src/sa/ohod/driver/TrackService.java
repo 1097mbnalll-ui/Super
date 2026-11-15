@@ -27,8 +27,9 @@ import org.json.JSONObject;
 /**
  * خدمة تشتغل بالخلفية حتى والشاشة مقفلة:
  *  ١. كل ١٠ ثواني تسأل الخادم: فيه طلب جديد؟ لو فيه، إشعار بصوت واهتزاز.
- *  ٢. لو فيه طلب «في الطريق»، تشغّل الـ GPS وترسل موقع المندوب للخادم (الزبون يشوفه على الخريطة).
- *  ٣. أول ما ما يبقى طلب في الطريق، توقف الـ GPS وتمسح الموقع من الخادم.
+ *  ٢. موقع المندوب ينرسل للخادم على طول ما دام داخل (المالك ١٥ نوفمبر ٢٠٢٦: «خل موقعه ظاهر عندنا على طول»):
+ *     وهو يوصّل كل ٤–١٥ ثانية (الزبون يشوفه)، وبدون توصيل كل دقيقة أو ٢٠ ثانية لو تحرك ٥٠ متر (نوفر البطارية).
+ *  ٣. الموقع ينمسح من الخادم بس لو طلع من حسابه.
  */
 public class TrackService extends Service implements LocationListener {
     private static final String TAG = "OhodTrack";
@@ -46,6 +47,7 @@ public class TrackService extends Service implements LocationListener {
     private PowerManager.WakeLock wl;
     private LocationManager lm;
     private volatile boolean locOn;
+    private volatile boolean locBusy;
     private volatile boolean everSent;
     private volatile long sentAt;
     private volatile Location sentLoc;
@@ -190,14 +192,17 @@ public class TrackService extends Service implements LocationListener {
         }
         }
 
-        boolean want = p.onway > 0 && (!"admin".equals(Prefs.role(this)) || Prefs.share(this));
+        boolean want = !"admin".equals(Prefs.role(this)) || (p.onway > 0 && Prefs.share(this));
+        boolean busy = p.onway > 0;
+        if (want && locOn && busy != locBusy) stopLoc(false);   // تغيّر الوضع (توصيل/انتظار): نعيد التسجيل بسرعة الوضع الجديد
+        locBusy = busy;
         if (want) startLoc(); else stopLoc(true);
 
         if ("denied".equals(track)) setText("اسمح للتطبيق بالموقع عشان الزبون يشوفك");
         else if ("gpsoff".equals(track)) setText("شغّل الموقع (GPS) في الجوال");
         else if (p.onway > 0) setText("في الطريق: " + p.onway + (want ? ("on".equals(track) ? " · الزبون يشوف موقعك" : " · نحدد موقعك…") : ""));
         else if (p.fresh > 0) setText(p.ready ? p.fresh + (p.fresh == 1 ? " طلب جاهز ينتظرك" : " طلبات جاهزة تنتظرك") : p.fresh + (p.fresh == 1 ? " طلب جديد ينتظرك" : " طلبات جديدة تنتظرك"));
-        else setText("جاهز لاستقبال الطلبات");
+        else setText("جاهز لاستقبال الطلبات" + ("on".equals(track) ? " · الإدارة تشوف موقعك" : ""));
         return POLL_MS;
     }
 
@@ -218,11 +223,11 @@ public class TrackService extends Service implements LocationListener {
         boolean any = false;
         try {
             if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000, 0, this, ht.getLooper());
+                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, locBusy ? 3000 : 20000, locBusy ? 0 : 30, this, ht.getLooper());
                 any = true;
             }
             if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000, 0, this, ht.getLooper());
+                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, locBusy ? 5000 : 30000, locBusy ? 0 : 30, this, ht.getLooper());
                 any = true;
             }
         } catch (SecurityException e) {
@@ -272,7 +277,8 @@ public class TrackService extends Service implements LocationListener {
         long now = System.currentTimeMillis();
         long gap = now - sentAt;
         float moved = sentLoc == null ? 1e9f : l.distanceTo(sentLoc);
-        if (!(sentLoc == null || gap >= 15000 || (gap >= 4000 && moved >= 8f))) return;   // يرسل كل ٤ ثواني وهو يتحرك، وكل ١٥ ثانية لو واقف
+        if (locBusy) { if (!(sentLoc == null || gap >= 15000 || (gap >= 4000 && moved >= 8f))) return; }   // يوصّل: كل ٤ ثواني وهو يتحرك، وكل ١٥ ثانية لو واقف
+        else if (!(sentLoc == null || gap >= 60000 || (gap >= 20000 && moved >= 50f))) return;           // ينتظر: كل دقيقة، أو ٢٠ ثانية لو تحرك ٥٠ متر
         if (!sending.compareAndSet(false, true)) return;
         final String api = Prefs.api(this), pin = Prefs.pin(this);
         final boolean share = Prefs.share(this);

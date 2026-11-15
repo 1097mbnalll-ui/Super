@@ -118,6 +118,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        Alarm.stop(this);   // المندوب فتح التطبيق: نوقف صوت الإنذار
         visible = true;
         wv.onResume();
         if (Prefs.pin(this).length() > 0 && !TrackService.running) TrackService.start(this);
