@@ -985,7 +985,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 @keyframes ktk{from{transform:translateX(0)}to{transform:translateX(50%)}}[dir=ltr] .ktk-t{animation-name:ktkl}@keyframes ktkl{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.ktk-t,.ktk-b{animation:none}.kdk-c{transition:none}}
 .kq-bans{overflow:hidden;margin-top:6px;border-radius:24px;touch-action:pan-y;-webkit-user-select:none;user-select:none}
-.kq-track{display:grid}.kq-track>*{grid-area:1/1;min-width:0;opacity:0;visibility:hidden;transition:opacity .45s ease,visibility 0s linear .45s,transform .25s ease}.kq-track>.on{opacity:1;visibility:visible;transition:opacity .45s ease,visibility 0s linear 0s,transform .25s ease}
+.kq-track{display:grid}.kq-track>*{grid-area:1/1;min-width:0;visibility:hidden;transition:none!important;animation:none!important;transform:none!important;opacity:1!important}.kq-track>.on{visibility:visible}
 .kq-bans::-webkit-scrollbar{display:none}
 .kq-ban{scroll-snap-align:start;position:relative;overflow:hidden;border-radius:24px;min-height:var(--banh,200px);border:0;text-align:start;font:inherit;cursor:pointer;padding:18px 18px 16px;color:#fff;display:flex}
 .kq-ban .t{position:relative;z-index:2;display:grid;gap:5px;align-content:start;max-width:60%}
@@ -2616,7 +2616,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       s: { morning: tr("فطورك ناقصه شي؟ نوصله لبابك", "Breakfast delivered to your door"), noon: tr("غداك يبيله مقاضي؟ احنا جاهزين", "Lunch groceries, ready"), asr: tr("وقت القهوة والحلا", "Coffee and sweets time"), maghrib: tr("جهّز عشاك قبل الزحمة", "Get dinner sorted early"), night: tr("السهرة بدت، وعروضها جاهزة", "Night snacks are on") }[k] };
   }
   // البنرات المتحركة (١٥ نوفمبر ٢٠٢٦، إصلاح من الجذور): بدون تمرير المتصفح وscroll-snap (كان في آيفون يوقف بين بنرين أو يطلع فاضي).
-  // البنرات كلها فوق بعض في خانة وحدة والظاهر يتلاشى (آيفون ما يرسم البنر اللي كان برّا الشاشة لو دخلها بتمرير أو transform).
+  // البنرات كلها فوق بعض في خانة وحدة والظاهر يتبدّل فوراً بدون أي حركة (شوف kqBanners: ليش).
   function carouselHTML(list){
     return '<div class="kq-bans" id="kqBans" role="region" aria-roledescription="carousel"><div class="kq-track">' + list.join("") + '</div></div>' +
       '<div class="kq-dots" id="kqDots">' + list.map(function(_, i){ return '<i' + (i ? '' : ' class="on"') + '></i>'; }).join("") + '</div>';
@@ -3509,22 +3509,23 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   try { history.scrollRestoration = "manual"; } catch(e){}
   function kqBanners(){
-    // كل البنرات فوق بعض في نفس المكان (داخل الشاشة دايماً)، والظاهر واحد بتلاشي ناعم.
-    // ليش: آيفون (Safari وWKWebView) ما يرسم البنر اللي كان خارج الشاشة لما يدخل بالتمرير أو transform، فيطلع فاضي أو طرفه بس.
+    // كل البنرات فوق بعض في نفس المكان (داخل الشاشة دايماً)، والظاهر واحد يتبدّل فوراً بـ visibility بس.
+    // ليش: آيفون ما يرسم البنر اللي كان خارج الشاشة لما يدخل بالتمرير أو transform، وتطبيق الآيفون (WKWebView داخل SwiftUI)
+    // ما يرسم أي طبقة متحركة (opacity/transform/transition) فيطلع البنر فاضي. ممنوع ترجع أي حركة هنا.
     var el = $("kqBans"), dots = $("kqDots"); if (!el || !dots) return;
     var track = el.firstElementChild; if (!track || !track.classList.contains("kq-track")) return;
     var sl = track.children, n = sl.length, i = 0, dir = LANG === "en" ? -1 : 1, x0 = null, y0 = 0, dx = 0, drag = false, held = false, last = 0;
     function place(k){ i = (k + n) % n;
-      for (var j = 0; j < n; j++) { sl[j].classList.toggle("on", j === i); sl[j].style.transform = ""; sl[j].setAttribute("aria-hidden", j === i ? "false" : "true"); if (j !== i) sl[j].setAttribute("tabindex", "-1"); else sl[j].removeAttribute("tabindex"); }
+      for (var j = 0; j < n; j++) { sl[j].classList.toggle("on", j === i); sl[j].setAttribute("aria-hidden", j === i ? "false" : "true"); if (j !== i) sl[j].setAttribute("tabindex", "-1"); else sl[j].removeAttribute("tabindex"); }
       for (var d = 0; d < dots.children.length; d++) dots.children[d].className = d === i ? "on" : ""; }
     place(0);
     if (n < 2) return;
     el.addEventListener("touchstart", function(e){ if (e.touches.length !== 1) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; drag = false; held = true; }, { passive: true });
     el.addEventListener("touchmove", function(e){ if (x0 == null) return; var mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
       if (!drag && Math.abs(mx) > 8 && Math.abs(mx) > Math.abs(my) * 1.2) drag = true;
-      if (drag) { dx = mx; sl[i].style.transform = "translate3d(" + Math.round(dx * 0.35) + "px,0,0)"; } }, { passive: true });
+      if (drag) dx = mx; }, { passive: true });
     function end(){ if (x0 == null) return; var w = el.clientWidth; x0 = null; held = false; last = Date.now();
-      if (drag && Math.abs(dx) > Math.min(50, w * 0.15)) place(i + (dx * dir > 0 ? 1 : -1)); else sl[i].style.transform = ""; drag = false; setTimeout(function(){ dx = 0; }, 50); }
+      if (drag && Math.abs(dx) > Math.min(50, w * 0.15)) place(i + (dx * dir > 0 ? 1 : -1)); drag = false; setTimeout(function(){ dx = 0; }, 50); }
     el.addEventListener("touchend", end, { passive: true }); el.addEventListener("touchcancel", end, { passive: true });
     el.addEventListener("click", function(e){ if (Math.abs(dx) > 8) { e.preventDefault(); e.stopPropagation(); } }, true);
     Array.prototype.forEach.call(dots.children, function(d, k){ d.addEventListener("click", function(){ last = Date.now(); place(k); }); });
