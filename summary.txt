@@ -1,0 +1,14 @@
+❌ site-morning
+   - بنر فاضي/مكسور: 1500ms NONE kids=undefined broken=undefined, 4000ms NONE kids=undefined broken=undefined, 7000ms NONE kids=undefined broken=undefined, 10500ms NONE kids=undefined broken=undefined, 14000ms NONE kids=undefined broken=undefined, 18000ms NONE kids=undefined broken=undefined, 23000ms NONE kids=undefined broken=undefined
+   - التحية مغطاة بـ: sp-logo
+❌ site-maghrib
+   - بنر فاضي/مكسور: 1500ms NONE kids=undefined broken=undefined, 4000ms NONE kids=undefined broken=undefined, 7000ms NONE kids=undefined broken=undefined, 10500ms NONE kids=undefined broken=undefined, 14000ms NONE kids=undefined broken=undefined, 18000ms NONE kids=undefined broken=undefined, 23000ms NONE kids=undefined broken=undefined
+   - التحية مغطاة بـ: sp-logo
+❌ site-night
+   - بنر فاضي/مكسور: 1500ms NONE kids=undefined broken=undefined, 4000ms NONE kids=undefined broken=undefined, 7000ms NONE kids=undefined broken=undefined, 10500ms NONE kids=undefined broken=undefined, 14000ms NONE kids=undefined broken=undefined, 18000ms NONE kids=undefined broken=undefined, 23000ms NONE kids=undefined broken=undefined
+   - التحية مغطاة بـ: sp-logo
+✅ app-head-night
+✅ app-head-morning
+✅ app-blocks
+
+3 حالة فيها مشاكل

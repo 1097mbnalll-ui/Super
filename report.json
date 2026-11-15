@@ -1,0 +1,797 @@
+{
+ "base": "http://localhost:8765",
+ "cases": [
+  {
+   "id": "site-morning",
+   "url": "/index.html?sky=morning",
+   "ok": false,
+   "issues": [
+    "بنر فاضي/مكسور: 1500ms NONE kids=undefined broken=undefined, 4000ms NONE kids=undefined broken=undefined, 7000ms NONE kids=undefined broken=undefined, 10500ms NONE kids=undefined broken=undefined, 14000ms NONE kids=undefined broken=undefined, 18000ms NONE kids=undefined broken=undefined, 23000ms NONE kids=undefined broken=undefined",
+    "التحية مغطاة بـ: sp-logo"
+   ],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 0,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": "sp-logo"
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 0,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 60,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 1,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 120,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 120,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 180,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 3,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 240,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 4,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "site-maghrib",
+   "url": "/index.html?sky=maghrib",
+   "ok": false,
+   "issues": [
+    "بنر فاضي/مكسور: 1500ms NONE kids=undefined broken=undefined, 4000ms NONE kids=undefined broken=undefined, 7000ms NONE kids=undefined broken=undefined, 10500ms NONE kids=undefined broken=undefined, 14000ms NONE kids=undefined broken=undefined, 18000ms NONE kids=undefined broken=undefined, 23000ms NONE kids=undefined broken=undefined",
+    "التحية مغطاة بـ: sp-logo"
+   ],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 0,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": "sp-logo"
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 0,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 60,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 1,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 120,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 120,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 180,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 3,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 240,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 4,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "site-night",
+   "url": "/index.html?sky=night",
+   "ok": false,
+   "issues": [
+    "بنر فاضي/مكسور: 1500ms NONE kids=undefined broken=undefined, 4000ms NONE kids=undefined broken=undefined, 7000ms NONE kids=undefined broken=undefined, 10500ms NONE kids=undefined broken=undefined, 14000ms NONE kids=undefined broken=undefined, 18000ms NONE kids=undefined broken=undefined, 23000ms NONE kids=undefined broken=undefined",
+    "التحية مغطاة بـ: sp-logo"
+   ],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 0,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": "sp-logo"
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 0,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 60,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 1,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 120,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 120,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 180,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 3,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "sl": 240,
+      "w": 50,
+      "cw": 50,
+      "n": 6,
+      "k": 4,
+      "snapped": true,
+      "centerSlide": "NONE"
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "app-head-night",
+   "url": "/index.html?embed=1&blocks=head,featured,promos&st=47&sky=night",
+   "ok": true,
+   "issues": [],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "ban": {
+      "sl": 0,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 0,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 368,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 1,
+      "snapped": true,
+      "centerSlide": "free",
+      "visibleKids": 14,
+      "imgs": 0,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "ban": {
+      "sl": 736,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 736,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 1104,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 3,
+      "snapped": true,
+      "centerSlide": "veg",
+      "visibleKids": 9,
+      "imgs": 4,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 1472,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 4,
+      "snapped": true,
+      "centerSlide": "top",
+      "visibleKids": 12,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "app-head-morning",
+   "url": "/index.html?embed=1&blocks=head,featured,promos&st=47&sky=morning",
+   "ok": true,
+   "issues": [],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "ban": {
+      "sl": 0,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 0,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 368,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 1,
+      "snapped": true,
+      "centerSlide": "free",
+      "visibleKids": 14,
+      "imgs": 0,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "ban": {
+      "sl": 736,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 736,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 1104,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 3,
+      "snapped": true,
+      "centerSlide": "veg",
+      "visibleKids": 9,
+      "imgs": 4,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 1472,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 4,
+      "snapped": true,
+      "centerSlide": "top",
+      "visibleKids": 12,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "app-blocks",
+   "url": "/index.html?embed=1&blocks=featured,promos,again,due,moment,season,myoffers,catoffers",
+   "ok": true,
+   "issues": [],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "ban": {
+      "sl": 0,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 0,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 368,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 1,
+      "snapped": true,
+      "centerSlide": "free",
+      "visibleKids": 14,
+      "imgs": 0,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "ban": {
+      "sl": 736,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 736,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 2,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 1104,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 3,
+      "snapped": true,
+      "centerSlide": "veg",
+      "visibleKids": 9,
+      "imgs": 4,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "ban": {
+      "sl": 1472,
+      "w": 358,
+      "cw": 358,
+      "n": 6,
+      "k": 4,
+      "snapped": true,
+      "centerSlide": "top",
+      "visibleKids": 12,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  }
+ ]
+}
