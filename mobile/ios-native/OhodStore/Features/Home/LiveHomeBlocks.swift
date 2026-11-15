@@ -222,8 +222,9 @@ struct LiveScreen: View {
                     Button("جرّب مرة ثانية") { failed = false; url = nil }
                 }.padding(30)
             } else if let url {
-                LiveWeb(url: url, fit: false, height: $height, failed: $failed, script: catalog.liveScript,
+                LiveWeb(url: url, fit: false, edge: isHome, height: $height, failed: $failed, script: catalog.liveScript,
                         onMessage: LiveBridge(path: $path, tab: liveTab, cart: cart, catalog: catalog, close: { if !path.isEmpty { path.removeLast() } }, orders: orders, favorites: favorites).handle)
+                    .ignoresSafeArea(edges: isHome ? .top : [])
             } else { ProgressView() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -242,7 +243,9 @@ struct LiveScreen: View {
         if page.hasPrefix("screen:") {
             let p = page.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
             let key = p.count > 1 ? (p[1] == "account" ? "more" : p[1]) : "home"
-            url = LiveBridge.url([URLQueryItem(name: "screen", value: key), URLQueryItem(name: "id", value: p.count > 2 ? p[2] : "")], cart: cart, version: catalog.dataTag)
+            // الرئيسية من أعلى الشاشة: st = ارتفاع منطقة الساعة، والموقع ينزّل الشعار تحتها والسما وراها
+            let st = key == "home" ? Int((UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.safeAreaInsets.top ?? 47).rounded()) : 0
+            url = LiveBridge.url([URLQueryItem(name: "screen", value: key), URLQueryItem(name: "id", value: p.count > 2 ? p[2] : "")] + (st > 0 ? [URLQueryItem(name: "st", value: String(st))] : []), cart: cart, version: catalog.dataTag)
         } else {
             url = LiveBridge.url([URLQueryItem(name: "page", value: page)], cart: cart, version: catalog.dataTag)
         }
@@ -273,6 +276,8 @@ struct LiveScreen: View {
 private struct LiveWeb: UIViewRepresentable {
     let url: URL
     let fit: Bool
+    /// الصفحة تبدأ من أعلى الشاشة (تحت الساعة)، والموقع يحط المسافة بنفسه (st)
+    var edge: Bool = false
     @Binding var height: CGFloat
     @Binding var failed: Bool
     /// نسخة المتجر اللي عند التطبيق: تنحقن في الصفحة قبل سكربتاتها فما تنزّل data.json مرة ثانية (الصفحة تتأكد إن نسختها نفس v بالرابط)
@@ -289,7 +294,7 @@ private struct LiveWeb: UIViewRepresentable {
         let w = WKWebView(frame: .zero, configuration: cfg)
         w.isOpaque = false; w.backgroundColor = .clear; w.scrollView.backgroundColor = .clear
         w.scrollView.isScrollEnabled = !fit; w.scrollView.bounces = !fit
-        w.scrollView.contentInsetAdjustmentBehavior = fit ? .never : .automatic
+        w.scrollView.contentInsetAdjustmentBehavior = fit || edge ? .never : .automatic
         w.navigationDelegate = context.coordinator
         context.coordinator.load(w, url)
         return w
