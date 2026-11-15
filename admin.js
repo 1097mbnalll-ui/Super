@@ -2020,3 +2020,52 @@
   });
 
   ADMX = { adminShell: adminShell, showTab: showTab, loadDrvLoc: loadDrvLoc, publish: publish, renderOList: renderOList, oFind: oFind, openOrder: openOrder, loadToday: loadToday, renderStaff: renderStaff };
+
+  /* ---------- تنبيه الطلب الجديد داخل لوحة الإدارة بصوت (طلب المالك ١٥ نوفمبر ٢٠٢٦) ----------
+     كل ١٠ ثواني نسأل الخادم عن آخر الطلبات؛ أي طلب جديد من الزبون (مو اللي تدخله أنت) يطلع له شريط فوق وصوت يتكرر لين تضغط «تمام».
+     الصوت يحتاج أن الصفحة مفتوحة وقدامك (المتصفح يوقف الصوت لو الصفحة بالخلفية أو الشاشة مقفلة). لو تبي إشعار والشاشة مقفلة فعّل «الإشعارات» من تبويب الإشعارات. */
+  var oa = { seen: null, pending: [], on: true, ring: 0, busy: false, title: "" };
+  try { oa.on = localStorage.getItem("ohod-admin-sound") !== "0"; } catch(e){}
+  function oaChime(){
+    if (!oa.on) return;
+    try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.resume) audioCtx.resume();
+      [[0, 784], [0.18, 988], [0.36, 1175], [0.62, 784], [0.8, 988], [0.98, 1175]].forEach(function(n){ var t0 = audioCtx.currentTime + n[0], o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = "triangle"; o.frequency.value = n[1]; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.6, t0 + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+        o.connect(g); g.connect(audioCtx.destination); o.start(t0); o.stop(t0 + 0.32); });
+    } catch(e){}
+    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch(e){}
+  }
+  function oaUi(){
+    if (mode !== "admin") return;
+    var top = document.querySelector(".adm-top"), b = $("oaSnd");
+    if (top && !b) { b = document.createElement("button"); b.id = "oaSnd"; b.type = "button"; b.className = "btn btn-soft"; b.style.cssText = "min-height:36px;padding:4px 12px;font-size:.82rem"; top.appendChild(b);
+      b.addEventListener("click", function(){ oa.on = !oa.on; try { localStorage.setItem("ohod-admin-sound", oa.on ? "1" : "0"); } catch(e){} if (oa.on) oaChime(); else oaStop(); oaUi(); }); }
+    if (b) b.textContent = oa.on ? "🔔 صوت الطلبات شغّال" : "🔕 الصوت مقفل";
+    var bar = $("oaBar");
+    if (!oa.pending.length) { if (bar) bar.remove(); return; }
+    if (!bar) { bar = document.createElement("div"); bar.id = "oaBar"; bar.setAttribute("role", "alert");
+      bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:200;background:#0E8A6A;color:#fff;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.25)";
+      document.body.appendChild(bar); }
+    var o = oa.pending[oa.pending.length - 1];
+    bar.innerHTML = '<span style="flex:1;min-width:180px">🛎 طلب جديد ' + esc(o.no) + (o.total ? ' · ' + num(o.total) + ' ر.س' : '') + (o.name ? ' · ' + esc(o.name) : '') + (oa.pending.length > 1 ? ' (و ' + num(oa.pending.length - 1) + ' غيره)' : '') + '</span>' +
+      '<button type="button" class="btn" id="oaOpen" style="background:#fff;color:#0E8A6A;min-height:38px">افتح الطلبات</button><button type="button" class="btn" id="oaOk" style="background:rgba(255,255,255,.2);color:#fff;min-height:38px">تمام</button>';
+    bar.querySelector("#oaOk").onclick = oaStop; bar.querySelector("#oaOpen").onclick = function(){ oaStop(); if (typeof showTab === "function") { oState.list = null; showTab("olist"); if (typeof renderOList === "function") renderOList(); } };
+  }
+  function oaStop(){ oa.pending = []; clearInterval(oa.ring); oa.ring = 0; if (oa.title) { document.title = oa.title; oa.title = ""; } oaUi(); }
+  function oaPoll(){
+    if (mode !== "admin" || !adminPin || oa.busy || !apiUrl()) return;
+    if (staffAuth && ["cashier", "preparer"].indexOf(staffAuth.user.role) > -1) return;
+    oa.busy = true; oaUi();
+    api("/admin/orders", { pin: adminPin, limit: 20, since: Date.now() - 36 * 3600e3, src: "online" }).then(function(j){
+      oa.busy = false; if (!j || !j.ok || !j.orders) return;
+      var fresh = [];
+      if (oa.seen === null) { oa.seen = {}; j.orders.forEach(function(o){ oa.seen[o.no] = 1; }); return; }
+      j.orders.forEach(function(o){ if (!oa.seen[o.no]) { oa.seen[o.no] = 1; if ((o.src === "web" || !o.src) && o.status === "new") fresh.push(o); } });
+      if (!fresh.length) return;
+      oa.pending = oa.pending.concat(fresh.reverse()); if (!oa.title) oa.title = document.title; document.title = "🛎 طلب جديد · " + oa.title;
+      oaChime(); clearInterval(oa.ring); var n = 0; oa.ring = setInterval(function(){ if (++n > 14 || !oa.pending.length) { clearInterval(oa.ring); oa.ring = 0; return; } oaChime(); }, 8000);
+      oaUi(); if (aTab === "olist" && !$("oSheet")) { oState.list = null; if (typeof renderOList === "function") renderOList(); }
+    }).catch(function(){ oa.busy = false; });
+  }
+  if (!window.__oaTimer) { window.__oaTimer = setInterval(function(){ if (mode === "admin" && adminPin) oaPoll(); else if (oa.seen !== null || oa.pending.length) { oa.seen = null; oaStop(); } }, 10000); }
+  oa.seen = null; setTimeout(function(){ oaUi(); oaPoll(); }, 1500);
