@@ -6,6 +6,9 @@
 - المنتج الجديد: ينضاف بقسمه حسب اسمه (classify.py)، واللي كميته صفر ينضاف «نفد».
 - ما يلمس: الصور، الأقسام، الخيارات (packs)، الإعدادات. التكلفة والكميات بالعدد مكانها الخادم (D1) مو هالملف.
 قرار المالك ١١ نوفمبر ٢٠٢٦: كل منتج بالملف ينضاف، واللي مخزونه صفر يطلع «نفد»، وتحديث يومي للمخزون والأسعار.
+- قسم الكراتين من الصفر (المالك ١٥ نوفمبر ٢٠٢٦، tools/cartons/cartons.json): سطر وحدته كرتون/شدّة بنفس رقم الحبة ما يغيّر
+  الحبة أبداً (كان يحط سعر الكرتون ووحدته على الحبة)، ولا يضيف منتج جديد: يحدّث سعر خيار الكرتون بس لو الكرتون من المختارة.
+  منتجات الكرتون المنفصلة القديمة (off) والشدّات القديمة (off_codes) ما ترجع.
 - الشدّات والكراتين اللي في packs_map.json (قرار المالك ١٢ نوفمبر) ما تنضاف منتج منفصل: سعرها يصير سعر خيارها داخل منتج
   الحبة، وكميتها × عدد حباتها تنضاف لمخزون الحبة (المخزون بالحبات)، والمنتج المنفصل القديم ينشال.
 """
@@ -52,6 +55,10 @@ KEEP_OFFERS = '--keep-offers' in sys.argv
 _cp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'consumables.json')
 _cj = json.load(open(_cp, encoding='utf-8')) if os.path.exists(_cp) else {}
 CONSUM = set(_cj.get('cats', [])); CONSUM_SUB = set(_cj.get('subs', [])); CONSUM_IDS = set(_cj.get('ids', []))
+_ct = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'cartons', 'cartons.json')
+CARTONS = json.load(open(_ct, encoding='utf-8')) if os.path.exists(_ct) else {'picks': {}, 'off': [], 'off_codes': []}
+CT_BY_CODE = {str(v['code']).lstrip('0'): pid for pid, v in CARTONS.get('picks', {}).items()}
+CT_OFF_CODES = set(CARTONS.get('off_codes', []))
 SHELF = {k: v for k, v in json.load(open(_sp, encoding='utf-8')).items() if not k.startswith('_')} if os.path.exists(_sp) else {}
 
 def main(data_path, xlsx, dry=False):
@@ -61,7 +68,7 @@ def main(data_path, xlsx, dry=False):
     pmap = {k: v for k, v in json.load(open(PACKS)).items() if k != '_'} if os.path.exists(PACKS) else {}
     hidden = {x['bc'] for x in json.load(open(HIDDEN)).get('items', [])} if os.path.exists(HIDDEN) else set()
     merged = {k: v for k, v in json.load(open(MERGED)).items() if k != '_'} if os.path.exists(MERGED) else {}
-    gone = {'x' + k for k in pmap} | {'x' + b for b in hidden} | {k if k.startswith('x') else 'x' + k for k in merged}
+    gone = {'x' + k for k in pmap} | {'x' + b for b in hidden} | {k if k.startswith('x') else 'x' + k for k in merged} | set(CARTONS.get('off', []))
     if any(p['id'] in gone for p in d['products']):
         d['products'] = [p for p in d['products'] if p['id'] not in gone]
     ps = d['products']
@@ -76,11 +83,21 @@ def main(data_path, xlsx, dry=False):
     for row in read_rows(xlsx):
         code, name = row[0], row[1]
         k = code if re.fullmatch(r'\d{6,14}', code) else 'n:' + key(name)
+        if UNIT.get(row[2]) in ('كرتون', 'شدّة'): k = 'c:' + k   # الكرتون ورقم الحبة نفسه: سطرين مختلفين
         best.pop(k, None); best[k] = row
     for code, name, unit, qty, price in best.values():
         if SKIP.search(name) or price <= 0: rep['skip'] += 1; continue
         if code in hidden: rep['hidden'] += 1; continue
+        if code in CT_OFF_CODES: rep['carton_off'] += 1; continue
         if code in pmap: pack_rows[code] = (qty, price); continue
+        if UNIT.get(unit) in ('كرتون', 'شدّة'):
+            c0 = code.lstrip('0'); bid = CT_BY_CODE.get(c0) or (CT_BY_CODE.get(c0[:-1]) if len(c0) >= 13 else None)
+            b = by_id.get(bid) if bid else None
+            o = next((x for x in (b or {}).get('packs', []) if re.match(r'^(كرتون|شدّة)', str(x.get('u') or ''))), None)
+            if o and abs(float(o.get('price') or 0) - price) >= 0.01:
+                changed.append((b['name'] + ' · ' + o['u'], o['price'], price)); o['price'] = price; rep['carton_price'] += 1
+            else: rep['carton_row'] += 1
+            continue
         good = bool(re.fullmatch(r'\d{6,14}', code))
         _aid = code if good else 'xn' + hashlib.sha1(name.encode()).hexdigest()[:10]
         if _aid in merged: alias_rows.append((merged[_aid], qty, price)); rep['merged_alias'] += 1; continue
