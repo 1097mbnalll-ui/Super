@@ -457,6 +457,8 @@ enum CatalogParser {
             store.liveHead = (app["liveHead"] as? Bool) ?? false
             if (app["web"] as? Bool) == true { store.webScreens = ["*"] }
             else if let l = app["web"] as? [Any] { store.webScreens = Set(l.compactMap { str($0) }) }
+            // من 1.2: store.app.home = "web" يخلي الرئيسية من الموقع من أعلى الشاشة (1.1 ما يقراه، فيه شريط عنوان أبيض)
+            if str(app["home"]) == "web" { store.webScreens.insert("home") }
         }
         if let app = s["app"] as? [String: Any], let taps = app["tap"] as? [[String: Any]] {
             let set: (Any?) -> Set<String>? = { v in
