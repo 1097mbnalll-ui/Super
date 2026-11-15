@@ -4902,6 +4902,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   if (!EMBED) { loadStock(); setInterval(function(){ if (!document.hidden && mode === "store") loadStock(); }, 60000); } else if (EMBED_SCREEN || EMBED_PAGE) loadStock();
   document.addEventListener("visibilitychange", function(){ if (!EMBED && !document.hidden && mode === "store") loadStock(); });
   if (!NATIVE && (location.hash === "#driver" || /[?&]app=driver/.test(location.search) || APP)) openDriver();
+  // الموقع: نسجّل sw.js عشان صفحة «ما فيه نت» تطلع لو انقطع النت (داخل التطبيقات لكل تطبيق صفحته)
+  if (GH && !NATIVE && !EMBED && !OWNERQ && "serviceWorker" in navigator) { try { navigator.serviceWorker.register("sw.js").catch(function(){}); } catch(e){} }
   if (OWNERQ) {   // تطبيق المالك: افتح الدخول على طول، وزر ثابت لو انقفل
     document.documentElement.classList.add("owner");
     var ob = document.createElement("button"); ob.type = "button"; ob.textContent = "دخول الإدارة";
