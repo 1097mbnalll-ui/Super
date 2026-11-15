@@ -2335,6 +2335,21 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     tick(); trackTimer = setInterval(function(){ tick(); var want = lastOrder.status === "onway" ? 4000 : 15000; if (want !== every) trackPoll(); }, every);
   }
 
+  // شريط «طلبك…» فوق المتجر: نحدّث حالته كل ٣٠ ثانية وإحنا في الرئيسية (وأول ما يرجع للصفحة)
+  var homeTrkAt = 0;
+  function homeTrack(force){
+    if (EMBED || mode !== "store" || screen !== "home" || document.hidden || !activeOrder() || !apiUrl()) return;
+    if (!force && Date.now() - homeTrkAt < 25000) return; homeTrkAt = Date.now();
+    fetch(String(apiUrl()).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: lastOrder.no, phone: lastOrder.phone }) })
+      .then(function(r){ return r.json(); }).then(function(j){
+        if (!j.ok || !lastOrder || j.status === lastOrder.status) return;
+        lastOrder.status = j.status; saveLast();
+        if (screen === "home" && !document.querySelector(".sheet")) render();
+      }).catch(function(){});
+  }
+  setInterval(function(){ homeTrack(false); }, 30000);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) homeTrack(true); });
+
   /* ----- الزبون يتابع المندوب على الخريطة لحظة بلحظة ----- */
   var trk = { map: null, car: null, home: null, from: null, to: null, t0: 0, raf: 0, fit: false };
   function trkInfo(){
@@ -4312,8 +4327,22 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function trackLink(){
     var t = String((location.search.match(/[?&]t=(\d{3,8})/) || [])[1] || ""); if (!t || EMBED || mode !== "store" || !apiUrl()) return;
     var sum = Number((location.search.match(/[?&]s=([\d.]+)/) || [])[1]) || 0, pay = /[?&]p=card/.test(location.search) ? "card" : "cash";
+    var kp = (location.search.match(/[?&]k=([0-9a-z]{4,10})/) || [])[1], kph = kp ? "0" + parseInt(kp, 36) : "";
     try { history.replaceState(null, "", location.pathname + location.hash); } catch(e){}
-    if (lastOrder && String(lastOrder.no) === t && lastOrder.phone) { show("sent"); return; }
+    if (lastOrder && String(lastOrder.no) === t && lastOrder.phone) { show("home"); return; }
+    // الرابط فيه جوال الزبون (k): نتأكد من الخادم ونحفظ الطلب، ويفتح له المتجر وفوقه شريط «طلبك…» كأنه طلب من الموقع
+    if (/^05\d{8}$/.test(kph)) {
+      fetch(String(apiUrl()).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: t, phone: kph }) })
+        .then(function(r){ return r.json(); }).then(function(j){
+          if (!j.ok) { askPhone(); return; }
+          lastOrder = { no: t, phone: kph, total: sum || undefined, pay: pay, at: Date.now(), status: j.status, track: true, viaLink: 1 };
+          saveLast(); if (!form.phone) { form.phone = kph.slice(1); saveForm(); }
+          if (screen === "home" && !document.querySelector(".sheet")) render();
+        }).catch(function(){});
+      return;
+    }
+    askPhone();
+    function askPhone(){
     var w = document.createElement("div");
     w.innerHTML = '<div class="sheet" id="trkSheet"><form class="panel" id="trkForm" autocomplete="off"><div class="panel-head"><h2>' + tr("تابع طلبك", "Track your order") + ' <span dir="ltr">#' + esc(t) + '</span></h2><button class="btn btn-ghost" type="button" id="trkClose">' + tr("إغلاق", "Close") + '</button></div>' +
       '<p class="hint" style="margin:0">' + tr("اكتب رقم جوالك اللي طلبت فيه، وتشوف حالة طلبك والمندوب على الخريطة لين يوصلك.", "Type the phone number you ordered with to see your order status and the driver on the map.") + '</p>' +
@@ -4332,9 +4361,10 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         .then(function(r){ return r.json(); }).then(function(j){
           if (!j.ok) { m.className = "status err"; m.textContent = j.code === "not_found" ? tr("الرقم ما يطابق هالطلب. اكتب الجوال اللي طلبت فيه.", "This phone does not match the order.") : tr("ما قدرنا نجيب الطلب، جرّب بعد شوي.", "Could not load the order, try again shortly."); return; }
           lastOrder = { no: t, phone: ph, total: sum || undefined, pay: pay, at: Date.now(), status: j.status, track: true, viaLink: 1 };
-          saveLast(); close(); show("sent");
+          saveLast(); if (!form.phone) { form.phone = ph.slice(1); saveForm(); } close(); show("home");
         }).catch(function(){ m.className = "status err"; m.textContent = tr("ما فيه اتصال، جرّب مرة ثانية.", "No connection, try again."); });
     });
+    }
   }
   var pinFails = 0, pinLockUntil = 0;
   function openPin(){
