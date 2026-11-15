@@ -3239,7 +3239,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       (o.status === "onway" && o.track && apiUrl() ? '<div class="trk"><div class="trk-map" id="trkMap"></div><div class="trk-info" id="trkInfo">' + trkInfo() + '</div></div>' : '') +
       (o.track && apiUrl() && o.status !== "delivered" && o.status !== "canceled" ? (o.push ? '<div class="r push-on">' + ic("bell") + '<span>' + tr("بيوصلك إشعار مع كل تغيير في حالة طلبك", "You will get a notification for every status change") + '</span></div>' :
         '<button class="btn btn-ghost pushbtn" type="button" id="pushMe">' + ic("bell") + '<span>' + tr("نبّهني لما تتغير حالة طلبي", "Notify me about my order") + '</span></button><p class="pushmsg" id="pushMsg"' + (pushWhy() && (isIOS() && !isApp()) ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</p>') : '') +
-      tr('<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>الإجمالي · ', '<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>Total · ') + (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + tr(' عند الاستلام</span><b>', ' on delivery</span><b>') + rial(o.total || 0) + '</b></div></div>' +
+      (o.total || !o.viaLink ? tr('<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>الإجمالي · ', '<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>Total · ') + (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + tr(' عند الاستلام</span><b>', ' on delivery</span><b>') + rial(o.total || 0) + '</b></div>' : '') + '</div>' +
       (o.walletCents ? '<p>مدفوع بالمحفظة '+moneyFromCents(o.walletCents)+' · المتبقي عند الاستلام '+moneyFromCents(Math.max(0,Math.round(o.total*100)-o.walletCents))+'</p>' : '') + '<div class="acts"><a class="btn btn-orange" href="tel:' + esc(S.phone) + '">' + ic("phone") + tr('اتصل على المحل</a><button class="btn btn-ghost" type="button" data-nav="home">رجوع للمتجر</button></div></div></div>', 'Call the store</a><button class="btn btn-ghost" type="button" data-nav="home">Back to store</button></div></div></div>');
   }
   // المندوب اقترح بديل لمنتج ناقص: الزبون يوافق أو يشيله
@@ -4307,6 +4307,35 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (apiUrl()) return api("/login", { pin: pin }).then(function(j){ if (j.ok) return true; if (j.code === "bad_pin") return false; throw j; });
     return sha(pin).then(function(h){ return S.pinHash ? h === S.pinHash : pin === "1234"; });
   }
+  /* رابط متابعة الطلب (طلب المالك ١٥ نوفمبر ٢٠٢٦): الطلب اللي ينضاف من الإدارة (واتساب/اتصال) يوصل الزبون رابط ?t=<رقم الطلب>&s=<الإجمالي>&p=<cash|card>
+     يفتحه ويكتب رقم جواله (نفس الرقم اللي بالطلب، الخادم يتأكد في /track)، ويتحفظ الطلب في جواله ويتابعه مثل أي طلب من الموقع */
+  function trackLink(){
+    var t = String((location.search.match(/[?&]t=(\d{3,8})/) || [])[1] || ""); if (!t || EMBED || mode !== "store" || !apiUrl()) return;
+    var sum = Number((location.search.match(/[?&]s=([\d.]+)/) || [])[1]) || 0, pay = /[?&]p=card/.test(location.search) ? "card" : "cash";
+    try { history.replaceState(null, "", location.pathname + location.hash); } catch(e){}
+    if (lastOrder && String(lastOrder.no) === t && lastOrder.phone) { show("sent"); return; }
+    var w = document.createElement("div");
+    w.innerHTML = '<div class="sheet" id="trkSheet"><form class="panel" id="trkForm" autocomplete="off"><div class="panel-head"><h2>' + tr("تابع طلبك", "Track your order") + ' <span dir="ltr">#' + esc(t) + '</span></h2><button class="btn btn-ghost" type="button" id="trkClose">' + tr("إغلاق", "Close") + '</button></div>' +
+      '<p class="hint" style="margin:0">' + tr("اكتب رقم جوالك اللي طلبت فيه، وتشوف حالة طلبك والمندوب على الخريطة لين يوصلك.", "Type the phone number you ordered with to see your order status and the driver on the map.") + '</p>' +
+      '<label for="trkPhone">' + tr("رقم الجوال", "Phone number") + '<input id="trkPhone" type="tel" inputmode="tel" dir="ltr" placeholder="05xxxxxxxx" maxlength="14" required></label>' +
+      '<div class="actions"><button class="btn btn-ink" type="submit">' + tr("اعرض طلبي", "Show my order") + '</button><span class="status" id="trkMsg" aria-live="polite"></span></div></form></div>';
+    document.body.appendChild(w.firstChild);
+    var close = function(){ var x = $("trkSheet"); if (x) x.remove(); };
+    $("trkClose").addEventListener("click", close);
+    $("trkPhone").focus();
+    $("trkForm").addEventListener("submit", function(e){
+      e.preventDefault();
+      var ph = String($("trkPhone").value).replace(/[\u0660-\u0669]/g, function(d){ return d.charCodeAt(0) - 1632; }).replace(/[\u06F0-\u06F9]/g, function(d){ return d.charCodeAt(0) - 1776; }).replace(/\D/g, "").replace(/^(00)?966/, "0"), m = $("trkMsg");
+      if (!/^05\d{8}$/.test(ph)) { m.className = "status err"; m.textContent = tr("اكتب رقم جوال صحيح يبدأ بـ 05", "Enter a valid phone starting with 05"); return; }
+      m.className = "status"; m.textContent = tr("جاري البحث…", "Searching…");
+      fetch(String(apiUrl()).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: t, phone: ph }) })
+        .then(function(r){ return r.json(); }).then(function(j){
+          if (!j.ok) { m.className = "status err"; m.textContent = j.code === "not_found" ? tr("الرقم ما يطابق هالطلب. اكتب الجوال اللي طلبت فيه.", "This phone does not match the order.") : tr("ما قدرنا نجيب الطلب، جرّب بعد شوي.", "Could not load the order, try again shortly."); return; }
+          lastOrder = { no: t, phone: ph, total: sum || undefined, pay: pay, at: Date.now(), status: j.status, track: true, viaLink: 1 };
+          saveLast(); close(); show("sent");
+        }).catch(function(){ m.className = "status err"; m.textContent = tr("ما فيه اتصال، جرّب مرة ثانية.", "No connection, try again."); });
+    });
+  }
   var pinFails = 0, pinLockUntil = 0;
   function openPin(){
     var w = document.createElement("div");
@@ -4870,7 +4899,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   // ما يطلع داخل التطبيق (embed) ولا مع الروابط المباشرة (#… أو ?go=) ولا للزبون اللي طلب أو زار قبل. سؤال الإشعارات ينتظر لين يقفل
   function introWanted(){
     try { if (localStorage.getItem("ohod-intro") || localStorage.getItem("ohod-pushask") || lastOrder || Object.keys(HIST).length || Object.keys(cart).length) return false; } catch(e){ return false; }
-    return !EMBED && !OWNERQ && !APP && !/[?&](?:app=(?:driver|pos|owner)|go=|embed=)/.test(location.search) && !location.hash && mode === "store" && screen === "home" && !document.querySelector(".sheet");
+    return !EMBED && !OWNERQ && !APP && !/[?&](?:app=(?:driver|pos|owner)|go=|t=|embed=)/.test(location.search) && !location.hash && mode === "store" && screen === "home" && !document.querySelector(".sheet");
   }
   function openIntro(){
     if (!introWanted()) return;
@@ -4967,6 +4996,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     // رابط من إشعار (?go=offers أو o:<قسم>): يفتح العروض أو القسم مرة وحدة
     try { var gp = (location.search.match(/[?&]go=([^&]+)/) || [])[1]; if (gp && !EMBED && mode === "store") { gp = decodeURIComponent(gp); history.replaceState(null, "", location.pathname + location.hash);
       if (gp === "offers") { chip = "offers"; show("home"); } else if (gp === "cart") { show("cart"); } else if (/^[oc]:/.test(gp) && catOf(gp.slice(2))) { openCat = gp.slice(2); openSub = ""; show("cat"); } } } catch(e){}
+    try { trackLink(); } catch(e){}
   }).catch(function(){ dataReady = true; if (EMBED) refresh(); });
   if (window.claude && claude.use) {
     claude.use("user").then(function(u){ return u ? u.canEdit() : false; }).then(function(ok){
