@@ -916,6 +916,26 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-stop{display:flex;align-items:center;gap:10px;padding-top:14px}
 .kq-stop .kq-search{flex:1}
 .kqsky{position:relative;isolation:isolate}
+.kqsky.top{--g1:#8FD0F5;--g2:#CDEBFA;--g3:#F7E7C6;background:linear-gradient(180deg,var(--g1),var(--g2) 45%,var(--g3) 75%,var(--ground) 100%) top/100% 640px no-repeat,var(--ground)}
+.kqsky.top.s-noon{--g1:#4FA9E8;--g2:#A7D8F5;--g3:#EFE3CC}.kqsky.top.s-asr{--g1:#6BB6E8;--g2:#F2D49B;--g3:#F3C58A}.kqsky.top.s-maghrib{--g1:#3B2A7A;--g2:#B6407E;--g3:#F38B4C}.kqsky.top.s-night{--g1:#0F0B2E;--g2:#2E1A66;--g3:#5B2A7E}
+.kqsky-st{position:absolute;left:0;right:0;top:0;height:330px;pointer-events:none;background-image:radial-gradient(1.6px 1.6px at 12% 8%,#fff 50%,transparent),radial-gradient(1px 1px at 30% 4%,#fff 50%,transparent),radial-gradient(1.3px 1.3px at 52% 30%,#fff 50%,transparent),radial-gradient(1px 1px at 68% 14%,#fff 50%,transparent),radial-gradient(1.5px 1.5px at 84% 40%,#fff 50%,transparent),radial-gradient(1px 1px at 92% 22%,#fff 50%,transparent),radial-gradient(1.2px 1.2px at 6% 46%,#fff 50%,transparent),radial-gradient(1px 1px at 44% 52%,#fff 50%,transparent);opacity:0;animation:skytw 3.5s ease-in-out infinite}
+.kqsky.top.s-night .kqsky-st{opacity:1}.kqsky.top.s-maghrib .kqsky-st{opacity:.4}
+.kq-head.skyon{background:transparent!important;position:relative}
+.kqsky.top.s-night .kq-head .kq-meta,.kqsky.top.s-maghrib .kq-head .kq-meta{color:#F5D0FE}.kqsky.top.s-night .kq-logo b,.kqsky.top.s-maghrib .kq-logo b{color:#FDE68A}
+.kqsky-hi2{position:relative;height:120px;overflow:hidden}
+.kqsky-hi2 .city{position:absolute;left:0;right:0;bottom:0;height:66px;width:100%}.kqsky-hi2 .city path{fill:rgba(255,255,255,.62)}.kqsky-hi2 .city .win{fill:transparent}.kqsky.top .kqsky-hi2{margin-bottom:-20px}.kqsky.top .kq-sec-wrap{position:relative;z-index:1}
+.kqsky.top.s-night .kq-loc,.kqsky.top.s-maghrib .kq-loc{color:#F5D0FE!important}
+.kqsky-hi2 i{position:absolute;display:block}
+.kqsky-hi2 .sun{left:24px;top:10px;width:42px;height:42px;border-radius:50%;background:#FDE047;box-shadow:0 0 0 10px rgba(253,224,71,.22),0 0 34px 6px rgba(251,191,36,.7);display:none;animation:skysun 4s ease-in-out infinite}
+.kqsky.top.s-morning .sun,.kqsky.top.s-noon .sun{display:block}.kqsky.top.s-asr .sun{display:block;top:26px;background:#FDBA4D}.kqsky.top.s-maghrib .sun{display:block;top:62px;background:#FB923C;box-shadow:0 0 40px 10px rgba(251,146,60,.7)}
+.kqsky-hi2 .moon{left:30px;top:12px;width:32px;height:32px;border-radius:50%;box-shadow:-9px 6px 0 0 #FDE68A;transform:rotate(-20deg);display:none}.kqsky.top.s-night .moon{display:block}
+.kqsky-hi2 .cl{width:80px;height:22px;border-radius:30px;background:rgba(255,255,255,.75);display:none;animation:skycl 40s linear infinite}
+.kqsky-hi2 .cl:before{content:"";position:absolute;width:34px;height:34px;border-radius:50%;background:inherit;left:14px;top:-15px}
+.kqsky-hi2 .c1{top:22px;right:-100px}.kqsky-hi2 .c2{top:46px;right:-180px;transform:scale(.7);animation-duration:55s;animation-delay:-20s}
+.kqsky.top.s-morning .cl,.kqsky.top.s-noon .cl,.kqsky.top.s-asr .cl{display:block}
+.kqsky-hi2 .kqsky-hi{position:relative;min-height:0;padding-top:4px}
+@media (prefers-reduced-motion:reduce){.kqsky-st,.kqsky-hi2 *{animation:none!important}}
+
 .kqsky-bg{position:absolute;left:0;right:0;top:0;height:300px;z-index:-1;overflow:hidden;-webkit-mask:linear-gradient(#000 55%,transparent);mask:linear-gradient(#000 55%,transparent)}
 .kqsky.s-morning .kqsky-bg{background:linear-gradient(180deg,#8FD0F5,#CDEBFA 55%,#F7E7C6)}
 .kqsky.s-noon .kqsky-bg{background:linear-gradient(180deg,#4FA9E8,#A7D8F5 60%,#EFE3CC)}
@@ -1481,6 +1501,16 @@ body[data-screen="driver"]{background:#F3F4F6}
 .srcpill{font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;background:#EEE8FF;color:#5B3DB8}
 .closedbar{display:flex;gap:10px;align-items:center;background:#1E1E2A;color:#fff;border-radius:16px;padding:10px 14px;margin-bottom:10px;font-size:12px;line-height:1.5}
 .closedbar b{display:block;font-size:13.5px}
+.closedbar.v2{background:rgba(255,255,255,.94);color:#1C1917;border-radius:20px;padding:12px 14px;gap:12px;box-shadow:0 8px 22px rgba(15,11,46,.12);border:1px solid rgba(255,255,255,.7)}
+.closedbar.v2 .cb-ic{flex:none;width:42px;height:42px;border-radius:14px;background:linear-gradient(160deg,#1E1B4B,#4C1D95);display:grid;place-items:center;color:#FDE68A}
+.closedbar.v2 .cb-ic svg{width:22px;height:22px}
+.closedbar.v2 .cb-t b{font-size:15.5px;font-weight:900;line-height:1.3}.closedbar.v2 .cb-t b em{font-style:normal;color:#C2410C}
+.closedbar.v2 .cb-t span{display:block;font-size:12.5px;font-weight:600;color:#57534E;line-height:1.5}
+.kqsky.top.s-night .closedbar.v2,.kqsky.top.s-maghrib .closedbar.v2{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28);color:#fff;box-shadow:none;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.kqsky.top.s-night .closedbar.v2 .cb-ic,.kqsky.top.s-maghrib .closedbar.v2 .cb-ic{background:rgba(253,230,138,.16)}
+.kqsky.top.s-night .closedbar.v2 .cb-t b em,.kqsky.top.s-maghrib .closedbar.v2 .cb-t b em{color:#FDE68A}
+.kqsky.top.s-night .closedbar.v2 .cb-t span,.kqsky.top.s-maghrib .closedbar.v2 .cb-t span{color:#E9D5FF}
+
 .closedbar svg.i{width:20px;height:20px;flex:none;color:#FFB547}
 .alert.soft{background:#FFF4E8;color:#8A4A12;border-color:#FFD8B0}
 .kq-left{position:absolute;bottom:8px;right:8px;z-index:2;background:#FFF1E6;color:#B4470B;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:700}
@@ -2105,6 +2135,17 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     return num(ar) + (mi ? ":" + (mi < 10 ? "0" : "") + mi : "") + " " + part; }
   function closedMsgNow(){ if (S.closed) return sv("closedMsg") || tr("تقدر تتصفح المنتجات، والطلب يرجع يشتغل لما نفتح.", "You can browse; ordering resumes when we open.");
     return tr("نستقبل الطلبات يومياً من " + hmTxt(S.openAt) + " لين " + hmTxt(S.closeAt) + ". تقدر تتصفح الحين وتطلب وقت الفتح.", "We take orders daily " + S.openAt + "–" + S.closeAt + "."); }
+  // رسالة «المحل مقفل» (١٥ نوفمبر ٢٠٢٦): بطاقة فيها متى نفتح وعدّاد، تتلون مع السما
+  function durAr(t){ var h = Math.floor(t / 60), m = t % 60;
+    var hs = !h ? "" : h === 1 ? "ساعة" : h === 2 ? "ساعتين" : num(h) + (h <= 10 ? " ساعات" : " ساعة"), ms = !m ? "" : m === 1 ? "دقيقة" : m === 2 ? "دقيقتين" : num(m) + (m <= 10 ? " دقايق" : " دقيقة");
+    return hs && ms ? hs + " و" + ms : hs || ms || tr("شوي", "a moment"); }
+  function openInMin(){ if (S.closed || !S.openAt) return -1; var m = Math.floor((Date.now() / 60000 + 180) % 1440); return (hm(S.openAt) - m + 1440) % 1440; }
+  function closedBarHTML(){
+    var t = openInMin(), moon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" fill="currentColor"/></svg>';
+    var title = t < 0 ? tr("المحل مقفل مؤقتاً", "Temporarily closed") : tr("نفتح بعد ", "Opening in ") + '<em id="clsIn">' + durAr(t) + '</em>';
+    var sub = t < 0 ? esc(closedMsgNow()) : tr("الساعة " + hmTxt(S.openAt) + " · جهّز سلتك الحين واطلبها أول ما نفتح", "At " + S.openAt + " · fill your cart now and order when we open");
+    return '<div class="closedbar v2" role="status"><span class="cb-ic">' + moon + '</span><span class="cb-t"><b>' + title + '</b><span>' + sub + '</span></span></div>'; }
+  setInterval(function(){ var el = document.getElementById("clsIn"), t = openInMin(); if (el && t >= 0) el.textContent = durAr(t); }, 30000);
   setInterval(function(){ var c = isClosed(); if (window.__wasClosed !== undefined && window.__wasClosed !== c && mode === "store") render(); window.__wasClosed = c; }, 60000);
   // عرض المجموعة (store.groups): «أي ٣ علب من كوكيز ديمة بـ 11 ريال و95 هللة». الزبون يختار الأنواع من نافذة الاختيار
   function grpById(id){ return (S.groups || []).filter(function(g){ return g && g.id === id && g.on !== false; })[0] || null; }
@@ -2802,7 +2843,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var h = '<div class="kq-head"><div class="wrap">' +
       (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span>' + (lastOrder.subs && lastOrder.subs.length ? '<em class="trk-sub">' + tr("فيه بديل ينتظر موافقتك", "A replacement needs your answer") + '</em>' : '') + '</span>' + ic("fwd") + '</button>' :
         rateDue() ? '<div class="ratebar"><button class="trackbar" type="button" data-nav="sent"><span class="ic">★</span><span class="t"><b>' + tr("وصلك طلبك ", "How was order ") + esc(lastOrder.no) + tr("؟ قيّم تجربتك", "? Rate it") + '</b><span>' + tr("ثواني وتساعدنا نصير أحسن", "Takes seconds and helps us improve") + '</span></span>' + ic("fwd") + '</button><button type="button" class="ratebar-x" data-rateskip aria-label="' + tr("إخفاء", "Hide") + '">×</button></div>' : '') +
-      (isClosed() ? '<div class="closedbar">' + ic("lock") + '<span><b>' + tr("المحل مقفل الحين", "The store is closed right now") + '</b>' + esc(closedMsgNow()) + '</span></div>' : '') +
+      (isClosed() ? closedBarHTML() : '') +
       '<div class="kq-row"><div class="kq-logo"><img src="' + D.imgs.logo + '" alt=""><b>' + esc(sv("name")) + '</b></div>' +
       '<div class="kq-meta"><span class="kq-sched">' + ic("truck") + esc(sv("eta")) + '</span><span class="kq-loc">' + ic("pin") + esc(sv("area")) + ic("down") + '</span></div>' +
       '<button class="langbtn" type="button" data-lang="' + (LANG === "en" ? "ar" : "en") + '" aria-label="' + tr("English", "العربية") + '">' + (LANG === "en" ? "ع" : "EN") + '</button></div>' +
@@ -2829,6 +2870,12 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     FGB = layF && !layF.on && SEC.featured ? SEC.featured.replace(/^<div class="wrap kq-sec-wrap"[^>]*>/, "").replace(/<\/div>$/, "").replace("kq-ban featured", "kq-ban") : "";
     var bn = banners(); SEC.promos = bn ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + bn + '</div>' : '';
     // سما الرياض خلف ديمة والبنرات (store.skyHome): تتغير مع الوقت، وديمة والبنرات زي ما هي
+    if (S.skyHome && !EMBED && (SEC.featured || SEC.promos)) { var sk0 = skyNow();
+      // الموقع: السما من أعلى الصفحة (خلف الشعار والبحث)، وديمة والبنرات تحتها
+      h = '<div class="kqsky top s-' + sk0.k + '"><i class="kqsky-st" aria-hidden="true"></i>' + h.replace('class="kq-head"', 'class="kq-head skyon"') +
+        '<div class="kqsky-hi2"><i class="sun" aria-hidden="true"></i><i class="moon" aria-hidden="true"></i><i class="cl c1" aria-hidden="true"></i><i class="cl c2" aria-hidden="true"></i>' + SKYLINE + '<div class="wrap kqsky-hi"><b>' + sk0.t + '</b><span>' + sk0.s + '</span></div></div>' +
+        SEC.featured + SEC.promos + '</div>';
+      SEC.featured = SEC.promos = ""; }
     if (S.skyHome && (SEC.featured || SEC.promos)) { var sk = skyNow();
       SEC.promos = '<div class="kqsky s-' + sk.k + '"><div class="kqsky-bg" aria-hidden="true"><i class="st"></i><i class="sun"></i><i class="moon"></i><i class="cl c1"></i><i class="cl c2"></i>' + SKYLINE + '</div>' +
         '<div class="wrap kqsky-hi"><b>' + sk.t + '</b><span>' + sk.s + '</span></div>' + SEC.featured + SEC.promos + '</div>';
