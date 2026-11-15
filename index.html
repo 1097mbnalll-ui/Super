@@ -1138,6 +1138,8 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .khero .kq-sec-wrap{padding-left:0!important;padding-right:0!important;margin-top:0}
 .khero .kq-bans{border-radius:0;margin-top:2px}.khero .kq-ban{border-radius:0;min-height:236px}
 .khero .kq-dots i{background:rgba(255,255,255,.45)}.khero .kq-dots i.on{background:#fff}
+.kq-cats.krow{gap:8px}.kq-cats.krow .kq-cat{flex:0 0 58px;font-size:10.5px;gap:4px;line-height:1.25}.kq-cats.krow .kq-cat .tile{border-radius:14px}
+html.zs body{zoom:.86}
 .howto{margin:12px 0 4px;padding:16px;border-radius:22px;background:#fff;box-shadow:0 2px 14px rgba(19,33,60,.08);display:grid;gap:8px}.howto>b{font-family:var(--display);font-size:18px}.howto ol{list-style:none;margin:0;padding:0;display:grid;gap:6px}.howto li{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600}.howto li i{font-style:normal;width:26px;height:26px;border-radius:50%;background:var(--teal,#0E8A6A);color:#fff;display:grid;place-items:center;font-size:14px;flex:none}.howto p{margin:0;font-size:13px;color:var(--muted,#596171)}.howto-b{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}.howto-b .btn{justify-content:center}
 .fa-more{display:grid;gap:8px}.fa-more p{margin:0;font-size:13px;opacity:.85}.fa-more textarea{width:100%;box-sizing:border-box;border-radius:14px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit;padding:10px;font:inherit;font-size:16px}.fa-was{font-weight:700}.fa-new{width:100%;text-align:start;border:1.5px dashed #9fd3b6!important;background:#F4FBF7!important;cursor:pointer;font:inherit}
 .fa-box{margin:14px 0 4px;padding:16px;border-radius:22px;background:#EAF6EF;display:grid;gap:8px}.fa-box b{font-family:var(--display);font-size:17px}.fa-box p{margin:0;font-size:13.5px;color:var(--muted,#596171)}.fa-box textarea{width:100%;box-sizing:border-box;border:1.5px solid #CFE6D8;border-radius:16px;padding:12px;font:inherit;font-size:16px;resize:vertical;background:#fff}.fa-box textarea.bad{border-color:#D9472B}.fa-box .btn{justify-content:center}
@@ -2461,9 +2463,14 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (chip.indexOf("g:") === 0) { var gg = grpById(chip.slice(2)); return gg ? ['<div class="ofbox must gp-head"><b>🔥 ' + esc(grpLine(gg)) + '</b><p>' + tr("كانت " + (gg.w1 || "الحبة") + " بـ " + num(grpOld(gg)) + (grpSave(gg) > 0 ? " · توفّر " + num(grpSave(gg)) + " ر.س" : "") + " · تختار من أي نوع", "") + '</p><button class="btn btn-ink" type="button" data-gpick="' + esc(gg.id) + '">' + tr("اختر " + num(gg.n) + " " + (gg.w || "حبات"), "Pick " + gg.n) + '</button></div>'].concat(grpItems(gg).map(function(p){ return card(p); })) : []; }
     if (chip.indexOf("o:") === 0) { var oc = chip.slice(2); return pagedCards(D.products.filter(function(p){ return p.cat === oc && avail(p) && isOffer(p); }).sort(shelfSort), "chip:" + chip); }
     var dd = daily(), fy = idsToList(S.forYou), fyId = {}; fy.forEach(function(p){ fyId[p.id] = 1; });
-    var list = S.forOnly && fy.length ? [] : D.products.filter(function(p){ return avail(p) && !fyId[p.id]; }).slice().sort(function(a,b){ return ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)) || ((onSale(b) ? 1 : 0) - (onSale(a) ? 1 : 0)); });
-    return (dd && !fyId[dd.p.id] ? [card(dd.p, "t")] : []).concat(pagedCards(fy.concat(list).sort(function(a,b){ return (hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0); }), "chip:for"));
+    // «لك» (المالك ١٥ نوفمبر ٢٠٢٦): الأكثر رغبة (أهمية rk + العروض + الصورة) وتتجدد: ترتيب عشوائي موزون يتغيّر كل زيارة وكل ١٠ دقايق
+    var slot = Math.floor(Date.now() / 6e5); if (FYR.slot !== slot) { FYR.slot = slot; FYR.seed = (Math.random() * 1e9) | 0; FYR.sc = {}; }
+    var rnd = function(id){ var h = FYR.seed; for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0; return ((h >>> 0) % 1000) / 1000; };
+    var score = function(p){ if (FYR.sc[p.id] == null) FYR.sc[p.id] = (Number(p.rk) || 0) + (hasPic(p.img) ? 60 : -200) + (isOffer(p) ? 25 : 0) + rnd(p.id) * 90; return FYR.sc[p.id]; };
+    var list = S.forOnly && fy.length ? [] : D.products.filter(function(p){ return avail(p) && !fyId[p.id] && !soonP(p); }).slice().sort(function(a,b){ return score(b) - score(a); });
+    return (dd && !fyId[dd.p.id] ? [card(dd.p, "t")] : []).concat(pagedCards(fy.concat(list), "chip:for"));
   }
+  var FYR = { slot: -1, seed: 0, sc: {} };
   /* ---------- banners: 6 designs + product cut-outs ---------- */
   var BAN_STYLES = ["hero", "night", "shelf", "calm", "split", "bundle", "glass"];
   function bundleAlloc(b){
@@ -5018,6 +5025,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   /* ---------- routing ---------- */
   function go(m){ if (appLock && m !== "driver") { openDriver(); return; }
+    try { document.documentElement.classList.toggle("zs", m === "store" && !EMBED && !(S.zoom === false)); } catch(e){}
     // الإدارة: نحمّل admin.js أول (مرة وحدة) وبعدين نفتح
     if (m === "admin" && canEdit && !ADMX) { loadAdm().then(function(){ go(m); }).catch(function(){}); return; }
     window.scrollTo(0,0); if (m !== "driver") clearInterval(drv.timer); if (m !== "admin") { adminLoadGeneration++; if(adminSaveObserver){adminSaveObserver.disconnect();adminSaveObserver=null;} clearInterval(posTimer); clearInterval(prepTimer); clearInterval(alertTimer); clearTimeout(admTimer); alertsGeneration++; alertsLoading = false; } if (m === "admin" && canEdit) { mode = "admin"; document.body.style.paddingBottom = "0"; document.body.setAttribute("data-screen", "admin"); setDir("ar"); if(!staffAuth||staffAuth.user.role==="manager")loadAdminCatalog();else adminShell(); } else { mode = "store"; setDir(LANG); applyTheme(S.theme); screen = "home"; stack = []; render(); } }
