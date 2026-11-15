@@ -1519,7 +1519,12 @@
     var el = $("nfRes"); if (!el) return;
     var q = nf.q.trim().toLowerCase();
     if (!q) { el.innerHTML = ''; return; }
-    var res = draft.products.filter(function(p){ return p.name.toLowerCase().indexOf(q) > -1 || (p.name_en || "").toLowerCase().indexOf(q) > -1; }).slice(0, 8);
+    // نفس بحث الموقع الذكي (ترتيب الكلمات، الهمزات والتاء المربوطة، المرادفات، الإنجليزي، الباركود، حرف غلط)، طلب المالك ١٥ نوفمبر: «فيلادلفيا تطلع بالموقع وما تطلع هنا»
+    var res = [];
+    try { searchProducts(nf.q).forEach(function(x){ var p = dById(x.id); if (p && res.indexOf(p) < 0) res.push(p); }); } catch(e){}
+    var ws = normAr(asciiDigits(q)).split(/\s+/).filter(Boolean);   // ومنتجات جديدة بالإدارة ما انحفظت للموقع بعد
+    draft.products.forEach(function(p){ if (res.indexOf(p) < 0) { var h = normAr(asciiDigits(p.name + " " + (p.name_en || "") + " " + (p.bc || ""))); if (ws.every(function(w){ return h.indexOf(w) > -1; })) res.push(p); } });
+    res = res.slice(0, 12);
     el.innerHTML = res.length ? res.map(function(p){ var left = qtyOf(p.id);
       return '<button type="button" class="nf-pr" data-nfadd="' + p.id + '">' + imgTag(p.img, "") + '<span class="nm">' + esc(p.name) + ' <small class="hint">' + esc(p.unit || "") + '</small></span>' + (!p.stock ? '<em class="out">مو متوفر</em>' : left != null ? '<em class="' + (left <= 3 ? 'out' : '') + '">باقي ' + num(left) + '</em>' : '') + '<b>' + num(p.price) + ' ر.س</b><span class="plus">+</span></button>'; }).join("") : '<p class="hint">ما لقينا منتج بهذا الاسم.</p>';
   }
