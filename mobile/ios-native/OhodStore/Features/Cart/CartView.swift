@@ -41,7 +41,7 @@ struct CartView: View {
                             FreeDeliveryBar(remaining: totals.freeRemaining, progress: totals.freeProgress)
                         }
                         if catalog.store.isClosedNow {
-                            ClosedNotice(message: catalog.store.closedNowMessage)
+                            ClosedNotice()
                         }
                         if let err = totals.quoteError {
                             // الخادم يقول العرض ناقص (مثل «اختر ٣ علب»): زر يكمّل من الصفحة الحية

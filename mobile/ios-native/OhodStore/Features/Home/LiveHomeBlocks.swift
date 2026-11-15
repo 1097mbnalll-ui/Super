@@ -77,11 +77,14 @@ struct LiveBridge {
     }
 }
 
-/// الرئيسية الحية: البنرات وأي قسم جديد. لو الموقع ما فتح خلال ٨ ثواني يطلع البديل الأصلي
+/// الرئيسية الحية: البنرات وأي قسم جديد. لو الموقع ما فتح خلال ١٥ ثانية يطلع البديل الأصلي.
+/// st (رأس الرئيسية «head»): ارتفاع شريط الساعة. المربع يطلع لين أعلى الشاشة (السما ورا الساعة) والموقع ينزّل محتواه تحتها بنفس المقدار.
+/// وهو يحمّل يطلع البديل الأصلي (الرأس) مكانه عشان الشاشة ما تكون بدون رأس
 struct LiveHomeBlocks<Fallback: View>: View {
     let blocks: [String]
     @Binding var tab: AppTab
     @Binding var path: NavigationPath
+    var st: CGFloat? = nil
     @ViewBuilder var fallback: () -> Fallback
     @Environment(CatalogStore.self) private var catalog
     @Environment(Cart.self) private var cart
@@ -89,26 +92,44 @@ struct LiveHomeBlocks<Fallback: View>: View {
     @State private var height: CGFloat = 0
     @State private var failed = false
 
+    private var items: [URLQueryItem] {
+        var q = [URLQueryItem(name: "blocks", value: blocks.joined(separator: ","))]
+        if let st { q.append(URLQueryItem(name: "st", value: String(Int(st.rounded())))) }
+        return q
+    }
+
     var body: some View {
+        let top = st ?? 0
         ZStack(alignment: .top) {
-            if failed { fallback() }
+            if failed { VStack(spacing: 0) { fallback() } }
             else {
-                LiveWeb(url: LiveBridge.url([URLQueryItem(name: "blocks", value: blocks.joined(separator: ","))], cart: cart, version: catalog.dataTag),
+                LiveWeb(url: LiveBridge.url(items, cart: cart, version: catalog.dataTag),
                         fit: true, height: $height, failed: $failed, script: catalog.liveScript,
                         onMessage: LiveBridge(path: $path, tab: $tab, cart: cart, catalog: catalog, favorites: favorites).handle)
                     .frame(height: height > 0 ? height : 1)
                     .opacity(height > 0 ? 1 : 0)
-                // وهو يحمّل: مكان فاضي بنفس حجم البنر، مو البنرات الأصلية القديمة (كانت تطلع «صفحة قديمة» أول ما ينفتح التطبيق)
-                if height == 0, blocks.contains("promos") { LiveLoading() }
+                    // الرأس: يرتفع فوق بقد الساعة (المحتوى داخله نازل بـ st)
+                    .padding(.top, st != nil && height > 0 ? -top : 0)
+                if height == 0 {
+                    if st != nil { VStack(spacing: 0) { fallback() }.environment(\.liveHomeLoading, true) }
+                    // وهو يحمّل: مكان فاضي بنفس حجم البنر، مو البنرات الأصلية القديمة (كانت تطلع «صفحة قديمة» أول ما ينفتح التطبيق)
+                    else if blocks.contains("promos") { LiveLoading() }
+                }
             }
         }
-        .padding(.top, 12)
+        .padding(.top, st == nil ? 12 : 0)
         .task(id: catalog.version) { failed = false }
     }
 }
 
+/// البديل الأصلي ينعرض وهو يحمّل (مكان الرأس الحي)، مو لأن الموقع ما فتح
+private struct LiveHomeLoadingKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var liveHomeLoading: Bool { get { self[LiveHomeLoadingKey.self] } set { self[LiveHomeLoadingKey.self] = newValue } }
+}
+
 /// مكان البنرات وهي تحمّل من الموقع
-private struct LiveLoading: View {
+struct LiveLoading: View {
     @State private var on = false
     var body: some View {
         RoundedRectangle(cornerRadius: 22, style: .continuous)
