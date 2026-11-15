@@ -2467,8 +2467,9 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     // «لك» (المالك ١٥ نوفمبر ٢٠٢٦): الأكثر رغبة (أهمية rk + العروض + الصورة) وتتجدد: ترتيب عشوائي موزون يتغيّر كل زيارة وكل ١٠ دقايق
     var slot = Math.floor(Date.now() / 6e5); if (FYR.slot !== slot) { FYR.slot = slot; FYR.seed = (Math.random() * 1e9) | 0; FYR.sc = {}; }
     var rnd = function(id){ var h = FYR.seed; for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0; return ((h >>> 0) % 1000) / 1000; };
-    var score = function(p){ if (FYR.sc[p.id] == null) FYR.sc[p.id] = (Number(p.rk) || 0) + (hasPic(p.img) ? 60 : -200) + (isOffer(p) ? 25 : 0) + rnd(p.id) * 90; return FYR.sc[p.id]; };
-    var list = S.forOnly && fy.length ? [] : D.products.filter(function(p){ return avail(p) && !fyId[p.id] && !soonP(p); }).slice().sort(function(a,b){ return score(b) - score(a); });
+    // المالك: «لازم تكون منتجات عليها طلب»: الترتيب بالأهمية (المبيعات + الأساسيات) أول، والتجديد بس بين المنتجات المتقاربة (هزّة خفيفة)
+    var score = function(p){ if (FYR.sc[p.id] == null) { var r = Number(p.rk) || 0; FYR.sc[p.id] = r + (hasPic(p.img) ? 15 : -300) + (isOffer(p) ? 10 : 0) + rnd(p.id) * Math.min(18, r * 0.2); } return FYR.sc[p.id]; };
+    var list = S.forOnly && fy.length ? [] : D.products.filter(function(p){ return avail(p) && !fyId[p.id] && !soonP(p) && (Number(p.rk) || 0) >= (S.forMinRk != null ? Number(S.forMinRk) : 60); }).slice().sort(function(a,b){ return score(b) - score(a); });
     return (dd && !fyId[dd.p.id] ? [card(dd.p, "t")] : []).concat(pagedCards(fy.concat(list), "chip:for"));
   }
   var FYR = { slot: -1, seed: 0, sc: {} };
