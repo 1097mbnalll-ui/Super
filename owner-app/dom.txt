@@ -1,3 +1,0 @@
-offline@8s {"target":"about:blank","url":"https://1097mbnalll-ui.github.io/","h1":"ما فيه اتصال بالإنترنت","img":660,"textLen":106,"ready":"complete","err":"no network"}
-offline@18s {"target":"about:blank","url":"https://1097mbnalll-ui.github.io/","h1":"ما فيه اتصال بالإنترنت","img":660,"textLen":106,"ready":"complete","err":"no network"}
-online-again {"target":"https://1097mbnalll-ui.github.io/Super/?app=owner","url":"https://1097mbnalll-ui.github.io/Super/?app=owner","h1":null,"img":160,"textLen":4419,"ready":"complete","err":null}
