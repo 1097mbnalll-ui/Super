@@ -1,0 +1,842 @@
+{
+ "base": "http://localhost:8765",
+ "cases": [
+  {
+   "id": "site-morning",
+   "url": "/index.html?sky=morning",
+   "ok": false,
+   "issues": [
+    "بنر فاضي/مكسور: 1500ms offers kids=2 broken=0, 4000ms offers kids=2 broken=0, 7000ms offers kids=0 broken=0, 10500ms offers kids=0 broken=0, 14000ms offers kids=0 broken=0, 18000ms offers kids=0 broken=0, 23000ms offers kids=0 broken=0"
+   ],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 2,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 1
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 2,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "site-maghrib",
+   "url": "/index.html?sky=maghrib",
+   "ok": false,
+   "issues": [
+    "بنر فاضي/مكسور: 1500ms offers kids=2 broken=0, 4000ms offers kids=2 broken=0, 7000ms offers kids=0 broken=0, 10500ms offers kids=0 broken=0, 14000ms offers kids=0 broken=0, 18000ms offers kids=0 broken=0, 23000ms offers kids=0 broken=0"
+   ],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 2,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 2,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "site-night",
+   "url": "/index.html?sky=night",
+   "ok": false,
+   "issues": [
+    "بنر فاضي/مكسور: 1500ms offers kids=2 broken=0, 4000ms offers kids=2 broken=0, 7000ms offers kids=0 broken=0, 10500ms offers kids=0 broken=0, 14000ms offers kids=0 broken=0, 18000ms offers kids=0 broken=0, 23000ms offers kids=0 broken=0"
+   ],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 2,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 2,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "app-head-night",
+   "url": "/index.html?embed=1&blocks=head,featured,promos&st=47&sky=night",
+   "ok": false,
+   "issues": [
+    "بنر فاضي/مكسور: 1500ms offers kids=2 broken=0, 4000ms offers kids=2 broken=0, 7000ms offers kids=0 broken=0, 10500ms offers kids=0 broken=0, 14000ms offers kids=0 broken=0, 18000ms offers kids=0 broken=0, 23000ms offers kids=0 broken=0"
+   ],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 2,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 2,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "app-head-morning",
+   "url": "/index.html?embed=1&blocks=head,featured,promos&st=47&sky=morning",
+   "ok": false,
+   "issues": [
+    "بنر فاضي/مكسور: 1500ms offers kids=2 broken=0, 4000ms offers kids=2 broken=0, 7000ms offers kids=0 broken=0, 10500ms offers kids=0 broken=0, 14000ms offers kids=0 broken=0, 18000ms offers kids=0 broken=0, 23000ms offers kids=0 broken=0"
+   ],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 2,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 2,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "app-blocks",
+   "url": "/index.html?embed=1&blocks=featured,promos,again,due,moment,season,myoffers,catoffers",
+   "ok": false,
+   "issues": [
+    "بنر فاضي/مكسور: 7000ms offers kids=0 broken=0, 10500ms offers kids=0 broken=0, 14000ms offers kids=0 broken=0, 18000ms offers kids=0 broken=0, 23000ms offers kids=0 broken=0"
+   ],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 0,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  }
+ ]
+}
