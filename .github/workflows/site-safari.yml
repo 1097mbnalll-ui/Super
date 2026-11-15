@@ -1,0 +1,60 @@
+# فحص الموقع على محرك آبل الحقيقي قبل أي تنزيل (طلب المالك ١٥ نوفمبر ٢٠٢٦: «حلها من جذورها»).
+# ١) Playwright WebKit بمقاس آيفون: يقيس البنرات والرأس والتحية ويطلع ✅/❌.
+# ٢) Safari الحقيقي في محاكي آيفون: صور للصفحة بعد ٤ و١٢ و٢٥ ثانية.
+# الموقع المفحوص: الفرع المكتوب في tools/safari/site-ref (افتراضياً gh-pages). يشتغل مع الرفع لفرع site-safari أو يدوي.
+name: site-safari
+on:
+  push:
+    branches: [site-safari]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: site-safari
+  cancel-in-progress: true
+jobs:
+  safari:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Site ref
+        id: ref
+        run: echo "ref=$(cat tools/safari/site-ref 2>/dev/null || echo gh-pages)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.ref }}
+          path: site
+      - name: Serve site
+        run: |
+          (cd site && python3 -m http.server 8765 >/dev/null 2>&1 &)
+          sleep 2; curl -sf http://localhost:8765/index.html >/dev/null && echo served
+      - name: WebKit checks
+        continue-on-error: true
+        id: wk
+        run: |
+          mkdir -p out && cd tools/safari && npm init -y >/dev/null && npm i -s playwright@1.49.1 >/dev/null
+          npx playwright install webkit >/dev/null
+          node check.mjs http://localhost:8765 ../../out 2>&1 | tee ../../out/summary.txt
+      - name: Real Safari in iPhone simulator
+        continue-on-error: true
+        run: |
+          DEV=$(xcrun simctl list devices available | grep -E "iPhone 1[5-7]( Pro)? \(" | head -1 | sed -E 's/^ *(.*) \(([0-9A-F-]+)\).*/\2/')
+          echo "device $DEV"; xcrun simctl boot "$DEV" || true; xcrun simctl bootstatus "$DEV" -b
+          mkdir -p out/sim
+          for u in "index.html" "index.html?sky=night" "index.html?embed=1&blocks=head,featured,promos&st=47&sky=maghrib"; do
+            n=$(echo "$u" | tr -c 'a-z0-9' '_' | cut -c1-40)
+            xcrun simctl openurl "$DEV" "http://localhost:8765/$u"
+            for s in 4 12 25; do sleep $([ $s = 4 ] && echo 4 || ([ $s = 12 ] && echo 8 || echo 13)); xcrun simctl io "$DEV" screenshot "out/sim/${n}_${s}s.png" >/dev/null 2>&1; done
+          done
+          ls out/sim
+      - name: Save results to a branch
+        if: always()
+        run: |
+          cd out
+          git init -q -b r && git add -A
+          git -c user.name=site-safari -c user.email=site-safari@users.noreply.github.com commit -qm "site-safari ${{ github.run_number }}"
+          git push -q "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/shots-site/${{ github.run_number }}
+      - name: Result
+        if: always()
+        run: cat out/summary.txt 2>/dev/null; test "${{ steps.wk.outcome }}" = "success"
