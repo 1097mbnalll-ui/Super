@@ -209,9 +209,8 @@ struct NoPhotoTile: View {
     var body: some View {
         let category = catalog.category(product.cat)
         let emoji = NoPhoto.emoji(product, category: category)
-        var parts = NoPhoto.parts(product.name)
         // الأسماء الجديدة: الحجم في الوحدة (السطر الرمادي) مو في الاسم
-        if parts.size.isEmpty, product.unit.contains(where: \.isNumber) { parts.size = product.unit }
+        let parts = NoPhoto.parts(product.name, unit: product.unit)
         let tint = Color(hexString: category?.tint) ?? Color(hex: 0xEEF0F3)
         GeometryReader { geo in
             let w = geo.size.width
@@ -285,6 +284,10 @@ enum NoPhoto {
     private static let codeRE = try? NSRegularExpression(pattern: #"^[A-Za-z]*\d{3,}[A-Za-z0-9]*$"#)
 
     /// «عصير الربيع برتقال 125 مل» ← اسم «عصير الربيع برتقال» وحجم «125 مل» (وأرقام الموديلات الطويلة تنشال)
+    static func parts(_ raw: String, unit: String) -> (label: String, size: String) {
+        let r = parts(raw)
+        return r.size.isEmpty && unit.contains(where: \.isNumber) ? (r.label, unit) : r
+    }
     static func parts(_ raw: String) -> (label: String, size: String) {
         let name = raw.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         let ns = name as NSString
