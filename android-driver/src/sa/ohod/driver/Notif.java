@@ -15,7 +15,8 @@ final class Notif {
     private Notif() {}
 
     static final String CH_STATUS = "status";
-    static final String CH_ORDERS = "orders";
+    /** قناة جديدة (إعدادات القناة القديمة ما تتغير بعد ما تنسوى): الإشعار بدون صوت، والصوت إنذار قوي من Alarm (١٥ نوفمبر ٢٠٢٦) */
+    static final String CH_ORDERS = "orders_loud";
     static final int ID_STATUS = 1, ID_ORDER = 2, ID_ALERT = 3;
 
     static void ensure(Context c) {
@@ -24,13 +25,13 @@ final class Notif {
         NotificationChannel s = new NotificationChannel(CH_STATUS, "التطبيق شغال", NotificationManager.IMPORTANCE_LOW);
         s.setShowBadge(false);
         nm.createNotificationChannel(s);
-        NotificationChannel o = new NotificationChannel(CH_ORDERS, "طلبات جديدة", NotificationManager.IMPORTANCE_HIGH);
+        try { nm.deleteNotificationChannel("orders"); } catch (Exception ignored) { }   // القناة القديمة بصوت الإشعار العادي
+        NotificationChannel o = new NotificationChannel(CH_ORDERS, "طلبات جديدة (إنذار)", NotificationManager.IMPORTANCE_HIGH);
         o.enableVibration(true);
-        o.setVibrationPattern(new long[] {0, 500, 250, 500, 250, 900});
+        o.setVibrationPattern(new long[] {0, 800, 300, 800, 300, 800, 300, 1200});
         o.enableLights(true);
-        o.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
-                new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+        o.setBypassDnd(true);
+        o.setSound(null, null);   // الصوت يشغّله Alarm على مجرى المنبّه (عالي حتى والجوال صامت)
         nm.createNotificationChannel(o);
     }
 
@@ -45,16 +46,13 @@ final class Notif {
 
     /** الشريط الثابت: ما يختفي لين المندوب يوقف الاستقبال. */
     static Notification status(Context c, String text) {
-        Intent stop = new Intent(c, TrackService.class).setAction(TrackService.ACTION_STOP);
-        PendingIntent stopPi = PendingIntent.getService(c, 1, stop, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder b = builder(c, CH_STATUS)
                 .setSmallIcon(R.drawable.ic_stat)
                 .setContentTitle("مندوب متاجر أحد")
                 .setContentText(text)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
-                .setContentIntent(open(c))
-                .addAction(R.drawable.ic_stat, "إنهاء الدوام", stopPi);
+                .setContentIntent(open(c));   // زر «إنهاء الدوام» انشال (المالك ١٥ نوفمبر ٢٠٢٦): الموقع ظاهر للإدارة على طول
         if (Build.VERSION.SDK_INT >= 26) b.setColor(0xFF13213C);
         return b.build();
     }
@@ -73,9 +71,10 @@ final class Notif {
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setContentIntent(open(c));
         if (Build.VERSION.SDK_INT < 26) {
-            b.setPriority(Notification.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_ALL);
+            b.setPriority(Notification.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_VIBRATE | Notification.DEFAULT_LIGHTS);
         }
         notify(c, ID_ORDER, b.build());
+        Alarm.play(c);
     }
 
     static void alert(Context c, String title, String text) {
