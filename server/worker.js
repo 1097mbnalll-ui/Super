@@ -196,6 +196,11 @@ export default {
       const row = await env.DB.prepare("SELECT status, updated, data, drv FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
       if (!row) return reply(404, { ok: false, code: "not_found" });
       const out = { ok: true, status: row.status, updated: row.updated };
+      // الإجمالي والأغراض الحالية (المراجعة ١٥ نوفمبر): الإدارة تعدّل الطلب أو تسعّر الأغراض المكتوبة، والزبون لازم يشوف المبلغ الصحيح قبل ما يوصله المندوب
+      { const r0 = safeJson(row.data); if (r0 && Array.isArray(r0.lines)) { out.total = Number(r0.total) || 0; out.fee = Number(r0.fee) || 0; out.pay = r0.pay === "card" ? "card" : "cash"; out.free = String(r0.free || "");
+        out.lines = r0.lines.slice(0, 80).map((l) => ({ name: String(l.name || ""), unit: String(l.unit || ""), qty: Number(l.qty) || 0, price: Number(l.price) || 0 })); } }
+      // مرحلة التجهيز (وضع المجهز): الطلب يبقى «جديد» لين المندوب يمسكه، فنقول للزبون إن طلبه يتجهز أو جاهز بدل «ننتظر نأكده»
+      if (row.status === "new") { try { const pr = await env.DB.prepare("SELECT stage FROM prep_orders WHERE no = ?").bind(n).first(); if (pr && (pr.stage === "preparing" || pr.stage === "ready")) out.prep = pr.stage; } catch { /* إضافة، ما توقف المتابعة */ } }
       if (["new", "accepted", "onway"].includes(row.status)) {
         const offs = (await env.DB.prepare("SELECT id, line_id, to_id, created FROM sub_offers WHERE no = ? AND state = 'pending' ORDER BY id").bind(n).all()).results || [];
         if (offs.length) {
@@ -239,7 +244,7 @@ export default {
       await ensureSchema(env);
       const row = await env.DB.prepare("SELECT status, data FROM orders WHERE no = ? AND phone = ?").bind(n, phone).first();
       if (!row) return reply(404, { ok: false, code: "not_found" });
-      if (!["new", "accepted", "onway"].includes(row.status)) return reply(409, { ok: false, code: "closed", status: row.status });
+      if (!["new", "accepted"].includes(row.status)) return reply(409, { ok: false, code: "closed", status: row.status });   // المندوب طلع: الإضافة ما توصله
       const rec = safeJson(row.data), was = String(rec.free || "");
       const free = (was ? was + "\n➕ " : "") + add;
       if (free.length > 1800) return reply(409, { ok: false, code: "too_long" });
@@ -694,7 +699,7 @@ export default {
         if (pin) await env.DB.prepare("INSERT INTO staff_pins (user_id, pin_hash) VALUES (?, ?)").bind(r.meta.last_row_id, await staffPinHash(env, pin)).run();
       }
       await ensureSchema(env);
-      await logStmt(env, "صاحب المتجر", "staff_account", username, { role: body.role, active: !!active, reset: !!password, pin: !!pin }).run();
+      await logStmt(env, "صاحب المتجر", "staff_account", username, { name, role: body.role, active: !!active, reset: !!password, pin: !!pin }).run();
       return reply(200, { ok: true });
     }
     // التكاليف التشغيلية والمصروفات (سرية: تنحفظ بالقاعدة مو بملف المتجر العام)
@@ -1355,7 +1360,7 @@ async function editOrder(env, data, body, who) {
     if (!p || !(q > 0 && q <= (p.print || oldBy[id] ? 5000 : 500)) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
     // اسم المنتج يتصحح في الطلب لو المالك كتبه (مثل اسم غلط)، وإلا اسم المتجر
     const nm = typeof x.name === "string" && x.name.trim() ? x.name.trim().slice(0, 120) : (oldBy[id] && oldBy[id].name) || p.name;
-    lines.push({ id, name: nm, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined, ...(oldBy[id] && oldBy[id].per ? { per: Number(oldBy[id].per) } : {}) });
+    lines.push({ id, name: nm, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr), Number(oldBy[id]?.regularPrice ?? p.price) || 0, Number(p.old) || 0), tag: (oldBy[id] && oldBy[id].price === round2(pr) && oldBy[id].tag) || "", cost: oldBy[id] && oldBy[id].cost != null ? Number(oldBy[id].cost) : undefined, ...(oldBy[id] && oldBy[id].per ? { per: Number(oldBy[id].per) } : {}), ...(oldBy[id] && oldBy[id].custom ? { custom: true } : {}) });
   }
   // «طلب بالكتابة» يبقى مع الطلب لين الموظف يشيله (body.free = "") أو يعدّله
   const free = body.free === undefined || body.free === null ? String(rec.free || "") : freeText(body.free);
@@ -2078,7 +2083,13 @@ async function readStats(env, days) {
   ]);
   const withId = {};
   for (const r of all) withId[r.id] = r.orders;
-  return { days, from, prevFrom: prev, daily, items, ordersWith: withId, pairs, statuses: sts, hours, views, searches, customers: cust[0] || {}, topCustomers: top };
+  // «منتج من عندي» (معرّفه c:…) مو في ملف المنتجات: نرجع اسمه من الطلبات نفسها عشان التحليل ما يكتبه «منتج محذوف»
+  const names = {};
+  if (items.some((r) => isCustomId(r.id))) {
+    const cn = await Q("SELECT json_extract(l.value, '$.id') id, json_extract(l.value, '$.name') name, json_extract(l.value, '$.unit') unit FROM orders o, json_each(o.data, '$.lines') l WHERE o.day >= ? AND json_extract(l.value, '$.id') LIKE 'c:%' LIMIT 400", prev).catch(() => []);
+    for (const r of cn) if (r.id && r.name && !names[r.id]) names[r.id] = String(r.name) + (r.unit && r.unit !== "حبة" ? " " + r.unit : "");
+  }
+  return { days, from, prevFrom: prev, daily, items, ordersWith: withId, pairs, statuses: sts, hours, views, searches, customers: cust[0] || {}, topCustomers: top, names };
 }
 
 // ---------- الإشعارات (Web Push) ----------

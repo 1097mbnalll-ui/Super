@@ -1142,6 +1142,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 html.zs body{zoom:.86}
 .howto{margin:12px 0 4px;padding:16px;border-radius:22px;background:#fff;box-shadow:0 2px 14px rgba(19,33,60,.08);display:grid;gap:8px}.howto>b{font-family:var(--display);font-size:18px}.howto ol{list-style:none;margin:0;padding:0;display:grid;gap:6px}.howto li{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600}.howto li i{font-style:normal;width:26px;height:26px;border-radius:50%;background:var(--teal,#0E8A6A);color:#fff;display:grid;place-items:center;font-size:14px;flex:none}.howto p{margin:0;font-size:13px;color:var(--muted,#596171)}.howto-b{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}.howto-b .btn{justify-content:center}
 .sg-box{display:grid;gap:8px}.sg-stars{display:flex;gap:6px;direction:ltr;justify-content:center}.sg-stars button{font-size:30px;line-height:1;background:none;border:0;color:rgba(255,255,255,.3);cursor:pointer;padding:2px}.sg-stars button[aria-pressed=true]{color:#FBBF24}.sg-box textarea{width:100%;box-sizing:border-box;border-radius:14px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit;padding:10px;font:inherit;font-size:16px}.sg-box p{margin:0;opacity:.85;font-size:13px}
+.my-lines{display:grid;gap:6px}.my-lines summary{display:flex;justify-content:space-between;cursor:pointer;list-style:none}.my-lines summary span{opacity:.75;font-size:13px}.my-lines .r{font-size:13.5px}.my-lines small{opacity:.7}.my-free{margin-top:6px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.08);font-size:13px;line-height:1.6}
 .fa-more{display:grid;gap:8px}.fa-more p{margin:0;font-size:13px;opacity:.85}.fa-more textarea{width:100%;box-sizing:border-box;border-radius:14px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:inherit;padding:10px;font:inherit;font-size:16px}.fa-was{font-weight:700}.fa-new{width:100%;text-align:start;border:1.5px dashed #9fd3b6!important;background:#F4FBF7!important;cursor:pointer;font:inherit}
 .fa-box{margin:14px 0 4px;padding:16px;border-radius:22px;background:#EAF6EF;display:grid;gap:8px}.fa-box b{font-family:var(--display);font-size:17px}.fa-box p{margin:0;font-size:13.5px;color:var(--muted,#596171)}.fa-box textarea{width:100%;box-sizing:border-box;border:1.5px solid #CFE6D8;border-radius:16px;padding:12px;font:inherit;font-size:16px;resize:vertical;background:#fff}.fa-box textarea.bad{border-color:#D9472B}.fa-box .btn{justify-content:center}
 .as-sheet{align-items:center!important}.as-box{max-width:360px;margin:0 auto;text-align:center;display:grid;gap:10px;justify-items:center;padding:26px 20px 20px!important;border-radius:28px!important}
@@ -2365,10 +2366,16 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       if (screen !== "sent" || mode !== "store") return clearInterval(trackTimer);
       fetch(String(S.api).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: lastOrder.no, phone: lastOrder.phone }) })
         .then(function(r){ return r.json(); }).then(function(j){ if (!j.ok) return; lastOrder.drv = j.driver || null;
+          // الإدارة عدّلت الطلب أو سعّرت الأغراض المكتوبة: نحدّث الإجمالي والأغراض عند الزبون وننبّهه
+          if (j.lines) { var sig = JSON.stringify([j.total, j.free, j.lines]), was = lastOrder.sig, tWas = lastOrder.total;
+            if (sig !== was) { lastOrder.sig = sig; lastOrder.total = j.total; lastOrder.free = j.free || ""; lastOrder.lines = j.lines; if (j.pay) lastOrder.pay = j.pay; saveLast();
+              if (was && Math.abs(Number(tWas) - Number(j.total)) >= 0.01) sToast(tr("تحدّث طلبك · الإجمالي صار ", "Order updated · new total ") + num(j.total) + tr(" ر.س", " SAR"));
+              if (screen === "sent" && !rateDraft && !(document.activeElement && /TEXTAREA|INPUT/.test(document.activeElement.tagName))) render(); } }
           if ("canRate" in j) { var rkNow = JSON.stringify([j.rating || null, !!j.canRate]), rkWas = JSON.stringify([lastOrder.rating || null, !!lastOrder.canRate]); lastOrder.rateKnown = true;
             if (rkNow !== rkWas) { lastOrder.rating = j.rating || null; lastOrder.canRate = !!j.canRate; saveLast(); if (screen === "sent" && j.status === lastOrder.status && !rateDraft) render(); } }
           var subsNow = JSON.stringify(j.subs || []); if (subsNow !== JSON.stringify(lastOrder.subs || [])) { lastOrder.subs = j.subs || []; saveLast(); if (screen === "sent" && j.status === lastOrder.status) render(); }
-          if (j.status !== lastOrder.status) { lastOrder.status = j.status; saveLast(); if (screen === "sent") render(); } else trkUpdate();
+          var prepNow = j.status === "new" ? (j.prep || "") : "";
+          if (j.status !== lastOrder.status || prepNow !== (lastOrder.prep || "")) { lastOrder.status = j.status; lastOrder.prep = prepNow; saveLast(); if (screen === "sent" && !(document.activeElement && /TEXTAREA|INPUT/.test(document.activeElement.tagName))) render(); } else trkUpdate();
           if ((j.status === "delivered" && lastOrder.rateKnown) || j.status === "canceled") clearInterval(trackTimer); }).catch(function(){});
     };
     var every = lastOrder.status === "onway" ? 4000 : 15000;
@@ -2378,16 +2385,25 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   // شريط «طلبك…» فوق المتجر: نحدّث حالته كل ٣٠ ثانية وإحنا في الرئيسية (وأول ما يرجع للصفحة)
   var homeTrkAt = 0;
   function homeTrack(force){
-    if (EMBED || mode !== "store" || screen !== "home" || document.hidden || !activeOrder() || !apiUrl()) return;
+    var pendRate = lastOrder && lastOrder.track && lastOrder.status === "delivered" && !lastOrder.rateKnown && Date.now() - lastOrder.at < 3 * 864e5;
+    if (EMBED || mode !== "store" || screen !== "home" || document.hidden || !(activeOrder() || pendRate) || !apiUrl()) return;
     if (!force && Date.now() - homeTrkAt < 25000) return; homeTrkAt = Date.now();
     fetch(String(apiUrl()).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: lastOrder.no, phone: lastOrder.phone }) })
       .then(function(r){ return r.json(); }).then(function(j){
-        if (!j.ok || !lastOrder || j.status === lastOrder.status) return;
-        lastOrder.status = j.status; saveLast();
+        if (!j.ok || !lastOrder) return;
+        // البديل المعلّق وتعديل الإجمالي يوصلون الزبون حتى وهو في الرئيسية (كان يتحدّث بس لو الحالة تغيّرت، فما يدري إن فيه بديل ينتظره)
+        var prepNow = j.status === "new" ? (j.prep || "") : "";
+        var subsNow = JSON.stringify(j.subs || []), ch = j.status !== lastOrder.status || subsNow !== JSON.stringify(lastOrder.subs || []) || prepNow !== (lastOrder.prep || ""); lastOrder.prep = prepNow;
+        if (j.lines) { var sig = JSON.stringify([j.total, j.free, j.lines]); if (sig !== lastOrder.sig) { lastOrder.sig = sig; lastOrder.total = j.total; lastOrder.free = j.free || ""; lastOrder.lines = j.lines; ch = true; } }
+        // وصل الطلب: نعرف من هنا إنه يقدر يقيّم، فيطلع شريط «قيّم تجربتك» في الرئيسية (كان ما يطلع إلا لو فتح شاشة الطلب)
+        if ("canRate" in j) { if (!lastOrder.rateKnown || !!lastOrder.canRate !== !!j.canRate || JSON.stringify(lastOrder.rating || null) !== JSON.stringify(j.rating || null)) ch = true; lastOrder.rateKnown = true; lastOrder.canRate = !!j.canRate; lastOrder.rating = j.rating || null; }
+        if (!ch) return;
+        lastOrder.status = j.status; lastOrder.subs = j.subs || []; saveLast();
         if (screen === "home" && !document.querySelector(".sheet")) render();
       }).catch(function(){});
   }
   setInterval(function(){ homeTrack(false); }, 30000);
+  setTimeout(function(){ homeTrack(false); }, 1800);   // أول ما ينفتح الموقع: حالة الطلب الحالية على طول (مو بعد ٣٠ ثانية)
   document.addEventListener("visibilitychange", function(){ if (!document.hidden) homeTrack(true); });
 
   /* ----- الزبون يتابع المندوب على الخريطة لحظة بلحظة ----- */
@@ -2912,7 +2928,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     sToast(n ? tr("انضاف " + num(n) + " منتج من طلباتك المعتادة", num(n) + " usual items added") : tr("طلباتك المعتادة موجودة بالسلة", "Your usual items are already in the cart")); }
   function homeHTML(){
     var h = '<div class="kq-head"><div class="wrap">' +
-      (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span>' + (lastOrder.subs && lastOrder.subs.length ? '<em class="trk-sub">' + tr("فيه بديل ينتظر موافقتك", "A replacement needs your answer") + '</em>' : '') + '</span>' + ic("fwd") + '</button>' :
+      (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": lastOrder.prep === "ready" ? tr("جاهز وينتظر المندوب", "Ready, waiting for the driver") : lastOrder.prep === "preparing" ? tr("جاري تجهيزه", "Being prepared") : tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span>' + (lastOrder.subs && lastOrder.subs.length ? '<em class="trk-sub">' + tr("فيه بديل ينتظر موافقتك", "A replacement needs your answer") + '</em>' : '') + '</span>' + ic("fwd") + '</button>' :
         rateDue() ? '<div class="ratebar"><button class="trackbar" type="button" data-nav="sent"><span class="ic">★</span><span class="t"><b>' + tr("وصلك طلبك ", "How was order ") + esc(lastOrder.no) + tr("؟ قيّم تجربتك", "? Rate it") + '</b><span>' + tr("ثواني وتساعدنا نصير أحسن", "Takes seconds and helps us improve") + '</span></span>' + ic("fwd") + '</button><button type="button" class="ratebar-x" data-rateskip aria-label="' + tr("إخفاء", "Hide") + '">×</button></div>' : '') +
       (isClosed() ? closedBarHTML() : '') +
       '<div class="kq-row"><div class="kq-logo"><img src="logo-cut.webp" alt=""><b>' + esc(sv("name")) + '</b></div>' +
@@ -2966,7 +2982,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     SEC.deals = deals.length ? '<div class="wrap"><div class="kq-sec"><h2>' + ic("lock") + tr("كل منتج بـ ", "Everything for ") + num(DEAL.price) + ' ' + tr("ر.س", "SAR") + '</h2><button type="button" data-chip="deals">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><p class="hint" style="margin:-6px 0 10px">' + (tt.unlocked ? tr("انفتحت لك، ضيف اللي تبغاه", "Unlocked, add what you like") : tr("تنفتح لطلبات فوق ", "Unlocks for orders over ") + rial(DEAL.min) + ' · ' + tr("باقي ", "Add ") + rial(tt.left)) + '</p><div class="rail">' + deals.map(function(p){ return card(p, "d"); }).join("") + '</div></div>' : '';
     SEC.grid = '<div class="kq-chips" id="kqChips"><div class="wrap"><div class="row">' +
       '<button type="button" class="kq-filter" data-nav="cats" aria-label="' + tr("الأقسام", "Categories") + '">' + ic("filter") + '</button>' +
-      chipList().map(function(c){ return '<button type="button" class="kq-chip" data-chip="' + c.id + '" aria-pressed="' + (chip === c.id) + '">' + (c.img ? imgTag(c.img, "") : ic(c.icon)) + esc(c.name) + '</button>'; }).join("") + '</div></div></div>' +
+      chipList().map(function(c){ return '<button type="button" class="kq-chip" data-chip="' + c.id + '" aria-pressed="' + (chip === c.id) + '">' + (c.img ? imgTag(c.img, "") : c.icon ? ic(c.icon) : '') + esc(c.name) + '</button>'; }).join("") + '</div></div></div>' +
       '<div class="wrap"><div class="kq-grid" id="kqGrid">' + chipItems().join("") + '</div></div>';
     if (EMBED && EMBED_PAGE && !EMBED_SCREEN) { chip = EMBED_PAGE.indexOf("g:") === 0 ? EMBED_PAGE.split(":").slice(0, 2).join(":") : EMBED_PAGE; return '<div class="embed page"><div class="wrap"><div class="kq-grid">' + chipItems().join("") + '</div></div></div>'; }
     if (EMBED && EMBED_SLOT && !EMBED_SCREEN) return '<div class="embed">' + slotHTML(EMBED_SLOT, EMBED_ID) + '</div>';
@@ -3238,9 +3254,15 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         if (best < 0) { ok = false; break; } sc += best;
       }
       if (!ok) continue;
-      if (nmh.indexOf(" " + alts[0][0]) === 0) sc += 3; // اسم المنتج يبدأ بأول كلمة
+      // الكلمة هي «نوع» المنتج لو جت في أول الاسم (الاسم: الماركة ثم النوع ثم الوصف)، مو وصف في آخره؛ و«بدون سكر / زيرو سكر» مو سكر
+      var wi = 99, neg = false;
+      for (var k0 = 0; k0 < alts[0].length; k0++) { var x0 = alts[0][k0], at = nmh.indexOf(" " + x0); if (at < 0) continue;
+        var ix = at ? nmh.slice(0, at).split(" ").length - 1 : 0; if (ix < wi) wi = ix;
+        if (nmh.indexOf(" بدون " + x0) > -1 || nmh.indexOf(" زيرو " + x0) > -1 || nmh.indexOf(" بلا " + x0) > -1) neg = true; }
+      sc += wi <= 1 ? 3 : wi === 2 ? 2 : wi === 3 ? 1 : 0; if (neg) sc -= 6;
       if (catHit[p.cat]) sc += 3;
-      if (avail(p)) sc += 50; if (hasPic(p.img)) sc += 2; if (isOffer(p)) sc += 1; sc += Math.min(3, (Number(p.rk) || 0) / 60);
+      // الأكثر طلباً أول (مراجعة ١٥ نوفمبر: «حليب» كان يطلّع نيدو بودرة ١٨٠٠ جم قبل الحليب اللي ينطلب كل يوم)
+      if (avail(p)) sc += 50; if (hasPic(p.img)) sc += 2; if (isOffer(p)) sc += 1; sc += Math.min(8, (Number(p.rk) || 0) / 15);
       out.push({ p: p, s: sc, l: String(p.name).length });
     }
     return out.sort(function(a, b){ return b.s - a.s || a.l - b.l; }).map(function(x){ return x.p; });
@@ -3330,11 +3352,11 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   function sentHTML(){
     var o = lastOrder || {};
-    return '<div class="sent"><div class="wrap"><div class="ok"><div>' + ic("check") + tr('</div></div><h1>وصلنا طلبك!</h1>', '</div></div><h1>We got your order!</h1>') +
-      (o.status === "delivered" ? tr('<p>وصل طلبك. بالعافية عليك!</p>', '<p>Your order has been delivered. Enjoy!</p>') : o.status === "onway" ? tr('<p>المندوب في الطريق لموقعك الحين.</p>', '<p>The driver is on the way to you now.</p>') : tr('<p>بنتصل عليك على <b dir="ltr" style="color:#fff">', '<p>We will call you at <b dir="ltr" style="color:#fff">') + esc(o.phone || "") + tr('</b> لو احتجنا،<br>والمندوب يجيك على الموقع اللي حددته.</p>', '</b> if needed,<br>and the driver will come to the location you picked.</p>')) +
+    return '<div class="sent"><div class="wrap"><div class="ok"><div>' + ic("check") + '</div></div><h1>' + (o.status === "delivered" ? tr("وصل طلبك", "Delivered") : o.status === "onway" ? tr("طلبك في الطريق", "On the way") : o.status === "canceled" ? tr("انلغى الطلب", "Order canceled") : tr("وصلنا طلبك!", "We got your order!")) + '</h1>' +
+      (o.status === "delivered" ? tr('<p>بالعافية عليك!</p>', '<p>Enjoy!</p>') : o.status === "canceled" ? tr('<p>هالطلب انلغى وما راح يوصلك. لو تبي شي اطلبه من جديد.</p>', '<p>This order was canceled.</p>') : o.status === "onway" ? tr('<p>المندوب في الطريق لموقعك الحين.</p>', '<p>The driver is on the way to you now.</p>') : tr('<p>بنتصل عليك على <b dir="ltr" style="color:#fff">', '<p>We will call you at <b dir="ltr" style="color:#fff">') + esc(o.phone || "") + tr('</b> لو احتجنا،<br>والمندوب يجيك على الموقع اللي حددته.</p>', '</b> if needed,<br>and the driver will come to the location you picked.</p>')) +
       tr('<div class="card"><div class="r"><span>رقم الطلب</span><b dir="ltr">', '<div class="card"><div class="r"><span>Order number</span><b dir="ltr">') + esc(o.no || "") + '</b></div>' +
       (o.printText && waNumber() && o.status !== "canceled" ? '<div class="card pr-wa"><b>' + tr("باقي خطوة: أرسل ملف الطباعة", "One more step: send your print file") + '</b><p>' + tr("أرسل الملف على واتساب المحل برقم طلبك ونبدأ نطبعه.", "Send the file on the shop's WhatsApp with your order number and we start printing.") + '</p><a class="btn btn-teal" target="_blank" rel="noopener" href="https://wa.me/' + waNumber() + '?text=' + encodeURIComponent("السلام عليكم، طلب طباعة رقم " + (o.no || "") + "\n" + o.printText + "\nالملف مرفق 👇") + '">' + tr("أرسل الملف على واتساب", "Send the file on WhatsApp") + '</a></div>' : '') +
-      stepsHTML(o.status || "new") + rateHTML(o) + subsHTML(o) + addMoreHTML(o) + suggestHTML(o) + cancelHTML(o) +
+      stepsHTML(o.status || "new", o.prep) + rateHTML(o) + subsHTML(o) + myLinesHTML(o) + addMoreHTML(o) + suggestHTML(o) + cancelHTML(o) +
       (o.status === "onway" && o.track && apiUrl() ? '<div class="trk"><div class="trk-map" id="trkMap"></div><div class="trk-info" id="trkInfo">' + trkInfo() + '</div></div>' : '') +
       (o.track && apiUrl() && o.status !== "delivered" && o.status !== "canceled" ? (o.push ? '<div class="r push-on">' + ic("bell") + '<span>' + tr("بيوصلك إشعار مع كل تغيير في حالة طلبك", "You will get a notification for every status change") + '</span></div>' :
         '<button class="btn btn-ghost pushbtn" type="button" id="pushMe">' + ic("bell") + '<span>' + tr("نبّهني لما تتغير حالة طلبي", "Notify me about my order") + '</span></button><p class="pushmsg" id="pushMsg"' + (pushWhy() && (isIOS() && !isApp()) ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</p>') : '') +
@@ -3344,6 +3366,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   // «قيّم الخدمة واقتراحاتك» (المالك ١٥ نوفمبر ٢٠٢٦): بعد الطلب على طول، نجوم سريعة + اقتراح (/suggest). تقييم الطلب الرسمي يبقى بعد التوصيل
   var sgStars = 0;
   function suggestHTML(o){
+    if (o && !o.sgSent && (o.status === "delivered" || o.status === "canceled")) return "";   // بعد التوصيل: تقييم الطلب الرسمي (نجوم وملاحظة) يكفي، ما نكرر النجوم
     if (!o || !o.no || o.sgSent) return o && o.sgSent ? '<div class="card sg-box"><b>' + tr("شكراً على رأيك 🌿", "Thanks for your feedback 🌿") + '</b><p>' + tr("وصل للمحل، ونشتغل عليه.", "We got it.") + '</p></div>' : "";
     return '<div class="card sg-box"><b>' + tr("كيف تجربتك معنا؟ وش تقترح؟", "How was it? Any suggestions?") + '</b>' +
       '<div class="sg-stars" role="group">' + [1, 2, 3, 4, 5].map(function(n){ return '<button type="button" data-sgstar="' + n + '" aria-pressed="' + (sgStars >= n) + '">★</button>'; }).join("") + '</div>' +
@@ -3364,11 +3387,17 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         m.className = "status err"; m.textContent = j.code === "slow_down" ? tr("وصلنا رأيك قبل، شكراً لك.", "Already received, thanks.") : tr("ما قدرنا نرسل، جرّب بعد شوي.", "Could not send, try again.");
       }).catch(function(){ m.className = "status err"; m.textContent = tr("ما فيه اتصال، جرّب مرة ثانية.", "No connection, try again."); });
   });
+  // «أغراض طلبك» في شاشة المتابعة: السطور والأسعار الحالية من الخادم (تتحدث لو الإدارة عدّلت أو سعّرت الأغراض المكتوبة)
+  function myLinesHTML(o){
+    if (!o || !Array.isArray(o.lines) || (!o.lines.length && !o.free)) return "";
+    return '<details class="card my-lines"' + (o.lines.length <= 6 ? ' open' : '') + '><summary><b>' + tr("أغراض طلبك", "Your items") + '</b><span>' + num(o.lines.reduce(function(a, l){ return a + l.qty; }, 0)) + tr(" قطعة", " items") + '</span></summary>' +
+      o.lines.map(function(l){ return '<div class="r"><span>' + esc(l.name) + (l.unit && l.unit !== "حبة" ? ' <small>' + esc(l.unit) + '</small>' : '') + ' × ' + num(l.qty) + '</span><b>' + num(Math.round(l.qty * l.price * 100) / 100) + '</b></div>'; }).join("") +
+      (o.free ? '<div class="my-free">🥬 ' + tr("بالكتابة (سعرها يتحدد عند التجهيز):", "Written (priced when prepared):") + '<br>' + esc(o.free).replace(/\n/g, "<br>") + '</div>' : '') + '</details>';
+  }
   // «أضف لطلبك» (الافتتاح التجريبي ١٥ نوفمبر ٢٠٢٦): الزبون يضيف أغراض بالكتابة لطلبه بعد ما طلب، قبل التوصيل (/order-add)
   function addMoreHTML(o){
-    if (!o || !o.no || !o.phone || !o.track || ["new", "accepted", "onway"].indexOf(o.status || "new") < 0) return "";
+    if (!o || !o.no || !o.phone || !o.track || ["new", "accepted"].indexOf(o.status || "new") < 0) return "";   // بعد ما يطلع المندوب ما ينفع نضيف
     return '<div class="card fa-more"><b>' + tr("نسيت شي؟ أضفه لطلبك", "Forgot something? Add it") + '</b><p>' + tr("اكتب الغرض والوزن أو العدد، ويوصل المحل مع طلبك نفسه.", "Write the item with weight or count; it joins this order.") + '</p>' +
-      (o.free ? '<p class="fa-was">' + tr("مضاف لطلبك: ", "Added: ") + esc(o.free).replace(/\n/g, " · ") + '</p>' : '') +
       '<textarea id="amText" rows="2" maxlength="600" placeholder="' + tr("مثال: خبز ٢، حليب ١ لتر", "e.g. Bread 2, Milk 1L") + '"></textarea>' +
       '<button class="btn btn-teal" type="button" data-addmore>' + tr("أضف لطلبي", "Add to my order") + '</button><span class="status" id="amMsg" aria-live="polite"></span></div>';
   }
@@ -3379,7 +3408,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     fetch(String(apiUrl()).replace(/\/+$/, "") + "/order-add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: lastOrder.no, phone: lastOrder.phone, text: v }) })
       .then(function(r){ return r.json(); }).then(function(j){
         if (j.ok) { lastOrder.free = j.free; saveLast(); sToast(tr("وصلت إضافتك للمحل مع طلبك", "Added to your order")); render(); return; }
-        m.className = "status err"; m.textContent = j.code === "closed" ? tr("الطلب خلص، اطلب طلب جديد.", "This order is finished; place a new one.") : j.code === "not_found" ? tr("ما قدرنا نضيف، كلم المحل.", "Could not add; call the store.") : tr("ما قدرنا نضيف، جرّب بعد شوي.", "Could not add, try again.");
+        m.className = "status err"; m.textContent = j.code === "closed" ? tr("المندوب طلع بطلبك، اطلب اللي ناقصك بطلب جديد.", "The driver already left; place a new order.") : j.code === "not_found" ? tr("ما قدرنا نضيف، كلم المحل.", "Could not add; call the store.") : tr("ما قدرنا نضيف، جرّب بعد شوي.", "Could not add, try again.");
       }).catch(function(){ m.className = "status err"; m.textContent = tr("ما فيه اتصال، جرّب مرة ثانية.", "No connection, try again."); });
   });
   // المندوب اقترح بديل لمنتج ناقص: الزبون يوافق أو يشيله
@@ -3387,7 +3416,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (!o.subs || !o.subs.length || ["delivered", "canceled"].indexOf(o.status) > -1) return "";
     return o.subs.map(function(x){
       var d = x.diff ? (x.diff > 0 ? "+" : "−") + num(Math.abs(x.diff)) + tr(" ر.س على الإجمالي", " SAR on your total") : tr("بنفس السعر", "Same price");
-      return '<div class="subask" role="group" aria-label="' + tr("بديل مقترح", "Suggested replacement") + '"><b>' + tr("«", "“") + esc(x.name) + tr("» مو متوفر", "” is not available") + '</b><p>' + tr("المندوب يقترح بداله:", "The driver suggests instead:") + '</p>' +
+      return '<div class="subask" role="group" aria-label="' + tr("بديل مقترح", "Suggested replacement") + '"><b>' + tr("«", "“") + esc(x.name) + tr("» مو متوفر", "” is not available") + '</b><p>' + tr("نقترح بداله:", "We suggest instead:") + '</p>' +
         '<div class="subask-p">' + imgTag(x.to.img, x.to.name) + '<span><b>' + esc(x.to.name) + '</b><span>' + esc(x.to.unit || "") + ' · ' + num(x.to.price) + ' ' + tr("ر.س", "SAR") + (x.qty > 1 ? ' × ' + num(x.qty) : '') + '</span><em>' + d + '</em></span></div>' +
         '<div class="acts"><button type="button" class="btn btn-teal" data-subyes="' + x.id + '">' + tr("موافق على البديل", "Accept") + '</button><button type="button" class="btn btn-soft" data-subno="' + x.id + '">' + tr("لا، شيله من طلبي", "No, remove it") + '</button></div><span class="status" data-submsg="' + x.id + '"></span></div>';
     }).join("");
@@ -3448,10 +3477,11 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       '<div class="cx-r">' + R.map(function(r, i){ return '<button type="button" class="kq-chip" data-cxr="' + esc(r) + '" aria-pressed="' + (i === 3) + '">' + esc(r) + '</button>'; }).join("") + '</div>' +
       '<button type="button" class="btn btn-ghost cx-go" id="cxGo">' + tr("أكّد إلغاء الطلب", "Confirm cancellation") + '</button><span class="status" id="cxMsg"></span></details>';
   }
-  function stepsHTML(st){
+  function stepsHTML(st, prep){
     if (st === "canceled") return tr('<div class="steps"><div class="s now"><i></i>انلغى الطلب. للاستفسار اتصل على المحل.</div></div>', '<div class="steps"><div class="s now"><i></i>The order was cancelled. Call the store for details.</div></div>');
     var idx = ["new","accepted","onway","delivered"].indexOf(st); if (idx < 0) idx = 0;
-    var labels = [tr("انرسل الطلب للمحل", "Order sent to the store"),tr("انقبل الطلب وجاري تجهيزه", "Order accepted and being prepared"),tr("المندوب في الطريق", "Driver on the way"),tr("تم التوصيل", "Delivered")];
+    if (st === "new" && prep) idx = 1;   // المجهز بدأ أو خلّص: الطلب مقبول ويتجهز فعلاً
+    var labels = [tr("انرسل الطلب للمحل", "Order sent to the store"), prep === "ready" && st === "new" ? tr("طلبك جاهز وينتظر المندوب", "Ready, waiting for the driver") : tr("انقبل الطلب وجاري تجهيزه", "Order accepted and being prepared"),tr("المندوب في الطريق", "Driver on the way"),tr("تم التوصيل", "Delivered")];
     return '<div class="steps">' + labels.map(function(l, i){ var cls = i <= idx ? "done" : i === idx + 1 ? "now" : "next";
       return (i ? '<div class="bar' + (i <= idx ? ' on' : '') + '"></div>' : '') + '<div class="s ' + cls + '"><i>' + (cls === "done" ? ic("check") : '') + '</i>' + l + '</div>'; }).join("") + '</div>';
   }
@@ -3745,6 +3775,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     o.lat = Math.round(lat * 1e6) / 1e6; o.lng = Math.round(lng * 1e6) / 1e6; if (o === form) { saveForm(); syncAddr(); }
     var b = $("addrBox"); if (b) { b.classList.add("ok"); $("addrT").textContent = tr("تم تحديد موقع البيت", "Home location set"); $("addrS").textContent = tr("تقدر تحرّك الخريطة لو تبغى تعدّله", "You can move the map to adjust it"); }
     var lb = document.querySelector(".mapwrap .label"); if (lb) lb.textContent = tr("يوصلك هنا", "We deliver here");
+    // لو كانت رسالة «حدد موقع بيتك» ظاهرة من محاولة إرسال قبل: تنشال أول ما يتحدد الموقع
+    var se = $("sendErr"); if (se && /موقع|location/i.test(se.textContent || "")) se.innerHTML = "";
     var bad = false;
     if (zoneOut(o.lat, o.lng) && b) { bad = true; b.classList.remove("ok"); $("addrT").textContent = tr("برّا منطقة التوصيل", "Outside our delivery area"); $("addrS").textContent = zoneMsg(); if (lb) lb.textContent = tr("برّا المنطقة", "Outside the area"); }
     var far = tooFar(o.lat, o.lng); if (far && b) { bad = true; b.classList.remove("ok"); $("addrT").textContent = tr("برّا منطقة التوصيل", "Outside our delivery area"); $("addrS").textContent = farMsg(far); if (lb) lb.textContent = tr("بعيد عن المحل", "Too far"); }
@@ -3852,7 +3884,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         btn.disabled = false; btn.firstChild.textContent = tr("أرسل الطلب", "Place order");
         if (j.ok) {
           if (!j.repeated) recordHist(items);
-          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, printText: pnote, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast(); rememberAddr();
+          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, free: payload.free || "", printText: pnote, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast(); rememberAddr();
           if (j.track && PUSH_PREF && pushOn()) orderPush(null);
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
@@ -4163,7 +4195,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var old = $("dvGeo"); if (old) old.remove();
     var box = $("dv"); if (mode !== "driver" || !box || !box.firstElementChild) return;
     if (!drvGroups().way.length) { if (APP || geo.admin || drv.view !== "list") return;
-      box.firstElementChild.insertAdjacentHTML("afterend", true ? '<div class="dv-geo ' + (geo.st === "denied" ? "bad" : "ok") + '" id="dvGeo" role="status"><i></i><span><b>' + (geo.st === "denied" ? tr("اسمح بالموقع عشان الإدارة تشوفك", "Allow location so the store can see you") : tr("أنت في الدوام · الإدارة تشوف موقعك", "On shift · the store can see your location")) + '</b><span>' + tr("الزبون ما يشوفك إلا وطلبه في الطريق", "Customers only see you while their order is on the way") + '</span></span><button class="btn btn-soft" type="button" data-dutyoff>' + tr("انهِ الدوام", "End shift") + '</button></div>'
+      box.firstElementChild.insertAdjacentHTML("afterend", true ? '<div class="dv-geo ' + (geo.st === "denied" ? "bad" : "ok") + '" id="dvGeo" role="status"><i></i><span><b>' + (geo.st === "denied" ? tr("اسمح بالموقع عشان الإدارة تشوفك", "Allow location so the store can see you") : tr("الإدارة تشوف موقعك", "The store can see your location")) + '</b><span>' + tr("الزبون ما يشوفك إلا وطلبه في الطريق", "Customers only see you while their order is on the way") + '</span></span></div>'
         : '<div class="dv-geo mid" id="dvGeo" role="status"><i></i><span><b>' + tr("بديت الدوام؟", "Starting your shift?") + '</b><span>' + tr("شارك موقعك مع الإدارة طول الدوام", "Share your location with the store during your shift") + '</span></span><button class="btn btn-brand" type="button" data-dutyon>' + tr("أنا في الدوام", "I\'m on shift") + '</button></div>');
       return; }
     var h, cls = "", btn = "";
@@ -4178,7 +4210,6 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   document.addEventListener("click", function(e){
     if (mode !== "driver") return;
     if (e.target.closest("[data-dutyon]")) { setDuty(true); return; }
-    if (e.target.closest("[data-dutyoff]")) { setDuty(false); return; }
     if (e.target.closest("[data-geoshare]")) { geo.share = true; appCall("share", true); geo.st = ""; geoSync(); return; }
     if (e.target.closest("[data-georetry]")) { geo.st = ""; if (APP) appCall("askPermissions"); geoSync(); }
   });
@@ -4400,7 +4431,10 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
           if (rd && !drv.seenReady[o.no]) { drv.seenReady[o.no] = 1; if (!drv.first) { fresh++; drv.seen[o.no] = "fresh"; } } if (!drv.seen[o.no]) drv.seen[o.no] = "old"; });
         else j.orders.forEach(function(o){ if (!drv.seen[o.no]) { drv.seen[o.no] = drv.first ? "old" : "fresh"; if (!drv.first && o.status === "new") fresh++; } });
         var cur = drv.no && dOrder(drv.no), nowCur = drv.no && j.orders.filter(function(o){ return o.no === drv.no; })[0];
+        var wasFirst = drv.first;
         drv.orders = j.orders; drv.first = false; if (j.me) drv.me = j.me; drv.team = j.team || []; geoSync();
+        // أول ما يفتح صفحته: لو معه طلب في الطريق وما فيه جديد/جاهز ينتظره، نفتح له تبويب «في الطريق» (كان يفتح على «جاهزة» الفاضي)
+        if (wasFirst && drv.view === "list") { var g0 = drvGroups(); if (g0.way.length && !g0["new"].length) drv.tab = "way"; }
         if (fresh) { beep(); if (drv.view === "list") drv.tab = "new"; else dToast(drv.mode === "ready" ? tr("فيه طلب جاهز للتوصيل", "An order is ready for delivery") : tr("وصل طلب جديد", "A new order arrived")); }
         if (drv.view !== "list" && cur && nowCur && nowCur.status === "canceled" && cur.status !== "canceled") { dToast(tr("الطلب انلغى من الإدارة", "The order was cancelled by the store"), true); drv.view = "list"; drv.miss = ""; }
         if (drv.view === "cash") { if (Date.now() - (drv.cashAt || 0) >= 60000) loadDrvCash(); } else if (drv.view === "list") drvRender();
@@ -4439,6 +4473,15 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   /* ---------- admin access ---------- */
   var walletCustomer = null, walletUseAmount = 0;
   var adminPin = "", staffAuth = null;
+  // جلسة الموظف (مجهز، كاشير، مدير، موظف طلبات) تنحفظ بالجهاز (المراجعة ١٥ نوفمبر): كان أي تحديث للصفحة أو قفل المتصفح يطلّعه ويرجّعه للمتجر بدون ما ينتبه، فتتعلق الطلبات.
+  // الرمز مؤقت (٨ ساعات) والخادم يتحقق منه مع كل نداء ويقدر يلغيه. رقم الإدارة ما ينحفظ أبداً.
+  function staffKeep(j){ try { if (j && j.token && j.user && j.user.role) localStorage.setItem("ohod-ssn", JSON.stringify({ go: "staff", token: j.token, expires: j.expires, user: j.user })); else localStorage.removeItem("ohod-ssn"); } catch(e){} }
+  function staffRestore(){
+    if (EMBED || APP || mode !== "store" || adminPin || location.hash || /[?&](?:t|go|app)=/.test(location.search)) return;
+    var j = null; try { j = JSON.parse(localStorage.getItem("ohod-ssn") || "null"); } catch(e){}
+    if (!j || !j.token || !j.user || !(Number(j.expires) > Date.now() + 60000)) { try { localStorage.removeItem("ohod-ssn"); } catch(e){} return; }
+    staffAuth = j; adminPin = "staff-session"; aTab = "over"; canEdit = true; go("admin");
+  }
   function ordersOnly(){ return !!(staffAuth && staffAuth.user.role === "orders"); }
   function apiUrl(){ return String(S.api || "").replace(/\/+$/, ""); }
   var STAFF = ""; try { STAFF = localStorage.getItem("ohod-staff") || ""; } catch(e){}
@@ -4472,13 +4515,13 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var sum = Number((location.search.match(/[?&]s=([\d.]+)/) || [])[1]) || 0, pay = /[?&]p=card/.test(location.search) ? "card" : "cash";
     var kp = (location.search.match(/[?&]k=([0-9a-z]{4,10})/) || [])[1], kph = kp ? "0" + parseInt(kp, 36) : "";
     try { history.replaceState(null, "", location.pathname + location.hash); } catch(e){}
-    if (lastOrder && String(lastOrder.no) === t && lastOrder.phone) { show("home"); return; }
+    if (lastOrder && String(lastOrder.no).replace(/\D/g, "") === t && lastOrder.phone) { show("home"); return; }
     // الرابط فيه جوال الزبون (k): نتأكد من الخادم ونحفظ الطلب، ويفتح له المتجر وفوقه شريط «طلبك…» كأنه طلب من الموقع
     if (/^05\d{8}$/.test(kph)) {
       fetch(String(apiUrl()).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: t, phone: kph }) })
         .then(function(r){ return r.json(); }).then(function(j){
           if (!j.ok) { askPhone(); return; }
-          lastOrder = { no: t, phone: kph, total: sum || undefined, pay: pay, at: Date.now(), status: j.status, track: true, viaLink: 1 };
+          lastOrder = { no: "#" + t, phone: kph, total: j.total != null ? j.total : (sum || undefined), pay: j.pay || pay, at: Date.now(), status: j.status, track: true, viaLink: 1, lines: j.lines || [], free: j.free || "", prep: j.prep || "" };
           saveLast(); if (!form.phone) { form.phone = kph.slice(1); saveForm(); }
           if (screen === "home" && !document.querySelector(".sheet")) render();
         }).catch(function(){});
@@ -4503,7 +4546,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       fetch(String(apiUrl()).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: t, phone: ph }) })
         .then(function(r){ return r.json(); }).then(function(j){
           if (!j.ok) { m.className = "status err"; m.textContent = j.code === "not_found" ? tr("الرقم ما يطابق هالطلب. اكتب الجوال اللي طلبت فيه.", "This phone does not match the order.") : tr("ما قدرنا نجيب الطلب، جرّب بعد شوي.", "Could not load the order, try again shortly."); return; }
-          lastOrder = { no: t, phone: ph, total: sum || undefined, pay: pay, at: Date.now(), status: j.status, track: true, viaLink: 1 };
+          lastOrder = { no: "#" + t, phone: ph, total: j.total != null ? j.total : (sum || undefined), pay: j.pay || pay, at: Date.now(), status: j.status, track: true, viaLink: 1, lines: j.lines || [], free: j.free || "", prep: j.prep || "" };
           saveLast(); if (!form.phone) { form.phone = ph.slice(1); saveForm(); } close(); show("home");
         }).catch(function(){ m.className = "status err"; m.textContent = tr("ما فيه اتصال، جرّب مرة ثانية.", "No connection, try again."); });
     });
@@ -4557,7 +4600,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (mode === "driver" && j.go !== "driver") { geoStop(true); geo.admin = false; geo.share = false; appManifest(false); clearInterval(drv.timer); drv.timer = null; }
     if (j.go === "driver") { drv.pin = v; try { sessionStorage.setItem("ohod-driver", v); } catch(e){} appCall("session", String(apiUrl()), v, "driver"); drv.first = true; mode = "store"; openDriver(); return; }
     try { history.replaceState(null, "", location.pathname + location.search.replace(/[?&]app=(driver|pos)/, "")); } catch(e){}
-    if (j.go === "staff") { staffAuth = j; adminPin = "staff-session"; } else { staffAuth = null; adminPin = v; }
+    if (j.go === "staff") { staffAuth = j; adminPin = "staff-session"; staffKeep(j); } else { staffAuth = null; adminPin = v; }
     aTab = ordersOnly() ? "olist" : "over"; canEdit = true; go("admin");
   }
   // في صفحة المندوب أو الكاشير: لو الرقم لقسم ثاني (مثل المجهز)، نوديه لقسمه بدل ما نقول «الرقم غلط»
@@ -4636,7 +4679,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       geoStop(false); drv.pin = ''; drv.orders = []; clearInterval(drv.timer); appCall('logout');
       try { sessionStorage.removeItem('ohod-driver'); } catch(e){}
     }
-    staffAuth = null; adminPin = ''; canEdit = false; dirty = false; draft = null; STAFF = '';
+    staffAuth = null; adminPin = ''; canEdit = false; dirty = false; draft = null; STAFF = ''; try { localStorage.removeItem("ohod-ssn"); } catch(e){}
     posOrders=[];posLoading=false;posSearch='';posFilter='active';staffUsers = []; editingStaffId = 0; alertOrders = []; lateOrderIds = {}; oState.list = null; oState.loading = false;
     STK = {}; COST = {}; STK_KNOWN = {}; STK_LOW = {}; stockEdit = {}; costEdit = {}; statCache = null; stat30 = null; todayCache = null; logState.list = null; wb.data = null; wb.loading = false;
     ['oSheet','nfSheet','pinSheet','opsSheet'].forEach(function(id){ var x=$(id); if(x) x.remove(); });
@@ -4681,13 +4724,16 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       staffUsers = j.users; editingStaffId = 0; drawStaffAccounts();
     });
   }
+  var staffAccOpen = false;
   function drawStaffAccounts(){
     var box = $('aStaff'); if (!box) return;
     var u = staffUsers.filter(function(u){ return u.id === editingStaffId; })[0] || {};
-    box.innerHTML = '<div class="card" id="prepModeCard"></div><div class="card" id="staffCard"></div><details class="card admin-advanced-accounts" id="advancedAdminAccounts"><summary>حسابات إضافية للوحة الإدارة</summary><div class="card"><h2>حسابات لوحة الإدارة</h2><p class="hint">المدير يدير المتجر والتقارير، دون إدارة الحسابات أو تغيير أرقام الدخول. موظف الطلبات يتابع الطلبات ويغيّر حالاتها ويطبعها؛ لا يغيّر الأسعار ولا يرى التكاليف والأرباح. الكاشير يراجع ويطبع الإيصالات ويسجل التحصيل والتسوية، دون تعديل المنتجات أو إدارة المحافظ. عامل التجهيز يشاهد المنتجات وملاحظات التجهيز فقط. كل موظف يدخل برقمه السري من زر الدخول، ويفتح له قسمه على طول. تعديل الحساب ينهي جلساته الحالية.</p><div class="olist2">' + staffUsers.map(function(x){ return '<button type="button" class="orow2" data-editstaff="' + x.id + '"><b>' + esc(x.name) + '</b><span dir="ltr">' + esc(x.username) + '</span><span>' + (x.role === 'manager' ? 'مدير' : x.role === 'preparer' ? 'عامل تجهيز' : x.role==='cashier'?'كاشير التوصيل':'موظف طلبات') + '</span><span>' + (x.active ? (x.hasPin ? 'يدخل برقمه' : 'مفعّل') : 'موقوف') + '</span></button>'; }).join('') + '</div></div>' +
+    var accOpen = !!(staffAccOpen || editingStaffId);   // القسم يبقى مفتوح بعد الحفظ (كان ينطوي مع كل حساب)
+    box.innerHTML = '<div class="card" id="prepModeCard"></div><div class="card" id="staffCard"></div><details class="card admin-advanced-accounts" id="advancedAdminAccounts"' + (accOpen ? ' open' : '') + '><summary>حسابات إضافية للوحة الإدارة</summary><div class="card"><h2>حسابات لوحة الإدارة</h2><p class="hint">المدير يدير المتجر والتقارير، دون إدارة الحسابات أو تغيير أرقام الدخول. موظف الطلبات يتابع الطلبات ويغيّر حالاتها ويطبعها؛ لا يغيّر الأسعار ولا يرى التكاليف والأرباح. الكاشير يراجع ويطبع الإيصالات ويسجل التحصيل والتسوية، دون تعديل المنتجات أو إدارة المحافظ. عامل التجهيز يشاهد المنتجات وملاحظات التجهيز فقط. كل موظف يدخل برقمه السري من زر الدخول، ويفتح له قسمه على طول. تعديل الحساب ينهي جلساته الحالية.</p><div class="olist2">' + staffUsers.map(function(x){ return '<button type="button" class="orow2" data-editstaff="' + x.id + '"><b>' + esc(x.name) + '</b><span dir="ltr">' + esc(x.username) + '</span><span>' + (x.role === 'manager' ? 'مدير' : x.role === 'preparer' ? 'عامل تجهيز' : x.role==='cashier'?'كاشير التوصيل':'موظف طلبات') + '</span><span>' + (x.active ? (x.hasPin ? 'يدخل برقمه' : 'مفعّل') : 'موقوف') + '</span></button>'; }).join('') + '</div></div>' +
       '<form class="card" id="staffAccountForm"><h2>' + (u.id ? 'تعديل حساب' : 'حساب جديد') + '</h2><div class="fields"><label>اسم الموظف<input id="suName" maxlength="30" required value="' + esc(u.name || '') + '"></label><label>الصلاحية<select id="suRole"><option value="cashier"' + (u.role === 'cashier' ? ' selected' : '') + '>كاشير التوصيل</option><option value="preparer"' + (u.role === 'preparer' ? ' selected' : '') + '>عامل تجهيز</option><option value="orders">موظف طلبات</option><option value="manager"' + (u.role === 'manager' ? ' selected' : '') + '>مدير</option></select></label><label>كلمة السر للدخول (أرقام، من ٤ إلى ١٢)' + (u.id ? (u.hasPin ? ' — اتركه فاضي إذا ما تبي تغيّره' : ' — حطه عشان يدخل برقمه') : '') + '<input id="suPin" class="pin" type="password" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12" autocomplete="new-password"' + (u.id ? '' : ' required') + '></label><label class="chk"><input id="suActive" type="checkbox"' + (u.active !== 0 ? ' checked' : '') + '>الحساب مفعّل</label></div><input id="suUsername" type="hidden" value=""><input id="suPassword" type="hidden" value=""><div class="actions"><button class="btn btn-brand" type="submit">حفظ الحساب</button><button class="btn btn-soft" id="staffNew" type="button">حساب جديد</button><span id="suMessage" class="status" aria-live="polite"></span></div></form></details>';
     renderPrepMode();
     if(editingStaffId)$('advancedAdminAccounts').open=true;
+    $('advancedAdminAccounts').ontoggle = function(){ staffAccOpen = this.open; };
     $('staffNew').onclick = function(){ editingStaffId = 0; drawStaffAccounts(); };
     $('staffAccountForm').onsubmit = function(e){
       e.preventDefault(); var button = this.querySelector('[type=submit]'); button.disabled = true;
@@ -5069,6 +5115,9 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (AT && AT > Date.now() && !direct) {
       var tryOpen = function(){
         if (mode !== "store" || screen !== "home" || $("appSoonBox")) return;
+        // الزبون الجديد: التعريف («اطلب في دقيقة») أول وهو الأهم، ومربع التطبيق لزيارته الجاية (ما نطلّع له نافذتين ورا بعض)
+        var isNew = false; try { isNew = introWanted() || sessionStorage.getItem("ohod-intro-now") === "1"; } catch(e){}
+        if (isNew || $("introSheet")) return;
         var today = new Date().toDateString(); try { if (localStorage.getItem("ohod-as-day") === today) return; localStorage.setItem("ohod-as-day", today); } catch(e){}
         if ($("introSheet") || document.querySelector(".sheet")) return setTimeout(tryOpen, 1500);
         var w = document.createElement("div");
@@ -5111,7 +5160,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   function openIntro(){
     if (!introWanted()) return;
-    try { localStorage.setItem("ohod-intro", "1"); } catch(e){}
+    try { localStorage.setItem("ohod-intro", "1"); sessionStorage.setItem("ohod-intro-now", "1"); } catch(e){}
     var C = [
       { i: '<img src="' + esc(D.imgs.logo || "") + '" alt="">', h: tr("حيّاك في ", "Welcome to ") + esc(sv("name")), p: tr("بقالة ومخبز الحي، نوصل طلبك لين باب بيتك داخل ", "Your neighbourhood grocery and bakery. We deliver to your door in ") + esc(sv("area")) + (sv("eta") ? tr(" خلال ", " within ") + esc(sv("eta")) : "") + "." },
       { i: ic("cart"), h: tr("اطلب في دقيقة", "Order in a minute"), p: tr("اختر أغراضك، وحدد بيتك على الخريطة، وأرسل. بدون تسجيل ولا كلمة سر.", "Pick your items, set your home on the map and send. No sign-up, no password.") },
@@ -5205,6 +5254,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     try { var gp = (location.search.match(/[?&]go=([^&]+)/) || [])[1]; if (gp && !EMBED && mode === "store") { gp = decodeURIComponent(gp); history.replaceState(null, "", location.pathname + location.hash);
       if (gp === "offers") { chip = "offers"; show("home"); } else if (gp === "cart") { show("cart"); } else if (/^[oc]:/.test(gp) && catOf(gp.slice(2))) { openCat = gp.slice(2); openSub = ""; show("cat"); } } } catch(e){}
     try { trackLink(); } catch(e){}
+    try { staffRestore(); } catch(e){}
   }).catch(function(){ dataReady = true; if (EMBED) refresh(); });
   if (window.claude && claude.use) {
     claude.use("user").then(function(u){ return u ? u.canEdit() : false; }).then(function(ok){

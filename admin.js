@@ -252,10 +252,10 @@
         '<button type="button" class="btn btn-ghost" data-atab="layout">ترتيب الصفحة الرئيسية</button><button type="button" class="btn btn-ghost" data-atab="look">الألوان واللغة</button></div>' +
         lowHTML() + (noEn ? '<p class="hint">فيه ' + noEn + ' منتج بدون اسم إنجليزي، ويطلعون بالعربي في النسخة الإنجليزية.</p>' : '') + '</div>';
     simplifyOverview();
-    if (apiUrl()) { loadToday(); loadDrvLoc(); $("aDrvRe").addEventListener("click", loadDrvLoc); }
+    if (apiUrl()) { loadToday(); loadDrvLoc(); $("aDrvRe").addEventListener("click", function(){ loadDrvLoc(true); }); }
     $("aToggleOpen").disabled=!catalogSaveAvailable();
     $("aToggleOpen").addEventListener("click", function(){ if(!catalogSaveAvailable()){sToast("تغيير استقبال الطلبات يحتاج تحديث الخدمة أولًا");return;}if(dirty){sToast("احفظ تعديلات المتجر أولًا قبل تغيير استقبال الطلبات");return;}if(!draft.store.closed&&!confirm("إيقاف استقبال طلبات جديدة مؤقتًا؟ الطلبات الحالية تستمر."))return; if (draft.store.closed) delete draft.store.closed; else draft.store.closed = true; if ($("sClosed")) $("sClosed").checked = !!draft.store.closed; markDirty(); renderOver(); publish(); });
-    if (apiUrl()) api("/driver/orders", { pin: adminPin }).then(function(j){
+    if (apiUrl()) overApi("/driver/orders", { pin: adminPin }).then(function(j){
       var el = $("aOrders"); if (!el) return;
       if (!j.ok) { el.textContent = j.code === "config" ? "قاعدة الطلبات مو مربوطة بعد (الدليل، القسم ٧)." : "ما قدرنا نجيب الطلبات."; return; }
       var day = new Date(); day.setHours(0,0,0,0);
@@ -267,15 +267,17 @@
       el.querySelectorAll('[data-over-order]').forEach(function(b){b.onclick=function(){oState.q=b.dataset.overOrder;oState.f='all';oState.range=0;showTab('olist');};});
     });
   }
-  function loadDrvLoc(){
-    clearTimeout(admTimer);
+  var overMemo = {};
+  function overApi(path, body, ttl){ var m = overMemo[path], now = Date.now(); if (m && m.pin === adminPin && now - m.at < (ttl || 4000)) return m.p; var p = api(path, body); overMemo[path] = { at: now, p: p, pin: adminPin }; return p; }
+  function loadDrvLoc(force){
+    clearTimeout(admTimer); if (force === true) delete overMemo["/admin/driver-loc"];
     var fold=$("aDrvLoc")?.closest("details");if(fold&&!fold.open)return;
-    api("/admin/driver-loc", { pin: adminPin }).then(function(j){
+    overApi("/admin/driver-loc", { pin: adminPin }).then(function(j){
       var t = $("aDrvTxt"), m = $("aDrvMap"); if (!t || !m) return;
       if (!j.ok) { t.textContent = j.code === "not_found" ? "حدّث الخادم في Cloudflare عشان يشتغل التتبع." : "ما قدرنا نجيب موقع المندوب."; return; }
       var locs = (j.locs || (j.loc ? [Object.assign({ name: "المندوب" }, j.loc)] : [])).filter(function(l){ return j.now - l.at < 10 * 60e3; });
       var agoT = function(at){ var a = Math.round((j.now - at) / 1000); return a < 20 ? "الحين" : a < 60 ? "قبل " + a + " ثانية" : "قبل " + Math.round(a / 60) + " دقيقة"; };
-      if (!locs.length) { t.textContent = j.onway.length ? "فيه " + j.onway.length + " طلب في الطريق، بس ما فيه مندوب يشارك موقعه (يمكن قافل الصفحة أو ما سمح بالموقع)." : "ما فيه مندوب يشارك موقعه الحين. يطلع هنا لما يضغط «أنا في الدوام» في صفحة المندوب، أو لما يكون معه طلب في الطريق."; m.hidden = true; }
+      if (!locs.length) { t.textContent = j.onway.length ? "فيه " + j.onway.length + " طلب في الطريق، بس ما فيه مندوب يشارك موقعه (يمكن قافل الصفحة أو ما سمح بالموقع)." : "ما فيه مندوب يشارك موقعه الحين. يطلع هنا أول ما المندوب يفتح تطبيقه (أو صفحة المندوب) ويدخل برقمه ويسمح بالموقع."; m.hidden = true; }
       else {
         t.textContent = locs.map(function(l){ var n = j.onway.filter(function(o){ return (o.drv || "admin") === l.drv; }).length; return l.name + ": " + agoT(l.at) + (n ? " · معه " + n + " طلب" : ""); }).join("  ·  ");
         m.hidden = false;
@@ -289,7 +291,7 @@
           admMap.fitBounds(L.latLngBounds(pts).pad(0.3), { maxZoom: 16 });
         });
       }
-      if (aTab === "over" && mode === "admin") admTimer = setTimeout(loadDrvLoc, 10000);
+      clearTimeout(admTimer); if (aTab === "over" && mode === "admin") admTimer = setTimeout(loadDrvLoc, 10000);   // مؤقت واحد بس، حتى لو انرسمت الصفحة كذا مرة
     });
   }
   function lowHTML(){
@@ -1068,10 +1070,12 @@
     api("/admin/stats", { pin: adminPin, days: statDays }).then(function(j){
       var el = $("aStatBody"); if (!el) return;
       if (!j.ok) { el.textContent = j.code === "config" ? "التحليل يحتاج قاعدة الطلبات (DB) في Cloudflare، وتحديث كود الخادم." : j.code === "not_found" ? "حدّث كود الخادم في Cloudflare عشان يشتغل التحليل (الدليل، القسم ٨)." : "ما قدرنا نجيب التحليل (" + (j.code || "?") + ")."; return; }
-      statCache = j; el.className = "stat-body"; el.innerHTML = statsHTML(j);
+      statCache = j; statNames = j.names || {}; el.className = "stat-body"; el.innerHTML = statsHTML(j);
     });
   }
-  function pname(id){ var p = dById(id); return p ? p.name : "منتج محذوف"; }
+  function mny(v){ v = Number(v || 0); return Math.abs(v) >= 10000 ? num(Math.round(v)) : num(v); }   // المبالغ بالهللة لين ١٠ آلاف (المالك يبي الأرقام مضبوطة)، وفوقها ريال صحيح
+  var statNames = {};   // أسماء «منتج من عندي» (c:…) يرجعها الخادم مع التحليل
+  function pname(id){ var p = dById(id); return p ? p.name : statNames[id] ? statNames[id] + " (من عندنا)" : String(id).indexOf("c:") === 0 ? "منتج من عندنا (بالكتابة)" : "منتج محذوف"; }
   function pct(a, b){ return b ? Math.round(a / b * 100) : 0; }
   var PREV_OK = true;
   function prevOk(j){ var old = j.daily.filter(function(d){ return d.day < j.from && d.orders > 0; }).length; return old >= Math.max(1, Math.floor(j.days * 0.7)); }
@@ -1089,11 +1093,11 @@
     var tipsH = tipsHTML(insights(j), true);
     var h = tipsH + '<div class="stats mini an-tiles">' +
       (costC > 0 ? tile(num(Math.round(revC - costC)), "ريال ربح" + (withCost.length < j.items.filter(function(x){ return x.qty > 0; }).length ? " (للمنتجات اللي لها سعر شراء)" : ""), delta(A.revenue - A.cost, B.revenue - B.cost)) + tile(pct(revC - costC, revC) + '٪', "هامش الربح", '') : '') +
-      tile(num(A.orders), "طلب", delta(A.orders, B.orders)) + tile(num(Math.round(A.revenue)), "ريال مبيعات", delta(A.revenue, B.revenue)) +
+      tile(num(A.orders), "طلب", delta(A.orders, B.orders)) + tile(mny(A.revenue), "ريال مبيعات", delta(A.revenue, B.revenue)) +
       tile(A.orders ? num(Math.round(avg * 10) / 10) : '—', "ريال متوسط الطلب", delta(avg, avgB)) + tile(num(A.items), "قطعة انباعت", delta(A.items, B.items)) +
       tile(num((j.customers || {}).fresh || 0), "زبون جديد", delta((j.customers || {}).fresh || 0, (j.customers || {}).freshPrev || 0)) + tile(A.orders + A.canceled ? pct(A.canceled, A.orders + A.canceled) + '٪' : '—', "نسبة الإلغاء (" + num(A.canceled) + ")", delta(A.canceled, B.canceled, true)) +
       tile(dmin == null ? '—' : num(dmin) + ' د', "متوسط وقت التوصيل", dmin == null ? '' : delta(A.deliv_ms / A.deliv_n, B.deliv_n ? B.deliv_ms / B.deliv_n : 0, true)) + tile(A.visits ? pct(A.orders, A.visits) + '٪' : '—', "من الزيارات صارت طلبات", '') + '</div>';
-    h += '<div class="st-split"><div><span>انطلب</span><b>' + num(A.orders) + ' طلب</b><em>' + num(Math.round(A.revenue)) + ' ر.س</em></div><div class="ok"><span>تم توصيله</span><b>' + num(A.deliv_n) + ' طلب</b><em>' + num(Math.round(A.deliv_rev)) + ' ر.س</em></div><div class="wait"><span>لسا ما توصّل</span><b>' + num(Math.max(0, A.orders - A.deliv_n)) + ' طلب</b><em>' + num(Math.max(0, Math.round(A.revenue - A.deliv_rev))) + ' ر.س</em></div><div class="no"><span>انلغى</span><b>' + num(A.canceled) + ' طلب</b><em>ما ينحسب في المبيعات</em></div></div>' +
+    h += '<div class="st-split"><div><span>انطلب</span><b>' + num(A.orders) + ' طلب</b><em>' + mny(A.revenue) + ' ر.س</em></div><div class="ok"><span>تم توصيله</span><b>' + num(A.deliv_n) + ' طلب</b><em>' + mny(A.deliv_rev) + ' ر.س</em></div><div class="wait"><span>لسا ما توصّل</span><b>' + num(Math.max(0, A.orders - A.deliv_n)) + ' طلب</b><em>' + mny(Math.max(0, Math.round((A.revenue - A.deliv_rev) * 100) / 100)) + ' ر.س</em></div><div class="no"><span>انلغى</span><b>' + num(A.canceled) + ' طلب</b><em>ما ينحسب في المبيعات</em></div></div>' +
       '<div class="verify" id="aVerify"><span class="ic">' + ic("check") + '</span><span class="t"><b>دقة الأرقام</b><span id="aVerifyMsg">تقدر تراجع إن أرقام هذي المدة مطابقة لسجل الطلبات طلب طلب.</span></span><button class="btn btn-soft" type="button" id="aVerifyBtn">راجع الحين</button></div>';
     if (!A.orders && !A.visits) return h + '<p class="hint">ما فيه بيانات في هذي المدة للحين. التحليل يتجمع من بعد تحديث كود الخادم.</p>';
     // chart
@@ -1181,7 +1185,7 @@
     if ((t = e.target.closest("#aVerifyBtn, #aFixBtn")) && statCache) { var fix = t.id === "aFixBtn", m = $("aVerifyMsg"), vb = $("aVerify"); t.disabled = true; m.textContent = fix ? "جاري التصحيح…" : "جاري المراجعة طلب طلب…";
       api("/admin/verify", { pin: adminPin, from: statCache.from, fix: fix }).then(function(v){ t.disabled = false;
         if (!v.ok) { m.textContent = v.code === "not_found" ? "حدّث كود الخادم في Cloudflare أول." : "ما قدرنا نراجع (" + (v.code || "?") + ")."; return; }
-        if (v.clean || v.fixed) { vb.className = "verify good"; m.innerHTML = (v.fixed ? 'تصحّحت، والحين ' : '') + '<b>مطابقة ١٠٠٪</b> لسجل الطلبات: ' + num(v.totals.orders) + ' طلب، ' + num(Math.round(v.totals.revenue)) + ' ر.س، ' + num(v.totals.canceled) + ' ملغي.' + (v.legacy ? ' (فيه ' + v.legacy + ' طلب قديم لسا ما انضاف، اضغط راجع مرة ثانية)' : ''); var fb = $("aFixBtn"); if (fb) fb.remove(); if (v.fixed) renderStats(); return; }
+        if (v.clean || v.fixed) { vb.className = "verify good"; m.innerHTML = (v.fixed ? 'تصحّحت، والحين ' : '') + '<b>مطابقة ١٠٠٪</b> لسجل الطلبات: ' + num(v.totals.orders) + ' طلب، ' + mny(v.totals.revenue) + ' ر.س، ' + num(v.totals.canceled) + ' ملغي.' + (v.legacy ? ' (فيه ' + v.legacy + ' طلب قديم لسا ما انضاف، اضغط راجع مرة ثانية)' : ''); var fb = $("aFixBtn"); if (fb) fb.remove(); if (v.fixed) renderStats(); return; }
         vb.className = "verify bad"; m.innerHTML = 'لقينا فرق: ' + v.dayDiffCount + ' رقم يومي، ' + v.itemDiffs + ' منتج، ' + v.hourDiffs + ' ساعة، ' + v.pairDiffs + ' زوج منتجات. سجل الطلبات هو الصح، اضغط «صحّح» عشان التحليل يتطابق معه.';
         if (!$("aFixBtn")) t.insertAdjacentHTML("afterend", '<button class="btn btn-brand" type="button" id="aFixBtn">صحّح</button>'); }); return; }
     if ((t = e.target.closest("[data-mksugg]"))) { var k = t.dataset.mksugg.split(":"), p = dById(k[0]); if (!p) return; p.sugg = (p.sugg || []).filter(function(id){ return id !== k[1]; }); p.sugg.push(k[1]); markDirty();
@@ -1339,7 +1343,7 @@
     if (!oState.list) { box.innerHTML = head + '<div class="card"><p class="hint">جاري التحميل…</p></div>'; bindOTools(); return; }
     if (oState.err) { box.innerHTML = head + '<div class="card"><p class="status err">' + (oState.err === "not_found" ? "حدّث كود الخادم في Cloudflare (الدليل، القسم ٨)." : "ما قدرنا نجيب الطلبات (" + esc(oState.err) + ").") + '</p></div>'; bindOTools(); return; }
     var l = oFiltered(), sum = l.reduce(function(a, o){ return o.status === "canceled" ? a : a + o.total; }, 0);
-    box.innerHTML = head + '<div class="card"><div class="sec-head" style="margin:0"><b>' + num(l.length) + ' طلب</b><span class="hint">' + num(Math.round(sum)) + ' ر.س (بدون الملغي)</span></div>' +
+    box.innerHTML = head + '<div class="card"><div class="sec-head" style="margin:0"><b>' + num(l.length) + ' طلب</b><span class="hint">' + mny(sum) + ' ر.س (بدون الملغي)</span></div>' +
       (l.length ? '<div class="olist2">' + l.slice(0, oState.show || 200).map(function(o){ return '<button type="button" class="orow2" data-oopen="' + esc(o.no) + '"><b dir="ltr">' + esc(o.no) + '</b><span class="t">' + oTime(o.created) + '</span><span class="w">' + (o.src === "pos" ? '<em class="src store">' + esc(o.cashier || "المحل") + '</em>' : o.source ? '<em class="src ' + o.source + '">' + SRC[o.source] + '</em>' : '') + (o.drvName ? '<em class="drvchip">' + ic("truck") + esc(o.drvName) + '</em>' : '') + (o.src === "pos" ? num(o.count) + ' قطعة' : esc(o.name || "زبون")) + (o.phone ? ' · <span dir="ltr">' + esc(o.phone) + '</span>' : '') + (o.free ? ' · 🥬 بالكتابة' : '') + '</span><span class="m">' + num(o.total) + ' ر.س · ' + collectionLabel(o) + '</span><span class="spill ' + o.status + '">' + OST[o.status] + '</span>' + (lateOrderIds[o.no] ? '<span class="status err">متأخر · ' + num(lateOrderIds[o.no].waitingMinutes) + ' دقيقة</span>' : '') + '</button>'; }).join("") + '</div>' : '<p class="empty">ما فيه طلبات بهذا الفلتر.</p>') +
       (l.length > (oState.show || 200) || oState.more ? '<button class="btn btn-ghost" type="button" id="oMore" style="justify-self:center;margin-top:10px">اعرض طلبات أقدم</button>' : '') + '</div>';
     bindOTools();
@@ -1515,7 +1519,7 @@
   function nfRender(){
     var b = $("nfBody"); if (!b) return;
     if (nf.done) { var o = nf.done, tlink = location.origin + location.pathname + "?t=" + String(o.no).replace(/\D/g, "") + (o.phone && /^05\d{8}$/.test(o.phone) ? "&k=" + Number(o.phone).toString(36) : "") + "&s=" + Number(o.total || 0) + "&p=" + (o.pay === "card" ? "card" : "cash"), msg = "هلا" + (o.name ? " " + o.name : "") + "، وصلنا طلبك رقم " + o.no + " 🌿\nتابعه من موقعنا الإلكتروني الجديد، يطلع لك طلبك على طول: " + tlink;
-      b.innerHTML = '<div class="nf-done"><span class="ic">' + ic("check") + '</span><h3>انسجّل الطلب <span dir="ltr">' + esc(o.no) + '</span></h3><p class="hint">' + num(o.count) + ' قطعة · ' + num(o.total) + ' ر.س · وصل للمندوب، والمخزون والتحليل انحسبوا.</p>' +
+      b.innerHTML = '<div class="nf-done"><span class="ic">' + ic("check") + '</span><h3>انسجّل الطلب <span dir="ltr">' + esc(o.no) + '</span></h3><p class="hint">' + num(o.count) + ' قطعة · ' + num(o.total) + ' ر.س · وصل لشاشة التجهيز والمندوب، والمخزون والتحليل انحسبوا.</p>' +
         '<div class="actions">' + (o.phone ? '<a class="btn btn-teal" target="_blank" rel="noopener" href="https://wa.me/966' + esc(o.phone.replace(/^0/, "")) + '?text=' + encodeURIComponent(msg) + '">أرسل تأكيد للزبون على الواتساب</a><button class="btn btn-soft" type="button" data-nfcopy="' + esc(tlink) + '">انسخ رابط المتابعة</button>' : '<p class="hint">ما فيه رقم جوال، فما فيه رابط متابعة للزبون.</p>') +
         '<button class="btn btn-soft" type="button" data-oprint="' + esc(o.no) + '">اطبع الفاتورة</button><button class="btn btn-brand" type="button" data-nfagain>طلب جديد ثاني</button></div></div>'; return; }
     b.innerHTML = '<div class="pays seg mini nf-src" role="group" aria-label="الطلب جاء من">' + [["phone","اتصال"],["whatsapp","واتساب"],["store","في المحل"]].map(function(x){ return '<button type="button" data-nfsrc="' + x[0] + '" aria-pressed="' + (nf.src === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div>' +
@@ -1569,6 +1573,7 @@
       return '<button type="button" class="nf-pr" data-nfadd="' + p.id + '">' + imgTag(p.img, "") + '<span class="nm">' + esc(p.name) + ' <small class="hint">' + esc(p.unit || "") + '</small></span>' + (!p.stock ? '<em class="out">مو متوفر</em>' : left != null ? '<em class="' + (left <= 3 ? 'out' : '') + '">باقي ' + num(left) + '</em>' : '') + '<b>' + num(p.price) + ' ر.س</b><span class="plus">+</span></button>'; }).join("") : '<p class="hint">ما لقينا منتج بهذا الاسم.</p>';
   }
   function nfLinesRender(){
+    var ne = $("nfErr"); if (ne && nf.lines.length && /منتج واحد/.test(ne.textContent)) ne.innerHTML = "";   // رسالة «أضف منتج» تختفي أول ما ينضاف منتج
     var el = $("nfLines"); if (!el) return;
     el.innerHTML = nf.lines.length ? nf.lines.map(function(l, i){ var p = l.custom ? null : dById(l.id);
       return '<div class="oe-row">' + '<span class="nm">' + esc(l.custom ? l.name : p ? p.name : l.id) + ' <small class="hint">' + esc(l.custom ? (l.unit || "") + ' · من عندي' : p ? p.unit || "" : "") + '</small></span><span class="stp"><button type="button" data-nfq="' + i + ':-1" aria-label="نقص">−</button><b>' + l.qty + '</b><button type="button" data-nfq="' + i + ':1" aria-label="زيادة">+</button></span><label class="pr">السعر<input type="number" min="0" step="0.25" inputmode="decimal" data-nfp="' + i + '" value="' + l.price + '"></label><button class="del" type="button" data-nfdel="' + i + '">شيل</button></div>'; }).join("") : '<p class="hint">ابحث فوق واضغط على المنتج عشان ينضاف.</p>';
@@ -1634,10 +1639,10 @@
 
   /* ---------- today so far + tips ---------- */
   function loadToday(){
-    api("/admin/today", { pin: adminPin }).then(function(j){ var el = $("aToday"); if (!el) return;
+    overApi("/admin/today", { pin: adminPin }).then(function(j){ var el = $("aToday"); if (!el) return;
       if (!j.ok) { el.innerHTML = '<p class="hint">' + (j.code === "not_found" ? "حدّث كود الخادم في Cloudflare عشان تطلع أرقام اليوم." : "ما قدرنا نجيب أرقام اليوم.") + '</p>'; return; }
       todayCache = j; el.innerHTML = todayHTML(j); });
-    if (!stat30) api("/admin/stats", { pin: adminPin, days: 30 }).then(function(j){ if (!j.ok) return; stat30 = j; var el = $("aTips"); if (el) el.innerHTML = tipsHTML(insights(j).slice(0, 4), false); });
+    if (!stat30) overApi("/admin/stats", { pin: adminPin, days: 30 }, 30000).then(function(j){ if (!j.ok) return; stat30 = j; if (j.names) statNames = j.names; var el = $("aTips"); if (el) el.innerHTML = tipsHTML(insights(j).slice(0, 4), false); });
     else { var el = $("aTips"); if (el) el.innerHTML = tipsHTML(insights(stat30).slice(0, 4), false); }
   }
   function todayHTML(j){
@@ -1647,11 +1652,11 @@
     var profit = d.cost > 0 ? Math.round(d.revenue - d.cost) : null, profitW = w.cost > 0 ? Math.round(w.revenue - w.cost) : null;
     return '<div class="sec-head" style="margin:0"><h2>اليوم حتى الحين</h2><span class="hint">مقارنة بنفس اليوم الأسبوع اللي طاف لين الساعة ' + hl + '</span></div>' +
       '<div class="stats mini today-tiles"><div class="stat"><b>' + num(d.orders - (d.pos_n || 0)) + '</b><span>طلب توصيل</span>' + cmp(d.orders - (d.pos_n || 0), w.orders - (w.pos_n || 0)) + '<small>الأسبوع اللي طاف: ' + num(w.orders - (w.pos_n || 0)) + '</small></div>' +
-      (d.pos_n || w.pos_n ? '<button type="button" class="stat" data-atab="olist" data-posview><b>' + num(d.pos_n || 0) + '</b><span>بيعة في المحل</span>' + cmp(d.pos_n || 0, w.pos_n || 0) + '<small>' + num(Math.round(d.pos_rev || 0)) + ' ر.س</small></button>' : '') +
-      '<div class="stat"><b>' + num(Math.round(d.revenue)) + '</b><span>ريال مبيعات</span>' + cmp(d.revenue, w.revenue) + '<small>الأسبوع اللي طاف: ' + num(Math.round(w.revenue)) + '</small></div>' +
+      (d.pos_n || w.pos_n ? '<button type="button" class="stat" data-atab="olist" data-posview><b>' + num(d.pos_n || 0) + '</b><span>بيعة في المحل</span>' + cmp(d.pos_n || 0, w.pos_n || 0) + '<small>' + mny(d.pos_rev || 0) + ' ر.س</small></button>' : '') +
+      '<div class="stat"><b>' + mny(d.revenue) + '</b><span>ريال مبيعات</span>' + cmp(d.revenue, w.revenue) + '<small>الأسبوع اللي طاف: ' + mny(w.revenue) + '</small></div>' +
       (profit != null ? '<div class="stat"><b>' + num(profit) + '</b><span>ريال ربح</span>' + (profitW != null ? cmp(profit, profitW) : '') + '</div>' : '<button type="button" class="stat ghost" data-atab="prods"><b>؟</b><span>الربح</span><small>حط «سعر الشراء» للمنتجات عشان يطلع ربحك</small></button>') +
       '<button type="button" class="stat" data-atab="olist"><b>' + num(open) + '</b><span>طلب جاري الحين</span><small>' + (open ? 'اضغط تشوفها' : 'كل الطلبات خلصت') + '</small></button>' +
-      '<button type="button" class="stat" data-atab="settlement"><b>' + num(Math.round(j.cashBalance || 0)) + '</b><span>ريال كاش عند المناديب</span><small>' + ((j.drivers || []).filter(function(x){ return x.balance > 0.009; }).map(function(x){ return esc(x.name) + ' ' + num(Math.round(x.balance)); }).join(" · ") || 'اضغط تسجّل الاستلام') + '</small></button></div>';
+      '<button type="button" class="stat" data-atab="settlement"><b>' + mny(j.cashBalance || 0) + '</b><span>ريال كاش عند المناديب</span><small>' + ((j.drivers || []).filter(function(x){ return x.balance > 0.009; }).map(function(x){ return esc(x.name) + ' ' + mny(x.balance); }).join(" · ") || 'اضغط تسجّل الاستلام') + '</small></button></div>';
   }
   document.addEventListener('click', function(e){ if (mode === 'admin' && e.target.closest('[data-tip-canceled]')) { oState.f='canceled'; oState.range=30; showTab('olist'); } });
   function tipsHTML(list, inStats){
@@ -1666,7 +1671,7 @@
     var soon = draft.products.filter(function(p){ if (!(p.stock && per[p.id] > 0)) return false; var q = qtyOf(p.id); return q != null && q / per[p.id] <= 3; }).map(function(p){ return { p: p, d: qtyOf(p.id) / per[p.id] }; }).sort(function(a, b){ return a.d - b.d; });
     soon.slice(0, 2).forEach(function(x){ out.push({ ic: "box", k: "warn", html: '<b>' + esc(x.p.name) + '</b> ' + (x.d <= 0 ? 'نفد مخزونه' : x.d < 1 ? 'قد ينفد خلال يوم' : 'قد ينفد خلال ' + Math.ceil(x.d) + ' يوم') + ' حسب سرعة البيع (باقي ' + num(qtyOf(x.p.id)) + '). متوسط البيع خلال ' + num(j.days) + ' يوم؛ راجع التوريد قبل تعديل الكمية.', act: ['data-gostock="' + x.p.id + '"', 'عدّل الكمية'] }); });
     // 2) trend
-    if (prevOk(j) && B.orders >= 20 && A.orders >= 20 && B.revenue > 0 && A.revenue > 0) { var ch = Math.round((A.revenue - B.revenue) / B.revenue * 100); if (Math.abs(ch) >= 10) out.push({ ic: "chart", k: ch > 0 ? "good" : "warn", html: 'المبيعات ' + (ch > 0 ? 'زادت' : 'نقصت') + ' <b>' + Math.abs(ch) + '٪</b> عن الفترة اللي قبلها (' + num(Math.round(A.revenue)) + ' مقابل ' + num(Math.round(B.revenue)) + ' ريال). راجع تغيّر عدد الطلبات ومتوسط السلة قبل تعديل الأسعار.', act: ['data-atab="stats"', 'راجع التحليل'] }); }
+    if (prevOk(j) && B.orders >= 20 && A.orders >= 20 && B.revenue > 0 && A.revenue > 0) { var ch = Math.round((A.revenue - B.revenue) / B.revenue * 100); if (Math.abs(ch) >= 10) out.push({ ic: "chart", k: ch > 0 ? "good" : "warn", html: 'المبيعات ' + (ch > 0 ? 'زادت' : 'نقصت') + ' <b>' + Math.abs(ch) + '٪</b> عن الفترة اللي قبلها (' + mny(A.revenue) + ' مقابل ' + num(Math.round(B.revenue)) + ' ريال). راجع تغيّر عدد الطلبات ومتوسط السلة قبل تعديل الأسعار.', act: ['data-atab="stats"', 'راجع التحليل'] }); }
     // 3) busiest time
     if (j.hours.length >= 5) { var byDow = [0,0,0,0,0,0,0], byH = {}; j.hours.forEach(function(x){ byDow[new Date(x.day + "T12:00:00Z").getUTCDay()] += x.orders; byH[x.hour] = (byH[x.hour] || 0) + x.orders; });
       var bd = byDow.indexOf(Math.max.apply(null, byDow)), bh = Number(Object.keys(byH).sort(function(a, b){ return byH[b] - byH[a]; })[0]);
@@ -1795,8 +1800,32 @@
   }
 
   /* ---------- activity log ---------- */
+  var LOGROLE = { manager: "مدير", orders: "موظف طلبات", preparer: "مجهّز", cashier: "كاشير توصيل", driver: "مندوب" };
   var LOGACT = {
-    staff_account: function(i, r){ return 'حدّث حساب الموظف <b dir="ltr">' + esc(r) + '</b> · ' + (i.active ? 'مفعّل' : 'موقوف') + ' · ' + (i.role === 'manager' ? 'مدير' : 'موظف طلبات'); },
+    staff_account: function(i, r){ return 'حفظ حساب الموظف <b>' + esc(i.name || r) + '</b> · ' + (i.active ? 'مفعّل' : 'موقوف') + ' · ' + (LOGROLE[i.role] || 'موظف') + (i.pin ? ' · رقم سري جديد' : ''); },
+    staff_add: function(i){ return 'أضاف ' + (LOGROLE[i.role] || 'موظف') + ' <b>' + esc(i.name || "") + '</b>'; },
+    staff_edit: function(i){ return 'عدّل ' + (LOGROLE[i.role] || 'موظف') + ' <b>' + esc(i.name || "") + '</b> · ' + (i.active ? 'مفعّل' : 'موقوف') + (i.pin ? ' · رقم سري جديد' : ''); },
+    order_add: function(i, r){ return 'أضاف لطلبه <b dir="ltr">' + esc(r) + '</b>: «' + esc(i.add || "") + '»'; },
+    suggestion: function(i, r){ return 'كتب رأيه' + (r ? ' بعد الطلب <b dir="ltr">' + esc(r) + '</b>' : '') + (i.stars ? ' (' + num(i.stars) + '★)' : '') + (i.text ? ': «' + esc(i.text) + '»' : ''); },
+    cancel_order: function(i, r){ return '<b class="down">لغى</b> طلبه <b dir="ltr">' + esc(r) + '</b>' + (i.reason ? ' · السبب: ' + esc(i.reason) : ''); },
+    rate_order: function(i, r){ return 'قيّم الطلب <b dir="ltr">' + esc(r) + '</b> بـ <b>' + num(i.stars) + '★</b>' + (i.from ? ' (كان ' + num(i.from) + '★)' : ''); },
+    sub_propose: function(i, r){ return 'اقترح بديل في الطلب <b dir="ltr">' + esc(r) + '</b>: «' + esc(i.to || "") + '» بدل «' + esc(i.from || "") + '»'; },
+    prep: function(i, r){ return (i.stage === "ready" ? 'جهّز الطلب <b dir="ltr">' + esc(r) + '</b> وصار جاهز للمندوب' : 'بدأ يجهّز الطلب <b dir="ltr">' + esc(r) + '</b>') + (i.missing ? ' · ' + num(i.missing) + ' ناقص' : ''); },
+    claim: function(i, r){ return 'مسك الطلب <b dir="ltr">' + esc(r) + '</b>'; },
+    assign: function(i, r){ return 'حوّل الطلب <b dir="ltr">' + esc(r) + '</b>' + (i.from ? ' من ' + esc(i.from) : '') + (i.to ? ' إلى <b>' + esc(i.to) + '</b>' : ' (بدون مندوب)'); },
+    driver_settlement: function(i, r){ return 'أكّد استلام <b>' + num((i.actual || 0) / 100) + ' ر.س</b> كاش من المندوب ليوم <span dir="ltr">' + esc(r) + '</span>' + (i.difference ? ' · <b class="down">فرق ' + num(i.difference / 100) + ' ر.س</b>' : ''); },
+    promo_push: function(i, r){ return 'أرسل إشعار للزبائن «' + esc(r) + '» لـ ' + num(i.total || 0) + ' جهاز'; },
+    cart_remind_set: function(i){ return (i.on ? 'شغّل' : 'أوقف') + ' تذكير السلة التلقائي' + (i.on && i.hours ? ' (بعد ' + num(i.hours) + ' ساعة)' : ''); },
+    cart_remind: function(i){ return 'تذكير السلة: انرسل لـ ' + num(i.sent || 0) + ' جهاز'; },
+    apns_fail: function(){ return 'إشعارات الآيفون ما انرسلت (راجع مفتاح APNs)'; },
+    apns_key: function(){ return 'حفظ مفتاح إشعارات الآيفون'; },
+    opex: function(i){ return 'حدّث التكاليف' + (i.confirmed ? ' واعتمدها' : ''); },
+    prep_mode: function(i){ return 'غيّر وضع التجهيز إلى «' + ({ on: "شغّال", off: "موقوف", auto: "تلقائي" }[i.mode] || esc(i.mode || "تلقائي")) + '»' + (i.lateMin ? ' · مهلة التأخير ' + num(i.lateMin) + ' د' : ''); },
+    cashback_policy: function(i){ return (i.enabled ? 'شغّل' : 'أوقف') + ' الكاش باك' + (i.enabled && i.rate ? ' (' + num(i.rate) + '٪)' : ''); },
+    wallet_account: function(i, r){ return 'فتح محفظة لزبون (…' + esc(r) + ')'; },
+    pos_policy: function(i){ return (i.requireReceipt ? 'شغّل' : 'أوقف') + ' اشتراط اعتماد الكاشير قبل خروج المندوب'; },
+    pos_issue: function(i, r){ return 'اعتمد إيصال الطلب <b dir="ltr">' + esc(r) + '</b> (نسخة ' + num(i.revision || 1) + ') بـ ' + num((i.total || 0) / 100) + ' ر.س'; },
+    pos_close: function(){ return 'قفل وردية الكاشير'; },
     price: function(i){ return 'غيّر سعر <b>' + esc(i.name) + '</b> من ' + num(i.from) + ' إلى ' + num(i.to) + ' ر.س'; },
     sale: function(i){ return i.to ? 'حط خصم على <b>' + esc(i.name) + '</b> (قبل الخصم ' + num(i.to) + ')' : 'شال الخصم عن <b>' + esc(i.name) + '</b>'; },
     avail_on: function(i){ return 'رجّع <b>' + esc(i.name) + '</b> متوفر'; }, avail_off: function(i){ return 'خلّى <b>' + esc(i.name) + '</b> غير متوفر'; },
@@ -1820,7 +1849,7 @@
     if (!apiUrl()) { box.innerHTML = '<div class="card"><p class="hint">السجل يحتاج خادم الطلبات.</p></div>'; return; }
     if (!logState.list || force) { box.innerHTML = '<div class="card"><p class="hint">جاري التحميل…</p></div>'; api("/admin/log", { pin: adminPin }).then(function(j){ logState.list = j.ok ? j.log : []; logState.err = j.ok ? "" : j.code; renderLog(); }); return; }
     var F = { imp: "المهم", all: "الكل", price: "الأسعار", order: "الطلبات", cancel: "الإلغاء", stock: "المخزون", cash: "الكاش" };
-    var match = function(x){ var f = logState.f; return f === "all" || (f === "imp" && !(x.act === "status" && x.info.to !== "canceled" && x.info.from !== "canceled")) || (f === "price" && (x.act === "price" || x.act === "sale" || x.act === "cost")) || (f === "order" && /^order_|status/.test(x.act)) || (f === "cancel" && x.act === "status" && (x.info.to === "canceled" || x.info.from === "canceled")) || (f === "stock" && /^stock|avail_/.test(x.act)) || (f === "cash" && x.act === "cash_in"); };
+    var match = function(x){ var f = logState.f; return f === "all" || (f === "imp" && !(x.act === "status" && x.info.to !== "canceled" && x.info.from !== "canceled")) || (f === "price" && (x.act === "price" || x.act === "sale" || x.act === "cost")) || (f === "order" && /^order_|status|^prep$|sub_propose|claim|assign|cancel_order|rate_order/.test(x.act)) || (f === "cancel" && (x.act === "cancel_order" || (x.act === "status" && (x.info.to === "canceled" || x.info.from === "canceled")))) || (f === "stock" && /^stock|avail_/.test(x.act)) || (f === "cash" && (x.act === "cash_in" || x.act === "driver_settlement")); };
     var l = logState.list.filter(match), lastDay = "";
     box.innerHTML = '<div class="card"><div class="sec-head" style="margin:0"><h2>سجل العمليات</h2><button class="btn btn-soft" type="button" id="logRef">تحديث</button></div><p class="hint">كل تغيير في الأسعار والمخزون والطلبات، مين سواه ومتى. الأسماء من «وش اسمك؟» في النظرة العامة.</p>' +
       '<div class="pays seg mini" role="group">' + Object.keys(F).map(function(k){ return '<button type="button" data-logf="' + k + '" aria-pressed="' + (logState.f === k) + '">' + F[k] + '</button>'; }).join("") + '</div>' +

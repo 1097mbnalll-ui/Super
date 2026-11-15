@@ -101,4 +101,25 @@ ok(ad.ok && rec(r.orderNo).free === 'ماء', 'طلب بدون قائمة: ال�
 let sg = await call('/suggest', { no: '#1001', stars: 4, text: 'زيدوا الخضار' });
 ok(sg.ok && sq.prepare("SELECT COUNT(*) n FROM alog WHERE act = 'suggestion'").get().n === 1, 'الاقتراح انحفظ بالسجل');
 sg = await call('/suggest', { text: '' }); ok(!sg.ok, 'اقتراح فاضي مرفوض');
+// مراجعة ١٥ نوفمبر: /track يرجع الإجمالي والسطور والقائمة (شاشة الزبون تتحدث بعد تسعير الإدارة)
+r = await call('/order', { items: { pantry0: 2 }, free: 'ليمون ٥', phone: '0557100011', ...loc });
+let tk = await call('/track', { no: r.orderNo, phone: '0557100011' });
+ok(tk.ok && tk.total === r.total && tk.free === 'ليمون ٥' && Array.isArray(tk.lines) && tk.lines.length === 1 && tk.lines[0].qty === 2 && tk.lines[0].name && tk.lines[0].cost === undefined, 'المتابعة ترجع الإجمالي والسطور بدون تكلفة: ' + JSON.stringify(tk).slice(0, 200));
+let ed = await call('/admin/order-edit', { ...A, no: r.orderNo, lines: [{ id: 'pantry0', qty: 2, price: 10 }, { custom: true, name: 'ليمون', unit: 'حبة', qty: 5, price: 0.5 }], free: '' });
+tk = await call('/track', { no: r.orderNo, phone: '0557100011' });
+ok(ed.ok && tk.ok && tk.total === ed.order.total && tk.lines.length === 2 && !tk.free, 'بعد تسعير الإدارة المتابعة ترجع الإجمالي الجديد: ' + JSON.stringify([ed.ok, tk.total, ed.order && ed.order.total]));
+tk = await call('/track', { no: r.orderNo, phone: '0550000000' }); ok(!tk.ok && tk.lines === undefined, 'جوال غلط: ما يرجع سطور الطلب');
+// تعديل ثاني للطلب يحافظ على علامة «من عندي» للسطر الموجود
+ed = await call('/admin/order-edit', { ...A, no: r.orderNo, lines: rec(r.orderNo).lines.map((l) => ({ id: l.id, qty: l.qty, price: l.price })) });
+ok(ed.ok && ed.order.lines.some((l) => l.custom === true && l.name === 'ليمون'), 'سطر «من عندي» يبقى بعد تعديل ثاني: ' + JSON.stringify(ed.ok ? ed.order.lines.map((l) => [l.name, l.custom]) : ed.code));
+// التحليل يرجع اسم «منتج من عندي» بدل «منتج محذوف»
+const stt = await call('/admin/stats', { ...A, days: 30 });
+ok(stt.ok && stt.names && Object.values(stt.names).some((n) => /ليمون/.test(n)) && Object.keys(stt.names).every((k) => k.startsWith('c:')), 'التحليل فيه أسماء المنتجات اللي من عندنا: ' + JSON.stringify(stt.names || null).slice(0, 160));
+// «أضف لطلبك» بعد خروج المندوب مرفوض (الإضافة ما توصله)
+r = await call('/order', { items: { pantry0: 3 }, phone: '0557100012', ...loc }); ok(r.ok, 'طلب لفحص الإضافة: ' + JSON.stringify(r.code || 'ok'));
+await call('/driver/status', { ...A, no: r.orderNo, status: 'accepted' });
+ad = await call('/order-add', { no: r.orderNo, phone: '0557100012', text: 'خبز' }); ok(ad.ok, 'الإضافة قبل خروج المندوب مقبولة: ' + JSON.stringify(ad.code || 'ok'));
+await call('/driver/status', { ...A, no: r.orderNo, status: 'onway' });
+ad = await call('/order-add', { no: r.orderNo, phone: '0557100012', text: 'ماء' }); ok(!ad.ok && ad.code === 'closed', 'الإضافة بعد خروج المندوب مرفوضة: ' + JSON.stringify(ad.code || 'ok'));
+const v2 = await call('/admin/verify', A); ok(v2.ok && v2.clean, 'التحليل مطابق بعد كل شي');
 console.log(fails ? fails + ' فشل' : 'كل الفحوص نجحت'); process.exit(fails ? 1 : 0);

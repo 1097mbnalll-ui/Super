@@ -62,6 +62,9 @@ const o2 = (await mk('0551110002')).orderNo;
 const pp = (await call('/admin/prep', A)).orders.find((o) => o.no === o2); const ck = {}; pp.lines.forEach((l) => ck[l.key] = 'picked');
 await call('/admin/prep-save', { ...A, no: o2, version: pp.version, orderUpdated: pp.orderUpdated, stage: 'ready', checks: ck });
 sq.prepare('UPDATE orders SET created = ? WHERE no = ?').run(Date.now() - 9 * 60000, N(o2)); await call('/admin/prep', A); ok(lateCount() === 1, 'طلب جاهز ما ينعدّ متأخر');
+// مراجعة ١٥ نوفمبر: الزبون يشوف مرحلة التجهيز في المتابعة («جاري تجهيزه» ثم «جاهز وينتظر المندوب») بدل «ننتظر نأكده»
+let tk = await call('/track', { no: o2, phone: '0551110002' }); ok(tk.ok && tk.status === 'new' && tk.prep === 'ready', 'المتابعة ترجع مرحلة التجهيز «جاهز»: ' + JSON.stringify([tk.status, tk.prep]));
+tk = await call('/track', { no: o1, phone: '0551110001' }); ok(tk.ok && tk.prep === undefined, 'طلب ما بدأ تجهيزه: بدون مرحلة');
 // ٦) إشعارات المجهز: اشتراك بدور «prep» منفصل عن الإدارة
 const key = 'B' + 'x'.repeat(86), auth = 'a'.repeat(22), sub = { endpoint: 'https://push.example.com/' + 'e'.repeat(40), keys: { p256dh: key, auth } };
 r = await call('/push/sub', { session: tok, sub }); ok(r.ok, 'المجهز يفعّل إشعاراته');
