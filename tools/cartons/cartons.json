@@ -1255,5 +1255,7 @@
   "6281026105076",
   "6281036171177",
   "6281057001156"
- ]
+ ],
+ "hidden": true,
+ "_hidden": "المالك ١٥ نوفمبر ٢٠٢٦: «اخف جميع الكراتين». الخيارات انشالت من data.json؛ للإرجاع: python3 tools/cartons/build.py data.json rows.json أو من picks"
 }
