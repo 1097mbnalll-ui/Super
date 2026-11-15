@@ -39,14 +39,14 @@ for (const c of cases) {
       if (srch) { const bb = srch.getBoundingClientRect(); r.searchVisible = bb.top >= 0 && bb.bottom <= innerHeight && bb.height > 20; }
       const el = document.getElementById('kqBans');
       if (el && el.firstElementChild) {
-        const w = el.firstElementChild.getBoundingClientRect().width, gap = 10;
-        const sl = Math.abs(el.scrollLeft), k = sl / (w + gap);
-        r.ban = { sl: Math.round(sl), w: Math.round(w), cw: el.clientWidth, n: el.children.length, k: Math.round(k * 100) / 100, snapped: Math.abs(k - Math.round(k)) < 0.03 };
-        // البنر اللي في النص: موجود ومحتواه ظاهر؟
-        const eb = el.getBoundingClientRect(), cx = eb.left + eb.width / 2, cy = eb.top + eb.height / 2;
-        const hit = document.elementFromPoint(cx, cy);
-        const slide = hit && hit.closest('.kq-ban');
-        r.ban.centerSlide = slide ? (slide.dataset.bid || slide.className.slice(0, 40)) : (hit ? 'NONE:' + hit.tagName + '.' + String(hit.className).slice(0, 30) : 'NONE');
+        const box = el.getBoundingClientRect();
+        const holder = el.firstElementChild.classList.contains('kq-track') ? el.firstElementChild : el;
+        const rs = Array.from(holder.children).map(x => x.getBoundingClientRect());
+        const k = rs.findIndex(q => Math.abs(q.left - box.left) < 3 && Math.abs(q.width - box.width) < 3);
+        const near = rs.reduce((m, q, ix) => Math.abs(q.left - box.left) < Math.abs(rs[m].left - box.left) ? ix : m, 0);
+        r.ban = { n: rs.length, k: k >= 0 ? k : near, off: Math.round(rs[near].left - box.left), snapped: k >= 0 };
+        const slide = holder.children[r.ban.k];
+        r.ban.centerSlide = slide ? (slide.dataset.bid || String(slide.className).slice(0, 40)) : 'NONE';
         if (slide) {
           const kids = Array.from(slide.querySelectorAll('*')).filter(x => { const q = x.getBoundingClientRect(); return q.width > 4 && q.height > 4 && getComputedStyle(x).visibility !== 'hidden' && getComputedStyle(x).opacity !== '0'; });
           r.ban.visibleKids = kids.length;
@@ -56,7 +56,7 @@ for (const c of cases) {
       }
       // الكلام فوق السما: مغطى بشي شبه شفاف (سحابة)؟
       const hi = document.querySelector('.kqsky-hi b');
-      if (hi) { const q = hi.getBoundingClientRect(); const top = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); r.greetCovered = top && !hi.contains(top) && top !== hi ? (top.className || top.tagName) : false; }
+      if (hi) { const q = hi.getBoundingClientRect(); const top = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); r.greetCovered = top && !top.closest('#splash') && !hi.contains(top) && top !== hi ? (top.className || top.tagName) : false; }
       return r;
     });
     samples.push({ t, ...m });
@@ -71,7 +71,7 @@ for (const c of cases) {
     if (s0.searchVisible === false) issues.push('مربع البحث مو ظاهر أول ما تفتح الصفحة');
   }
   const bad = samples.filter(s => s.ban && !s.ban.snapped);
-  if (bad.length) issues.push('البنرات واقفة بين بنرين: ' + bad.map(s => s.t + 'ms k=' + s.ban.k).join(', '));
+  if (bad.length) issues.push('البنرات واقفة بين بنرين: ' + bad.map(s => s.t + 'ms off=' + s.ban.off).join(', '));
   const blank = samples.filter(s => s.ban && (String(s.ban.centerSlide).startsWith('NONE') || s.ban.visibleKids < 3 || s.ban.imgsBroken));
   if (blank.length) issues.push('بنر فاضي/مكسور: ' + blank.map(s => s.t + 'ms ' + s.ban.centerSlide + ' kids=' + s.ban.visibleKids + ' broken=' + s.ban.imgsBroken).join(', '));
   const cov = samples.filter(s => s.greetCovered);
