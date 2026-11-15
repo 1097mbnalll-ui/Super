@@ -230,6 +230,8 @@ struct LiveScreen: View {
         .background(Theme.pageBG)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        // الرئيسية من الموقع: بدون شريط العنوان الأبيض (المالك ١٥ نوفمبر: «شريط ابيض فوق ثابت كأنه موقع»)؛ رأس الصفحة وسما الرياض من الموقع نفسه
+        .toolbar(isHome ? .hidden : .automatic, for: .navigationBar)
         .task(id: failed) { if url == nil { load() } }
         // السلة تغيّرت من شاشة ثانية: نعيد فتح الصفحة بالسلة الجديدة لما ترجع لها
         .onAppear { if rev != -1, rev != cart.revision { load() } }
@@ -245,6 +247,8 @@ struct LiveScreen: View {
             url = LiveBridge.url([URLQueryItem(name: "page", value: page)], cart: cart, version: catalog.dataTag)
         }
     }
+
+    private var isHome: Bool { page == "screen:home:" || page == "screen:home" }
 
     private var title: String {
         if page.hasPrefix("screen:") {
