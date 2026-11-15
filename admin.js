@@ -1515,16 +1515,20 @@
     el.innerHTML = '<div class="nf-known"><span class="ic">' + ic("user") + '</span><span class="t"><b>زبون سابق' + (last.name ? ': ' + esc(last.name) : '') + '</b><span>' + num(done.length) + ' طلب · ' + num(Math.round(done.reduce(function(a, o){ return a + o.total; }, 0))) + ' ر.س · آخر طلب ' + oTime(last.created) + '</span>' + (last.details ? '<span>' + esc(last.details) + '</span>' : '') + '</span>' +
       '<span class="acts"><button class="btn btn-soft sm" type="button" data-nffill>عبّي بياناته</button><button class="btn btn-soft sm" type="button" data-nfrepeat>كرر آخر طلب</button></span></div>';
   }
+  // بحث المنتجات بالإدارة كلها = بحث الموقع الذكي (ترتيب الكلمات، ة/ه، الهمزات، المرادفات، الإنجليزي، الباركود، حرف غلط)، طلب المالك ١٥ نوفمبر
+  // + المنتجات الجديدة بالإدارة اللي ما انحفظت للموقع بعد. list: المنتجات المسموحة (مثلاً قسم واحد)
+  function admFind(q, list){
+    var res = [], ok = {}; list.forEach(function(p){ ok[p.id] = p; });
+    try { searchProducts(q).forEach(function(x){ var p = ok[x.id]; if (p && res.indexOf(p) < 0) res.push(p); }); } catch(e){}
+    var ws = normAr(asciiDigits(q)).split(/\s+/).filter(Boolean);
+    list.forEach(function(p){ if (res.indexOf(p) < 0) { var h = normAr(asciiDigits(p.name + " " + (p.name_en || "") + " " + (p.bc || ""))); if (ws.every(function(w){ return h.indexOf(w) > -1; })) res.push(p); } });
+    return res;
+  }
   function nfResRender(){
     var el = $("nfRes"); if (!el) return;
     var q = nf.q.trim().toLowerCase();
     if (!q) { el.innerHTML = ''; return; }
-    // نفس بحث الموقع الذكي (ترتيب الكلمات، الهمزات والتاء المربوطة، المرادفات، الإنجليزي، الباركود، حرف غلط)، طلب المالك ١٥ نوفمبر: «فيلادلفيا تطلع بالموقع وما تطلع هنا»
-    var res = [];
-    try { searchProducts(nf.q).forEach(function(x){ var p = dById(x.id); if (p && res.indexOf(p) < 0) res.push(p); }); } catch(e){}
-    var ws = normAr(asciiDigits(q)).split(/\s+/).filter(Boolean);   // ومنتجات جديدة بالإدارة ما انحفظت للموقع بعد
-    draft.products.forEach(function(p){ if (res.indexOf(p) < 0) { var h = normAr(asciiDigits(p.name + " " + (p.name_en || "") + " " + (p.bc || ""))); if (ws.every(function(w){ return h.indexOf(w) > -1; })) res.push(p); } });
-    res = res.slice(0, 12);
+    var res = admFind(nf.q, draft.products).slice(0, 12);
     el.innerHTML = res.length ? res.map(function(p){ var left = qtyOf(p.id);
       return '<button type="button" class="nf-pr" data-nfadd="' + p.id + '">' + imgTag(p.img, "") + '<span class="nm">' + esc(p.name) + ' <small class="hint">' + esc(p.unit || "") + '</small></span>' + (!p.stock ? '<em class="out">مو متوفر</em>' : left != null ? '<em class="' + (left <= 3 ? 'out' : '') + '">باقي ' + num(left) + '</em>' : '') + '<b>' + num(p.price) + ' ر.س</b><span class="plus">+</span></button>'; }).join("") : '<p class="hint">ما لقينا منتج بهذا الاسم.</p>';
   }
@@ -1930,7 +1934,7 @@
   function renderSign(){
     var box = $("aSign"); if (!box) return;
     if (!$("sgCss")) { var st = document.createElement("style"); st.id = "sgCss"; st.textContent = SIGN_CSS.replace(/@page\{[^}]*\}/, "").replace("body{margin:0;", "body{"); document.head.appendChild(st); }
-    var q = sg.q.trim(), res = q ? draft.products.filter(function(x){ return x.name.indexOf(q) > -1 || (x.name_en || "").toLowerCase().indexOf(q.toLowerCase()) > -1; }).slice(0, 8) : [];
+    var q = sg.q.trim(), res = q ? admFind(q, draft.products).slice(0, 8) : [];
     box.innerHTML = '<div class="sign-wrap"><div class="card sign-form"><h2>ورقة عرض للمحل</h2><p class="hint">اختر المنتج وينحط اسمه وصورته وسعره لحالها، أو اكتب اسم منتج وارفع صورته. بعدها اضغط «اطبع».</p>' +
       '<label>اختر منتج من المتجر<input id="sgQ" type="search" value="' + esc(sg.q) + '" placeholder="اكتب اسم المنتج…" autocomplete="off"></label>' +
       (res.length ? '<div class="sg-res">' + res.map(function(x){ return '<button type="button" data-sgp="' + x.id + '">' + imgTag(x.img, "") + '<span>' + esc(x.name) + '</span><b>' + num(x.price) + '</b></button>'; }).join("") + '</div>' : '') +
