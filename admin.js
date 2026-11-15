@@ -1478,26 +1478,33 @@
   }
   function nfRender(){
     var b = $("nfBody"); if (!b) return;
-    if (nf.done) { var o = nf.done, msg = "هلا" + (o.name ? " " + o.name : "") + "، وصلنا طلبك رقم " + o.no + " 🌿\nتابعه من موقعنا الإلكتروني الجديد، حط رقم جوالك ويطلع لك طلبك على طول: " + location.origin + location.pathname + "?t=" + String(o.no).replace(/\D/g, "") + "&s=" + Number(o.total || 0) + "&p=" + (o.pay === "card" ? "card" : "cash");
+    if (nf.done) { var o = nf.done, tlink = location.origin + location.pathname + "?t=" + String(o.no).replace(/\D/g, "") + (o.phone && /^05\d{8}$/.test(o.phone) ? "&k=" + Number(o.phone).toString(36) : "") + "&s=" + Number(o.total || 0) + "&p=" + (o.pay === "card" ? "card" : "cash"), msg = "هلا" + (o.name ? " " + o.name : "") + "، وصلنا طلبك رقم " + o.no + " 🌿\nتابعه من موقعنا الإلكتروني الجديد، يطلع لك طلبك على طول: " + tlink;
       b.innerHTML = '<div class="nf-done"><span class="ic">' + ic("check") + '</span><h3>انسجّل الطلب <span dir="ltr">' + esc(o.no) + '</span></h3><p class="hint">' + num(o.count) + ' قطعة · ' + num(o.total) + ' ر.س · وصل للمندوب، والمخزون والتحليل انحسبوا.</p>' +
-        '<div class="actions">' + (o.phone ? '<a class="btn btn-teal" target="_blank" rel="noopener" href="https://wa.me/966' + esc(o.phone.replace(/^0/, "")) + '?text=' + encodeURIComponent(msg) + '">أرسل تأكيد للزبون على الواتساب</a>' : '') +
+        '<div class="actions">' + (o.phone ? '<a class="btn btn-teal" target="_blank" rel="noopener" href="https://wa.me/966' + esc(o.phone.replace(/^0/, "")) + '?text=' + encodeURIComponent(msg) + '">أرسل تأكيد للزبون على الواتساب</a><button class="btn btn-soft" type="button" data-nfcopy="' + esc(tlink) + '">انسخ رابط المتابعة</button>' : '<p class="hint">ما فيه رقم جوال، فما فيه رابط متابعة للزبون.</p>') +
         '<button class="btn btn-soft" type="button" data-oprint="' + esc(o.no) + '">اطبع الفاتورة</button><button class="btn btn-brand" type="button" data-nfagain>طلب جديد ثاني</button></div></div>'; return; }
     b.innerHTML = '<div class="pays seg mini nf-src" role="group" aria-label="الطلب جاء من">' + [["phone","اتصال"],["whatsapp","واتساب"],["store","في المحل"]].map(function(x){ return '<button type="button" data-nfsrc="' + x[0] + '" aria-pressed="' + (nf.src === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div>' +
       '<section class="nf-sec"><b>الزبون</b><div class="fields">' +
         '<label>رقم الجوال<input id="nfPhone" type="tel" inputmode="numeric" dir="ltr" placeholder="05XXXXXXXX" value="' + esc(nf.phone) + '"></label>' +
         '<label>الاسم<input id="nfName" value="' + esc(nf.name) + '" placeholder="اختياري"></label>' +
         '<label class="wide">العنوان أو وصف البيت<input id="nfDetails" value="' + esc(nf.details) + '" placeholder="مثال: فيلا ٨، باب بني، جنب المسجد"></label>' +
-        '<label class="wide">موقع البيت<input id="nfLoc" dir="ltr" value="' + esc(nf.loc) + '" placeholder="الصق رابط الموقع من الواتساب (اختياري)"></label>' +
+        '<label class="wide">موقع البيت<input id="nfLoc" dir="ltr" value="' + esc(nf.loc) + '" placeholder="الصق رابط الموقع من الواتساب (اختياري)"><span class="hint" id="nfLocHint" aria-live="polite"></span></label>' +
         '<label class="wide">ملاحظة<input id="nfNote" value="' + esc(nf.note) + '" placeholder="مثال: الخبز يكون حار"></label></div><div id="nfKnown"></div></section>' +
       '<section class="nf-sec"><b>المنتجات</b><input class="search" id="nfQ" type="search" placeholder="اكتب اسم المنتج…" value="' + esc(nf.q) + '" autocomplete="off"><div class="nf-res" id="nfRes"></div><div class="nf-lines" id="nfLines"></div></section>' +
       '<section class="nf-sec"><div class="nf-tot" id="nfTot"></div><div class="pays" style="max-width:320px"><button type="button" data-nfpay="cash" aria-pressed="' + (nf.pay === "cash") + '">كاش</button><button type="button" data-nfpay="card" aria-pressed="' + (nf.pay === "card") + '">شبكة</button></div></section>' +
       '<div id="nfErr"></div><div class="actions"><button class="btn btn-brand nf-save" type="button" id="nfSave">سجّل الطلب</button></div>';
     var bind = { nfPhone: "phone", nfName: "name", nfDetails: "details", nfLoc: "loc", nfNote: "note" };
-    Object.keys(bind).forEach(function(id){ $(id).addEventListener("input", function(){ nf[bind[id]] = this.value; if (id === "nfPhone") nfKnownRender(); }); });
+    Object.keys(bind).forEach(function(id){ $(id).addEventListener("input", function(){ nf[bind[id]] = this.value; if (id === "nfPhone") nfKnownRender(); if (id === "nfLoc") nfLocHint(); }); });
     $("nfQ").addEventListener("input", function(){ nf.q = this.value; nfResRender(); });
     $("nfQ").addEventListener("keydown", function(e){ if (e.key === "Enter") { var f = document.querySelector("#nfRes [data-nfadd]"); if (f) { e.preventDefault(); f.click(); } } });
-    nfKnownRender(); nfResRender(); nfLinesRender();
+    nfKnownRender(); nfResRender(); nfLinesRender(); nfLocHint();
   }
+  // رابط الموقع المنسوخ من الواتساب يجي فيه الفاصلة مشفّرة (%2C): نفكها عشان الخادم يقرأ الإحداثيات ويحسب للزبون وقت الوصول
+  function nfLocNorm(v){ v = String(v || "").trim(); try { v = decodeURIComponent(v); } catch(e){ v = v.replace(/%2C/gi, ","); } return v; }
+  function nfLocHint(){ var el = $("nfLocHint"); if (!el) return; var v = nfLocNorm(nf.loc);
+    if (!v) { el.textContent = ""; return; }
+    var m = /(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/.exec(v), ok = m && +m[1] >= 16 && +m[1] <= 33 && +m[2] >= 34 && +m[2] <= 56;
+    el.className = "hint"; el.style.display = "block"; el.style.marginTop = "4px"; el.style.color = ok ? "#0E8A6A" : "#B4540A";
+    el.textContent = ok ? "✓ فهمنا الموقع: الزبون بيشوف المندوب على الخريطة وكم باقي يوصله." : /goo\.gl|google\./i.test(v) ? "رابط مختصر: المندوب يقدر يفتحه، بس الزبون ما بيشوف كم دقيقة باقية. لو تقدر، الصق رابط فيه أرقام الموقع (مثل 24.71,46.67)." : "ما فهمنا الموقع. الصق رابط قوقل ماب أو الأرقام (مثل 24.71,46.67)، أو اكتب العنوان فوق."; }
   function nfKnownRender(){
     var el = $("nfKnown"); if (!el) return;
     var ph = normPhone(nf.phone);
@@ -1537,7 +1544,7 @@
     if (ph && !normPhone(ph)) { err.innerHTML = '<p class="status err">رقم الجوال مو صحيح. اكتبه مثل 05XXXXXXXX أو خله فاضي.</p>'; $("nfPhone").focus(); return; }
     if (nf.src !== "store" && !ph && !nf.details.trim() && !nf.loc.trim()) { err.innerHTML = '<p class="status err">المندوب يحتاج جوال الزبون أو عنوانه. لو الطلب في المحل اختر «في المحل».</p>'; return; }
     btn.disabled = true; btn.textContent = "جاري التسجيل…";
-    api("/admin/order-new", { pin: adminPin, source: nf.src, phone: ph, name: nf.name, details: nf.details, loc: nf.loc, note: nf.note, pay: nf.pay, fee: nf.fee === "" ? null : Number(nf.fee), force: nf.force, lines: nf.lines }).then(function(j){
+    api("/admin/order-new", { pin: adminPin, source: nf.src, phone: ph, name: nf.name, details: nf.details, loc: nfLocNorm(nf.loc), note: nf.note, pay: nf.pay, fee: nf.fee === "" ? null : Number(nf.fee), force: nf.force, lines: nf.lines }).then(function(j){
       btn.disabled = false; btn.textContent = "سجّل الطلب";
       if (j.ok) { nf.done = j.order; if (oState.list) oState.list.unshift(j.order); if (aTab === "olist") renderOList(); loadAdminStock(); nfRender(); return; }
       if (j.code === "unavailable") { var p = dById(j.id); err.innerHTML = '<div class="alert soft">المخزون في النظام يقول باقي ' + num(j.left) + ' بس من «' + esc(p ? p.name : j.id) + '». عدّل الكمية، أو لو المنتج موجود عندك فعلًا: <label class="chk"><input type="checkbox" data-nfforce>سجّله على أي حال (المخزون ينزل لصفر)</label></div>'; return; }
@@ -1549,6 +1556,7 @@
     if (mode !== "admin" || !draft) return;
     var t;
     if (e.target.closest("[data-onew]")) { openNewOrder(); return; }
+    if ((t = e.target.closest("[data-nfcopy]"))) { var u = t.dataset.nfcopy; if (navigator.clipboard) navigator.clipboard.writeText(u).then(function(){ sToast("انتسخ رابط المتابعة، الصقه للزبون بالواتساب"); }, function(){ prompt("انسخ الرابط:", u); }); else prompt("انسخ الرابط:", u); return; }
     if (!nf || !$("nfSheet")) return;
     if (e.target.closest("[data-nfclose]") || e.target.id === "nfSheet") { $("nfSheet").remove(); if (nf.done) nf = null; return; }
     if (e.target.closest("[data-nfagain]")) { nfReset(); nfRender(); $("nfPhone").focus(); return; }
