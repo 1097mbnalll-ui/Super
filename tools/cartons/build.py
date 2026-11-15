@@ -21,7 +21,7 @@ TARGET = {('drinks', 'soft'), ('drinks', 'water'), ('drinks', 'juice'), ('drinks
 MIN_RK = {'soft': 55, 'water': 70, 'juice': 65, 'energy': 33, 'milk': 85, 'laban': 50, 'paper': 47}
 # المشروبات الغازية: الماركات الأساسية بس (بيبسي وأنواعه، كوكاكولا وأنواعها...)
 SOFT_BRANDS = re.compile(r'بيبسي|ببسي|سفن ?[اآ]ب|ميرندا|ميراندا|ديو|كوكا|كةكا|سبرايت|فانتا|شاني|شويبس')
-COMMON = [6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 27, 30, 32, 36, 40, 48]
+COMMON = [6, 12, 18, 24, 30, 36, 40, 48]   # الأعداد الغالبة بس
 
 k = lambda s: str(s).lstrip('0')
 
@@ -48,7 +48,7 @@ def name_n(p):
 
 
 def std_n(p, ml):
-    """العدد المعتاد بالسوق السعودي حسب الحجم (المشروبات الغازية والمويه)"""
+    """العدد الغالب بالسوق السعودي حسب النوع والحجم (طلب المالك: «حط الغالب»)"""
     name = nz(p['name'])
     sub = p.get('sub')
     if ml is None: return None
@@ -57,25 +57,30 @@ def std_n(p, ml):
         if 'زجاج' in name: return 24
         if ml <= 250: return 48
         if ml <= 350: return 40
+        if ml <= 560: return 24
         if ml <= 650: return 30
         if 1400 <= ml <= 1600: return 12
         return None
-    if sub == 'soft':
-        if 'زجاج' in name or 'قزاز' in name: return 24
-        if ml <= 260: return 30
+    if sub in ('soft', 'energy'):
+        if 'زجاج' in name: return 24
+        if ml <= 260: return 30 if sub == 'soft' else 24
         if ml <= 500: return 24
         if 900 <= ml <= 1250: return 12
         if 1900 <= ml <= 2300: return 6
+        return None
+    # العصير والحليب واللبن (تتراباك)
+    if ml <= 210: return 18
+    if ml <= 360: return 24
+    if ml <= 520: return 18
+    if 900 <= ml <= 1100: return 12
+    if 1300 <= ml <= 2000: return 6
     return None
 
 
 def ratio_n(single, carton):
-    """أصغر عدد شائع يخلي حبة الكرتون أرخص من الحبة أو بسعرها"""
+    """أقرب عدد غالب لنسبة سعر الكرتون لسعر الحبة (لو العدد المعتاد ما يركب على السعر)"""
     ratio = carton / single
-    for n in COMMON:
-        if n >= ratio * 0.97:
-            return n
-    return None
+    return min(COMMON, key=lambda n: abs(n - ratio))
 
 
 
@@ -150,17 +155,19 @@ def main(data_path, rows_path, dry=False):
         if p.get('sub') == 'water' and ml and ml > 2000: why['gallon'] += 1; continue
         if p.get('sub') == 'paper' and re.search(r'رول', p['name']): why['rolls'] += 1; continue
         # العدد: المكتوب بالاسم، وإلا المعتاد بالسوق (المويه أرخص بكثير بالكرتون، والحبة أحياناً عليها عرض)، وإلا من السعر
+        # حماية المحل: لو العدد يخلي الحبة بالكرتون أرخص بكثير من سعرها (أو أغلى بكثير) فالعدد غلط، ناخذ الأقرب للسعر
         n = name_n(p)
-        lo = 0.28 if p.get('sub') == 'water' else 0.55
+        lo = 0.28 if p.get('sub') == 'water' else 0.6
         if not n:
             n = std_n(p, ml)
-            if n and not (lo * sp <= cp / n <= 1.35 * sp): n = None
+            if n and not (lo * sp <= cp / n <= 1.3 * sp): n = None
         n = n or ratio_n(sp, cp)
-        if not n or not (lo * sp <= cp / n <= 1.35 * sp) or n == 9: why['count_unsure'] += 1; skipped.append((p['name'], sp, cp)); continue
+        if not n or not (lo * sp <= cp / n <= 1.3 * sp): why['count_unsure'] += 1; skipped.append((p['name'], sp, cp)); continue
         pick[p['id']] = {'code': r['code'], 'n': n, 'u': label(n), 'price': round(cp, 2)}
         why['picked'] += 1
     # المنتجات المنفصلة القديمة (وحدتها كرتون/شدّة) تنشال، والخيارات القديمة تنشال
-    off = sorted(p['id'] for p in ps if CARTON_RE.match(str(p.get('unit', ''))))
+    prev = json.load(open(OUT)) if os.path.exists(OUT) else {}
+    off = sorted(set(prev.get('off', [])) | {p['id'] for p in ps if CARTON_RE.match(str(p.get('unit', '')))})
     old_map = json.load(open(os.path.join(os.path.dirname(HERE), 'daily', 'packs_map.json')))
     off_codes = sorted(c for c in old_map if c != '_')
     out = {'_': 'قسم الكراتين والشدّات (المالك ١٥ نوفمبر ٢٠٢٦): picks = خيار الكرتون داخل منتج الحبة (code = رقم الصنف بالكاشير). '
@@ -168,7 +175,7 @@ def main(data_path, rows_path, dry=False):
            'picks': pick, 'off': off, 'off_codes': off_codes}
     newps = []; renamed = []
     for p in ps:
-        if p['id'] in off: continue
+        if p['id'] in set(off): continue
         if p.get('packs'):
             p['packs'] = [x for x in p['packs'] if not CARTON_RE.match(str(x.get('u', '')))]
             if not p['packs']: p.pop('packs')
