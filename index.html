@@ -1955,6 +1955,9 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function shelfScore(p){ return (Number(p.rk) || 0) + (isOffer(p) ? 120 : 0); }
   function shelfSort(a, b){ return (avail(b) - avail(a)) || ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)) || (shelfScore(b) - shelfScore(a)); }
   function isOffer(p){ return onSale(p) || !!multiOf(p); }
+  // الرئيسية (طلب المالك ١٥ نوفمبر ٢٠٢٦): أي خصم توفيره أقل من ٢ ريال ما يطلع في الواجهة الرئيسية (يبقى في صفحة العروض والأقسام)
+  function offSave(p){ var mo = multiOf(p); return onSale(p) ? p.old - p.price : mo ? mo.n * p.price - mo.price : 0; }
+  function homeOffer(p){ return isOffer(p) && offSave(p) >= (S.homeMinSave != null ? Number(S.homeMinSave) : 2) - 0.001; }
   /* ---------- live stock ---------- */
   var LIVE = {};
   function left(p){ if (p && p.per) { var b = LIVE[p.base]; return b == null ? null : Math.floor(Number(b) / p.per); } var v = p && LIVE[p.id]; return v == null ? null : Number(v); }
@@ -2648,7 +2651,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   var FGB = "";
   function banners(){
-    var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), bakery = catOf("bakery") || D.cats[0];
+    var dd = daily(), deals = dealsList(), t = totals(), offers = D.products.filter(function(p){ return avail(p) && homeOffer(p); }).sort(shelfSort), bakery = catOf("bakery") || D.cats[0];
     var maxOff = offers.reduce(function(m, p){ var mo = multiOf(p), r = onSale(p) ? 1 - p.price / p.old : mo ? 1 - mo.price / (mo.n * p.price) : 0; return Math.max(m, Math.round(r * 100)); }, 0);
     var E = S.banEdit || {}, B = {}, pk = function(id, def){ var ids = S.banPicks && S.banPicks[id]; return ids && ids.length ? ids.filter(function(x){ return byId(x); }) : def; };
     var idsOf = function(list){ return list.map(function(p){ return p.id; }); };
@@ -2832,7 +2835,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     // عروض على أغراضك: العروض الموجودة (خصم، عرض كمية، عرض مجموعة) على اللي طلبته أو من أنواعه. ترتيب بس، بدون خصم جديد
     if (own.length || ids.length) {
       var mySub = {}; ids.forEach(function(id){ var p = byId(id); if (p && p.sub) mySub[p.sub] = (mySub[p.sub] || 0) + H[id].n; });
-      var offs = D.products.filter(function(p){ return (H[p.id] || mySub[p.sub]) && smOk(p) && (isOffer(p) || grpOf(p)); })
+      var offs = D.products.filter(function(p){ return (H[p.id] || mySub[p.sub]) && smOk(p) && (homeOffer(p) || grpOf(p)); })
         .sort(function(a, b){ return (H[b.id] ? 1e6 : 0) + (mySub[b.sub] || 0) * 100 + shelfScore(b) - ((H[a.id] ? 1e6 : 0) + (mySub[a.sub] || 0) * 100 + shelfScore(a)); });
       var oc = {}; offs = offs.filter(function(p){ if (H[p.id]) return true; oc[p.sub] = (oc[p.sub] || 0) + 1; return oc[p.sub] <= 3 && hasPic(p.img); }).slice(0, 12);
       if (offs.length >= 2) L.myoffers = { items: offs.map(function(p){ return { p: p, why: H[p.id] ? tr("من طلباتك", "You ordered this") : "" }; }), why: tr("العروض الحالية على أشياء تطلبها أو من نوعها", "Current offers on things you buy") };
@@ -2880,7 +2883,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       '<div class="kq-meta"><span class="kq-sched">' + ic("truck") + esc(sv("eta")) + '</span><span class="kq-loc">' + ic("pin") + esc(sv("area")) + ic("down") + '</span></div>' +
       '<button class="langbtn" type="button" data-lang="' + (LANG === "en" ? "ar" : "en") + '" aria-label="' + tr("English", "العربية") + '">' + (LANG === "en" ? "ع" : "EN") + '</button></div>' +
       '<button class="kq-search" type="button" data-nav="search">' + ic("search") + '<span id="ph">' + tr("قهوتك ناقصها حلا؟ ابحث عن الشوكولاتة…", "Your coffee needs something sweet? Search…") + '</span></button></div></div>';
-    var SEC = {}, offers = D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort), deals = dealsList(), tt = totals();
+    var SEC = {}, offers = D.products.filter(function(p){ return avail(p) && homeOffer(p); }).sort(shelfSort), deals = dealsList(), tt = totals();
     // عروض الأقسام (مثل المتاجر الكبيرة): مربع لكل قسم فيه عروض، يفتح عروض القسم بس
     var co = D.cats.map(function(c){ var l = offers.filter(function(p){ return p.cat === c.id; }); if (!l.length) return null;
       var mx = l.reduce(function(m, p){ var mo = multiOf(p), r = onSale(p) ? 1 - p.price / p.old : mo ? 1 - mo.price / (mo.n * p.price) : 0; return Math.max(m, Math.round(r * 100)); }, 0);
@@ -2938,7 +2941,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       (deals.length ? '<button type="button" class="kq-recipe" data-chip="deals"><span class="ic">' + ic("tag") + '</span><span class="t"><b>' + tr("كل منتج بـ ", "Everything for ") + num(DEAL.price) + ' ' + tr("ر.س", "SAR") + '</b><span>' + (t.unlocked ? tr("انفتحت لك، ضيف اللي تبغاه", "Unlocked, add what you like") : tr("لطلبات فوق ", "For orders over ") + rial(DEAL.min)) + '</span></span>' + ic("fwd") + '</button>' : '') +
       '<div class="kq-sec"><h2>' + ic("grid") + tr("المقاضي", "Groceries") + '</h2><button type="button" data-chip="for">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div>' +
       '<div class="kq-cats">' + D.cats.map(function(c){ return '<button type="button" class="kq-cat" data-opencat="' + c.id + '"><span class="tile">' + imgTag(catPhoto(c), "") + soonTag(c) + '</span>' + esc(nm(c)) + '</button>'; }).join("") + '</div>' +
-      (D.products.some(function(p){ return avail(p) && isOffer(p); }) ? '<div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort).map(function(p){ return card(p); }).join("") + '</div>' : '') + '</div>';
+      (D.products.some(function(p){ return avail(p) && homeOffer(p); }) ? '<div class="kq-sec"><h2>' + ic("tag") + tr("أفضل العروض", "Best offers") + '</h2><button type="button" data-chip="offers">' + tr("عرض الكل", "See all") + ic("fwd") + '</button></div><div class="rail">' + D.products.filter(function(p){ return avail(p) && isOffer(p); }).sort(shelfSort).map(function(p){ return card(p); }).join("") + '</div>' : '') + '</div>';
   }
 
   /* ---------- قسم الطباعة: حاسبة (نوع، صفحات، نسخ) تضيف للسلة، والملف يوصل واتساب برقم الطلب ---------- */
