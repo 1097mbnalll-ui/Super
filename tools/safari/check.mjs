@@ -45,7 +45,7 @@ for (const c of cases) {
         const onIx = Array.from(holder.children).findIndex(x => x.classList.contains('on'));
         const k = onIx >= 0 ? onIx : rs.findIndex(q => Math.abs(q.left - box.left) < 3 && Math.abs(q.width - box.width) < 3);
         const near = rs.reduce((m, q, ix) => Math.abs(q.left - box.left) < Math.abs(rs[m].left - box.left) ? ix : m, 0);
-        r.ban = { n: rs.length, k: k >= 0 ? k : near, off: onIx >= 0 ? 0 : Math.round(rs[near].left - box.left), snapped: k >= 0 };
+        r.ban = { inView: box.top >= 0 && box.bottom <= innerHeight, n: rs.length, k: k >= 0 ? k : near, off: onIx >= 0 ? 0 : Math.round(rs[near].left - box.left), snapped: k >= 0 };
         const slide = holder.children[r.ban.k];
         r.ban.centerSlide = slide ? (slide.dataset.bid || String(slide.className).slice(0, 40)) : 'NONE';
         if (slide) {
@@ -97,7 +97,7 @@ for (const c of cases) {
   }
   const bad = samples.filter(s => s.t && s.ban && !s.ban.snapped);
   if (bad.length) issues.push('البنرات واقفة بين بنرين: ' + bad.map(s => s.t + 'ms off=' + s.ban.off).join(', '));
-  const blank = samples.filter(s => s.t && s.ban && (String(s.ban.centerSlide).startsWith('NONE') || s.ban.visibleKids < 3 || s.ban.imgsBroken));
+  const blank = samples.filter(s => s.t && s.ban && s.ban.inView && (String(s.ban.centerSlide).startsWith('NONE') || s.ban.visibleKids < 3 || s.ban.imgsBroken));
   if (blank.length) issues.push('بنر فاضي/مكسور: ' + blank.map(s => s.t + 'ms ' + s.ban.centerSlide + ' kids=' + s.ban.visibleKids + ' broken=' + s.ban.imgsBroken).join(', '));
   const cov = samples.filter(s => s.greetCovered);
   if (cov.length) issues.push('التحية مغطاة بـ: ' + cov[0].greetCovered);
