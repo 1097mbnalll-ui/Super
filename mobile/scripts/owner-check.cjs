@@ -3,6 +3,7 @@ const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const out = process.argv[2] || 'owner-out';
 fs.mkdirSync(out, { recursive: true });
+setTimeout(() => { console.error('TIMEOUT'); process.exit(3); }, 120000);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const shot = (n) => { const b = execSync('adb exec-out screencap -p', { maxBuffer: 64 * 1024 * 1024 }); const i = b.indexOf(Buffer.from([0x89, 0x50, 0x4e, 0x47])); fs.writeFileSync(`${out}/${n}.png`, i > 0 ? b.subarray(i) : b); };
 async function connect() {

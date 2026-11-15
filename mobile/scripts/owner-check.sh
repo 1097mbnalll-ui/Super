@@ -11,7 +11,8 @@ sleep 8
 PID=$(adb shell pidof sa.ohod.owner | tr -d '\r'); echo "pid=$PID"
 [ -z "$PID" ] && { echo "APP NOT RUNNING"; adb logcat -d | grep -E "FATAL|AndroidRuntime" -A12 | head -40 > "$OUT/crash.txt"; cat "$OUT/crash.txt"; exit 1; }
 adb forward tcp:9222 "localabstract:webview_devtools_remote_$PID"
-node scripts/owner-check.cjs "$OUT"; RC=$?
+timeout 150 node scripts/owner-check.cjs "$OUT"; RC=$?
+bash scripts/app-offline.sh sa.ohod.owner sa.ohod.owner/sa.ohod.store.OwnerActivity "$OUT" || RC=1
 adb logcat -d > "$OUT/logcat.txt"; grep -iE "net::|ERR_|chromium.*(error|fail)" "$OUT/logcat.txt" | head -8 | cut -c1-200 | tee "$OUT/neterr.txt"
 grep -E "FATAL EXCEPTION|ANR in sa.ohod.owner" "$OUT/logcat.txt" | head -5 > "$OUT/crashes.txt"; [ -s "$OUT/crashes.txt" ] && { cat "$OUT/crashes.txt"; RC=1; }
 exit $RC
