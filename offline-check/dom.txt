@@ -1,0 +1,3 @@
+customer@6s {"target":"https://localhost/offline.html","url":"https://localhost/offline.html","h1":"ما فيه اتصال بالإنترنت","img":660,"textLen":95,"ready":"complete","err":null}
+customer@20s {"target":"https://localhost/offline.html","url":"https://localhost/offline.html","h1":"ما فيه اتصال بالإنترنت","img":660,"textLen":95,"ready":"complete","err":null}
+customer@online APP NOT RUNNING
