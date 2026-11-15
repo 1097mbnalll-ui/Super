@@ -7,7 +7,7 @@ adb install -r "$APK" || exit 1
 adb shell am start -W -n sa.ohod.store/.MainActivity | tee "$OUT/start.txt"
 sleep 12
 PID=$(adb shell pidof sa.ohod.store | tr -d '\r'); echo "pid=$PID"
-[ -z "$PID" ] && { echo "APP NOT RUNNING"; exit 1; }
+[ -z "$PID" ] && { echo "APP NOT RUNNING"; adb logcat -d | grep -E "FATAL|AndroidRuntime" -A15 | head -50; exit 1; }
 adb forward tcp:9222 "localabstract:webview_devtools_remote_$PID"
 timeout 150 node scripts/customer-check.cjs "$OUT"; RC=$?
 bash scripts/app-offline.sh sa.ohod.store sa.ohod.store/.MainActivity "$OUT" || RC=1
