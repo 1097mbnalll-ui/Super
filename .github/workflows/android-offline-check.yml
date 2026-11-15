@@ -1,0 +1,59 @@
+# فحص «ما فيه نت» على محاكي أندرويد للتطبيقين المنشورين (تطبيق الزبون وتطبيق المالك) بدون إعادة بناء.
+# يشتغل بس لما ملف mobile/store/offline-check-trigger.txt يتغير، أو يدوي. النتائج على فرع emu-results/offline-check.
+name: android-offline-check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [mobile-app]
+    paths: ['mobile/store/offline-check-trigger.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: get the published APKs
+        run: |
+          mkdir -p mobile/apk
+          git fetch -q origin test-apk owner-apk
+          git show origin/test-apk:ohod-store-test.apk > mobile/apk/customer.apk
+          git show origin/owner-apk:ohod-owner.apk > mobile/apk/owner.apk
+          ls -la mobile/apk
+      - name: enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: run on emulator (Pixel 7, Android 15)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          working-directory: mobile
+          script: ./scripts/offline-check.sh
+      - name: publish results to branch emu-results
+        if: always()
+        run: |
+          [ -d mobile/offline-out ] || exit 0
+          for try in 1 2 3 4 5; do
+            D=$RUNNER_TEMP/emu$try; rm -rf "$D"
+            git clone -q --depth 1 -b emu-results "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "$D" 2>/dev/null || { mkdir -p "$D" && git -C "$D" init -q -b emu-results && git -C "$D" remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"; }
+            T="$D/offline-check"; rm -rf "$T"; mkdir -p "$T"; cp mobile/offline-out/* "$T"/ 2>/dev/null || true
+            echo "${{ github.sha }} run ${{ github.run_id }}" > "$T/SOURCE.txt"
+            git -C "$D" add -A offline-check
+            git -C "$D" -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -qm "offline check run ${{ github.run_number }}" || exit 0
+            git -C "$D" push -q origin HEAD:emu-results && exit 0
+            sleep $((RANDOM % 8 + 3))
+          done
+          exit 0
