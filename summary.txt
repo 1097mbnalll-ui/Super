@@ -1,0 +1,8 @@
+✅ site-morning
+✅ site-maghrib
+✅ site-night
+✅ app-head-night
+✅ app-head-morning
+✅ app-blocks
+
+كل الحالات سليمة

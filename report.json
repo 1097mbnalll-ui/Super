@@ -1,0 +1,830 @@
+{
+ "base": "http://localhost:8765",
+ "cases": [
+  {
+   "id": "site-morning",
+   "url": "/index.html?sky=morning",
+   "ok": true,
+   "issues": [],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 1,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "free",
+      "visibleKids": 14,
+      "imgs": 0,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 3,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "veg",
+      "visibleKids": 9,
+      "imgs": 4,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 4,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "top",
+      "visibleKids": 12,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "site-maghrib",
+   "url": "/index.html?sky=maghrib",
+   "ok": true,
+   "issues": [],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 1,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "free",
+      "visibleKids": 14,
+      "imgs": 0,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 3,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "veg",
+      "visibleKids": 9,
+      "imgs": 4,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 4,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "top",
+      "visibleKids": 12,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "site-night",
+   "url": "/index.html?sky=night",
+   "ok": true,
+   "issues": [],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 1,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "free",
+      "visibleKids": 14,
+      "imgs": 0,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 3,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "veg",
+      "visibleKids": 9,
+      "imgs": 4,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 257,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 4,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "top",
+      "visibleKids": 12,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "app-head-night",
+   "url": "/index.html?embed=1&blocks=head,featured,promos&st=47&sky=night",
+   "ok": true,
+   "issues": [],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 1,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "free",
+      "visibleKids": 14,
+      "imgs": 0,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 3,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "veg",
+      "visibleKids": 9,
+      "imgs": 4,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 4,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "top",
+      "visibleKids": 12,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "app-head-morning",
+   "url": "/index.html?embed=1&blocks=head,featured,promos&st=47&sky=morning",
+   "ok": true,
+   "issues": [],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 1,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "free",
+      "visibleKids": 14,
+      "imgs": 0,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 3,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "veg",
+      "visibleKids": 9,
+      "imgs": 4,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "headTop": 0,
+     "headH": 298,
+     "searchVisible": true,
+     "ban": {
+      "n": 6,
+      "k": 4,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "top",
+      "visibleKids": 12,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  },
+  {
+   "id": "app-blocks",
+   "url": "/index.html?embed=1&blocks=featured,promos,again,due,moment,season,myoffers,catoffers",
+   "ok": true,
+   "issues": [],
+   "samples": [
+    {
+     "t": 1500,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 4000,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 0,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "offers",
+      "visibleKids": 9,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 7000,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 1,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "free",
+      "visibleKids": 14,
+      "imgs": 0,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 10500,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 14000,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 2,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "catdeal",
+      "visibleKids": 8,
+      "imgs": 2,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 18000,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 3,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "veg",
+      "visibleKids": 9,
+      "imgs": 4,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    },
+    {
+     "t": 23000,
+     "scrollY": 0,
+     "ban": {
+      "n": 6,
+      "k": 4,
+      "off": 0,
+      "snapped": true,
+      "centerSlide": "top",
+      "visibleKids": 12,
+      "imgs": 1,
+      "imgsBroken": 0,
+      "imgsPending": 0
+     },
+     "greetCovered": false
+    }
+   ]
+  }
+ ]
+}
