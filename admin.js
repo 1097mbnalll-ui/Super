@@ -1478,7 +1478,7 @@
   }
   function nfRender(){
     var b = $("nfBody"); if (!b) return;
-    if (nf.done) { var o = nf.done, msg = "هلا" + (o.name ? " " + o.name : "") + "، وصلنا طلبك رقم " + o.no + " 🌿\nافتح الرابط وحط رقم جوالك، ويطلع لك طلبك على طول: " + location.origin + location.pathname + "?t=" + String(o.no).replace(/\D/g, "") + "&s=" + Number(o.total || 0) + "&p=" + (o.pay === "card" ? "card" : "cash");
+    if (nf.done) { var o = nf.done, msg = "هلا" + (o.name ? " " + o.name : "") + "، وصلنا طلبك رقم " + o.no + " 🌿\nتابعه من موقعنا الإلكتروني الجديد، حط رقم جوالك ويطلع لك طلبك على طول: " + location.origin + location.pathname + "?t=" + String(o.no).replace(/\D/g, "") + "&s=" + Number(o.total || 0) + "&p=" + (o.pay === "card" ? "card" : "cash");
       b.innerHTML = '<div class="nf-done"><span class="ic">' + ic("check") + '</span><h3>انسجّل الطلب <span dir="ltr">' + esc(o.no) + '</span></h3><p class="hint">' + num(o.count) + ' قطعة · ' + num(o.total) + ' ر.س · وصل للمندوب، والمخزون والتحليل انحسبوا.</p>' +
         '<div class="actions">' + (o.phone ? '<a class="btn btn-teal" target="_blank" rel="noopener" href="https://wa.me/966' + esc(o.phone.replace(/^0/, "")) + '?text=' + encodeURIComponent(msg) + '">أرسل تأكيد للزبون على الواتساب</a>' : '') +
         '<button class="btn btn-soft" type="button" data-oprint="' + esc(o.no) + '">اطبع الفاتورة</button><button class="btn btn-brand" type="button" data-nfagain>طلب جديد ثاني</button></div></div>'; return; }
