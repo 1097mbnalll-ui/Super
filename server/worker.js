@@ -210,6 +210,24 @@ export default {
       return reply(200, out);
     }
 
+    // اقتراحات الزبون بعد الطلب (طلب المالك ١٥ نوفمبر ٢٠٢٦): نص حر، ينحفظ في سجل العمليات ويوصل الإدارة (إشعار + تيليجرام)
+    if (path === "/suggest") {
+      if (!env.DB) return reply(404, { ok: false, code: "no_db" });
+      const text = String(body.text || "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "").trim().slice(0, 800);
+      if (!text) return reply(400, { ok: false, code: "bad_request" });
+      if (await rateHit(env, "sg:" + ip, 6, 3600)) return reply(429, { ok: false, code: "slow_down" });
+      await ensureSchema(env);
+      const ref = String(body.no || "").replace(/[^\d#]/g, "").slice(0, 12), stars = Number(body.stars) >= 1 && Number(body.stars) <= 5 ? Math.round(Number(body.stars)) : null;
+      await logStmt(env, "الزبون", "suggestion", ref, { text, stars }).run();
+      later((async () => {
+        const title = "💡 اقتراح زبون" + (ref ? " · " + ref : "") + (stars ? " · " + "★".repeat(stars) : "");
+        await notifyRole(env, "admin", null, { title, body: text.slice(0, 140), url: "./", tag: "sg" + Date.now() }).catch(() => {});
+        const chat = env.TELEGRAM_BOT_TOKEN && env.LOCKS ? await env.LOCKS.get("tg_chat") : null;
+        if (chat) await tgSend(env, chat, "💡 <b>" + esc(title) + "</b>\n" + esc(text)).catch(() => {});
+      })());
+      return reply(200, { ok: true });
+    }
+
     // الزبون يضيف أغراض لطلبه بعد ما طلب (طلب المالك ١٥ نوفمبر ٢٠٢٦، الافتتاح التجريبي): رقم الطلب + نفس الجوال، نص حر (الوزن أو العدد)
     // ينضاف لـ «طلب بالكتابة» في الطلب نفسه، والموظف يسعّره من «تعديل الطلب». قبل التوصيل بس، وينبّه الإدارة.
     if (path === "/order-add") {

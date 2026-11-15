@@ -97,4 +97,8 @@ ad = await call('/order-add', { no: r.orderNo, phone: '0557100009', text: '' });
 r = await call('/order', { items: { pantry0: 3 }, phone: '0557100010', ...loc });
 ad = await call('/order-add', { no: r.orderNo, phone: '0557100010', text: 'ماء' });
 ok(ad.ok && rec(r.orderNo).free === 'ماء', 'طلب بدون قائمة: الإضافة تصير القائمة');
+// اقتراحات الزبون (/suggest)
+let sg = await call('/suggest', { no: '#1001', stars: 4, text: 'زيدوا الخضار' });
+ok(sg.ok && sq.prepare("SELECT COUNT(*) n FROM alog WHERE act = 'suggestion'").get().n === 1, 'الاقتراح انحفظ بالسجل');
+sg = await call('/suggest', { text: '' }); ok(!sg.ok, 'اقتراح فاضي مرفوض');
 console.log(fails ? fails + ' فشل' : 'كل الفحوص نجحت'); process.exit(fails ? 1 : 0);
