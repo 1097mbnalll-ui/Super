@@ -85,6 +85,8 @@ struct LiveHomeBlocks<Fallback: View>: View {
     @Binding var tab: AppTab
     @Binding var path: NavigationPath
     var st: CGFloat? = nil
+    /// يصير true لما صفحة الموقع تنعرض فعلاً (فتحت ولها ارتفاع)، false وهي تحمّل أو لو ما فتحت
+    var shown: Binding<Bool>? = nil
     @ViewBuilder var fallback: () -> Fallback
     @Environment(CatalogStore.self) private var catalog
     @Environment(Cart.self) private var cart
@@ -119,6 +121,7 @@ struct LiveHomeBlocks<Fallback: View>: View {
         }
         .padding(.top, st == nil ? 12 : 0)
         .task(id: catalog.version) { failed = false }
+        .onChange(of: height > 0 && !failed, initial: true) { _, v in shown?.wrappedValue = v }
     }
 }
 

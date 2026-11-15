@@ -6,6 +6,9 @@ struct HomeView: View {
     @Binding var path: NavigationPath
     @Environment(CatalogStore.self) private var catalog
     @Environment(OrderCenter.self) private var orders
+    /// الرأس الحي من الموقع انعرض فعلاً (store.app.liveHead والصفحة فتحت)
+    @State private var headShown = false
+    private var liveHeadOn: Bool { catalog.store.liveHead && headShown }
 
     var body: some View {
         ScrollView {
@@ -27,6 +30,16 @@ struct HomeView: View {
         .background(Theme.pageBG)
         .refreshable { await catalog.refresh() }
         .toolbar(.hidden, for: .navigationBar)
+        .overlay {
+            // شريط ضبابي ثابت ورا الساعة لما الرأس الحي ظاهر: الساعة والبطارية (سود) تنقرا فوق أي سما، حتى الليل والمغرب
+            if liveHeadOn {
+                Rectangle().fill(.ultraThinMaterial)
+                    .frame(height: topInset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .ignoresSafeArea(edges: .top)
+                    .allowsHitTesting(false)
+            }
+        }
         .overlay(alignment: .bottomLeading) {
             if let order = orders.current {
                 OrderBubble(order: order) { tab = .account }
@@ -48,6 +61,16 @@ struct HomeView: View {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let win = scenes.compactMap(\.keyWindow).first ?? scenes.flatMap(\.windows).first
         return win?.safeAreaInsets.top ?? 0
+    }
+
+    /// لون أعلى سما الرياض حسب الوقت (skyNow و.kqsky.top --g1 في الموقع، بنفس شروطه بالضبط حتى قبل ٤ الفجر)
+    static func skyTop(_ d: Date) -> Color {
+        let h = (d.timeIntervalSince1970 / 3600 + 3).truncatingRemainder(dividingBy: 24)
+        if h >= 4 && h < 11 { return Color(hex: 0x8FD0F5) }
+        if h < 15 { return Color(hex: 0x4FA9E8) }
+        if h < 17.5 { return Color(hex: 0x6BB6E8) }
+        if h < 19 { return Color(hex: 0x3B2A7A) }
+        return Color(hex: 0x0F0B2E)
     }
 
     private var sections: [String] {
@@ -86,11 +109,21 @@ struct HomeView: View {
             // الرئيسية الحية: كل أقسام الموقع المتتالية في مربع واحد مكان أولها
             if let run = liveRun(startingAt: id) {
                 // الرأس الحي يمتد لين أعلى الشاشة: st = ارتفاع الساعة عشان محتواه ينزل تحتها والسما وراها
-                LiveHomeBlocks(blocks: run, tab: $tab, path: $path, st: run.contains("head") ? topInset : nil) {
+                LiveHomeBlocks(blocks: run, tab: $tab, path: $path, st: run.contains("head") ? topInset : nil,
+                               shown: run.contains("head") ? $headShown : nil) {
                     if run.contains("head") {
                         HeadFallback(run: run, path: $path)
                     } else if run.contains("promos") {
                         BannerCarousel(path: $path).padding(.horizontal, 16).padding(.top, 4)
+                    }
+                }
+                .background(alignment: .top) {
+                    // سحب الصفحة لتحت فوق أولها: يطلع لون أعلى السما (مو لون الصفحة)
+                    if run.contains("head"), liveHeadOn, catalog.store.skyHome {
+                        TimelineView(.periodic(from: .now, by: 300)) { ctx in
+                            HomeView.skyTop(ctx.date).frame(height: 600).offset(y: -600 - topInset)
+                        }
+                        .allowsHitTesting(false)
                     }
                 }
             }
