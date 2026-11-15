@@ -66,7 +66,8 @@ struct HomeView: View {
     /// لون أعلى سما الرياض حسب الوقت (skyNow و.kqsky.top --g1 في الموقع، بنفس شروطه بالضبط حتى قبل ٤ الفجر)
     static func skyTop(_ d: Date) -> Color {
         let h = (d.timeIntervalSince1970 / 3600 + 3).truncatingRemainder(dividingBy: 24)
-        if h >= 4 && h < 11 { return Color(hex: 0x8FD0F5) }
+        if h < 4 { return Color(hex: 0x0F0B2E) }
+        if h < 11 { return Color(hex: 0x8FD0F5) }
         if h < 15 { return Color(hex: 0x4FA9E8) }
         if h < 17.5 { return Color(hex: 0x6BB6E8) }
         if h < 19 { return Color(hex: 0x3B2A7A) }
