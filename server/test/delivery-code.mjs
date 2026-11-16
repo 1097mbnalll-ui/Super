@@ -41,5 +41,24 @@ ok(st.ok && ck.warn === 0, 'قريب من البيت: بدون تنبيه');
 // طلب قديم انحفظ له رمز قبل الإيقاف: يتسلّم بدونه
 const o3 = await mkOrder('0557200003'); const r3 = rec(o3); r3.dc = '1234'; sq.prepare('UPDATE orders SET data = ? WHERE no = ?').run(JSON.stringify(r3), N(o3)); await toWay(o3);
 st = await call('/driver/status', { ...D, no: o3, status: 'delivered' }); ok(st.ok, 'طلب له رمز قديم يتسلّم بدونه');
+// جهاز واحد للموقع: جوال المحل داخل بنفس رقم المندوب ما يغطي على موقع المندوب
+const DEV1 = 'd-' + 'a'.repeat(20), DEV2 = 'd-' + 'b'.repeat(20);
+const o4 = await mkOrder('0557200004');
+await call('/driver/status', { ...D, no: o4, status: 'accepted', dev: DEV1 }); await call('/driver/status', { ...D, no: o4, status: 'onway', dev: DEV1 });
+let lc = await call('/driver/loc', { ...D, lat: 24.85, lng: 46.82, dev: DEV1 }); ok(lc.ok && !lc.skipped, 'جوال المندوب: موقعه ينحفظ');
+await new Promise((r) => setTimeout(r, 2600));
+lc = await call('/driver/loc', { ...D, lat: 24.80, lng: 46.70, dev: DEV2 }); ok(lc.ok && lc.skipped === 'other_device', 'جوال ثاني بنفس الرقم: موقعه ما ينحسب');
+lc = await call('/driver/loc', { ...D, lat: 24.80, lng: 46.70 }); ok(lc.skipped === 'other_device', 'تطبيق بدون رقم جهاز (جوال ثاني): ما ينحسب');
+const dl1 = sq.prepare('SELECT lat FROM dlocs').get(); ok(dl1 && Math.abs(dl1.lat - 24.85) < 1e-6, 'الموقع المحفوظ موقع المندوب: ' + JSON.stringify(dl1));
+let tr4 = await call('/track', { no: o4, phone: '0557200004' }); ok(tr4.driver && Math.abs(tr4.driver.lat - 24.85) < 0.01, 'الزبون يشوف المندوب الصح');
+// التطبيق (app) يحرّك الطلب: يصير هو المعتمد
+const o5 = await mkOrder('0557200005'); await call('/driver/status', { ...D, no: o5, status: 'accepted', dev: 'app' });
+await new Promise((r) => setTimeout(r, 2600));
+lc = await call('/driver/loc', { ...D, lat: 24.86, lng: 46.84 }); ok(lc.ok && !lc.skipped, 'بعد ما التطبيق حرّك طلب: موقع التطبيق ينحسب');
+lc = await call('/driver/loc', { ...D, lat: 24.80, lng: 46.70, dev: DEV1 }); ok(lc.skipped === 'other_device', 'والمتصفح القديم ما ينحسب');
+// الاقتراحات في الإدارة مع اسم الزبون وجواله
+await call('/suggest', { no: o4, stars: 5, text: 'حطوا صور وآبل باي' });
+const rt = await call('/admin/ratings', { ...A, days: 30 }); const sg = (rt.suggestions || [])[0];
+ok(rt.ok && sg && sg.text === 'حطوا صور وآبل باي' && sg.phone === '0557200004' && sg.no === o4 && sg.stars === 5, 'الاقتراح يطلع للإدارة مع جوال الزبون: ' + JSON.stringify(sg));
 const v = await call('/admin/verify', A); ok(v.ok && v.clean, 'التحليل مطابق');
 console.log(fails ? fails + ' فشل' : 'كل الفحوص نجحت'); process.exit(fails ? 1 : 0);

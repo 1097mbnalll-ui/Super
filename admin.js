@@ -23,7 +23,7 @@
     if (staffAuth && staffAuth.user.role === "preparer") { preparerShell(); return; }
     if (ordersOnly()) { ordersShell(); return; }
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
-    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["rates","تقييمات الطلبات","spark"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
+    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["rates","التقييمات والاقتراحات","spark"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
       '<aside class="adm-side"><div class="adm-brand"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b>' + esc(D.store.name) + '</b><span>لوحة الإدارة</span></div></div>' +
       '<nav class="adm-nav" aria-label="أقسام الإدارة">' + TABS.map(function(x){ return '<button type="button" data-atab="' + x[0] + '"' + (x[0] === aTab ? ' aria-current="page"' : '') + '>' + ic(x[2]) + '<span>' + x[1] + '</span>' + (x[0] === "prods" ? '<em class="n">' + draft.products.length + '</em>' : x[0] === "cats" ? '<em class="n">' + draft.cats.length + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
@@ -1935,6 +1935,45 @@
   var rt = { days: 30, low: false, data: null, loading: false };
   var RT_TAG = { driver: "المندوب ممتاز", fast: "وصل بسرعة", fresh: "المنتجات طازجة", packing: "تغليف مرتب", late: "تأخر", missing: "منتج ناقص", wrong: "منتج غلط", damaged: "منتج تالف" };
   function rtStars(n){ var h = ""; for (var i = 1; i <= 5; i++) h += '<i class="' + (i <= n ? "on" : "") + '">★</i>'; return '<span class="rt-st" role="img" aria-label="' + num(n) + ' من ٥">' + h + '</span>'; }
+  /* اقتراحات الزبائن بعد الطلب (طلب المالك ١٦ نوفمبر ٢٠٢٦): كل اقتراح معه رد جاهز يتعدّل، وزر يفتح واتساب الزبون والرد مكتوب */
+  var SG_TOPICS = [
+    [/صور|صوره|الصورة/, "بخصوص الصور: نصوّر المنتجات أول بأول، وكل يوم تنضاف صور جديدة 📸"],
+    [/ابل باي|أبل باي|apple|مدى|بطاق|الكتروني|إلكتروني|اون لاين|أونلاين|الدفع/i, "بخصوص الدفع: الدفع الإلكتروني (آبل باي ومدى) قريب إن شاء الله، وحالياً تقدر تدفع كاش أو شبكة عند الاستلام 💳"],
+    [/تفتح|افتح|باقي الأقسام|الأقسام|خضار|فواكه|مخبز|خبز|اجبان|أجبان|محمص|قهوة/, "بخصوص الأقسام: الخضار والفواكه والمخبز والأجبان والمحمصة بنفتحها قريب، وحالياً أي غرض تبيه اكتبه في «ما لقيت غرضك؟ اكتبه» ونجيبه لك 🥬"],
+    [/تأخر|تاخر|متأخر|بطيء|بطي|سرعة|التوصيل/, "بخصوص التوصيل: نعتذر لك لو تأخرنا، ونشتغل على إن الطلب يوصلك أسرع 🛵"],
+    [/غالي|الأسعار|الاسعار|سعر|خصم|عروض/, "بخصوص الأسعار: نحرص تكون أسعارنا مثل المحل، وعروضنا تتجدد كل يوم، وبنحط اقتراحك في بالنا 🏷️"],
+    [/تطبيق|ايفون|آيفون|اندرويد|أندرويد/, "بخصوص التطبيق: تطبيقنا للآيفون نازل قريب إن شاء الله 📱"],
+    [/ناقص|ما لقيت|مو موجود|غير موجود|توفير|توفرون|وفروا/, "بخصوص المنتجات: أي منتج تبيه وما لقيته اكتبه لنا ونوفّره لك إن شاء الله 🛒"]
+  ];
+  function sgReply(x){
+    var t = String(x.text || ""), first = String(x.name || "").trim().split(/\s+/)[0] || "", pts = [];
+    SG_TOPICS.forEach(function(k){ if (k[0].test(t)) pts.push(k[1]); });
+    var low = x.stars && x.stars <= 2;
+    return "هلا" + (first ? " " + first : "") + "، معك متاجر أحد 🌿\n" +
+      (low ? "شكراً على صراحتك، ونعتذر لك إن تجربتك ما كانت مثل ما تستاهل." : "شكراً على اقتراحك" + (x.stars >= 4 ? " وعلى تقييمك الحلو" : "") + "، وصلنا وقريناه.") + "\n" +
+      (pts.length ? pts.join("\n") + "\n" : "اقتراحك وصل للإدارة ونشتغل عليه.\n") +
+      (low ? "ودّنا تعطينا فرصة ثانية، وطلبك الجاي علينا نهتم فيه بنفسنا." : "رأيك يهمنا ويساعدنا نتحسن، ونسعد بخدمتك دايماً 🤍");
+  }
+  var sgDone = {}; try { sgDone = JSON.parse(localStorage.getItem("ohod-sg-done") || "{}"); } catch(e){}
+  function sgCardHTML(list){
+    if (!list.length) return '<div class="card"><h2>💡 اقتراحات الزبائن</h2><p class="empty">ما فيه اقتراحات بهالفترة للحين.</p></div>';
+    return '<div class="card sg-card"><h2>💡 اقتراحات الزبائن (' + num(list.length) + ')</h2><p class="hint">اللي يكتبه الزبون بعد ما يطلب. لكل اقتراح رد جاهز تقدر تعدّله، واضغط «أرسل على الواتساب» ويفتح لك محادثة الزبون والرد مكتوب.</p><div class="sgl">' +
+      list.map(function(x){ var d = new Date(x.at), done = sgDone[x.id];
+        return '<div class="sgr' + (done ? ' done' : '') + '"><div class="sg-h"><b>' + esc(x.name || "زبون") + '</b>' + (x.no ? ' <span dir="ltr">' + esc(x.no) + '</span>' : '') + (x.stars ? ' ' + rtStars(x.stars) : '') + '<small>' + esc(d.toLocaleDateString("ar-SA-u-nu-latn", { weekday: "long", day: "numeric", month: "long" })) + ' ' + esc(d.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" })) + (done ? ' · ✓ رديت عليه' : '') + '</small></div>' +
+          '<p class="sg-q">«' + esc(x.text) + '»</p>' +
+          '<label class="sg-rl">الرد الجاهز<textarea rows="8" data-sgtx="' + x.id + '">' + esc(sgReply(x)) + '</textarea></label>' +
+          '<div class="sg-act">' + (x.phone ? '<button type="button" class="btn btn-teal" data-sgwa="' + x.id + '" data-ph="' + esc(x.phone) + '">أرسل على الواتساب</button>' : '<span class="hint">ما فيه جوال (الاقتراح بدون رقم طلب)</span>') +
+          '<button type="button" class="btn btn-soft" data-sgcp="' + x.id + '">نسخ الرد</button>' + (x.phone ? '<a class="btn btn-ghost" href="tel:' + esc(x.phone) + '">اتصال · <span dir="ltr">' + esc(x.phone) + '</span></a>' : '') + '</div></div>'; }).join("") + '</div></div>';
+  }
+  document.addEventListener("click", function(e){
+    if (mode !== "admin" || !draft || !e.target.closest) return;
+    var t = e.target.closest("[data-sgwa],[data-sgcp]"); if (!t) return;
+    var id = t.dataset.sgwa || t.dataset.sgcp, ta = document.querySelector('[data-sgtx="' + id + '"]'), txt = ta ? ta.value : "";
+    sgDone[id] = 1; try { localStorage.setItem("ohod-sg-done", JSON.stringify(sgDone)); } catch(x){}
+    if (t.dataset.sgwa) { var ph = String(t.dataset.ph || "").replace(/\D/g, "").replace(/^0/, "966"); window.open("https://wa.me/" + ph + "?text=" + encodeURIComponent(txt), "_blank", "noopener"); }
+    else { var ok = function(){ sToast("انسخ الرد، الصقه في الواتساب"); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, function(){ ta.select(); document.execCommand("copy"); ok(); }); else { ta.select(); document.execCommand("copy"); ok(); } }
+    var r = t.closest(".sgr"); if (r) r.classList.add("done");
+  });
   function renderRatings(force){
     var box = $("aRates"); if (!box) return;
     if (!apiUrl()) { box.innerHTML = '<div class="card"><p class="hint">هذي الميزة تحتاج خادم الطلبات.</p></div>'; return; }
@@ -1951,6 +1990,7 @@
       '<div class="rt-dist">' + [5, 4, 3, 2, 1].map(function(k){ var n = dist[k - 1] || 0; return '<div><span>' + num(k) + ' ★</span><i><b style="width:' + Math.round(n / mx * 100) + '%"></b></i><span>' + num(n) + '</span></div>'; }).join("") + '</div>' +
       ((j.tags || []).length ? '<p class="hint" style="margin-top:10px">أكثر الملاحظات</p><div class="rt-tags">' + j.tags.map(function(t){ return '<span class="' + (["late", "missing", "wrong", "damaged"].indexOf(t.t) > -1 ? 'bad' : '') + '">' + esc(RT_TAG[t.t] || t.t) + ' <b>' + num(t.n) + '</b></span>'; }).join("") + '</div>' : '') +
       ((j.drivers || []).length > 1 || ((j.drivers || [])[0] && (j.drivers[0].name || "")) ? '<p class="hint" style="margin-top:10px">حسب المندوب</p><div class="rt-tags">' + j.drivers.map(function(d){ return '<span><b>' + esc(d.name || (d.id === "admin" ? "الإدارة" : "مندوب")) + '</b>: ' + num(d.avg) + '★ من ' + num(d.n) + ' تقييم' + (d.low ? '، منها ' + num(d.low) + ' منخفض' : '') + '</span>'; }).join("") + '</div>' : '') + '</div>';
+    h += sgCardHTML(j.suggestions || []);
     h += '<div class="card"><div class="sec-head" style="margin:0"><b>' + num(j.list.length) + (j.low ? ' تقييم منخفض' : ' تقييم') + '</b><button class="btn btn-soft" type="button" id="rtRef">تحديث</button></div>' +
       (j.list.length ? '<div class="wbl">' + j.list.map(function(r){ var d = new Date(r.at);
         return '<div class="wbr rtr' + (r.stars <= 2 ? ' bad' : '') + '"><span class="t">' + rtStars(r.stars) + '<b>طلب ' + esc(r.no) + (r.name ? ' · ' + esc(r.name) : '') + (r.total != null ? ' · ' + num(r.total) + ' ر.س' : '') + '</b>' +

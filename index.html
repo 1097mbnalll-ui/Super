@@ -894,6 +894,11 @@ button.stat:hover{border-color:var(--teal)}
 .drvchip{display:inline-flex;align-items:center;gap:4px;font-style:normal;font-size:.75rem;font-weight:700;background:#EEF2F7;color:#13213C;border-radius:999px;padding:2px 8px;margin-inline-end:6px}
 .drvchip .i{width:12px;height:12px}
 .o-assign{display:grid;gap:4px;font-weight:600;margin:6px 0}.o-assign select{height:42px}
+.sgl{display:grid;gap:12px}.sgr{border:1px solid var(--line);border-radius:16px;padding:12px;display:grid;gap:8px;background:#fff}.sgr.done{background:#F4FAF6;border-color:#BFE3CC}
+.sg-h{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.sg-h small{width:100%;color:var(--muted);font-size:12px}
+.sg-q{margin:0;font-size:15px;font-weight:600;line-height:1.6;background:#FFF7E8;border-radius:12px;padding:8px 10px}
+.sg-rl{display:grid;gap:4px;font-size:12.5px;color:var(--muted)}.sg-rl textarea{font:inherit;font-size:14px;line-height:1.6;border:1px solid var(--line);border-radius:12px;padding:8px;color:var(--ink)}
+.sg-act{display:flex;flex-wrap:wrap;gap:8px}
 .o-dchk{margin:6px 0;padding:9px 12px;border-radius:12px;font-size:13.5px;font-weight:600}.o-dchk.good{background:#E8F6EF;color:#14532D}.o-dchk.bad{background:#FDECEA;color:#8C1D15}
 .spill.sold{background:#EEF0FF;color:#3B3FA8}
 .oi-list{display:grid;gap:6px}.oi-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto auto auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:12px}
@@ -4196,7 +4201,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var idle = !drvBusy();
     if (!force && !(idle ? (gap >= 60000 || (gap >= 20000 && moved >= 50)) : (gap >= 15000 || (gap >= 4000 && moved >= 8)))) return;
     geo.busy = true; var p = geo.pos;
-    api("/driver/loc", { pin: drv.pin, lat: p.lat, lng: p.lng, acc: p.acc, share: geo.share }).then(function(j){
+    api("/driver/loc", { pin: drv.pin, lat: p.lat, lng: p.lng, acc: p.acc, share: geo.share, dev: drvDev() }).then(function(j){
       geo.busy = false;
       if (!j.ok) return;
       if (j.skipped === "admin") { geo.admin = true; geoStop(false); geoBar(); return; }
@@ -4261,7 +4266,9 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         : '<input id="dvCode" type="text" inputmode="numeric" pattern="[0-9٠-٩]*" maxlength="4" autocomplete="one-time-code" dir="ltr" placeholder="• • • •" aria-label="' + tr("رمز الاستلام", "Delivery code") + '">' +
           '<details class="dv-nocode"><summary>' + tr("الزبون ما عنده الرمز؟", "Customer has no code?") + '</summary><div>' + [tr("ما فتح صفحة الطلب", "Didn't open the order page"), tr("ما عنده جوال معه", "No phone with them"), tr("استلمه شخص ثاني عنه", "Someone else received it")].map(function(r){ return '<button type="button" class="dv-btn line" data-dskip="' + esc(r) + '">' + esc(r) + '</button>'; }).join("") + '<small>' + tr("ينحفظ السبب ويوصل الإدارة تنبيه.", "The reason is saved and the store is notified.") + '</small></div></details>') + '</section>';
   }
-  function setSt(no, st, cb, extra){ api("/driver/status", Object.assign({ pin: drv.pin, no: no, status: st, as: "driver" }, extra || {})).then(function(j){
+  // جهاز المندوب (١٦ نوفمبر ٢٠٢٦): الخادم يعتمد موقع الجوال اللي يحرّك الطلبات بس. داخل تطبيق الأندرويد «app» (خدمة الموقع فيه ترسل بدون رقم)
+  function drvDev(){ if (APP) return "app"; try { return devId(); } catch(e){ return "app"; } }
+  function setSt(no, st, cb, extra){ api("/driver/status", Object.assign({ pin: drv.pin, no: no, status: st, as: "driver", dev: drvDev() }, extra || {})).then(function(j){
     if (!j.ok) {
       if (j.code === "need_code" || j.code === "bad_code" || j.code === "slow_down") {   // رمز الاستلام من الزبون
         dToast(j.code === "bad_code" ? tr("الرمز غلط، اسأل الزبون عنه مرة ثانية", "Wrong code, ask the customer again") : j.code === "slow_down" ? tr("محاولات كثيرة، انتظر شوي أو كلم الإدارة", "Too many tries, wait or call the store") : tr("اكتب رمز الاستلام من الزبون", "Enter the customer's delivery code"), true);
@@ -5019,7 +5026,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   var ADMIN_SECTIONS=[
     {name:'المتابعة اليومية',primary:true,items:[['over','اليوم'],['olist','الطلبات'],['alerts','الطلبات المتأخرة'],['settlement','حساب المناديب']]},
     {name:'المنتجات والعروض',items:[['prods','المنتجات والأسعار'],['cats','الأقسام'],['offers','العروض'],['codes','أكواد الخصم'],['costs','التكاليف ومستشار العروض']]},
-    {name:'العملاء والمحافظ',items:[['cust','التواصل مع العملاء'],['rates','تقييمات الطلبات'],['wallets','المحافظ والكاش باك']]},
+    {name:'العملاء والمحافظ',items:[['cust','التواصل مع العملاء'],['rates','التقييمات والاقتراحات'],['wallets','المحافظ والكاش باك']]},
     {name:'التقارير والمتابعة',items:[['stats','تحليل المبيعات'],['log','سجل التعديلات']]},
     {name:'شكل المتجر والطباعة',items:[['layout','ترتيب الصفحة الرئيسية'],['bans','البنرات والمنتجات المقترحة'],['look','الألوان واللغة'],['sign','طباعة ورقة عرض']]},
     {name:'الإعدادات والموظفون',items:[['store','بيانات المتجر والتوصيل'],['orders','المناديب والإشعارات'],['staff','الموظفون والصلاحيات']]}

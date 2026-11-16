@@ -549,6 +549,8 @@ export default {
         const lat = Number(body.lat), lng = Number(body.lng), acc = Math.min(5000, Math.max(0, Number(body.acc) || 0));
         if (!(lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) || (!lat && !lng)) return reply(400, { ok: false, code: "bad_loc" });
         const now = Date.now(), did = me.role === "driver" ? me.id : "admin";
+        // جهاز واحد للموقع (المالك ١٦ نوفمبر ٢٠٢٦): لو أكثر من جوال داخل بنفس رقم المندوب، نعتمد موقع الجوال اللي حرّك الطلبات آخر مرة (قبل، جوال المحل كان يغطي على موقع المندوب)
+        if (me.role === "driver") { const b = await drvDevOf(env, did), dev = locDev(body.dev); if (b && b.dev !== dev && now - b.at < DRV_DEV_MS) return reply(200, { ok: true, skipped: "other_device" }); }
         const up = await env.DB.prepare("INSERT INTO dlocs (drv, lat, lng, acc, at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(drv) DO UPDATE SET lat = excluded.lat, lng = excluded.lng, acc = excluded.acc, at = excluded.at WHERE excluded.at - dlocs.at >= 2500")
           .bind(did, lat, lng, acc, now).run();
         const near = [];
@@ -601,6 +603,10 @@ export default {
         try { res = await changeStatus(env, n, st, Date.now(), me.name, actor); } catch (e) { return reply(e.message === "pos_required" ? 409 : 502, { ok: false, code: e.message === "pos_required" ? "pos_required" : "db" }); }
         if (!res) return reply(404, { ok: false, code: "not_found" });
         if (res.conflict) return reply(409, { ok: false, code: res.conflict, by: res.by || "", state: res.status || "" });
+        if (me.role === "driver" && ["accepted", "onway", "delivered"].includes(st) && !res.conflict) {
+          const dev = locDev(body.dev); drvDevMemo.set(me.id, { dev, at: Date.now(), t: Date.now() });
+          await env.DB.prepare("INSERT INTO drv_dev (drv, dev, at) VALUES (?, ?, ?) ON CONFLICT(drv) DO UPDATE SET dev = excluded.dev, at = excluded.at").bind(me.id, dev, Date.now()).run().catch(() => {});
+        }
         if (res.changed && dchk) {
           await env.DB.prepare("INSERT INTO dchecks (no, at, drv, code, skip, dist, warn) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(no) DO UPDATE SET at = excluded.at, drv = excluded.drv, code = excluded.code, skip = excluded.skip, dist = excluded.dist, warn = excluded.warn")
             .bind(n, Date.now(), actor.id || "", dchk.code ? 1 : 0, dchk.skip, dchk.dist, dchk.warn ? 1 : 0).run().catch(() => {});
@@ -851,7 +857,12 @@ export default {
         FROM ratings r LEFT JOIN orders o ON o.no = r.no LEFT JOIN staff s ON s.id = r.drv
         WHERE r.created >= ? AND (? = 0 OR r.stars <= 2) ORDER BY r.created DESC LIMIT 300`).bind(cut, low ? 1 : 0).all()).results || [];
       const list = rows.map((r) => ({ no: "#" + (1000 + r.no), stars: r.stars, tags: rateTags(r), note: r.note, at: r.created, updated: r.updated, edits: r.edits, drv: r.drv, drvName: r.drvName || "", total: r.total, name: r.anon ? "" : (r.name || ""), phone: r.anon ? "" : (r.phone || "") }));
-      return reply(200, { ok: true, days, low, summary: { n: sm.n || 0, avg: sm.avg || 0, low: sm.low || 0, dist: [sm.s1 || 0, sm.s2 || 0, sm.s3 || 0, sm.s4 || 0, sm.s5 || 0], delivered: deliv.n || 0, prevN: prev.n || 0, prevAvg: prev.avg || 0 }, tags: tagRows, drivers: byDrv, list });
+      // اقتراحات الزبائن بعد الطلب (/suggest): مع اسم الزبون وجواله عشان المالك يرد عليه بالواتساب
+      const sgRows = (await env.DB.prepare(`SELECT a.id, a.at, a.ref, a.info, o.phone, o.anon, json_extract(o.data, '$.name') name FROM alog a
+        LEFT JOIN orders o ON a.ref != '' AND o.no = CAST(substr(a.ref, 2) AS INTEGER) - 1000 AND o.created <= a.at
+        WHERE a.act = 'suggestion' AND a.at >= ? ORDER BY a.at DESC LIMIT 200`).bind(cut).all()).results || [];
+      const suggestions = sgRows.map((r) => { const i = safeJson(r.info); return { id: r.id, at: r.at, no: r.ref || "", text: String(i.text || ""), stars: i.stars || null, name: r.anon ? "" : (r.name || ""), phone: r.anon ? "" : (r.phone || "") }; });
+      return reply(200, { ok: true, days, low, suggestions, summary: { n: sm.n || 0, avg: sm.avg || 0, low: sm.low || 0, dist: [sm.s1 || 0, sm.s2 || 0, sm.s3 || 0, sm.s4 || 0, sm.s5 || 0], delivered: deliv.n || 0, prevN: prev.n || 0, prevAvg: prev.avg || 0 }, tags: tagRows, drivers: byDrv, list });
     }
     // زبائن ما رجعوا: قائمة للمراسلة بالواتساب، ومتابعة مين رجع بعد الرسالة
     if (path === "/admin/winback") {
@@ -1136,6 +1147,7 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS winback (ch TEXT PRIMARY KEY, at INTEGER NOT NULL, who TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 1)",
     "CREATE TABLE IF NOT EXISTS alog (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, who TEXT NOT NULL, act TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', info TEXT NOT NULL DEFAULT '{}')",
     "CREATE INDEX IF NOT EXISTS alog_order_status ON alog(ref, act, at)",
+    "CREATE TABLE IF NOT EXISTS drv_dev (drv TEXT PRIMARY KEY, dev TEXT NOT NULL, at INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS dchecks (no INTEGER PRIMARY KEY, at INTEGER NOT NULL, drv TEXT NOT NULL DEFAULT '', code INTEGER NOT NULL DEFAULT 0, skip TEXT NOT NULL DEFAULT '', dist INTEGER, warn INTEGER NOT NULL DEFAULT 0)",
     "CREATE TABLE IF NOT EXISTS cash (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, day TEXT NOT NULL, who TEXT NOT NULL, amount REAL NOT NULL, note TEXT NOT NULL DEFAULT '')",
     "CREATE TABLE IF NOT EXISTS st_item (day TEXT NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, revenue REAL NOT NULL, orders INTEGER NOT NULL, PRIMARY KEY (day, id))",
@@ -2482,6 +2494,15 @@ async function lowRatingAlert(env, n, r) {
   await notifyRole(env, "admin", null, { title, body: text.slice(0, 140), url: "./", tag: "rate" + n }).catch(() => {});
   const chat = env.TELEGRAM_BOT_TOKEN && env.LOCKS ? await env.LOCKS.get("tg_chat") : null;
   if (chat) await tgSend(env, chat, "⚠️ <b>" + esc(title) + "</b>\n" + esc(text)).catch(() => {});
+}
+// جهاز المندوب للموقع: «app» = تطبيق الأندرويد (خدمته ترسل بدون رقم جهاز)، و d-… = متصفح. الربط ينتهي بعد ١٢ ساعة بدون حركة
+const DRV_DEV_MS = 12 * 3600e3, drvDevMemo = new Map();
+function locDev(v) { const s = String(v || ""); return /^(app|d-[A-Za-z0-9_-]{20})$/.test(s) ? s : "app"; }
+async function drvDevOf(env, drv) {
+  const m = drvDevMemo.get(drv); if (m && Date.now() - m.t < 20000) return m.dev ? m : null;
+  const r = await env.DB.prepare("SELECT dev, at FROM drv_dev WHERE drv = ?").bind(drv).first().catch(() => null);
+  drvDevMemo.set(drv, r ? { dev: r.dev, at: r.at, t: Date.now() } : { dev: "", at: 0, t: Date.now() });
+  return r;
 }
 // رمز الاستلام موقوف بقرار المالك (١٦ نوفمبر ٢٠٢٦: «ألغيها بسرعة»). فحص مكان المندوب وقت التسليم باقي (تنبيه للإدارة بس، ما يوقف المندوب)
 const DELIVERY_CODE = false;
