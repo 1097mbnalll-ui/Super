@@ -844,6 +844,16 @@ export default {
       return reply(200, { ok: true, ...(await readCash(env)) });
     }
     // تقييمات الزبائن: المتوسط والتوزيع وأكثر الملاحظات، والقائمة (مع فلتر التقييم المنخفض ٢ أو أقل)
+    // الاقتراح انرد عليه (أو رجع للانتظار): ينحفظ بالخادم عشان كل أجهزة الإدارة تشوفه
+    if (path === "/admin/sg-done") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      const id = Math.floor(Number(body.id));
+      if (!(id > 0)) return reply(400, { ok: false, code: "bad_request" });
+      if (body.undo === true) await env.DB.prepare("DELETE FROM sg_replied WHERE id = ?").bind(id).run();
+      else await env.DB.prepare("INSERT INTO sg_replied (id, at, who) VALUES (?, ?, ?) ON CONFLICT(id) DO NOTHING").bind(id, Date.now(), String(staff(body) || "").slice(0, 30)).run();
+      return reply(200, { ok: true });
+    }
     if (path === "/admin/ratings") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
@@ -858,10 +868,11 @@ export default {
         WHERE r.created >= ? AND (? = 0 OR r.stars <= 2) ORDER BY r.created DESC LIMIT 300`).bind(cut, low ? 1 : 0).all()).results || [];
       const list = rows.map((r) => ({ no: "#" + (1000 + r.no), stars: r.stars, tags: rateTags(r), note: r.note, at: r.created, updated: r.updated, edits: r.edits, drv: r.drv, drvName: r.drvName || "", total: r.total, name: r.anon ? "" : (r.name || ""), phone: r.anon ? "" : (r.phone || "") }));
       // اقتراحات الزبائن بعد الطلب (/suggest): مع اسم الزبون وجواله عشان المالك يرد عليه بالواتساب
-      const sgRows = (await env.DB.prepare(`SELECT a.id, a.at, a.ref, a.info, o.phone, o.anon, json_extract(o.data, '$.name') name FROM alog a
+      const sgRows = (await env.DB.prepare(`SELECT a.id, a.at, a.ref, a.info, o.phone, o.anon, json_extract(o.data, '$.name') name, r.at rat, r.who rwho FROM alog a
+        LEFT JOIN sg_replied r ON r.id = a.id
         LEFT JOIN orders o ON a.ref != '' AND o.no = CAST(substr(a.ref, 2) AS INTEGER) - 1000 AND o.created <= a.at
         WHERE a.act = 'suggestion' AND a.at >= ? ORDER BY a.at DESC LIMIT 200`).bind(cut).all()).results || [];
-      const suggestions = sgRows.map((r) => { const i = safeJson(r.info); return { id: r.id, at: r.at, no: r.ref || "", text: String(i.text || ""), stars: i.stars || null, name: r.anon ? "" : (r.name || ""), phone: r.anon ? "" : (r.phone || "") }; });
+      const suggestions = sgRows.map((r) => { const i = safeJson(r.info); return { id: r.id, at: r.at, no: r.ref || "", text: String(i.text || ""), stars: i.stars || null, name: r.anon ? "" : (r.name || ""), phone: r.anon ? "" : (r.phone || ""), replied: r.rat ? { at: r.rat, who: r.rwho || "" } : null }; });
       return reply(200, { ok: true, days, low, suggestions, summary: { n: sm.n || 0, avg: sm.avg || 0, low: sm.low || 0, dist: [sm.s1 || 0, sm.s2 || 0, sm.s3 || 0, sm.s4 || 0, sm.s5 || 0], delivered: deliv.n || 0, prevN: prev.n || 0, prevAvg: prev.avg || 0 }, tags: tagRows, drivers: byDrv, list });
     }
     // زبائن ما رجعوا: قائمة للمراسلة بالواتساب، ومتابعة مين رجع بعد الرسالة
@@ -1147,6 +1158,7 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS winback (ch TEXT PRIMARY KEY, at INTEGER NOT NULL, who TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 1)",
     "CREATE TABLE IF NOT EXISTS alog (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, who TEXT NOT NULL, act TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', info TEXT NOT NULL DEFAULT '{}')",
     "CREATE INDEX IF NOT EXISTS alog_order_status ON alog(ref, act, at)",
+    "CREATE TABLE IF NOT EXISTS sg_replied (id INTEGER PRIMARY KEY, at INTEGER NOT NULL, who TEXT NOT NULL DEFAULT '')",
     "CREATE TABLE IF NOT EXISTS drv_dev (drv TEXT PRIMARY KEY, dev TEXT NOT NULL, at INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS dchecks (no INTEGER PRIMARY KEY, at INTEGER NOT NULL, drv TEXT NOT NULL DEFAULT '', code INTEGER NOT NULL DEFAULT 0, skip TEXT NOT NULL DEFAULT '', dist INTEGER, warn INTEGER NOT NULL DEFAULT 0)",
     "CREATE TABLE IF NOT EXISTS cash (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, day TEXT NOT NULL, who TEXT NOT NULL, amount REAL NOT NULL, note TEXT NOT NULL DEFAULT '')",

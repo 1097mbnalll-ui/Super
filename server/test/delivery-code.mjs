@@ -60,5 +60,10 @@ lc = await call('/driver/loc', { ...D, lat: 24.80, lng: 46.70, dev: DEV1 }); ok(
 await call('/suggest', { no: o4, stars: 5, text: 'حطوا صور وآبل باي' });
 const rt = await call('/admin/ratings', { ...A, days: 30 }); const sg = (rt.suggestions || [])[0];
 ok(rt.ok && sg && sg.text === 'حطوا صور وآبل باي' && sg.phone === '0557200004' && sg.no === o4 && sg.stars === 5, 'الاقتراح يطلع للإدارة مع جوال الزبون: ' + JSON.stringify(sg));
+// الاقتراح اللي انرد عليه: ينحفظ بالخادم ويقدر يرجع للانتظار
+let sd = await call('/admin/sg-done', { ...A, id: sg.id }); let rt2 = await call('/admin/ratings', { ...A, days: 30 });
+ok(sd.ok && rt2.suggestions[0].replied && rt2.suggestions[0].replied.at > 0, 'الاقتراح ينحفظ «انرد عليه»');
+sd = await call('/admin/sg-done', { ...A, id: sg.id, undo: true }); rt2 = await call('/admin/ratings', { ...A, days: 30 });
+ok(sd.ok && rt2.suggestions[0].replied === null, 'ويرجع لـ«ينتظر رد»');
 const v = await call('/admin/verify', A); ok(v.ok && v.clean, 'التحليل مطابق');
 console.log(fails ? fails + ' فشل' : 'كل الفحوص نجحت'); process.exit(fails ? 1 : 0);

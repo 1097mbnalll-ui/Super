@@ -1954,25 +1954,39 @@
       (pts.length ? pts.join("\n") + "\n" : "اقتراحك وصل للإدارة ونشتغل عليه.\n") +
       (low ? "ودّنا تعطينا فرصة ثانية، وطلبك الجاي علينا نهتم فيه بنفسنا." : "رأيك يهمنا ويساعدنا نتحسن، ونسعد بخدمتك دايماً 🤍");
   }
-  var sgDone = {}; try { sgDone = JSON.parse(localStorage.getItem("ohod-sg-done") || "{}"); } catch(e){}
+  var sgOpenDone = false;
   function sgCardHTML(list){
     if (!list.length) return '<div class="card"><h2>💡 اقتراحات الزبائن</h2><p class="empty">ما فيه اقتراحات بهالفترة للحين.</p></div>';
-    return '<div class="card sg-card"><h2>💡 اقتراحات الزبائن (' + num(list.length) + ')</h2><p class="hint">اللي يكتبه الزبون بعد ما يطلب. لكل اقتراح رد جاهز تقدر تعدّله، واضغط «أرسل على الواتساب» ويفتح لك محادثة الزبون والرد مكتوب.</p><div class="sgl">' +
-      list.map(function(x){ var d = new Date(x.at), done = sgDone[x.id];
-        return '<div class="sgr' + (done ? ' done' : '') + '"><div class="sg-h"><b>' + esc(x.name || "زبون") + '</b>' + (x.no ? ' <span dir="ltr">' + esc(x.no) + '</span>' : '') + (x.stars ? ' ' + rtStars(x.stars) : '') + '<small>' + esc(d.toLocaleDateString("ar-SA-u-nu-latn", { weekday: "long", day: "numeric", month: "long" })) + ' ' + esc(d.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" })) + (done ? ' · ✓ رديت عليه' : '') + '</small></div>' +
+    var wait = list.filter(function(x){ return !x.replied; }), done = list.filter(function(x){ return x.replied; });
+    return '<div class="card sg-card"><h2>💡 اقتراحات الزبائن</h2><p class="hint">اللي يكتبه الزبون بعد ما يطلب. لكل اقتراح رد جاهز تقدر تعدّله، واضغط «أرسل على الواتساب» ويفتح لك محادثة الزبون والرد مكتوب، وينتقل لـ«تم الرد عليها».</p>' +
+      '<h3 class="sg-sub">ينتظر رد (' + num(wait.length) + ')</h3>' + (wait.length ? '<div class="sgl">' + wait.map(sgRowHTML).join("") + '</div>' : '<p class="empty">رديت على كل الاقتراحات 👌</p>') +
+      (done.length ? '<details class="sg-done"' + (sgOpenDone ? ' open' : '') + '><summary>✓ تم الرد عليها (' + num(done.length) + ')</summary><div class="sgl">' + done.map(sgRowHTML).join("") + '</div></details>' : '') + '</div>';
+  }
+  function sgRowHTML(x){
+    var d = new Date(x.at), done = x.replied, rd = done ? new Date(done.at) : null;
+    return (function(){
+        return '<div class="sgr' + (done ? ' done' : '') + '"><div class="sg-h"><b>' + esc(x.name || "زبون") + '</b>' + (x.no ? ' <span dir="ltr">' + esc(x.no) + '</span>' : '') + (x.stars ? ' ' + rtStars(x.stars) : '') + '<small>' + esc(d.toLocaleDateString("ar-SA-u-nu-latn", { weekday: "long", day: "numeric", month: "long" })) + ' ' + esc(d.toLocaleTimeString("ar-SA-u-nu-latn", { hour: "numeric", minute: "2-digit" })) + (done ? ' · ✓ انرد عليه ' + esc(rd.toLocaleDateString("ar-SA-u-nu-latn", { day: "numeric", month: "long" })) + (done.who && done.who !== "الإدارة" ? ' (' + esc(done.who) + ')' : '') : '') + '</small></div>' +
           '<p class="sg-q">«' + esc(x.text) + '»</p>' +
           '<label class="sg-rl">الرد الجاهز<textarea rows="8" data-sgtx="' + x.id + '">' + esc(sgReply(x)) + '</textarea></label>' +
           '<div class="sg-act">' + (x.phone ? '<button type="button" class="btn btn-teal" data-sgwa="' + x.id + '" data-ph="' + esc(x.phone) + '">أرسل على الواتساب</button>' : '<span class="hint">ما فيه جوال (الاقتراح بدون رقم طلب)</span>') +
-          '<button type="button" class="btn btn-soft" data-sgcp="' + x.id + '">نسخ الرد</button>' + (x.phone ? '<a class="btn btn-ghost" href="tel:' + esc(x.phone) + '">اتصال · <span dir="ltr">' + esc(x.phone) + '</span></a>' : '') + '</div></div>'; }).join("") + '</div></div>';
+          '<button type="button" class="btn btn-soft" data-sgcp="' + x.id + '">نسخ الرد</button>' + (x.phone ? '<a class="btn btn-ghost" href="tel:' + esc(x.phone) + '">اتصال · <span dir="ltr">' + esc(x.phone) + '</span></a>' : '') +
+          (done ? '<button type="button" class="btn btn-ghost" data-sgundo="' + x.id + '">رجّعه لـ«ينتظر رد»</button>' : '<button type="button" class="btn btn-ghost" data-sgmark="' + x.id + '">رديت عليه</button>') + '</div></div>'; })();
+  }
+  function sgMark(id, undo){
+    var j = rt.data, x = j && (j.suggestions || []).filter(function(y){ return String(y.id) === String(id); })[0]; if (!x) return;
+    x.replied = undo ? null : { at: Date.now(), who: STAFF || "" }; if (!undo) sgOpenDone = false; renderRatings();
+    api("/admin/sg-done", { pin: adminPin, id: Number(id), undo: !!undo, by: STAFF || "" }).then(function(r){ if (!r.ok) { sToast(r.code === "not_found" ? "حدّث كود الخادم أول" : "ما انحفظ، جرّب مرة ثانية"); x.replied = undo ? x.replied : null; renderRatings(); } });
   }
   document.addEventListener("click", function(e){
     if (mode !== "admin" || !draft || !e.target.closest) return;
+    var m = e.target.closest("[data-sgmark],[data-sgundo]"); if (m) { sgMark(m.dataset.sgmark || m.dataset.sgundo, !!m.dataset.sgundo); return; }
     var t = e.target.closest("[data-sgwa],[data-sgcp]"); if (!t) return;
     var id = t.dataset.sgwa || t.dataset.sgcp, ta = document.querySelector('[data-sgtx="' + id + '"]'), txt = ta ? ta.value : "";
-    sgDone[id] = 1; try { localStorage.setItem("ohod-sg-done", JSON.stringify(sgDone)); } catch(x){}
     if (t.dataset.sgwa) { var ph = String(t.dataset.ph || "").replace(/\D/g, "").replace(/^0/, "966"); window.open("https://wa.me/" + ph + "?text=" + encodeURIComponent(txt), "_blank", "noopener"); }
     else { var ok = function(){ sToast("انسخ الرد، الصقه في الواتساب"); }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, function(){ ta.select(); document.execCommand("copy"); ok(); }); else { ta.select(); document.execCommand("copy"); ok(); } }
-    var r = t.closest(".sgr"); if (r) r.classList.add("done");
+    // بعد الإرسال أو النسخ: ينتقل لـ«تم الرد عليها» (بعد لحظة عشان يمديه يلصق)
+    var j0 = rt.data, x0 = j0 && (j0.suggestions || []).filter(function(y){ return String(y.id) === String(id); })[0];
+    if (x0 && !x0.replied) setTimeout(function(){ sgMark(id, false); }, t.dataset.sgwa ? 600 : 1500);
   });
   function renderRatings(force){
     var box = $("aRates"); if (!box) return;
