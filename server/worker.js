@@ -767,7 +767,7 @@ export default {
       await ensureSchema(env);
       const now = Date.now();
       const rs = await env.DB.prepare(`SELECT o.no, o.created, o.updated, o.status, o.data,
-        (SELECT MAX(a.at) FROM alog a WHERE a.act = 'status' AND a.ref = '#' || (1000 + o.no) AND json_extract(a.info, '$.to') = o.status) AS stage_started
+        (SELECT MAX(a.at) FROM alog a WHERE a.act = 'status' AND a.ref = '#' || (1000 + o.no) AND json_extract(a.info, '$.to') = o.status AND a.at >= o.created) AS stage_started
         FROM orders o WHERE o.status IN ('new', 'accepted', 'onway') ORDER BY o.created`).all();
       const orders = (rs.results || []).map(r => ({ ...safeJson(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, stageStarted: r.stage_started ?? (r.status === "new" ? r.created : r.updated), status: r.status }))
         .map(o => ({ ...o, ...orderDelay(o, now) })).filter(o => o.late);
@@ -2876,7 +2876,8 @@ function withoutCosts(value) {
 }
 function orderDelay(o, now) {
   const limit = { new: 10, accepted: 30, onway: 45 }[o.status];
-  const elapsed = Math.max(0, now - (o.stageStarted ?? (o.status === 'new' ? o.created : o.updated)));
+  const start = Math.max(Number(o.stageStarted ?? (o.status === 'new' ? o.created : o.updated)) || 0, Number(o.created) || 0);
+  const elapsed = Math.max(0, now - start);
   return { late: !!limit && elapsed >= limit * 60000, waitingMinutes: Math.floor(elapsed / 60000), limitMinutes: limit || 0 };
 }
 

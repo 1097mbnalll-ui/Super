@@ -90,7 +90,7 @@ test('permissions are enforced by the server, including forged identity and priv
 
 test('overdue alerts use stage timestamps, survive edits, and exclude terminal orders', async () => {
   const n = Number(orderNo.replace('#', '')) - 1000, now = Date.now();
-  sql.prepare('UPDATE orders SET updated = ? WHERE no = ?').run(now, n);
+  sql.prepare('UPDATE orders SET updated = ?, created = ? WHERE no = ?').run(now, now - 60 * 60000, n);
   sql.prepare("UPDATE alog SET at = ? WHERE act = 'status' AND ref = ?").run(now - 31 * 60000, orderNo);
   let result = await call('/admin/alerts', { session: ordersSession });
   assert.equal(result.orders.length, 1); assert.equal(result.orders[0].limitMinutes, 30);

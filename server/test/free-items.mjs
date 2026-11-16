@@ -121,5 +121,11 @@ await call('/driver/status', { ...A, no: r.orderNo, status: 'accepted' });
 ad = await call('/order-add', { no: r.orderNo, phone: '0557100012', text: 'خبز' }); ok(ad.ok, 'الإضافة قبل خروج المندوب مقبولة: ' + JSON.stringify(ad.code || 'ok'));
 await call('/driver/status', { ...A, no: r.orderNo, status: 'onway' });
 ad = await call('/order-add', { no: r.orderNo, phone: '0557100012', text: 'ماء' }); ok(!ad.ok && ad.code === 'closed', 'الإضافة بعد خروج المندوب مرفوضة: ' + JSON.stringify(ad.code || 'ok'));
+// رقم طلب تجريبي قديم تكرر (١٦ نوفمبر): سجل الطلب القديم ما يخلّي الجديد «متأخر ١١٧٣٤ دقيقة»
+const nextNo = sq.prepare('SELECT MAX(no) m FROM orders').get().m + 1;
+sq.prepare("INSERT INTO alog (at, who, act, ref, info) VALUES (?, 'x', 'status', ?, ?)").run(Date.now() - 8 * 864e5, '#' + (1000 + nextNo), JSON.stringify({ from: 'canceled', to: 'new', total: 1 }));
+r = await call('/order', { items: { pantry0: 3 }, phone: '0557100013', ...loc });
+const al = await call('/admin/alerts', A); const ao = (al.orders || []).find((o) => o.no === r.orderNo);
+ok(r.ok && al.ok && !ao, 'طلب جديد برقم قديم ما ينحسب متأخر: ' + JSON.stringify(ao ? [ao.no, ao.waitingMinutes] : 'مو متأخر'));
 const v2 = await call('/admin/verify', A); ok(v2.ok && v2.clean, 'التحليل مطابق بعد كل شي');
 console.log(fails ? fails + ' فشل' : 'كل الفحوص نجحت'); process.exit(fails ? 1 : 0);
