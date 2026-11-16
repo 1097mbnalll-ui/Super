@@ -21,7 +21,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
 const A = { pin: '2468' };
 await call('/admin/team-save', { ...A, name: 'سعيد', role: 'driver', newPin: '1111' });
 const mk = (phone) => call('/order', { items: { pantry0: 1 }, phone, lat: 24.84, lng: 46.83 });
-const deliver = async (no) => { for (const s of ['accepted', 'onway', 'delivered']) await call('/driver/status', { pin: '1111', no, status: s }); };
+const deliver = async (no) => { const dc = (JSON.parse(sq.prepare('SELECT data FROM orders WHERE no = ?').get(Number(String(no).replace(/\D/g, '')) - 1000).data).dc) || ''; for (const s of ['accepted', 'onway', 'delivered']) await call('/driver/status', { pin: '1111', no, status: s, ...(s === 'delivered' ? { code: dc } : {}) }); };
 const N = (n) => Number(String(n).replace(/\D/g, '')) - 1000;
 kv.set('tg_chat', '555');
 

@@ -156,6 +156,8 @@ export default {
       if (env.DB) {
         try {
           await ensureSchema(env);
+          // رمز الاستلام (المالك ١٦ نوفمبر ٢٠٢٦): الزبون يشوفه في صفحة طلبه، والمندوب يكتبه عند التسليم. للموقع بس، لأن تطبيق الآيفون الحالي ما يعرضه
+          if (!/^(capacitor:|https?:\/\/localhost)/.test(origin)) record.dc = String(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000));
           await withCost(env, record);
           const need = needOf(record);
           stockBefore = await readStock(env, Object.keys(need));
@@ -183,7 +185,7 @@ export default {
         });
         if (!sent.ok && !env.DB) return reply(502, { ok: false, code: "telegram" });
       }
-      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, gift: priced.gift || 0, promo: priced.promo || "", promoAmt: priced.promoAmt || 0, total: priced.total, count: priced.count, track: !!env.DB });
+      return reply(200, { ok: true, orderNo, subtotal: priced.subtotal, fee: priced.fee, gift: priced.gift || 0, promo: priced.promo || "", promoAmt: priced.promoAmt || 0, total: priced.total, count: priced.count, track: !!env.DB, ...(record.dc ? { dc: record.dc } : {}) });
     }
 
     // الزبون يتابع حالة طلبه (رقم الطلب + نفس رقم الجوال)
@@ -209,6 +211,7 @@ export default {
           out.subs = offs.map((o) => { const l = (rec.lines || []).find((x) => x.id === o.line_id), t = byId[o.to_id]; return l && t ? { id: o.id, name: l.name, qty: l.qty, price: l.price, to: { id: t.id, name: t.name, unit: t.unit || "", price: Number(t.price), img: t.img || "" }, diff: round2((Number(t.price) - Number(l.price)) * l.qty), at: o.created } : null; }).filter(Boolean);
         }
       }
+      { const r1 = safeJson(row.data); if (r1 && r1.dc && ["new", "accepted", "onway"].includes(row.status)) out.dc = String(r1.dc); }
       if (row.status === "onway") { try { out.driver = await driverFor(env, n, safeJson(row.data), row.drv); } catch { /* التتبع إضافة، ما يوقف الحالة */ } }
       // تقييم الطلب بعد التوصيل: التقييم المحفوظ (لو فيه) وهل يقدر يقيّم أو يعدّل الحين
       if (row.status === "delivered") { try { const rt = await env.DB.prepare("SELECT * FROM ratings WHERE no = ?").bind(n).first(); out.rating = rt ? ratingOut(rt) : null; out.canRate = rateOpen(rt, row.updated, Date.now()); } catch { /* التقييم إضافة */ } }
@@ -504,7 +507,7 @@ export default {
         const rs = { results: await driverOrderRows(env, since) };
         const team = await staffList(env, "driver");
         const nm = staffNames(team);
-        const orders = await enrichOperations(env, (rs.results || []).map((r) => ({ ...JSON.parse(r.data), no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, drv: r.drv || "", drvName: r.drv ? nm[r.drv] || "" : "" })));
+        const orders = await enrichOperations(env, (rs.results || []).map((r) => { const d = JSON.parse(r.data), needCode = !!d.dc; delete d.dc; return { ...d, needCode, no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, drv: r.drv || "", drvName: r.drv ? nm[r.drv] || "" : "" }; }));
         const offs = (await env.DB.prepare("SELECT id, no, line_id, to_id, state, created FROM sub_offers WHERE created > ? ORDER BY id").bind(since).all()).results || [];
         const subMap = {}; for (const o of offs) (subMap["#" + (1000 + o.no)] ||= []).push({ id: o.id, line: o.line_id, to: o.to_id, state: o.state, at: o.created });
         for (const o of orders) if (subMap[o.no]) o.subs = subMap[o.no];
@@ -575,10 +578,34 @@ export default {
         const st = String(body.status || "");
         if (!(n > 0) || !["new", "accepted", "onway", "delivered", "canceled"].includes(st)) return reply(400, { ok: false, code: "bad_request" });
         if(st === 'onway' || (st === 'accepted' && actor && await prepMode(env))) { const prep=await env.DB.prepare('SELECT stage FROM prep_orders WHERE no=?').bind(n).first(); if(st === 'onway' ? prep && prep.stage!=='ready' : !prep || prep.stage!=='ready')return reply(409,{ok:false,code:'not_ready'}); }
+        let dchk = null;
+        if (st === "delivered" && actor) {
+          const r0 = await env.DB.prepare("SELECT status, data FROM orders WHERE no = ?").bind(n).first();
+          const rec0 = r0 ? safeJson(r0.data) : {};
+          if (r0 && r0.status !== "delivered") {
+            const skip = String(body.skip || "").replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, 80);
+            let codeOk = false;
+            if (rec0.dc && !skip) {
+              const c = String(body.code || "").replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632)).replace(/\D/g, "");
+              if (!c) return reply(409, { ok: false, code: "need_code" });
+              if (await rateHit(env, "dc:" + n, 6, 900)) return reply(429, { ok: false, code: "slow_down" });
+              if (c !== String(rec0.dc)) return reply(409, { ok: false, code: "bad_code" });
+              codeOk = true;
+            }
+            const la = Number(body.lat), ln = Number(body.lng);
+            const dist = isFinite(la) && isFinite(ln) && la && ln && isFinite(Number(rec0.lat)) && rec0.lat != null && isFinite(Number(rec0.lng)) && rec0.lng != null ? Math.round(distM(la, ln, Number(rec0.lat), Number(rec0.lng))) : null;
+            dchk = { code: codeOk, skip: rec0.dc && !codeOk ? (skip || "بدون سبب") : "", dist, warn: (rec0.dc && !codeOk) || (dist != null && dist > DELIVER_FAR_M) };
+          }
+        }
         let res;
         try { res = await changeStatus(env, n, st, Date.now(), me.name, actor); } catch (e) { return reply(e.message === "pos_required" ? 409 : 502, { ok: false, code: e.message === "pos_required" ? "pos_required" : "db" }); }
         if (!res) return reply(404, { ok: false, code: "not_found" });
         if (res.conflict) return reply(409, { ok: false, code: res.conflict, by: res.by || "", state: res.status || "" });
+        if (res.changed && dchk) {
+          await env.DB.prepare("INSERT INTO dchecks (no, at, drv, code, skip, dist, warn) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(no) DO UPDATE SET at = excluded.at, drv = excluded.drv, code = excluded.code, skip = excluded.skip, dist = excluded.dist, warn = excluded.warn")
+            .bind(n, Date.now(), actor.id || "", dchk.code ? 1 : 0, dchk.skip, dchk.dist, dchk.warn ? 1 : 0).run().catch(() => {});
+          if (dchk.warn) later(deliverAlert(env, n, me.name, dchk));
+        }
         if (res.changed) {
           const msg = STATUS_MSG[st];
           if (msg) later(notifyRole(env, "customer", String(n), { title: "طلبك #" + (1000 + n), body: msg, url: "./", tag: "order" + n }));
@@ -1109,6 +1136,7 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS winback (ch TEXT PRIMARY KEY, at INTEGER NOT NULL, who TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 1)",
     "CREATE TABLE IF NOT EXISTS alog (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, who TEXT NOT NULL, act TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', info TEXT NOT NULL DEFAULT '{}')",
     "CREATE INDEX IF NOT EXISTS alog_order_status ON alog(ref, act, at)",
+    "CREATE TABLE IF NOT EXISTS dchecks (no INTEGER PRIMARY KEY, at INTEGER NOT NULL, drv TEXT NOT NULL DEFAULT '', code INTEGER NOT NULL DEFAULT 0, skip TEXT NOT NULL DEFAULT '', dist INTEGER, warn INTEGER NOT NULL DEFAULT 0)",
     "CREATE TABLE IF NOT EXISTS cash (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, day TEXT NOT NULL, who TEXT NOT NULL, amount REAL NOT NULL, note TEXT NOT NULL DEFAULT '')",
     "CREATE TABLE IF NOT EXISTS st_item (day TEXT NOT NULL, id TEXT NOT NULL, qty INTEGER NOT NULL, revenue REAL NOT NULL, orders INTEGER NOT NULL, PRIMARY KEY (day, id))",
     "CREATE TABLE IF NOT EXISTS st_pair (a TEXT NOT NULL, b TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (a, b))",
@@ -2455,6 +2483,14 @@ async function lowRatingAlert(env, n, r) {
   const chat = env.TELEGRAM_BOT_TOKEN && env.LOCKS ? await env.LOCKS.get("tg_chat") : null;
   if (chat) await tgSend(env, chat, "⚠️ <b>" + esc(title) + "</b>\n" + esc(text)).catch(() => {});
 }
+const DELIVER_FAR_M = 300;
+async function deliverAlert(env, n, who, d) {
+  const title = "تسليم يحتاج مراجعة · #" + (1000 + n);
+  const text = [who, d.skip ? "بدون رمز الاستلام (" + d.skip + ")" : "", d.dist != null && d.dist > DELIVER_FAR_M ? "سلّم على بعد " + (d.dist >= 1000 ? (d.dist / 1000).toFixed(1) + " كم" : d.dist + " م") + " من بيت الزبون" : ""].filter(Boolean).join(" · ");
+  await notifyRole(env, "admin", null, { title, body: text.slice(0, 140), url: "./", tag: "dlv" + n }).catch(() => {});
+  const chat = env.TELEGRAM_BOT_TOKEN && env.LOCKS ? await env.LOCKS.get("tg_chat") : null;
+  if (chat) await tgSend(env, chat, "⚠️ <b>" + esc(title) + "</b>\n" + esc(text)).catch(() => {});
+}
 function logStmt(env, who, act, ref, info) {
   return env.DB.prepare("INSERT INTO alog (at, who, act, ref, info) VALUES (?, ?, ?, ?, ?)").bind(Date.now(), String(who || "").slice(0, 30), act, ref || "", JSON.stringify(info || {}));
 }
@@ -3160,6 +3196,8 @@ async function enrichOperations(env,orders){
   const ids=orders.map(o=>Number(o.no.replace('#',''))-1000), marks=ids.map(()=>'?').join(',');
   const prep=(await env.DB.prepare('SELECT no,stage,checks,who,updated FROM prep_orders WHERE no IN ('+marks+')').bind(...ids).all()).results||[],splits=(await env.DB.prepare('SELECT * FROM payment_splits WHERE no IN ('+marks+')').bind(...ids).all()).results||[];
   const pm=new Map(prep.map(x=>[x.no,x.stage])),pi=new Map(prep.map(x=>[x.no,x])),sm=new Map(splits.map(x=>[x.no,x]));
+  const dcs=(await env.DB.prepare('SELECT no,code,skip,dist,warn,at FROM dchecks WHERE no IN ('+marks+')').bind(...ids).all().catch(()=>({results:[]}))).results||[],dm=new Map(dcs.map(x=>[x.no,{code:!!x.code,skip:x.skip||'',dist:x.dist,warn:!!x.warn,at:x.at}]));
+  orders=orders.map(o=>{const n=Number(o.no.replace('#',''))-1000,x=dm.get(n);return x?{...o,dchk:x}:o;});
   return orders.map(o=>{const n=Number(o.no.replace('#',''))-1000;const px=pi.get(n),ck=px?Object.values(safeJson(px.checks||'{}')):[];return {...o,prepStage:pm.get(n)||'waiting',prepBy:px?px.who:'',prepAt:px?px.updated:0,prepPicked:ck.filter(v=>v==='picked').length,prepMissing:ck.filter(v=>v==='missing').length,payment:sm.get(n)||null};});
 }
 

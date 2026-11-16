@@ -129,7 +129,8 @@ async function driverPick(o) {
 }
 async function driverDeliver(o) {
   if (o.status !== 'onway') return;
-  const j = await call('/driver/status', { pin: '1357', no: o.no, status: 'delivered' }); if (!j.ok) { at(NOW + 3 * 60e3, () => driverDeliver(o)); return; }
+  const dc = (JSON.parse((sq.prepare('SELECT data FROM orders WHERE no = ?').get(Number(String(o.no).replace(/\D/g, '')) - 1000) || { data: '{}' }).data).dc) || '';   // رمز الاستلام من الزبون
+  const j = await call('/driver/status', { pin: '1357', no: o.no, status: 'delivered', code: dc }); if (!j.ok) { at(NOW + 3 * 60e3, () => driverDeliver(o)); return; }
   o.status = 'delivered'; o.dms = NOW - o.created; log.delivered++; if (o.pay === 'cash') L.cashDelivered = r2(L.cashDelivered + o.total);
 }
 // ---------- daily schedule ----------

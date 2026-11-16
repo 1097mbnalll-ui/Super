@@ -69,7 +69,7 @@ ap = calls.find((c) => c.kind === 'apns'); ok(ap && /طلبك/.test(ap.body.aps.
 const jwt1 = ap.h.authorization; calls.length = 0; await call('/driver/status', { pin: '1111', no: o1, status: 'onway' }); await tick();
 ok(calls.find((c) => c.kind === 'apns')?.h.authorization === jwt1, 'رمز آبل يتجدد بس كل فترة');
 // ٥) جهاز ما عاد مسجّل: ينحذف
-apnsStatus = 410; apnsBody = '{"reason":"Unregistered"}'; calls.length = 0; await call('/driver/status', { pin: '1111', no: o1, status: 'delivered' }); await tick();
+apnsStatus = 410; apnsBody = '{"reason":"Unregistered"}'; calls.length = 0; await call('/driver/status', { pin: '1111', no: o1, status: 'delivered', code: (JSON.parse(sq.prepare('SELECT data FROM orders WHERE no = ?').get(Number(String(o1).replace(/\D/g, '')) - 1000).data).dc) || '' }); await tick();
 ok(sq.prepare("SELECT COUNT(*) n FROM subs WHERE endpoint = ?").get('apns:' + iosTok).n === 0, 'جهاز آبل غير مسجّل ينحذف من الخادم'); apnsStatus = 200; apnsBody = '{}';
 // ٦) أندرويد FCM
 const o2 = (await mk(ph2)).orderNo, no2 = N(o2);

@@ -1372,6 +1372,15 @@
     csvDownload("طلبات-متاجر-أحد-" + new Date().toISOString().slice(0, 10) + ".csv", rows);
   }
   function oFind(no){ return (oState.list || []).filter(function(o){ return o.no === no; })[0]; }
+  // رمز الاستلام وفحص مكان المندوب عند التسليم (١٦ نوفمبر ٢٠٢٦)
+  function dkm(m){ return m >= 1000 ? num(Math.round(m / 100) / 10) + " كم" : num(m) + " م"; }
+  function dchkHTML(o){
+    var d = o.dchk;
+    if (!d) return o.dc && ["new", "accepted", "onway"].indexOf(o.status) > -1 ? '<p class="hint">رمز الاستلام عند الزبون: <b dir="ltr">' + esc(o.dc) + '</b> (لو الزبون ضيّعه)</p>' : '';
+    var far = d.dist != null && d.dist > 300;
+    return '<p class="o-dchk ' + (d.warn ? 'bad' : 'good') + '">' + (d.code ? '✓ سلّم بالرمز' : d.skip ? '⚠️ سلّم بدون رمز: ' + esc(d.skip) : '✓ تم التسليم') +
+      (d.dist != null ? ' · ' + (far ? '<b>على بعد ' + dkm(d.dist) + ' من بيت الزبون</b>' : 'عند البيت (' + dkm(d.dist) + ')') : ' · ما وصلنا موقع المندوب وقت التسليم') + '</p>';
+  }
   function openOrder(no){
     var o = oFind(no); if (!o) return;
     var old = $("oSheet"); if (old) old.remove();
@@ -1384,7 +1393,7 @@
       '<div class="o-who"><b>' + esc(o.name || "زبون") + '</b><span dir="ltr">' + esc(o.phone) + '</span>' + (o.details ? '<span>' + esc(o.details) + '</span>' : '') + (o.note ? '<span class="note">ملاحظة: ' + esc(o.note) + '</span>' : '') + '</div>' +
       '<div class="actions">' + (o.phone ? '<a class="btn btn-soft sm" href="tel:' + esc(o.phone) + '">' + ic("phone") + 'اتصل</a><a class="btn btn-soft sm" target="_blank" rel="noopener" href="https://wa.me/966' + esc(String(o.phone).replace(/^0/, "")) + '">واتساب</a>' : '') + (o.map ? '<a class="btn btn-soft sm" target="_blank" rel="noopener" href="' + esc(o.map) + '">' + ic("pin") + 'الموقع</a>' : '') + '<button class="btn btn-soft sm" type="button" data-oprint="' + esc(o.no) + '">طباعة الفاتورة</button>' + (o.status === 'delivered' && !ordersOnly() ? '<button class="btn btn-soft sm" type="button" data-payment="'+esc(o.no)+'">تفصيل وتصحيح التحصيل</button>' : '') + (o.status !== "canceled" && !ordersOnly() ? '<button class="btn btn-soft sm" type="button" data-oedit="' + esc(o.no) + '">عدّل الطلب</button>' : '') + '</div>' +
       (o.edits && o.edits.length ? '<p class="hint">انعدّل ' + o.edits.length + ' مرة. آخر تعديل: من ' + num(o.edits[o.edits.length - 1].before) + ' إلى ' + num(o.edits[o.edits.length - 1].after) + ' ر.س</p>' : '') + (o.anon ? '<p class="hint">بيانات الزبون انمسحت بعد مدة الحفظ، والطلب وأرقامه باقية.</p>' : '') +
-      freeBlock(o) + '<div class="o-lines">' + (o.lines || []).map(function(l){ return '<div><span>' + esc(l.name) + ' <small class="hint">' + esc(l.unit || "") + '</small>' + (l.tag ? ' <span class="ltag deal">' + esc(l.tag) + '</span>' : '') + (String(l.id || "").indexOf("c:") === 0 ? ' <span class="ltag day">من عندي</span>' : '') + '</span><b>× ' + l.qty + '</b><span>' + num(Math.round(l.qty * l.price * 100) / 100) + '</span></div>'; }).join("") +
+      dchkHTML(o) + freeBlock(o) + '<div class="o-lines">' + (o.lines || []).map(function(l){ return '<div><span>' + esc(l.name) + ' <small class="hint">' + esc(l.unit || "") + '</small>' + (l.tag ? ' <span class="ltag deal">' + esc(l.tag) + '</span>' : '') + (String(l.id || "").indexOf("c:") === 0 ? ' <span class="ltag day">من عندي</span>' : '') + '</span><b>× ' + l.qty + '</b><span>' + num(Math.round(l.qty * l.price * 100) / 100) + '</span></div>'; }).join("") +
         '<div class="sum"><span>المنتجات</span><b></b><span>' + num(o.subtotal) + '</span></div><div class="sum"><span>التوصيل</span><b></b><span>' + (o.fee ? num(o.fee) : 'مجاني') + '</span></div>' + (o.gift ? '<div class="sum"><span>هدية اعتذار</span><b></b><span>−' + num(o.gift) + '</span></div>' : '') + (o.promoAmt ? '<div class="sum"><span>كود ' + esc(o.promo) + '</span><b></b><span>−' + num(o.promoAmt) + '</span></div>' : '') + '<div class="sum grand"><span>الإجمالي</span><b></b><span>' + num(o.total) + ' ر.س</span></div></div>' +
       '<div class="actions">' + nx.map(function(x){ return '<button class="btn ' + x[2] + '" type="button" data-ost="' + x[0] + '" data-no="' + esc(o.no) + '">' + x[1] + '</button>'; }).join("") +
         (o.status !== "canceled" && o.status !== "delivered" ? '<button class="btn btn-ghost" type="button" data-ost="canceled" data-no="' + esc(o.no) + '" style="color:var(--sale)">إلغاء الطلب</button>' : '') +

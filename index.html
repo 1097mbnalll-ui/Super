@@ -268,6 +268,10 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .sent .card{width:100%;margin-top:16px;border-radius:26px;background:rgba(255,255,255,.07);padding:18px;display:grid;gap:14px;text-align:right;border:0;box-shadow:none}
 .sent .card .r{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#8FB0A7}
 .sent .card .r b{font-family:var(--display);font-size:14px;color:#fff}
+.dcode{display:grid;gap:4px;justify-items:center;text-align:center;background:#FFF7E8;color:#3A2A12;border-radius:18px;padding:12px 14px;margin:2px 0}
+.dcode span{font-size:12px;font-weight:700;color:#8A6416}
+.dcode b{font-family:var(--display);font-size:30px;letter-spacing:4px;color:#3A2A12!important;line-height:1.1}
+.dcode small{font-size:11.5px;color:#7A6A50}
 .steps{display:grid}
 .steps .s{display:flex;align-items:center;gap:11px;font-size:12px;font-weight:700}
 .steps .s i{width:24px;height:24px;border-radius:50%;flex:none;display:grid;place-items:center}
@@ -890,6 +894,7 @@ button.stat:hover{border-color:var(--teal)}
 .drvchip{display:inline-flex;align-items:center;gap:4px;font-style:normal;font-size:.75rem;font-weight:700;background:#EEF2F7;color:#13213C;border-radius:999px;padding:2px 8px;margin-inline-end:6px}
 .drvchip .i{width:12px;height:12px}
 .o-assign{display:grid;gap:4px;font-weight:600;margin:6px 0}.o-assign select{height:42px}
+.o-dchk{margin:6px 0;padding:9px 12px;border-radius:12px;font-size:13.5px;font-weight:600}.o-dchk.good{background:#E8F6EF;color:#14532D}.o-dchk.bad{background:#FDECEA;color:#8C1D15}
 .spill.sold{background:#EEF0FF;color:#3B3FA8}
 .oi-list{display:grid;gap:6px}.oi-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto auto auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:12px}
 @media (max-width:700px){.srow{grid-template-columns:auto minmax(0,1fr) auto}.srow .hint{grid-column:1/-1;order:5}.cdrow{grid-template-columns:1fr 1fr}.cdrow .n{grid-column:1/-1}.oi-row{grid-template-columns:1fr 1fr}}
@@ -1478,6 +1483,14 @@ body[data-screen="driver"]{background:#F3F4F6}
 .dv-sheet .sub .go{background:#15803D;color:#fff;border-radius:12px;padding:10px 14px;font-weight:700;font-size:13px}
 .dv-sheet .acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dv-sheet .acts .wide,.dv-sheet .acts .dv-link{grid-column:1/-1}
 .dv-del{padding:14px 16px;display:grid;gap:12px}
+.dv-code{background:#FFF7E8;border:2px solid #F0C36B;border-radius:22px;padding:14px;display:grid;gap:10px}
+.dv-code label{display:grid;gap:2px}.dv-code label b{font-size:16px;color:#3A2A12}.dv-code label span{font-size:12.5px;color:#7A6A50}
+.dv-code input{font:700 32px/1 var(--display);letter-spacing:12px;text-align:center;padding:12px;border:2px solid #E2C690;border-radius:16px;background:#fff;width:100%;box-sizing:border-box}
+.dv-code input:focus{outline:none;border-color:#E46A12}
+.dv-nocode summary{font-size:13px;color:#8A6416;cursor:pointer;font-weight:700}
+.dv-nocode>div{display:grid;gap:8px;margin-top:8px}.dv-nocode small{font-size:11.5px;color:#7A6A50}
+.dv-skip-on{margin:0;font-size:13.5px;color:#8C1D15;font-weight:700}.dv-skip-on .lnk{border:0;background:none;color:#1F5BD1;font:inherit;text-decoration:underline;cursor:pointer}
+.trackbar .dcs{font-size:13px;letter-spacing:1px}
 .dv-map{display:flex;align-items:center;gap:12px;background:#13213C;color:#fff;border-radius:18px;padding:14px 16px;text-decoration:none}
 .dv-map span{flex:1;display:grid;gap:2px;font-size:12px;color:#B8C2D6}.dv-map b{font-size:15px;color:#fff}.dv-map.off{background:#E3E6EB;color:#3F4A5C}.dv-map.off b{color:#13213C}.dv-map.off span{color:#5B6474}
 .dv-del .cust{background:#fff;border-radius:20px;padding:14px 16px;display:grid;gap:6px;font-size:13.5px}.dv-del .cust b{font-size:17px}
@@ -2373,6 +2386,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
               if (screen === "sent" && !rateDraft && !(document.activeElement && /TEXTAREA|INPUT/.test(document.activeElement.tagName))) render(); } }
           if ("canRate" in j) { var rkNow = JSON.stringify([j.rating || null, !!j.canRate]), rkWas = JSON.stringify([lastOrder.rating || null, !!lastOrder.canRate]); lastOrder.rateKnown = true;
             if (rkNow !== rkWas) { lastOrder.rating = j.rating || null; lastOrder.canRate = !!j.canRate; saveLast(); if (screen === "sent" && j.status === lastOrder.status && !rateDraft) render(); } }
+          if ((j.dc || "") !== (lastOrder.dc || "")) { lastOrder.dc = j.dc || ""; saveLast(); if (screen === "sent" && j.status === lastOrder.status && !(document.activeElement && /TEXTAREA|INPUT/.test(document.activeElement.tagName))) render(); }
           var subsNow = JSON.stringify(j.subs || []); if (subsNow !== JSON.stringify(lastOrder.subs || [])) { lastOrder.subs = j.subs || []; saveLast(); if (screen === "sent" && j.status === lastOrder.status) render(); }
           var prepNow = j.status === "new" ? (j.prep || "") : "";
           if (j.status !== lastOrder.status || prepNow !== (lastOrder.prep || "")) { lastOrder.status = j.status; lastOrder.prep = prepNow; saveLast(); if (screen === "sent" && !(document.activeElement && /TEXTAREA|INPUT/.test(document.activeElement.tagName))) render(); } else trkUpdate();
@@ -2395,6 +2409,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         var prepNow = j.status === "new" ? (j.prep || "") : "";
         var subsNow = JSON.stringify(j.subs || []), ch = j.status !== lastOrder.status || subsNow !== JSON.stringify(lastOrder.subs || []) || prepNow !== (lastOrder.prep || ""); lastOrder.prep = prepNow;
         if (j.lines) { var sig = JSON.stringify([j.total, j.free, j.lines]); if (sig !== lastOrder.sig) { lastOrder.sig = sig; lastOrder.total = j.total; lastOrder.free = j.free || ""; lastOrder.lines = j.lines; ch = true; } }
+        if ((j.dc || "") !== (lastOrder.dc || "")) { lastOrder.dc = j.dc || ""; ch = true; }
         // وصل الطلب: نعرف من هنا إنه يقدر يقيّم، فيطلع شريط «قيّم تجربتك» في الرئيسية (كان ما يطلع إلا لو فتح شاشة الطلب)
         if ("canRate" in j) { if (!lastOrder.rateKnown || !!lastOrder.canRate !== !!j.canRate || JSON.stringify(lastOrder.rating || null) !== JSON.stringify(j.rating || null)) ch = true; lastOrder.rateKnown = true; lastOrder.canRate = !!j.canRate; lastOrder.rating = j.rating || null; }
         if (!ch) return;
@@ -2928,7 +2943,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     sToast(n ? tr("انضاف " + num(n) + " منتج من طلباتك المعتادة", num(n) + " usual items added") : tr("طلباتك المعتادة موجودة بالسلة", "Your usual items are already in the cart")); }
   function homeHTML(){
     var h = '<div class="kq-head"><div class="wrap">' +
-      (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": lastOrder.prep === "ready" ? tr("جاهز وينتظر المندوب", "Ready, waiting for the driver") : lastOrder.prep === "preparing" ? tr("جاري تجهيزه", "Being prepared") : tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span>' + (lastOrder.subs && lastOrder.subs.length ? '<em class="trk-sub">' + tr("فيه بديل ينتظر موافقتك", "A replacement needs your answer") + '</em>' : '') + '</span>' + ic("fwd") + '</button>' :
+      (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": lastOrder.prep === "ready" ? tr("جاهز وينتظر المندوب", "Ready, waiting for the driver") : lastOrder.prep === "preparing" ? tr("جاري تجهيزه", "Being prepared") : tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + (lastOrder.status === "onway" && lastOrder.dc ? tr("رمز الاستلام: ", "Delivery code: ") + '<b dir="ltr" class="dcs">' + esc(lastOrder.dc) + '</b> · ' : '') + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span>' + (lastOrder.subs && lastOrder.subs.length ? '<em class="trk-sub">' + tr("فيه بديل ينتظر موافقتك", "A replacement needs your answer") + '</em>' : '') + '</span>' + ic("fwd") + '</button>' :
         rateDue() ? '<div class="ratebar"><button class="trackbar" type="button" data-nav="sent"><span class="ic">★</span><span class="t"><b>' + tr("وصلك طلبك ", "How was order ") + esc(lastOrder.no) + tr("؟ قيّم تجربتك", "? Rate it") + '</b><span>' + tr("ثواني وتساعدنا نصير أحسن", "Takes seconds and helps us improve") + '</span></span>' + ic("fwd") + '</button><button type="button" class="ratebar-x" data-rateskip aria-label="' + tr("إخفاء", "Hide") + '">×</button></div>' : '') +
       (isClosed() ? closedBarHTML() : '') +
       '<div class="kq-row"><div class="kq-logo"><img src="logo-cut.webp" alt=""><b>' + esc(sv("name")) + '</b></div>' +
@@ -3350,11 +3365,16 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       walletCheckoutHTML(t.all) + '<div id="sendErr"></div></div></div>' +
       '</div>' + '<div class="bottomcta"><button class="btn btn-orange" type="button" id="sendOrder"' + (t.any && !isClosed() ? '' : ' disabled') + tr('><span>أرسل الطلب</span><span>', '><span>Place order</span><span>') + rial(t.all) + '</span></button></div>';
   }
+  // رمز الاستلام (١٦ نوفمبر ٢٠٢٦): الزبون يعطيه المندوب عند الباب، والمندوب ما يقدر يسلّم بدونه
+  function dcodeHTML(o){
+    if (!o || !o.dc || ["delivered", "canceled"].indexOf(o.status) > -1) return "";
+    return '<div class="dcode"><span>' + tr("رمز الاستلام", "Delivery code") + '</span><b dir="ltr">' + esc(String(o.dc).split("").join(" ")) + '</b><small>' + tr("عطه المندوب لما يسلّمك الطلب، ولا تعطيه أحد قبلها.", "Give it to the driver at handover only.") + '</small></div>';
+  }
   function sentHTML(){
     var o = lastOrder || {};
     return '<div class="sent"><div class="wrap"><div class="ok"><div>' + ic("check") + '</div></div><h1>' + (o.status === "delivered" ? tr("وصل طلبك", "Delivered") : o.status === "onway" ? tr("طلبك في الطريق", "On the way") : o.status === "canceled" ? tr("انلغى الطلب", "Order canceled") : tr("وصلنا طلبك!", "We got your order!")) + '</h1>' +
       (o.status === "delivered" ? tr('<p>بالعافية عليك!</p>', '<p>Enjoy!</p>') : o.status === "canceled" ? tr('<p>هالطلب انلغى وما راح يوصلك. لو تبي شي اطلبه من جديد.</p>', '<p>This order was canceled.</p>') : o.status === "onway" ? tr('<p>المندوب في الطريق لموقعك الحين.</p>', '<p>The driver is on the way to you now.</p>') : tr('<p>بنتصل عليك على <b dir="ltr" style="color:#fff">', '<p>We will call you at <b dir="ltr" style="color:#fff">') + esc(o.phone || "") + tr('</b> لو احتجنا،<br>والمندوب يجيك على الموقع اللي حددته.</p>', '</b> if needed,<br>and the driver will come to the location you picked.</p>')) +
-      tr('<div class="card"><div class="r"><span>رقم الطلب</span><b dir="ltr">', '<div class="card"><div class="r"><span>Order number</span><b dir="ltr">') + esc(o.no || "") + '</b></div>' +
+      tr('<div class="card"><div class="r"><span>رقم الطلب</span><b dir="ltr">', '<div class="card"><div class="r"><span>Order number</span><b dir="ltr">') + esc(o.no || "") + '</b></div>' + dcodeHTML(o) +
       (o.printText && waNumber() && o.status !== "canceled" ? '<div class="card pr-wa"><b>' + tr("باقي خطوة: أرسل ملف الطباعة", "One more step: send your print file") + '</b><p>' + tr("أرسل الملف على واتساب المحل برقم طلبك ونبدأ نطبعه.", "Send the file on the shop's WhatsApp with your order number and we start printing.") + '</p><a class="btn btn-teal" target="_blank" rel="noopener" href="https://wa.me/' + waNumber() + '?text=' + encodeURIComponent("السلام عليكم، طلب طباعة رقم " + (o.no || "") + "\n" + o.printText + "\nالملف مرفق 👇") + '">' + tr("أرسل الملف على واتساب", "Send the file on WhatsApp") + '</a></div>' : '') +
       stepsHTML(o.status || "new", o.prep) + rateHTML(o) + subsHTML(o) + myLinesHTML(o) + addMoreHTML(o) + suggestHTML(o) + cancelHTML(o) +
       (o.status === "onway" && o.track && apiUrl() ? '<div class="trk"><div class="trk-map" id="trkMap"></div><div class="trk-info" id="trkInfo">' + trkInfo() + '</div></div>' : '') +
@@ -3884,7 +3904,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         btn.disabled = false; btn.firstChild.textContent = tr("أرسل الطلب", "Place order");
         if (j.ok) {
           if (!j.repeated) recordHist(items);
-          lastOrder = { no: j.orderNo, total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, free: payload.free || "", printText: pnote, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast(); rememberAddr();
+          lastOrder = { no: j.orderNo, dc: j.dc || "", total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, free: payload.free || "", printText: pnote, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast(); rememberAddr();
           if (j.track && PUSH_PREF && pushOn()) orderPush(null);
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
@@ -4159,7 +4179,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (!navigator.geolocation) { geo.st = "nosupport"; return; }
     geo.st = "wait";
     geo.watch = navigator.geolocation.watchPosition(function(p){
-      geo.pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 0 };
+      geo.pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 0, at: Date.now() };
       if (geo.st !== "on") { geo.st = "on"; geoBar(); }
       geoSend(false);
     }, function(err){
@@ -4232,8 +4252,21 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   var SUBL = { swap: tr("بدّله بمشابه", "Replace with similar"), remove: tr("شيله من الطلب", "Remove it"), call: tr("اتصلوا عليّ", "Call me") };
   function dToday(){ var d = new Date(); d.setHours(0, 0, 0, 0); var done = drv.orders.filter(function(o){ return o.status === "delivered" && o.updated >= d.getTime() && mine(o); });
     var avg = done.length ? Math.round(done.reduce(function(a, o){ return a + (o.updated - o.created); }, 0) / done.length / 60000) : 0; return { done: done, avg: avg }; }
-  function setSt(no, st, cb){ api("/driver/status", { pin: drv.pin, no: no, status: st, as: "driver" }).then(function(j){
+  // رمز الاستلام (١٦ نوفمبر ٢٠٢٦): الزبون يشوفه في صفحة طلبه، والمندوب يكتبه قبل «وصّلته». لو الزبون ما عنده: يختار السبب ويوصل الإدارة تنبيه
+  function dvCodeHTML(o){
+    if (!o.needCode) return "";
+    var sk = drv.skip && drv.skip.no === o.no ? drv.skip.r : "";
+    return '<section class="dv-code"><label for="dvCode"><b>' + tr("رمز الاستلام من الزبون", "Customer's delivery code") + '</b><span>' + tr("اطلبه من الزبون عند الباب، يطلع له في صفحة طلبه", "Ask the customer; it's on their order page") + '</span></label>' +
+      (sk ? '<p class="dv-skip-on">' + tr("بدون رمز: ", "No code: ") + esc(sk) + ' <button type="button" class="lnk" data-dskip="">' + tr("تراجع", "Undo") + '</button></p>'
+        : '<input id="dvCode" type="text" inputmode="numeric" pattern="[0-9٠-٩]*" maxlength="4" autocomplete="one-time-code" dir="ltr" placeholder="• • • •" aria-label="' + tr("رمز الاستلام", "Delivery code") + '">' +
+          '<details class="dv-nocode"><summary>' + tr("الزبون ما عنده الرمز؟", "Customer has no code?") + '</summary><div>' + [tr("ما فتح صفحة الطلب", "Didn't open the order page"), tr("ما عنده جوال معه", "No phone with them"), tr("استلمه شخص ثاني عنه", "Someone else received it")].map(function(r){ return '<button type="button" class="dv-btn line" data-dskip="' + esc(r) + '">' + esc(r) + '</button>'; }).join("") + '<small>' + tr("ينحفظ السبب ويوصل الإدارة تنبيه.", "The reason is saved and the store is notified.") + '</small></div></details>') + '</section>';
+  }
+  function setSt(no, st, cb, extra){ api("/driver/status", Object.assign({ pin: drv.pin, no: no, status: st, as: "driver" }, extra || {})).then(function(j){
     if (!j.ok) {
+      if (j.code === "need_code" || j.code === "bad_code" || j.code === "slow_down") {   // رمز الاستلام من الزبون
+        dToast(j.code === "bad_code" ? tr("الرمز غلط، اسأل الزبون عنه مرة ثانية", "Wrong code, ask the customer again") : j.code === "slow_down" ? tr("محاولات كثيرة، انتظر شوي أو كلم الإدارة", "Too many tries, wait or call the store") : tr("اكتب رمز الاستلام من الزبون", "Enter the customer's delivery code"), true);
+        var ci = $("dvCode"); if (ci) { ci.value = ""; ci.focus(); } if (cb) cb(false); return;
+      }
       if (j.code === "taken" || j.code === "not_yours") {   // زميله سبقه على الطلب
         var o0 = dOrder(no); if (o0 && j.by) { o0.drvName = j.by; o0.drv = o0.drv || "x"; }
         dToast((j.by || tr("زميلك", "Your colleague")) + tr(" ماسك هالطلب", " has this order"), true); drv.view = "list"; drv.tab = "new"; drvRender(); drvPoll(); if (cb) cb(false); return;
@@ -4404,7 +4437,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         '<div class="giv">' + opts.map(function(v){ return '<button type="button" data-dgive="' + v + '" aria-pressed="' + (drv.given === v) + '">' + num(v) + '</button>'; }).join("") + '</div>' +
         (ch != null ? '<div class="chg"><span>' + tr("رجّع له", "Give back") + '</span><b>' + num(ch) + ' ' + tr("ر.س", "SAR") + '</b></div>' : '') + '</section>'
         : '<section class="pay card"><span>' + tr("الدفع شبكة عند الاستلام", "Card payment on delivery") + '</span><b>' + num(o.total) + ' <small>' + tr("ر.س", "SAR") + '</small></b><span class="s2">' + tr("جهّز جهاز الشبكة قبل لا تنزل", "Have the card machine ready") + '</span></section>') +
-      '<p class="hint">' + num(o.count) + tr(" قطعة. تأكد إنك عطيته كل الأكياس.", " items. Make sure you hand over all bags.") + '</p></main>' +
+      '<p class="hint">' + num(o.count) + tr(" قطعة. تأكد إنك عطيته كل الأكياس.", " items. Make sure you hand over all bags.") + '</p>' + dvCodeHTML(o) + '</main>' +
       '<footer class="dv-foot"><button type="button" class="dv-btn ok wide" data-ddone="' + esc(o.no) + '">' + ic("check") + (cash ? tr("وصّلته واستلمت ", "Delivered, collected ") + num(o.total) : tr("وصّلته", "Delivered")) + '</button></footer>';
   }
   function dvCash(){
@@ -4467,7 +4500,21 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if ((t = e.target.closest("[data-dpacked]"))) { var o = dOrder(t.dataset.dpacked); if (t.getAttribute("aria-disabled") === "true") { dToast(tr("علّم كل المنتجات أول، أو اختر «مو موجود» للناقص", "Mark every item first, or choose Not available"), true); return; }
       setSt(o.no, "onway", function(ok){ if (ok) go2("deliver"); }); return; }
     if ((t = e.target.closest("[data-dgive]"))) { drv.given = Number(t.dataset.dgive); drvRender(); return; }
-    if ((t = e.target.closest("[data-ddone]"))) { var no2 = t.dataset.ddone; t.disabled = true; setSt(no2, "delivered", function(ok){ t.disabled = false; if (ok) { delete PICK[no2]; savePick(); drv.tab = "way"; dToast(tr("تم التوصيل، يعطيك العافية", "Delivered, well done")); loadDrvCash(); go2("list"); } }); return; }
+    if ((t = e.target.closest("[data-dskip]"))) { drv.skip = t.dataset.dskip && drv.no ? { no: drv.no, r: t.dataset.dskip } : null; drvRender(); return; }
+    if ((t = e.target.closest("[data-ddone]"))) { var no2 = t.dataset.ddone, oD = dOrder(no2), ex = {};
+      if (oD && oD.needCode) {
+        var cv = String(($("dvCode") || {}).value || "").replace(/[٠-٩]/g, function(d){ return String(d.charCodeAt(0) - 1632); }).replace(/\D/g, "");
+        if (drv.skip && drv.skip.no === no2) ex.skip = drv.skip.r; else if (cv.length !== 4) { dToast(tr("اكتب رمز الاستلام (٤ أرقام) من الزبون", "Enter the 4-digit code from the customer"), true); var ci0 = $("dvCode"); if (ci0) ci0.focus(); return; } else ex.code = cv;
+      }
+      t.disabled = true;
+      var go3 = function(pos){ if (pos) { ex.lat = pos.lat; ex.lng = pos.lng; } setSt(no2, "delivered", function(ok){ t.disabled = false; if (ok) { delete PICK[no2]; savePick(); drv.tab = "way"; dToast(tr("تم التوصيل، يعطيك العافية", "Delivered, well done")); loadDrvCash(); go2("list"); } }, ex); };
+      // موقع المندوب لحظة التسليم (الخادم يقارنه ببيت الزبون): آخر موقع حديث، وإلا نطلبه بسرعة، ولو ما جاء نسلّم بدونه
+      if (geo.pos && Date.now() - (geo.pos.at || 0) < 90000) go3(geo.pos);
+      else if (navigator.geolocation) { var done3 = false, fin = function(pp){ if (done3) return; done3 = true; go3(pp); };
+        setTimeout(function(){ fin(null); }, 5000);
+        try { navigator.geolocation.getCurrentPosition(function(p){ fin({ lat: p.coords.latitude, lng: p.coords.longitude }); }, function(){ fin(null); }, { enableHighAccuracy: true, timeout: 4500, maximumAge: 60000 }); } catch(e2){ fin(null); } }
+      else go3(null);
+      return; }
   });
 
   /* ---------- admin access ---------- */
@@ -4521,7 +4568,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       fetch(String(apiUrl()).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: t, phone: kph }) })
         .then(function(r){ return r.json(); }).then(function(j){
           if (!j.ok) { askPhone(); return; }
-          lastOrder = { no: "#" + t, phone: kph, total: j.total != null ? j.total : (sum || undefined), pay: j.pay || pay, at: Date.now(), status: j.status, track: true, viaLink: 1, lines: j.lines || [], free: j.free || "", prep: j.prep || "" };
+          lastOrder = { no: "#" + t, phone: kph, total: j.total != null ? j.total : (sum || undefined), pay: j.pay || pay, at: Date.now(), status: j.status, track: true, viaLink: 1, lines: j.lines || [], free: j.free || "", prep: j.prep || "", dc: j.dc || "" };
           saveLast(); if (!form.phone) { form.phone = kph.slice(1); saveForm(); }
           if (screen === "home" && !document.querySelector(".sheet")) render();
         }).catch(function(){});
@@ -4546,7 +4593,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       fetch(String(apiUrl()).replace(/\/+$/, "") + "/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ no: t, phone: ph }) })
         .then(function(r){ return r.json(); }).then(function(j){
           if (!j.ok) { m.className = "status err"; m.textContent = j.code === "not_found" ? tr("الرقم ما يطابق هالطلب. اكتب الجوال اللي طلبت فيه.", "This phone does not match the order.") : tr("ما قدرنا نجيب الطلب، جرّب بعد شوي.", "Could not load the order, try again shortly."); return; }
-          lastOrder = { no: "#" + t, phone: ph, total: j.total != null ? j.total : (sum || undefined), pay: j.pay || pay, at: Date.now(), status: j.status, track: true, viaLink: 1, lines: j.lines || [], free: j.free || "", prep: j.prep || "" };
+          lastOrder = { no: "#" + t, phone: ph, total: j.total != null ? j.total : (sum || undefined), pay: j.pay || pay, at: Date.now(), status: j.status, track: true, viaLink: 1, lines: j.lines || [], free: j.free || "", prep: j.prep || "", dc: j.dc || "" };
           saveLast(); if (!form.phone) { form.phone = ph.slice(1); saveForm(); } close(); show("home");
         }).catch(function(){ m.className = "status err"; m.textContent = tr("ما فيه اتصال، جرّب مرة ثانية.", "No connection, try again."); });
     });
