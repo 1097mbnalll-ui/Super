@@ -2132,6 +2132,13 @@
      الصوت يحتاج أن الصفحة مفتوحة وقدامك (المتصفح يوقف الصوت لو الصفحة بالخلفية أو الشاشة مقفلة). لو تبي إشعار والشاشة مقفلة فعّل «الإشعارات» من تبويب الإشعارات. */
   var oa = { seen: null, pending: [], on: true, ring: 0, busy: false, title: "" };
   try { oa.on = localStorage.getItem("ohod-admin-sound") !== "0"; } catch(e){}
+  // تطبيق أندرويد (WebView) والمتصفحات يمنعون الصوت لين تلمس الشاشة مرة: أول لمسة داخل لوحة الإدارة تفتح الصوت (نشغّل نغمة صامتة)
+  function oaUnlock(){
+    try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.resume) audioCtx.resume();
+      var b = audioCtx.createBuffer(1, 1, 22050), src = audioCtx.createBufferSource(); src.buffer = b; src.connect(audioCtx.destination); src.start(0); } catch(e){}
+    oaUi();
+  }
+  ["touchstart", "pointerdown", "click", "keydown"].forEach(function(ev){ document.addEventListener(ev, function(){ if (mode === "admin" && (!audioCtx || audioCtx.state !== "running")) oaUnlock(); }, true); });
   function oaChime(){
     if (!oa.on) return;
     try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.resume) audioCtx.resume();
@@ -2146,7 +2153,7 @@
     var top = document.querySelector(".adm-top"), b = $("oaSnd");
     if (top && !b) { b = document.createElement("button"); b.id = "oaSnd"; b.type = "button"; b.className = "btn btn-soft"; b.style.cssText = "min-height:36px;padding:4px 12px;font-size:.82rem"; top.appendChild(b);
       b.addEventListener("click", function(){ oa.on = !oa.on; try { localStorage.setItem("ohod-admin-sound", oa.on ? "1" : "0"); } catch(e){} if (oa.on) oaChime(); else oaStop(); oaUi(); }); }
-    if (b) b.textContent = oa.on ? "🔔 صوت الطلبات شغّال" : "🔕 الصوت مقفل";
+    if (b) b.textContent = !oa.on ? "🔕 الصوت مقفل" : (audioCtx && audioCtx.state === "running") ? "🔔 صوت الطلبات شغّال" : "🔔 المس الشاشة لتفعيل الصوت";
     var bar = $("oaBar");
     if (!oa.pending.length) { if (bar) bar.remove(); return; }
     if (!bar) { bar = document.createElement("div"); bar.id = "oaBar"; bar.setAttribute("role", "alert");
