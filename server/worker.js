@@ -27,6 +27,7 @@ export default {
     ctx.waitUntil(dailyReport(env).catch(() => {}));
   },
   async fetch(request, env, ctx) {
+    const self = this;
     const later = (p) => { const q = Promise.resolve(p).catch(() => {}); if (ctx && ctx.waitUntil) ctx.waitUntil(q); return q; };
     const origin = request.headers.get("Origin") || "";
     const allowed = (env.ALLOWED_ORIGIN || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -64,7 +65,8 @@ export default {
       return reply(200, { ok: true, key: (await vapidKeys(env)).pub });
     }
     if (request.method !== "POST") return reply(405, { ok: false, code: "method" });
-    if (!allowed.includes(origin)) return reply(403, { ok: false, code: "origin" });
+    // تنبيهات ميسّر تجي من خادمهم بدون Origin، وتتأكد بالسر المشترك
+    if (!allowed.includes(origin) && !(path === "/pay/hook" && !origin)) return reply(403, { ok: false, code: "origin" });
     for (const k of ["GITHUB_TOKEN", "ADMIN_PIN", "SECRET", "REPO", "BRANCH"]) {
       if (!env[k]) return reply(500, { ok: false, code: "config", missing: k });
     }
@@ -98,6 +100,21 @@ export default {
       const pc = await promoCheck(env, body.code, normPhone(body.phone) || null, null);
       if (pc.error) return reply(400, { ok: false, code: pc.error });
       return reply(200, { ok: true, ...pc.rule });
+    }
+    // الدفع الإلكتروني: الزبون رجع من صفحة الدفع (finish)، أو ميسّر بلّغنا (hook). الاثنين يتأكدون من ميسّر نفسه ويسجّلون الطلب مرة وحدة
+    if (path === "/pay/finish" || path === "/pay/hook") {
+      if (!env.DB || !env.MOYASAR_SECRET) return reply(503, { ok: false, code: "pay_off" });
+      await ensureSchema(env);
+      let ref = String(body.ref || ""), pid = String(body.id || "");
+      if (path === "/pay/hook") {
+        if (!env.MOYASAR_WEBHOOK_SECRET || !safeEqual(String(body.secret_token || ""), env.MOYASAR_WEBHOOK_SECRET)) return reply(401, { ok: false, code: "bad_token" });
+        const pm0 = body.data || {}; pid = String(pm0.id || ""); ref = String((pm0.metadata || {}).ref || "");
+        if (!/^payment_(paid|captured)$/.test(String(body.type || ""))) return reply(200, { ok: true, ignored: true });
+      }
+      if (!/^p[0-9a-f]{24}$/.test(ref) || !/^[\w-]{6,80}$/.test(pid)) return reply(400, { ok: false, code: "bad_request" });
+      if (path === "/pay/finish" && await rateHit(env, "pf:" + ip, 20, 600)) return reply(429, { ok: false, code: "slow_down" });
+      const res = await payFinish(env, ref, pid, (b) => self.fetch(new Request(new URL("/order", request.url), { method: "POST", headers: { "content-type": "application/json", Origin: allowed[0] || origin, "CF-Connecting-IP": ip }, body: JSON.stringify(b) }), env, ctx).then((r) => r.json()), later);
+      return reply(res.ok ? 200 : res.status || 409, res);
     }
     if (path === "/order") {
       if (!env.LOCKS) return reply(500, { ok: false, code: "config", missing: "LOCKS" });
@@ -139,6 +156,21 @@ export default {
         const used = await env.DB.prepare("SELECT 1 x FROM orders WHERE phone = ? AND status != 'canceled' AND json_extract(data, '$.gift') > 0 LIMIT 1").bind(priced.phone).first().catch(() => null);
         if (used) { priced.gift = 0; priced.total = round2(priced.subtotal + priced.fee); }
       }
+      // الدفع الإلكتروني (ميسّر): المرحلة الأولى نحفظ الطلب ونرجع رقم الدفع والمبلغ، والطلب ينسجل بعد ما يندفع (/pay/finish أو /pay/hook)
+      if (body.pay === "online") {
+        if (!payOn(env, data)) return reply(400, { ok: false, code: "pay_off" });
+        if (body.walletAmount) return reply(400, { ok: false, code: "bad_payment" });
+        if (!body.paid || body.payToken !== PAY_INTERNAL) {
+          await ensureSchema(env);
+          const need0 = needOf(orderRecord(priced, body)), st0 = await readStock(env, Object.keys(need0));
+          const sid0 = Object.keys(need0).find((id) => st0[id] != null && st0[id] < need0[id]);
+          if (sid0) return reply(409, { ok: false, code: "unavailable", id: sid0, left: st0[sid0] });
+          const ref = "p" + randomHex(12), amount = moneyCents(priced.total), keep = { ...body }; delete keep.requestId; delete keep.payToken; delete keep.paid;
+          await env.DB.prepare("INSERT INTO pay_checkouts (ref, created, body, amount, state) VALUES (?, ?, ?, ?, 'pending')").bind(ref, Date.now(), JSON.stringify(keep), amount).run();
+          return reply(200, { ok: true, pay: true, payRef: ref, amount, total: priced.total, subtotal: priced.subtotal, fee: priced.fee, count: priced.count });
+        }
+        if (moneyCents(priced.total) !== Number(body.paid.amount)) return reply(409, { ok: false, code: "price_changed" });
+      }
       const record = orderRecord(priced, body);
       const walletPart = moneyCents(body.walletAmount || 0);
       if (walletPart === null || walletPart > moneyCents(record.total)) return reply(400,{ok:false,code:'bad_payment'});
@@ -166,6 +198,7 @@ export default {
           if (sid) return reply(409, { ok: false, code: "unavailable", id: sid, left: stockBefore[sid] });
           try {
             orderNo = await dbInsertOrder(env, record, need, Date.now(), false, null, { checkout, dev: body.dev }); mineCache.delete(normDev(body.dev));
+            if (record.paid && body.payRef) await env.DB.prepare("UPDATE pay_checkouts SET state = 'ordered', order_no = ?, updated = ? WHERE ref = ?").bind(Number(String(orderNo).replace(/\D/g, "")) - 1000, Date.now(), body.payRef).run().catch(() => {});
           } catch (e) {
             if (checkout) { const repeated = await checkoutResult(env, checkout); if (repeated) return reply(repeated.ok ? 200 : 409, repeated); }
             // ممكن طلب ثاني سبقه على آخر حبة: نشيّك المخزون مرة ثانية
@@ -281,6 +314,7 @@ export default {
       if (!allowed.includes(row.status)) return reply(409, { ok: false, code: row.status === "accepted" || row.status === "onway" ? "too_late" : "closed", status: row.status });
       let r;
       try { r = await changeStatus(env, n, "canceled", Date.now(), "الزبون", null); } catch { return reply(502, { ok: false, code: "db" }); }
+      if (r && r.changed) later(refundOnline(env, n, "الزبون"));
       if (r && r.conflict) return reply(409, { ok: false, code: "too_late" });
       const reason = String(body.reason || "").trim().slice(0, 60);
       await env.DB.batch([
@@ -607,6 +641,7 @@ export default {
           const dev = locDev(body.dev); drvDevMemo.set(me.id, { dev, at: Date.now(), t: Date.now() });
           await env.DB.prepare("INSERT INTO drv_dev (drv, dev, at) VALUES (?, ?, ?) ON CONFLICT(drv) DO UPDATE SET dev = excluded.dev, at = excluded.at").bind(me.id, dev, Date.now()).run().catch(() => {});
         }
+        if (res.changed && st === "canceled") later(refundOnline(env, n, me.name));
         if (res.changed && dchk) {
           await env.DB.prepare("INSERT INTO dchecks (no, at, drv, code, skip, dist, warn) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(no) DO UPDATE SET at = excluded.at, drv = excluded.drv, code = excluded.code, skip = excluded.skip, dist = excluded.dist, warn = excluded.warn")
             .bind(n, Date.now(), actor.id || "", dchk.code ? 1 : 0, dchk.skip, dchk.dist, dchk.warn ? 1 : 0).run().catch(() => {});
@@ -1159,6 +1194,7 @@ async function ensureSchema(env) {
     "CREATE TABLE IF NOT EXISTS alog (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, who TEXT NOT NULL, act TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', info TEXT NOT NULL DEFAULT '{}')",
     "CREATE INDEX IF NOT EXISTS alog_order_status ON alog(ref, act, at)",
     "CREATE TABLE IF NOT EXISTS sg_replied (id INTEGER PRIMARY KEY, at INTEGER NOT NULL, who TEXT NOT NULL DEFAULT '')",
+    "CREATE TABLE IF NOT EXISTS pay_checkouts (ref TEXT PRIMARY KEY, created INTEGER NOT NULL, body TEXT NOT NULL, amount INTEGER NOT NULL, state TEXT NOT NULL DEFAULT 'pending', pay_id TEXT NOT NULL DEFAULT '', order_no INTEGER, note TEXT NOT NULL DEFAULT '', updated INTEGER)",
     "CREATE TABLE IF NOT EXISTS drv_dev (drv TEXT PRIMARY KEY, dev TEXT NOT NULL, at INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS dchecks (no INTEGER PRIMARY KEY, at INTEGER NOT NULL, drv TEXT NOT NULL DEFAULT '', code INTEGER NOT NULL DEFAULT 0, skip TEXT NOT NULL DEFAULT '', dist INTEGER, warn INTEGER NOT NULL DEFAULT 0)",
     "CREATE TABLE IF NOT EXISTS cash (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, day TEXT NOT NULL, who TEXT NOT NULL, amount REAL NOT NULL, note TEXT NOT NULL DEFAULT '')",
@@ -1230,7 +1266,8 @@ function orderRecord(o, body) {
     subtotal: o.subtotal, fee: o.fee, ...(o.gift > 0 ? { gift: o.gift } : {}), ...(o.promo ? { promo: o.promo, promoAmt: o.promoAmt, promoRule: o.promoRule } : {}), total: o.total, count: o.count, phone: o.phone,
     name: String(body.name || "").slice(0, 60), details: String(body.details || "").slice(0, 200), note: noteOf(body, o.free),
     ...(o.free ? { free: o.free } : {}),
-    pay: body.pay === "card" ? "card" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
+    pay: body.pay === "card" ? "card" : body.pay === "online" && body.paid ? "online" : "cash", lat: Number(body.lat), lng: Number(body.lng), map: mapsUrl(body.lat, body.lng),
+    ...(body.pay === "online" && body.paid ? { paid: body.paid } : {}),   // الدفع الإلكتروني (ميسّر): رقم العملية والمبلغ والطريقة
     st: 1, // انحسب في التحليل
     sub: ["swap", "remove", "call"].includes(body.sub) ? body.sub : "call", // لو منتج ناقص: بدّله، شيله، أو اتصلوا
   };
@@ -2527,6 +2564,51 @@ async function deliverAlert(env, n, who, d) {
   const chat = env.TELEGRAM_BOT_TOKEN && env.LOCKS ? await env.LOCKS.get("tg_chat") : null;
   if (chat) await tgSend(env, chat, "⚠️ <b>" + esc(title) + "</b>\n" + esc(text)).catch(() => {});
 }
+// ---------- الدفع الإلكتروني (ميسّر) ----------
+// المفتاح السري MOYASAR_SECRET وسر التنبيهات MOYASAR_WEBHOOK_SECRET في Cloudflare (المالك يحطها بنفسه)، والمفتاح العام في store.pay.pk
+const PAY_INTERNAL = randomHex(16);
+function safeEqual(a, b) { a = String(a); b = String(b); let d = a.length ^ b.length; for (let i = 0; i < Math.max(a.length, b.length); i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0); return d === 0; }
+function payOn(env, data) { const p = (data && data.store && data.store.pay) || {}; return !!(env.DB && env.MOYASAR_SECRET && p.on); }
+const MOYASAR = "https://api.moyasar.com/v1/";
+function moyasarAuth(env) { return "Basic " + btoa(env.MOYASAR_SECRET + ":"); }
+async function moyasarGet(env, id) {
+  const r = await fetch(MOYASAR + "payments/" + encodeURIComponent(id), { headers: { Authorization: moyasarAuth(env) } });
+  if (!r.ok) return null; return r.json().catch(() => null);
+}
+async function moyasarRefund(env, id, amount) {
+  const r = await fetch(MOYASAR + "payments/" + encodeURIComponent(id) + "/refund", { method: "POST", headers: { Authorization: moyasarAuth(env), "content-type": "application/json" }, body: JSON.stringify({ amount }) });
+  return r.ok;
+}
+// إلغاء طلب مدفوع إلكترونياً: نرجّع المبلغ للزبون على طول (مرة وحدة)
+async function refundOnline(env, n, who) {
+  const row = await env.DB.prepare("SELECT data FROM orders WHERE no = ?").bind(n).first(); const rec = row ? safeJson(row.data) : {};
+  if (rec.pay !== "online" || !rec.paid || !rec.paid.id || !env.MOYASAR_SECRET) return;
+  const ck = await env.DB.prepare("SELECT ref, state FROM pay_checkouts WHERE pay_id = ?").bind(rec.paid.id).first();
+  if (ck && ck.state === "refunded") return;
+  const ok = await moyasarRefund(env, rec.paid.id, Number(rec.paid.amount)).catch(() => false);
+  if (ck) await env.DB.prepare("UPDATE pay_checkouts SET state = ?, updated = ? WHERE ref = ?").bind(ok ? "refunded" : "refund_failed", Date.now(), ck.ref).run();
+  await logStmt(env, who, "pay_refund", "#" + (1000 + n), { amount: Number(rec.paid.amount), ok }).run().catch(() => {});
+  if (!ok) await notifyRole(env, "admin", null, { title: "⚠️ رجّع مبلغ الطلب #" + (1000 + n) + " يدوي", body: "الطلب انلغى وهو مدفوع إلكترونياً، والترجيع التلقائي ما نجح. رجّعه من لوحة ميسّر.", url: "./", tag: "refund" + n }).catch(() => {});
+}
+async function payFinish(env, ref, pid, order, later) {
+  const ck = await env.DB.prepare("SELECT * FROM pay_checkouts WHERE ref = ?").bind(ref).first();
+  if (!ck) return { ok: false, code: "not_found", status: 404 };
+  if (ck.state === "refunded") return { ok: false, code: "refunded", status: 409 };
+  const pm = await moyasarGet(env, pid);
+  if (!pm) return { ok: false, code: "pay_check", status: 502 };
+  const paidOk = (pm.status === "paid" || pm.status === "captured") && Number(pm.amount) === Number(ck.amount) && String(pm.currency || "SAR").toUpperCase() === "SAR" && String((pm.metadata || {}).ref || "") === ref;
+  if (!paidOk) return { ok: false, code: pm.status === "failed" ? "pay_failed" : "not_paid", status: 402, message: String(pm.source && pm.source.message || "").slice(0, 120) };
+  if (ck.pay_id && ck.pay_id !== pid) return { ok: false, code: "pay_conflict", status: 409 };
+  await env.DB.prepare("UPDATE pay_checkouts SET pay_id = ?, state = CASE WHEN state = 'pending' THEN 'paid' ELSE state END, updated = ? WHERE ref = ?").bind(pid, Date.now(), ref).run();
+  const via = String((pm.source || {}).type || ""), body = { ...safeJson(ck.body), pay: "online", payRef: ref, payToken: PAY_INTERNAL, requestId: "pay_" + ref, paid: { id: pid, amount: Number(ck.amount), via, at: Date.parse(pm.created_at || "") || Number(ck.created) } };
+  const r = await order(body);
+  if (r.ok) return { ...r, paid: true };
+  // انخصم من الزبون وما انسجل الطلب (خلص المنتج، المحل قفل...): نرجّع المبلغ كامل على طول
+  const back = await moyasarRefund(env, pid, Number(ck.amount)).catch(() => false);
+  await env.DB.prepare("UPDATE pay_checkouts SET state = ?, note = ?, updated = ? WHERE ref = ?").bind(back ? "refunded" : "refund_failed", String(r.code || ""), Date.now(), ref).run();
+  later(notifyRole(env, "admin", null, { title: back ? "رجّعنا مبلغ دفع إلكتروني" : "⚠️ دفع إلكتروني يحتاج ترجيع يدوي", body: (Number(ck.amount) / 100).toFixed(2) + " ر.س · السبب: " + (r.code || "?") + " · " + pid, url: "./", tag: "pay" + ref }).catch(() => {}));
+  return { ok: false, code: r.code || "order_failed", refunded: back, status: 409 };
+}
 function logStmt(env, who, act, ref, info) {
   return env.DB.prepare("INSERT INTO alog (at, who, act, ref, info) VALUES (?, ?, ?, ?, ?)").bind(Date.now(), String(who || "").slice(0, 30), act, ref || "", JSON.stringify(info || {}));
 }
@@ -2987,7 +3069,7 @@ function moneyCents(value) {
   const cents=Math.round(n*100);return Math.abs(n*100-cents)>1e-6?null:cents;
 }
 function operationId(body){return typeof body.requestId==='string'&&/^[a-zA-Z0-9_-]{12,100}$/.test(body.requestId)?body.requestId:null;}
-function paymentOf(row,split){return split||{cash:row.pay==='cash'?moneyCents(row.total):0,card:row.pay==='card'?moneyCents(row.total):0,wallet:0,revision:0};}
+function paymentOf(row,split){return split||{cash:row.pay==='cash'?moneyCents(row.total):0,card:row.pay==='card'||row.pay==='online'?moneyCents(row.total):0,wallet:0,revision:0};}
 function paymentStatement(env,no,payment,revision,who){return env.DB.prepare('INSERT INTO payment_splits(no,cash,card,wallet,revision,at,who) VALUES(?,?,?,?,?,?,?) ON CONFLICT(no) DO UPDATE SET cash=excluded.cash,card=excluded.card,wallet=excluded.wallet,revision=excluded.revision,at=excluded.at,who=excluded.who').bind(no,payment.cash,payment.card,payment.wallet,revision,Date.now(),who);}
 function walletMove(env,phone,delta,kind,no,who,note,requestId,allowDebt=false){
   const P=(q,...a)=>env.DB.prepare(q).bind(...a);

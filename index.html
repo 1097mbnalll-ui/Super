@@ -253,6 +253,8 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .pays{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .pays button{min-height:42px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
 .pays button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
+.pays.pays3{grid-template-columns:1fr 1fr}.pays.pays3 button:first-child{grid-column:1/-1;display:grid;gap:2px;padding:8px 10px}.pays3 button small{font-size:11px;font-weight:600;opacity:.75}
+#paySheet .pay-sum{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:15px;margin:4px 0 12px}#paySheet .mysr-form{min-height:120px}
 .alert{border-radius:16px;background:#FDECEA;color:#8C1D15;padding:12px 14px;font-size:13px;font-weight:700;display:grid;gap:10px}
 
 /* sent */
@@ -3379,7 +3381,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       tr('<label class="fld" for="cDetails">تفاصيل البيت <small>رقم البيت، لون الباب، علامة قريبة</small><input id="cDetails" type="text" value="', '<label class="fld" for="cDetails">Home details <small>House number, door color, a nearby landmark</small><input id="cDetails" type="text" value="') + esc(form.details) + tr('" placeholder="مثال: فيلا ٨، باب بني، جنب المسجد"></label>', '" placeholder="e.g. Villa 8, brown door, next to the mosque"></label>') +
       tr('<label class="fld" for="cName">الاسم <small>(اختياري)</small><input id="cName" type="text" autocomplete="name" value="', '<label class="fld" for="cName">Name <small>(optional)</small><input id="cName" type="text" autocomplete="name" value="') + esc(form.name) + '"></label>' +
       '<div class="fld"><span>' + tr("لو منتج ناقص وقت التجهيز", "If an item is out of stock") + '</span><div class="pays subs">' + [["swap", tr("بدّلوه بمشابه", "Replace it")], ["remove", tr("شيلوه", "Remove it")], ["call", tr("اتصلوا علي", "Call me")]].map(function(x){ return '<button type="button" data-sub="' + x[0] + '" aria-pressed="' + ((form.sub || "call") === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div></div>' +
-      tr('<div class="fld"><span>الدفع عند الاستلام</span><div class="pays"><button type="button" data-pay="cash" aria-pressed="', '<div class="fld"><span>Pay on delivery</span><div class="pays"><button type="button" data-pay="cash" aria-pressed="') + (form.pay !== "card") + tr('">كاش</button><button type="button" data-pay="card" aria-pressed="', '">Cash</button><button type="button" data-pay="card" aria-pressed="') + (form.pay === "card") + tr('">شبكة</button></div></div>', '">Card</button></div></div>') +
+      (payReady() ? '<div class="fld"><span>' + tr("طريقة الدفع", "Payment") + '</span><div class="pays pays3"><button type="button" data-pay="online" aria-pressed="' + (form.pay === "online") + '">' + tr("ادفع الحين", "Pay now") + '<small>' + tr("مدى · Apple Pay · بطاقة", "mada · Apple Pay · card") + '</small></button><button type="button" data-pay="cash" aria-pressed="' + (form.pay !== "card" && form.pay !== "online") + '">' + tr("كاش عند الاستلام", "Cash on delivery") + '</button><button type="button" data-pay="card" aria-pressed="' + (form.pay === "card") + '">' + tr("شبكة عند الاستلام", "Card on delivery") + '</button></div></div>' :
+      tr('<div class="fld"><span>الدفع عند الاستلام</span><div class="pays"><button type="button" data-pay="cash" aria-pressed="', '<div class="fld"><span>Pay on delivery</span><div class="pays"><button type="button" data-pay="cash" aria-pressed="') + (form.pay !== "card") + tr('">كاش</button><button type="button" data-pay="card" aria-pressed="', '">Cash</button><button type="button" data-pay="card" aria-pressed="') + (form.pay === "card") + tr('">شبكة</button></div></div>', '">Card</button></div></div>')) +
       tr('<label class="fld" for="cNote">ملاحظات <small>(اختياري)</small><textarea id="cNote" rows="2" placeholder="مثلاً: الخبز يكون حار">', '<label class="fld" for="cNote">Notes <small>(optional)</small><textarea id="cNote" rows="2" placeholder="e.g. I want the bread hot">') + esc(form.note) + '</textarea></label>' +
       tr('<div class="fld"><label for="cPromo">كود الخصم <small>(إذا عندك)</small></label><div class="pcode-row"><input id="cPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="اكتب الكود" value="', '<div class="fld"><label for="cPromo">Promo code <small>(optional)</small></label><div class="pcode-row"><input id="cPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Enter code" value="') + esc(promoRule ? promoRule.code : "") + '"><button class="btn btn-soft" type="button" id="cPromoBtn">' + (promoRule ? tr("شيل", "Remove") : tr("طبّق", "Apply")) + '</button></div><p class="promo-msg" id="cPromoMsg" aria-live="polite"></p></div>' +
       '<div class="box totals" id="cTot">' + checkoutTotals(t) + '</div>' +
@@ -3401,7 +3404,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       (o.status === "onway" && o.track && apiUrl() ? '<div class="trk"><div class="trk-map" id="trkMap"></div><div class="trk-info" id="trkInfo">' + trkInfo() + '</div></div>' : '') +
       (o.track && apiUrl() && o.status !== "delivered" && o.status !== "canceled" ? (o.push ? '<div class="r push-on">' + ic("bell") + '<span>' + tr("بيوصلك إشعار مع كل تغيير في حالة طلبك", "You will get a notification for every status change") + '</span></div>' :
         '<button class="btn btn-ghost pushbtn" type="button" id="pushMe">' + ic("bell") + '<span>' + tr("نبّهني لما تتغير حالة طلبي", "Notify me about my order") + '</span></button><p class="pushmsg" id="pushMsg"' + (pushWhy() && (isIOS() && !isApp()) ? '' : ' hidden') + '>' + esc(isIOS() && !isApp() ? pushWhy() : "") + '</p>') : '') +
-      (o.total || !o.viaLink ? tr('<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>الإجمالي · ', '<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>Total · ') + (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + tr(' عند الاستلام</span><b>', ' on delivery</span><b>') + rial(o.total || 0) + '</b></div>' : '') + '</div>' +
+      (o.total || !o.viaLink ? tr('<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>الإجمالي · ', '<div class="r" style="padding-top:12px;border-top:1px solid rgba(255,255,255,.1)"><span>Total · ') + (o.pay === "online" ? tr("مدفوع إلكترونياً", "Paid online") + '</span><b>' : (o.pay === "card" ? tr("شبكة", "Card") : tr("كاش", "Cash")) + tr(' عند الاستلام</span><b>', ' on delivery</span><b>')) + rial(o.total || 0) + '</b></div>' : '') + '</div>' +
       (o.walletCents ? '<p>مدفوع بالمحفظة '+moneyFromCents(o.walletCents)+' · المتبقي عند الاستلام '+moneyFromCents(Math.max(0,Math.round(o.total*100)-o.walletCents))+'</p>' : '') + '<div class="acts"><a class="btn btn-orange" href="tel:' + esc(S.phone) + '">' + ic("phone") + tr('اتصل على المحل</a><button class="btn btn-ghost" type="button" data-nav="home">رجوع للمتجر</button></div></div></div>', 'Call the store</a><button class="btn btn-ghost" type="button" data-nav="home">Back to store</button></div></div></div>');
   }
   // «قيّم الخدمة واقتراحاتك» (المالك ١٥ نوفمبر ٢٠٢٦): بعد الطلب على طول، نجوم سريعة + اقتراح (/suggest). تقييم الطلب الرسمي يبقى بعد التوصيل
@@ -3893,6 +3896,55 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   var checkoutAttempt=null;
   try{checkoutAttempt=JSON.parse(localStorage.getItem('ohod-checkout-attempt')||'null');}catch(e){}
   function saveCheckoutAttempt(value){checkoutAttempt=value;try{if(value){var saved=JSON.parse(JSON.stringify(value));delete saved.payload.walletToken;localStorage.setItem('ohod-checkout-attempt',JSON.stringify(saved));}else localStorage.removeItem('ohod-checkout-attempt');}catch(e){}}
+  // ---------- الدفع الإلكتروني (ميسّر): store.pay = {on, pk, v (نسخة نموذج الدفع), methods} ----------
+  function payReady(){ return !!(S.pay && S.pay.on && S.pay.pk && apiUrl() && !EMBED && !APP && !NATIVE); }
+  function loadPayLib(cb){
+    if (window.Moyasar) return cb(true);
+    var base = "https://cdn.moyasar.com/mpf/" + String(S.pay.v || "1.14.0") + "/moyasar.", done = false, fin = function(ok){ if (!done) { done = true; cb(ok); } };
+    var l = document.createElement("link"); l.rel = "stylesheet"; l.href = base + "css"; document.head.appendChild(l);
+    var sc = document.createElement("script"); sc.src = base + "js"; sc.onload = function(){ fin(!!window.Moyasar); }; sc.onerror = function(){ fin(false); }; document.head.appendChild(sc);
+    setTimeout(function(){ fin(!!window.Moyasar); }, 12000);
+  }
+  function openPay(j, info){
+    try { localStorage.setItem("ohod-pay-pend", JSON.stringify({ ref: j.payRef, total: j.total, phone: info.phone, items: info.items, free: info.free, pnote: info.pnote, lat: info.lat, lng: info.lng, cart: info.sentCart, at: Date.now() })); } catch(e){}
+    var old = $("paySheet"); if (old) old.remove();
+    var w = document.createElement("div");
+    w.innerHTML = '<div class="sheet" id="paySheet"><div class="panel pay-panel" role="dialog" aria-modal="true" aria-labelledby="payT"><div class="panel-head"><h2 id="payT">' + tr("ادفع طلبك", "Pay for your order") + '</h2><button class="btn btn-ghost" type="button" id="payClose">' + tr("رجوع", "Back") + '</button></div>' +
+      '<p class="pay-sum">' + tr("المبلغ", "Amount") + ' <b>' + rial(j.total) + '</b></p><div class="mysr-form"></div><p class="status" id="payMsg" aria-live="polite">' + tr("جاري تجهيز صفحة الدفع…", "Loading payment…") + '</p>' +
+      '<p class="hint">' + tr("الدفع آمن عن طريق ميسّر، وما نحفظ بيانات بطاقتك. لو ما تم الدفع، ما ينسجل الطلب ولا ينخصم شي.", "Secure payment by Moyasar. If payment fails, nothing is charged.") + '</p></div></div>';
+    document.body.appendChild(w.firstChild);
+    $("payClose").onclick = function(){ var x = $("paySheet"); if (x) x.remove(); };
+    loadPayLib(function(ok){
+      var m = $("payMsg"); if (!m) return;
+      if (!ok) { m.className = "status err"; m.textContent = tr("ما قدرنا نفتح صفحة الدفع. جرّب مرة ثانية أو اختر الدفع عند الاستلام.", "Could not load the payment form. Try again or pay on delivery."); return; }
+      m.textContent = "";
+      try {
+        window.Moyasar.init({ element: ".mysr-form", amount: j.amount, currency: "SAR", description: tr("طلب ", "Order ") + sv("name"), publishable_api_key: S.pay.pk,
+          callback_url: location.origin + location.pathname + "?payref=" + encodeURIComponent(j.payRef), methods: S.pay.methods || ["creditcard", "applepay"],
+          supported_networks: ["mada", "visa", "mastercard"], language: LANG === "en" ? "en" : "ar", metadata: { ref: j.payRef },
+          apple_pay: { country: "SA", label: sv("name"), validate_merchant_url: "https://api.moyasar.com/v1/applepay/initiate" } });
+      } catch(e){ m.className = "status err"; m.textContent = tr("صفحة الدفع ما اشتغلت، جرّب مرة ثانية.", "The payment form failed, try again."); }
+    });
+  }
+  // رجع من صفحة الدفع (callback_url?payref=…&id=…&status=…): نتأكد من الخادم ونسجّل الطلب
+  function payReturn(){
+    var q = new URLSearchParams(location.search), ref = q.get("payref"), id = q.get("id"); if (!ref || EMBED) return;
+    try { history.replaceState(null, "", location.pathname + location.hash); } catch(e){}
+    var pend = null; try { pend = JSON.parse(localStorage.getItem("ohod-pay-pend") || "null"); } catch(e){}
+    var fail = function(msg){ var x = document.createElement("div"); x.className = "dv-toast bad"; x.textContent = msg; document.body.appendChild(x); setTimeout(function(){ x.remove(); }, 7000); };
+    if (!id) return fail(tr("ما تم الدفع، وما انسجل الطلب. سلتك باقية تقدر تكمل.", "Payment not completed. Your cart is still here."));
+    fetchJSON(apiUrl() + "/pay/finish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref: ref, id: id }) }).then(function(j){
+      if (!j.ok) return fail(j.refunded ? tr("انخصم المبلغ بس الطلب ما انسجل (" + (j.code === "unavailable" ? "منتج خلص" : j.code === "closed" ? "المحل قفل" : "خطأ") + ")، ورجّعنا المبلغ لبطاقتك.", "The order could not be placed and your payment was refunded.")
+        : j.code === "pay_failed" || j.code === "not_paid" ? tr("ما تم الدفع، وما انسجل الطلب. سلتك باقية تقدر تكمل.", "Payment not completed. Your cart is still here.") : tr("ما قدرنا نتأكد من الدفع. لو انخصم المبلغ كلّم المحل.", "Could not confirm the payment. If you were charged, call the store."));
+      try { localStorage.removeItem("ohod-pay-pend"); } catch(e){}
+      var pp = pend && pend.ref === ref ? pend : {};
+      if (pp.items) recordHist(pp.items);
+      lastOrder = { no: j.orderNo, total: j.total, phone: pp.phone || "", pay: "online", paidOnline: true, at: Date.now(), status: "new", track: !!j.track, free: pp.free || "", printText: pp.pnote || "", lat: pp.lat, lng: pp.lng }; saveLast();
+      if (pp.cart && JSON.stringify(cart) === pp.cart) { cart = {}; saveCart(); }
+      if (pp.free && freeList === pp.free) setFree("");
+      stack = []; screen = "sent"; render();
+    });
+  }
   function sendOrder(){
     var btn = $("sendOrder"), phone = normPhone(form.phone), t = totals();
     $("sendErr").innerHTML = "";
@@ -3910,7 +3962,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var pnote = printNote(), fullNote = pnote ? pnote + (form.note ? "\n" + form.note : "") : form.note;
     // القائمة المكتوبة: تنرسل free، ونسخة منها في الملاحظات (الخادم القديم يتجاهل free؛ الجديد يشيل النسخة)
     var sentFree = freeList; if (sentFree) fullNote = ((fullNote ? fullNote + "\n" : "") + "🥬 " + sentFree).slice(0, 300);
-    var payload={items:items,phone:phone,name:form.name,details:form.details,note:fullNote,pay:form.pay,sub:form.sub||'call',lat:form.lat,lng:form.lng,walletAmount:walletCustomer?walletUseAmount:0};if(promoRule&&promoAmt(promoRule,t.s)>0)payload.promo=promoRule.code;if(sentFree)payload.free=sentFree;
+    if(form.pay==="online"&&!payReady())form.pay="cash";var payload={items:items,phone:phone,name:form.name,details:form.details,note:fullNote,pay:form.pay,sub:form.sub||'call',lat:form.lat,lng:form.lng,walletAmount:walletCustomer&&form.pay!=="online"?walletUseAmount:0};if(promoRule&&promoAmt(promoRule,t.s)>0)payload.promo=promoRule.code;if(sentFree)payload.free=sentFree;
     var signature=JSON.stringify(payload);
     if(checkoutAttempt&&checkoutAttempt.signature!==signature){
       if(!confirm('عندك طلب سابق ما تأكدت نتيجته. بنعيد تأكيد نفس الطلب السابق أولًا قبل إرسال أي طلب جديد. تبي تكمل؟'))return;
@@ -3923,6 +3975,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     fetchJSON(apiUrl()+'/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       .then(function(j){
         btn.disabled = false; btn.firstChild.textContent = tr("أرسل الطلب", "Place order");
+        // الدفع الإلكتروني: الخادم حفظ الطلب ورجّع رقم الدفع، والطلب ينسجل بعد ما يندفع
+        if (j.ok && j.pay && j.payRef) { saveCheckoutAttempt(null); openPay(j, { phone: phone, items: items, free: payload.free || "", pnote: pnote, lat: payload.lat, lng: payload.lng, sentCart: sentCart }); return; }
         if (j.ok) {
           if (!j.repeated) recordHist(items);
           lastOrder = { no: j.orderNo, dc: j.dc || "", total: j.total, phone: phone, pay: payload.pay, at: Date.now(), status: "new", track: !!j.track, free: payload.free || "", printText: pnote, lat: payload.lat, lng: payload.lng, walletCents:Math.round(usedWallet*100) }; saveLast(); rememberAddr();
@@ -4447,7 +4501,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   function dvDeliver(){
     var o = dOrder(drv.no); if (!o) { drv.view = "list"; return dvList(); }
-    var paidWallet=o.payment?Number(o.payment.wallet||0):Number(o.walletCents||0);o=Object.assign({},o,{total:Math.max(0,Math.round(o.total*100)-paidWallet)/100});
+    var paidWallet=o.payment?Number(o.payment.wallet||0):Number(o.walletCents||0);var paidOn=o.pay==="online"&&o.paid?Number(o.paid.amount||0):0;o=Object.assign({},o,{total:Math.max(0,Math.round(o.total*100)-paidWallet-paidOn)/100});
     var cash = o.pay !== "card", wa = o.phone ? "966" + String(o.phone).replace(/^0/, "") : "", ch = drv.given ? Math.round((drv.given - o.total) * 100) / 100 : null;
     var opts = [50, 100, 200, 500].filter(function(v){ return v >= o.total; }).slice(0, 3);
     return dvBack("list", tr("توصيل الطلب ", "Delivering ") + '<span dir="ltr">' + esc(o.no) + '</span>', esc(o.name || tr("زبون", "Customer"))) +
@@ -4456,7 +4510,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         (o.phone ? '<div class="two"><a class="dv-btn line" href="tel:' + esc(o.phone) + '">' + ic("phone") + tr("اتصل", "Call") + '</a><a class="dv-btn wa" target="_blank" rel="noopener" href="https://wa.me/' + esc(wa) + '?text=' + encodeURIComponent(tr("السلام عليكم، وصلت عند البيت. معك مندوب ", "Hello, I have arrived. This is the driver from ") + sv("name") + '.') + '">' + tr("«وصلت» بالواتساب", "“I’m here” on WhatsApp") + '</a></div>' : '') + '</section>' +
       (o.note ? '<div class="dv-note">' + ic("tag") + esc(o.note) + '</div>' : '') + freeOrdHTML(o) +
       (o.edits && o.edits.length ? '<div class="dv-note blue">' + tr("الطلب تعدّل، والإجمالي الحين ", "The order was changed, total is now ") + num(o.total) + ' ' + tr("ر.س", "SAR") + '</div>' : '') +
-      (paidWallet ? '<p class="hint">مدفوع من المحفظة '+moneyFromCents(paidWallet)+'، والمبلغ المعروض أدناه هو المتبقي فقط.</p>' : '') + (o.total===0 ? '<section class="pay"><b>مدفوع بالكامل بالمحفظة — لا تحصّل مبلغًا إضافيًا</b></section>' : cash ? '<section class="pay"><span>' + tr("حصّل من الزبون · كاش", "Collect from customer · cash") + '</span><b>' + num(o.total) + ' <small>' + tr("ر.س", "SAR") + '</small></b><span class="s2">' + tr("الزبون عطاك؟ اضغط ويطلع لك كم ترجّع", "Customer paid with? Tap to see the change") + '</span>' +
+      (paidOn ? '<div class="dv-note blue">'+tr("مدفوع إلكترونياً ","Paid online ")+moneyFromCents(paidOn)+(o.total>0?tr("، حصّل الفرق بس.",", collect only the difference."):tr("، لا تحصّل شي من الزبون."," — collect nothing."))+'</div>' : '') + (paidWallet ? '<p class="hint">مدفوع من المحفظة '+moneyFromCents(paidWallet)+'، والمبلغ المعروض أدناه هو المتبقي فقط.</p>' : '') + (o.total===0 ? '<section class="pay"><b>مدفوع بالكامل بالمحفظة — لا تحصّل مبلغًا إضافيًا</b></section>' : cash ? '<section class="pay"><span>' + tr("حصّل من الزبون · كاش", "Collect from customer · cash") + '</span><b>' + num(o.total) + ' <small>' + tr("ر.س", "SAR") + '</small></b><span class="s2">' + tr("الزبون عطاك؟ اضغط ويطلع لك كم ترجّع", "Customer paid with? Tap to see the change") + '</span>' +
         '<div class="giv">' + opts.map(function(v){ return '<button type="button" data-dgive="' + v + '" aria-pressed="' + (drv.given === v) + '">' + num(v) + '</button>'; }).join("") + '</div>' +
         (ch != null ? '<div class="chg"><span>' + tr("رجّع له", "Give back") + '</span><b>' + num(ch) + ' ' + tr("ر.س", "SAR") + '</b></div>' : '') + '</section>'
         : '<section class="pay card"><span>' + tr("الدفع شبكة عند الاستلام", "Card payment on delivery") + '</span><b>' + num(o.total) + ' <small>' + tr("ر.س", "SAR") + '</small></b><span class="s2">' + tr("جهّز جهاز الشبكة قبل لا تنزل", "Have the card machine ready") + '</span></section>') +
@@ -4830,6 +4884,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function opId(){ return Array.from(crypto.getRandomValues(new Uint8Array(16)),function(b){return b.toString(16).padStart(2,'0');}).join(''); }
   function collectionLabel(o){
     var p=o.payment;if(!p && o.walletCents){var rest=Math.max(0,Math.round(o.total*100)-o.walletCents);p={cash:o.pay==='cash'?rest:0,card:o.pay==='card'?rest:0,wallet:o.walletCents};}
+    if(o.pay==='online'){var pa=o.paid?Number(o.paid.amount||0):0,rr=Math.max(0,Math.round(o.total*100)-pa-Number(o.walletCents||0));return tr('مدفوع إلكترونياً','Paid online')+(pa?' '+num(pa/100):'')+(rr>0?' + '+num(rr/100)+' '+tr('كاش','Cash'):'');}
     if(!p)return o.pay==='card'?tr('شبكة','Card'):tr('كاش','Cash');
     return [[p.cash,tr('كاش','Cash')],[p.card,tr('شبكة','Card')],[p.wallet,tr('محفظة','Wallet')]].filter(function(x){return x[0]>0;}).map(function(x){return num(x[0]/100)+' '+x[1];}).join(' + ');
   }
@@ -5324,6 +5379,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     try { var gp = (location.search.match(/[?&]go=([^&]+)/) || [])[1]; if (gp && !EMBED && mode === "store") { gp = decodeURIComponent(gp); history.replaceState(null, "", location.pathname + location.hash);
       if (gp === "offers") { chip = "offers"; show("home"); } else if (gp === "cart") { show("cart"); } else if (/^[oc]:/.test(gp) && catOf(gp.slice(2))) { openCat = gp.slice(2); openSub = ""; show("cat"); } } } catch(e){}
     try { trackLink(); } catch(e){}
+    try { payReturn(); } catch(e){}
     try { staffRestore(); } catch(e){}
   }).catch(function(){ dataReady = true; if (EMBED) refresh(); });
   if (window.claude && claude.use) {
