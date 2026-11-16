@@ -1988,7 +1988,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   // ترتيب العرض: المتوفر أول، وبعده اللي له صورة (عشان أول ما يشوفه الزبون يكون بصور)
   // «الرف الذهبي»: المتوفر أول، ثم المنتج بصورة، ثم الأهم (rk: المبيعات والسلة والأساسيات، tools/daily/popularity.py) مع دفعة للعروض
   function shelfScore(p){ return (Number(p.rk) || 0) + (isOffer(p) ? 120 : 0); }
-  function shelfSort(a, b){ return (avail(b) - avail(a)) || ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)) || (shelfScore(b) - shelfScore(a)); }
+  // ترتيب الرف (المالك ١٦ نوفمبر ٢٠٢٦): المتوفر، ثم اللي عليه عرض، ثم المصوّر، وكل مجموعة بالأكثر طلباً (rk). نفس tools/daily/shelf_order.py عشان تطبيق الآيفون
+  function shelfSort(a, b){ return (avail(b) - avail(a)) || ((isOffer(b) ? 1 : 0) - (isOffer(a) ? 1 : 0)) || ((hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0)) || ((Number(b.rk) || 0) - (Number(a.rk) || 0)); }
   function isOffer(p){ return onSale(p) || !!multiOf(p); }
   // الرئيسية (طلب المالك ١٥ نوفمبر ٢٠٢٦): أي خصم توفيره أقل من ٢ ريال ما يطلع في الواجهة الرئيسية (يبقى في صفحة العروض والأقسام)
   function offSave(p){ var mo = multiOf(p); return onSale(p) ? p.old - p.price : mo ? mo.n * p.price - mo.price : 0; }
