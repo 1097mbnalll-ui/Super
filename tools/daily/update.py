@@ -39,6 +39,8 @@ def read_rows(path):
         if not r or not r[head['اسم الصنف']]: continue
         g = lambda k: r[head[k]] if k in head and head[k] < len(r) else None
         price = g('السعر') if g('السعر') is not None else g('سعر البيع')
+        # ملف ١٥ نوفمبر ٢٠٢٦: عمود السعر باسم الفرع («400-متاجر أحد - فرع الرمال2»)
+        if price is None: price = next((r[i] for k, i in head.items() if re.match(r'^\d+\s*-', k) and i < len(r)), None)
         try: price = float(price)
         except (TypeError, ValueError): price = 0
         try: qty = float(g('الكمية المتوفرة') or 0)
@@ -52,6 +54,8 @@ MERGED = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'merged.json')
 # عروض الرف من المالك (السعر العادي والعرض)، ما يغيّرها ملف الكاشير
 _sp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shelf_offers.json')
 KEEP_OFFERS = '--keep-offers' in sys.argv
+# --all-on (قرار المالك ١٦ نوفمبر ٢٠٢٦، الافتتاح التجريبي «خلّ الكل متوفر»): الملف يحدّث الأسعار ويضيف الجديد بس، وما يقلب أي منتج «نفد»
+ALL_ON = '--all-on' in sys.argv
 _cp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'consumables.json')
 _cj = json.load(open(_cp, encoding='utf-8')) if os.path.exists(_cp) else {}
 CONSUM = set(_cj.get('cats', [])); CONSUM_SUB = set(_cj.get('subs', [])); CONSUM_IDS = set(_cj.get('ids', []))
@@ -180,6 +184,10 @@ def main(data_path, xlsx, dry=False):
         avail = qty_of[b['id']] > 0
         if bool(b.get('stock')) != avail: b['stock'] = avail; rep['stock_' + ('on' if avail else 'off')] += 1
         rep['pack_rows'] += 1
+    if ALL_ON:
+        for p in ps:
+            if not p.get('stock') and not p.get('soon'): p['stock'] = True; rep['all_on'] += 1
+        rep['stock_off'] = 0
     if not dry: json.dump(d, open(data_path, 'w'), ensure_ascii=False, separators=(',', ':'))
     # الكميات بالعدد للخادم (D1 جدول stock): python3 tools/daily/d1_stock.py الملف_هذا
     out = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--stock-out=')), None)
