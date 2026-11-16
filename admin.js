@@ -1465,20 +1465,31 @@
     var sub = oEdit.lines.reduce(function(a, l){ return a + l.qty * l.price; }, 0);
     var w = document.createElement("div");
     w.innerHTML = '<div class="sheet" id="oSheet"><div class="panel" role="dialog" aria-modal="true" aria-labelledby="oeTitle"><div class="panel-head"><h2 id="oeTitle">تعديل الطلب <span dir="ltr">' + esc(oEdit.no) + '</span></h2><button class="btn btn-ghost" type="button" data-oeback>رجوع</button></div>' +
-      '<p class="hint">عدّل الاسم أو الكمية أو السعر أو أضف منتج، حتى بعد التوصيل (مثل فرق سعر أو اسم غلط). المخزون والتحليل والتحصيل يتعدلون معه.</p><div class="oe-lines">' +
+      '<p class="hint">عدّل الاسم أو الكمية أو السعر أو أضف منتج، حتى بعد التوصيل (مثل فرق سعر أو اسم غلط). المخزون والتحليل والتحصيل يتعدلون معه.</p>' +
+      '<section class="nf-sec oe-add"><b>أضف منتج للطلب</b><input class="search" id="oeQ" type="search" placeholder="اكتب اسم المنتج أو الباركود…" autocomplete="off" value="' + esc(oEdit.q || "") + '"><div class="nf-res" id="oeRes"></div></section><div class="oe-lines">' +
       oEdit.lines.map(function(l, i){ return '<div class="oe-row"><span class="nm"><input class="oe-name" data-oen="' + i + '" value="' + esc(l.name) + '" aria-label="اسم المنتج" maxlength="120"> <small class="hint">' + esc(l.unit || "") + (isCustom(l) ? ' · من عندي' : '') + '</small></span><span class="stp"><button type="button" data-oeq="' + i + ':-1" aria-label="نقص">−</button><b>' + l.qty + '</b><button type="button" data-oeq="' + i + ':1" aria-label="زيادة">+</button></span><label class="pr">السعر<input type="number" min="0" step="0.25" inputmode="decimal" data-oep="' + i + '" value="' + l.price + '"></label><button class="del" type="button" data-oedel="' + i + '">شيل</button></div>'; }).join("") + '</div>' +
-      '<div class="actions"><select id="oeAdd" aria-label="أضف منتج"><option value="">+ أضف منتج…</option>' + pOpts("") + '</select><label class="pr">التوصيل<input type="number" min="0" step="0.5" id="oeFee" value="' + oEdit.fee + '"></label></div>' + customFormHTML("oe", oEdit.cOpen) +
+      '<div class="actions"><label class="pr">التوصيل<input type="number" min="0" step="0.5" id="oeFee" value="' + oEdit.fee + '"></label></div>' + customFormHTML("oe", oEdit.cOpen) +
       (oEdit.hasFree ? '<label class="o-free" style="display:grid;gap:6px"><b>🥬 طلب بالكتابة (من الزبون)</b><textarea id="oeFree" rows="4" maxlength="600">' + esc(oEdit.free) + '</textarea><small class="hint">سعّر الأغراض بـ«منتج من عندي» فوق، وبعدها امسح النص (أو خلّه للمندوب).</small></label>' : '') +
       '<div class="o-lines"><div class="sum grand"><span>الإجمالي الجديد</span><b></b><span id="oeTot">' + num(Math.round((sub + Number(oEdit.fee || 0)) * 100) / 100) + ' ر.س</span></div></div>' +
       '<label class="oe-fix" style="display:flex;gap:8px;align-items:center;margin:8px 0;font-size:.9rem"><input type="checkbox" id="oeFix"' + (oEdit.fix ? ' checked' : '') + '> صحّح المنتج في المتجر بعد (الاسم والسعر الجديد يطلع للزبائن الجايين)</label>' +
       '<div class="actions"><button class="btn btn-brand" type="button" id="oeSave">احفظ التعديل</button><span class="status" id="oeMsg"></span></div></div></div>';
     document.body.appendChild(w.firstChild);
-    $("oeAdd").addEventListener("change", function(){ var p = dById(this.value); if (!p) return; var ex = oEdit.lines.filter(function(l){ return l.id === p.id && l.price === p.price; })[0]; if (ex) ex.qty++; else oEdit.lines.push({ id: p.id, name: p.name, unit: p.unit, qty: 1, price: p.price }); renderEdit(); });
+    // إضافة منتج بالبحث (مراجعة ١٦ نوفمبر: القائمة المنسدلة كان فيها ١١ ألف منتج ومستحيل تختار منها بالجوال)
+    $("oeQ").addEventListener("input", function(){ oEdit.q = this.value; oeResRender(); });
+    $("oeQ").addEventListener("keydown", function(e){ if (e.key === "Enter") { var f = document.querySelector("#oeRes [data-oeadd]"); if (f) { e.preventDefault(); f.click(); } } });
+    oeResRender();
     $("oeFee").addEventListener("input", function(){ oEdit.fee = Number(this.value || 0); upTot(); });
     if ($("oeFree")) $("oeFree").addEventListener("input", function(){ oEdit.free = this.value; });
     $("oeFix").addEventListener("change", function(){ oEdit.fix = this.checked; });
     Array.prototype.forEach.call(document.querySelectorAll("[data-oen]"), function(inp){ inp.addEventListener("input", function(){ oEdit.lines[Number(this.dataset.oen)].name = this.value; }); });
     Array.prototype.forEach.call(document.querySelectorAll("[data-oep]"), function(inp){ inp.addEventListener("input", function(){ oEdit.lines[Number(this.dataset.oep)].price = Number(this.value || 0); upTot(); }); });
+  }
+  function oeResRender(){
+    var el = $("oeRes"); if (!el || !oEdit) return; var q = String(oEdit.q || "").trim();
+    if (!q) { el.innerHTML = ''; return; }
+    var res = admFind(q, draft.products).slice(0, 12);
+    el.innerHTML = res.length ? res.map(function(p){ var inO = oEdit.lines.filter(function(l){ return l.id === p.id; })[0];
+      return '<button type="button" class="nf-pr" data-oeadd="' + p.id + '">' + imgTag(p.img, "") + '<span class="nm">' + esc(p.name) + ' <small class="hint">' + esc(p.unit || "") + '</small></span>' + (inO ? '<em>بالطلب ' + num(inO.qty) + '</em>' : !p.stock ? '<em class="out">مو متوفر</em>' : '') + '<b>' + num(p.price) + ' ر.س</b><span class="plus">+</span></button>'; }).join("") : '<p class="hint">ما لقينا منتج بهذا الاسم. تقدر تضيفه من «+ منتج من عندي» تحت.</p>';
   }
   function upTot(){ var sub = oEdit.lines.reduce(function(a, l){ return a + l.qty * l.price; }, 0); $("oeTot").textContent = num(Math.round((sub + Number(oEdit.fee || 0)) * 100) / 100) + " ر.س"; }
   document.addEventListener("click", function(e){
@@ -1487,6 +1498,9 @@
     if ((t = e.target.closest("[data-oedit]"))) { openEdit(t.dataset.oedit); return; }
     if (!oEdit) return;
     if (e.target.closest("[data-oeback]")) { var no0 = oEdit.no; oEdit = null; openOrder(no0); return; }
+    if ((t = e.target.closest("[data-oeadd]"))) { var pa = dById(t.dataset.oeadd); if (!pa) return; var exa = oEdit.lines.filter(function(l){ return l.id === pa.id && l.price === pa.price; })[0];
+      if (exa) exa.qty++; else oEdit.lines.push({ id: pa.id, name: pa.name, unit: pa.unit, qty: 1, price: pa.price });
+      oEdit.q = ""; renderEdit(); sToast("انضاف «" + pa.name + "» للطلب"); var qi = $("oeQ"); if (qi) qi.focus(); return; }
     if ((t = e.target.closest("[data-oeq]"))) { var k = t.dataset.oeq.split(":"), l = oEdit.lines[Number(k[0])]; l.qty = Math.max(1, l.qty + Number(k[1])); renderEdit(); return; }
     if ((t = e.target.closest("[data-oedel]"))) { oEdit.lines.splice(Number(t.dataset.oedel), 1); renderEdit(); return; }
     if (e.target.closest("#oeSave")) { var m = $("oeMsg"), b = $("oeSave"); if (!oEdit.lines.length && !(oEdit.hasFree && String(oEdit.free).trim())) { m.className = "status err"; m.textContent = "الطلب لازم فيه منتج واحد على الأقل. لو تبغى تلغيه استخدم «إلغاء الطلب»."; return; }
