@@ -326,6 +326,10 @@ struct StoreInfo: Sendable {
     var liveHead = false
     /// صور البنرات بنفس تصميم الموقع (store.app.banImg = {id: "ban/<id>.png?v=…"}): تنولد من الموقع مع كل تحديث، فالبنرات تطابق الموقع بدون تحديث للتطبيق
     var banImg: [String: String] = [:]
+    /// إطفاء أي ميزة في التطبيق من ملف المتجر بدون تحديث (المالك ١٦ نوفمبر ٢٠٢٦: «أقدر أحذفها وأخليها على مزاجي»):
+    /// store.app.off = ["banners","banImg","featured","sky","intro","rate","wallet","favorites","addresses","subs","cancel","promoPush","search","cats","catgrid","grid","catoffers","print","map","notes","promo"]
+    var off: Set<String> = []
+    func isOff(_ k: String) -> Bool { off.contains(k) }
     /// سما الرياض في رئيسية الموقع (store.skyHome): ديمة والبنرات تنعرض داخل السما فوق، مع الرأس
     var skyHome = false
     /// خدمة الطباعة (store.print): «قريباً»، وأقل طلب لو السلة طباعة بس
@@ -474,6 +478,7 @@ enum CatalogParser {
         if let app = s["app"] as? [String: Any] {
             store.liveHead = (app["liveHead"] as? Bool) ?? false
             if let bi = app["banImg"] as? [String: Any] { store.banImg = bi.compactMapValues { str($0) } }
+            if let o = app["off"] as? [Any] { store.off = Set(o.compactMap { str($0) }) }
             if (app["web"] as? Bool) == true { store.webScreens = ["*"] }
             else if let l = app["web"] as? [Any] { store.webScreens = Set(l.compactMap { str($0) }) }
             // من 1.2: store.app.home = "web" يخلي الرئيسية من الموقع من أعلى الشاشة (1.1 ما يقراه، فيه شريط عنوان أبيض)

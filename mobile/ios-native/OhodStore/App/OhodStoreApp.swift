@@ -91,7 +91,7 @@ struct RootView: View {
         .onAppear {
             guard !introChecked else { return }
             introChecked = true
-            showIntro = IntroView.shouldShow(hasOrders: !orders.orders.isEmpty)
+            showIntro = !catalog.store.isOff("intro") && IntroView.shouldShow(hasOrders: !orders.orders.isEmpty)
         }
         .task {
             await catalog.load()

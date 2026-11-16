@@ -300,7 +300,7 @@ struct BannerCarousel: View {
     static let height: CGFloat = 176
 
     var body: some View {
-        let banners = makeBanners()
+        let banners = catalog.store.isOff("banners") ? [] : makeBanners()
         let shown = current ?? banners.first?.id
         if !banners.isEmpty {
             VStack(spacing: 8) {
@@ -527,11 +527,11 @@ struct BannerCarousel: View {
         var order = store.promos.filter { defaults.contains($0.id) }
         for id in defaults where !order.contains(where: { $0.id == id }) { order.append(PromoSlot(id: id, on: true)) }
         var list = order.filter(\.on).compactMap { built[$0.id] }
-        if let g = featured {
+        if let g = featured, !store.isOff("featured") {
             list.insert(HomeBanner(id: "featured", kicker: "", title: g.name, subtitle: "", button: "", style: .deep, images: [], route: nil, group: g), at: 0)
         }
         // نفس تصميم بنرات الموقع (المالك ١٦ نوفمبر ٢٠٢٦: «طابقها اللي بالموقع»): صورة البنر من الموقع بدل الرسم، والضغط يفتح نفس الوجهة
-        for i in list.indices {
+        for i in list.indices where !store.isOff("banImg") {
             if let u = store.banImg[list[i].id], let url = AppConfig.asset(u) { list[i].picture = url; list[i].showText = false }
         }
         return list

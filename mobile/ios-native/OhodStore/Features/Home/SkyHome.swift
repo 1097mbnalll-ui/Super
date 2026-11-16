@@ -258,9 +258,9 @@ struct SkyHome: View {
         VStack(spacing: 0) {
             head
             greeting
-            if showFeatured, let group {
+            if showFeatured, !catalog.store.isOff("featured"), let group {
                 // نفس تصميم الموقع لو صورته موجودة (store.app.banImg.featured)، وإلا الرسم الأصلي
-                if let u = catalog.store.banImg["featured"], let url = AppConfig.asset(u) {
+                if !catalog.store.isOff("banImg"), let u = catalog.store.banImg["featured"], let url = AppConfig.asset(u) {
                     Button { path.append(Route.live("g:" + group.id)) } label: {
                         RemoteImage(url: url, maxPixel: 1200, contentMode: .fill, blendWhite: false)
                             .frame(maxWidth: .infinity).frame(height: BannerCarousel.height)

@@ -6,10 +6,16 @@ struct FavoriteButton: View {
     /// صفحة المنتج: زر أكبر بدون دائرة (في شريط التنقل)
     var large = false
     @Environment(Favorites.self) private var favorites
+    @Environment(CatalogStore.self) private var catalog
 
     var body: some View {
+        // المفضلة تنطفي من ملف المتجر (store.app.off فيه "favorites")
+        if !catalog.store.isOff("favorites") { heart }
+    }
+
+    private var heart: some View {
         let on = favorites.contains(productID)
-        Button {
+        return Button {
             withAnimation(.snappy(duration: 0.25)) { favorites.toggle(productID) }
             Haptics.selected()
         } label: {

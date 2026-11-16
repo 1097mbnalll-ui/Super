@@ -19,7 +19,7 @@ struct AccountView: View {
                 if let current = orders.current {
                     CurrentOrderCard(order: current)
                         .transition(.opacity.combined(with: .scale(scale: 0.97)))
-                } else if let rate = orders.rateCard {
+                } else if let rate = orders.rateCard, !catalog.store.isOff("rate") {
                     // الطلب وصل: «كيف كانت تجربتك؟» (أو شكراً + تعديل خلال ٢٤ ساعة)
                     RateOrderCard(orderNo: rate.no) { orders.skipRating(rate) }
                         .transition(.opacity.combined(with: .scale(scale: 0.97)))
@@ -56,13 +56,17 @@ struct AccountView: View {
 
                 // المفضلة وعناويني (على الجوال بس)، مثل acctLinks في الموقع
                 VStack(spacing: 0) {
+                    if !catalog.store.isOff("favorites") {
                     NavigationLink(value: Route.favorites) {
                         row("المفضلة", systemImage: "heart", value: favoritesCount == 0 ? "فاضية" : "\(favoritesCount) منتج")
                     }
                     Divider().padding(.trailing, 52)
+                    }
+                    if !catalog.store.isOff("addresses") {
                     NavigationLink(value: Route.addresses) {
                         row("عناويني", systemImage: "mappin.and.ellipse",
                             value: orders.addresses.isEmpty ? "أضف عنوان" : orders.addresses.prefix(2).map(\.title).joined(separator: "، ") + (orders.addresses.count > 2 ? "…" : ""))
+                    }
                     }
                 }
                 .foregroundStyle(Theme.ink)
@@ -98,10 +102,12 @@ struct AccountView: View {
                         row("اللغة · Language", systemImage: "globe", value: AppLang.english ? "English" : "العربية")
                     }
                     Divider().padding(.trailing, 52)
+                    if !catalog.store.isOff("wallet") {
                     Button { showWallet = true } label: {
                         row("محفظتي والكاش باك", systemImage: "wallet.pass")
                     }
                     Divider().padding(.trailing, 52)
+                    }
                     Link(destination: URL(string: "privacy.html", relativeTo: AppConfig.site)!.absoluteURL) {
                         row("سياسة الخصوصية", systemImage: "hand.raised")
                     }
