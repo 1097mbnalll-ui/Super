@@ -27,51 +27,19 @@ const D = { pin: '1357' };
 const mkOrder = async (phone, hdr) => { const r = await call('/order', { items: { pantry0: 3 }, phone, ...loc }, hdr); ok(r.ok, 'طلب ' + phone + ': ' + JSON.stringify(r.code || 'ok')); return r.orderNo; };
 const toWay = async (no) => { await call('/driver/status', { ...D, no, status: 'accepted' }); return call('/driver/status', { ...D, no, status: 'onway' }); };
 
-// ١) طلب الموقع: له رمز، الزبون يشوفه، والمندوب ما يشوفه
+// رمز الاستلام موقوف بقرار المالك (١٦ نوفمبر ٢٠٢٦): ما ينولد رمز، والمندوب يسلّم بدونه، وفحص المكان باقي
 const o1 = await mkOrder('0557200001');
-const code = rec(o1).dc; ok(/^\d{4}$/.test(code), 'الطلب له رمز ٤ أرقام: ' + code);
-let tk = await call('/track', { no: o1, phone: '0557200001' }); ok(tk.dc === code, 'الزبون يشوف الرمز في المتابعة');
-tk = await call('/track', { no: o1, phone: '0550000000' }); ok(!tk.ok && !tk.dc, 'جوال غلط ما يشوف الرمز');
-let dl = await call('/driver/orders', D); let dO = dl.orders.find((o) => o.no === o1);
-ok(dO && dO.needCode === true && dO.dc === undefined && !JSON.stringify(dl).includes('"dc"'), 'المندوب يعرف إن الطلب يحتاج رمز وما يشوف الرمز نفسه');
-ok((await toWay(o1)).ok, 'في الطريق');
-// ٢) بدون رمز / رمز غلط: ما يسلّم
-let st = await call('/driver/status', { ...D, no: o1, status: 'delivered' }); ok(!st.ok && st.code === 'need_code', 'بدون رمز مرفوض: ' + st.code);
-const wrong = code === '1234' ? '4321' : '1234';
-st = await call('/driver/status', { ...D, no: o1, status: 'delivered', code: wrong }); ok(!st.ok && st.code === 'bad_code', 'رمز غلط مرفوض: ' + st.code);
-ok(sq.prepare('SELECT status FROM orders WHERE no = ?').get(N(o1)).status === 'onway', 'الطلب باقي في الطريق');
-// ٣) الرمز الصح (بأرقام عربية) وقريب من البيت: يسلّم بدون تنبيه
-const ar = code.replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
-st = await call('/driver/status', { ...D, no: o1, status: 'delivered', code: ar, lat: 24.8402, lng: 46.8301 }); ok(st.ok, 'الرمز الصح يسلّم: ' + JSON.stringify(st.code || 'ok'));
-let ck = sq.prepare('SELECT * FROM dchecks WHERE no = ?').get(N(o1)); ok(ck && ck.code === 1 && ck.dist < 50 && ck.warn === 0, 'الفحص: بالرمز وقريب: ' + JSON.stringify(ck));
-tk = await call('/track', { no: o1, phone: '0557200001' }); ok(tk.ok && !tk.dc, 'بعد التسليم الرمز ما يرجع');
-let ad = await call('/admin/orders', { ...A, limit: 20 }); let aO = ad.orders.find((o) => o.no === o1); ok(aO && aO.dchk && aO.dchk.code === true && aO.dchk.warn === false, 'الإدارة تشوف «سلّم بالرمز»');
-
-// ٤) بعيد عن البيت: يسلّم بس ينبّه الإدارة
+ok(!rec(o1).dc, 'الطلب بدون رمز');
+let tk = await call('/track', { no: o1, phone: '0557200001' }); ok(tk.ok && !tk.dc, 'المتابعة بدون رمز');
+let dl = await call('/driver/orders', D); let dO = dl.orders.find((o) => o.no === o1); ok(dO && dO.needCode === false, 'المندوب ما يُطلب منه رمز');
+await toWay(o1);
+let st = await call('/driver/status', { ...D, no: o1, status: 'delivered', lat: 24.86, lng: 46.83 }); ok(st.ok, 'يسلّم بدون رمز');
+let ck = sq.prepare('SELECT * FROM dchecks WHERE no = ?').get(N(o1)); ok(ck && ck.dist > 2000 && ck.warn === 1 && ck.skip === '', 'فحص المكان باقي (بعيد = تنبيه)');
 const o2 = await mkOrder('0557200002'); await toWay(o2);
-st = await call('/driver/status', { ...D, no: o2, status: 'delivered', code: rec(o2).dc, lat: 24.86, lng: 46.83 }); ok(st.ok, 'بالرمز وهو بعيد: يسلّم');
-ck = sq.prepare('SELECT * FROM dchecks WHERE no = ?').get(N(o2)); ok(ck && ck.dist > 2000 && ck.warn === 1, 'ينحفظ «بعيد» وتنبيه: ' + JSON.stringify(ck && [ck.dist, ck.warn]));
-
-// ٥) الزبون ما عنده الرمز: يسلّم بسبب، ويطلع للإدارة
-const o3 = await mkOrder('0557200003'); await toWay(o3);
-st = await call('/driver/status', { ...D, no: o3, status: 'delivered', skip: 'الزبون ما فتح الموقع' }); ok(st.ok, 'بدون رمز مع سبب: يسلّم');
-ck = sq.prepare('SELECT * FROM dchecks WHERE no = ?').get(N(o3)); ok(ck && ck.code === 0 && ck.skip === 'الزبون ما فتح الموقع' && ck.warn === 1, 'ينحفظ السبب وتنبيه');
-
-// ٦) تخمين الرمز: بعد ٦ محاولات يوقف
-const o4 = await mkOrder('0557200004'); await toWay(o4);
-const c4 = rec(o4).dc; let lastCode = '';
-for (let i = 0; i < 8; i++) { const g = String(1000 + i); if (g === c4) continue; lastCode = (await call('/driver/status', { ...D, no: o4, status: 'delivered', code: g })).code; }
-ok(lastCode === 'slow_down', 'التخمين يوقف بعد محاولات: ' + lastCode);
-
-// ٧) طلب من التطبيق (ما يعرض الرمز للحين) أو من الإدارة: بدون رمز، والتسليم عادي
-const o5 = await mkOrder('0557200005', { Origin: 'capacitor://localhost' });
-ok(o5 && !rec(o5).dc, 'طلب التطبيق بدون رمز');
-await toWay(o5); st = await call('/driver/status', { ...D, no: o5, status: 'delivered' }); ok(st.ok, 'طلب التطبيق يسلّم بدون رمز');
-const o6 = (await call('/admin/order-new', { ...A, source: 'whatsapp', phone: '0557200006', lines: [{ id: 'pantry0', qty: 1, price: 10 }] })).order;
-ok(o6 && !o6.dc, 'طلب الواتساب بدون رمز');
-// ٨) الإدارة تقدر تسلّم بدون رمز، وتعديل الطلب ما يمسح الرمز
-const o7 = await mkOrder('0557200007'); const c7 = rec(o7).dc;
-ok((await call('/admin/order-edit', { ...A, no: o7, lines: [{ id: 'pantry0', qty: 4, price: 10 }] })).ok && rec(o7).dc === c7, 'تعديل الطلب يحافظ على الرمز');
-st = await call('/driver/status', { ...A, no: o7, status: 'delivered' }); ok(st.ok, 'الإدارة تسلّم بدون رمز');
+st = await call('/driver/status', { ...D, no: o2, status: 'delivered', lat: 24.8402, lng: 46.8301 }); ck = sq.prepare('SELECT * FROM dchecks WHERE no = ?').get(N(o2));
+ok(st.ok && ck.warn === 0, 'قريب من البيت: بدون تنبيه');
+// طلب قديم انحفظ له رمز قبل الإيقاف: يتسلّم بدونه
+const o3 = await mkOrder('0557200003'); const r3 = rec(o3); r3.dc = '1234'; sq.prepare('UPDATE orders SET data = ? WHERE no = ?').run(JSON.stringify(r3), N(o3)); await toWay(o3);
+st = await call('/driver/status', { ...D, no: o3, status: 'delivered' }); ok(st.ok, 'طلب له رمز قديم يتسلّم بدونه');
 const v = await call('/admin/verify', A); ok(v.ok && v.clean, 'التحليل مطابق');
 console.log(fails ? fails + ' فشل' : 'كل الفحوص نجحت'); process.exit(fails ? 1 : 0);

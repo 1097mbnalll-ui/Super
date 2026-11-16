@@ -157,7 +157,7 @@ export default {
         try {
           await ensureSchema(env);
           // رمز الاستلام (المالك ١٦ نوفمبر ٢٠٢٦): الزبون يشوفه في صفحة طلبه، والمندوب يكتبه عند التسليم. للموقع بس، لأن تطبيق الآيفون الحالي ما يعرضه
-          if (!/^(capacitor:|https?:\/\/localhost)/.test(origin)) record.dc = String(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000));
+          if (DELIVERY_CODE && !/^(capacitor:|https?:\/\/localhost)/.test(origin)) record.dc = String(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000));
           await withCost(env, record);
           const need = needOf(record);
           stockBefore = await readStock(env, Object.keys(need));
@@ -211,7 +211,7 @@ export default {
           out.subs = offs.map((o) => { const l = (rec.lines || []).find((x) => x.id === o.line_id), t = byId[o.to_id]; return l && t ? { id: o.id, name: l.name, qty: l.qty, price: l.price, to: { id: t.id, name: t.name, unit: t.unit || "", price: Number(t.price), img: t.img || "" }, diff: round2((Number(t.price) - Number(l.price)) * l.qty), at: o.created } : null; }).filter(Boolean);
         }
       }
-      { const r1 = safeJson(row.data); if (r1 && r1.dc && ["new", "accepted", "onway"].includes(row.status)) out.dc = String(r1.dc); }
+      { const r1 = safeJson(row.data); if (DELIVERY_CODE && r1 && r1.dc && ["new", "accepted", "onway"].includes(row.status)) out.dc = String(r1.dc); }
       if (row.status === "onway") { try { out.driver = await driverFor(env, n, safeJson(row.data), row.drv); } catch { /* التتبع إضافة، ما يوقف الحالة */ } }
       // تقييم الطلب بعد التوصيل: التقييم المحفوظ (لو فيه) وهل يقدر يقيّم أو يعدّل الحين
       if (row.status === "delivered") { try { const rt = await env.DB.prepare("SELECT * FROM ratings WHERE no = ?").bind(n).first(); out.rating = rt ? ratingOut(rt) : null; out.canRate = rateOpen(rt, row.updated, Date.now()); } catch { /* التقييم إضافة */ } }
@@ -507,7 +507,7 @@ export default {
         const rs = { results: await driverOrderRows(env, since) };
         const team = await staffList(env, "driver");
         const nm = staffNames(team);
-        const orders = await enrichOperations(env, (rs.results || []).map((r) => { const d = JSON.parse(r.data), needCode = !!d.dc; delete d.dc; return { ...d, needCode, no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, drv: r.drv || "", drvName: r.drv ? nm[r.drv] || "" : "" }; }));
+        const orders = await enrichOperations(env, (rs.results || []).map((r) => { const d = JSON.parse(r.data), needCode = DELIVERY_CODE && !!d.dc; delete d.dc; return { ...d, needCode, no: "#" + (1000 + r.no), created: r.created, updated: r.updated, status: r.status, drv: r.drv || "", drvName: r.drv ? nm[r.drv] || "" : "" }; }));
         const offs = (await env.DB.prepare("SELECT id, no, line_id, to_id, state, created FROM sub_offers WHERE created > ? ORDER BY id").bind(since).all()).results || [];
         const subMap = {}; for (const o of offs) (subMap["#" + (1000 + o.no)] ||= []).push({ id: o.id, line: o.line_id, to: o.to_id, state: o.state, at: o.created });
         for (const o of orders) if (subMap[o.no]) o.subs = subMap[o.no];
@@ -585,7 +585,7 @@ export default {
           if (r0 && r0.status !== "delivered") {
             const skip = String(body.skip || "").replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, 80);
             let codeOk = false;
-            if (rec0.dc && !skip) {
+            if (DELIVERY_CODE && rec0.dc && !skip) {
               const c = String(body.code || "").replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632)).replace(/\D/g, "");
               if (!c) return reply(409, { ok: false, code: "need_code" });
               if (await rateHit(env, "dc:" + n, 6, 900)) return reply(429, { ok: false, code: "slow_down" });
@@ -594,7 +594,7 @@ export default {
             }
             const la = Number(body.lat), ln = Number(body.lng);
             const dist = isFinite(la) && isFinite(ln) && la && ln && isFinite(Number(rec0.lat)) && rec0.lat != null && isFinite(Number(rec0.lng)) && rec0.lng != null ? Math.round(distM(la, ln, Number(rec0.lat), Number(rec0.lng))) : null;
-            dchk = { code: codeOk, skip: rec0.dc && !codeOk ? (skip || "بدون سبب") : "", dist, warn: (rec0.dc && !codeOk) || (dist != null && dist > DELIVER_FAR_M) };
+            dchk = { code: codeOk, skip: DELIVERY_CODE && rec0.dc && !codeOk ? (skip || "بدون سبب") : "", dist, warn: (DELIVERY_CODE && rec0.dc && !codeOk) || (dist != null && dist > DELIVER_FAR_M) };
           }
         }
         let res;
@@ -2483,6 +2483,8 @@ async function lowRatingAlert(env, n, r) {
   const chat = env.TELEGRAM_BOT_TOKEN && env.LOCKS ? await env.LOCKS.get("tg_chat") : null;
   if (chat) await tgSend(env, chat, "⚠️ <b>" + esc(title) + "</b>\n" + esc(text)).catch(() => {});
 }
+// رمز الاستلام موقوف بقرار المالك (١٦ نوفمبر ٢٠٢٦: «ألغيها بسرعة»). فحص مكان المندوب وقت التسليم باقي (تنبيه للإدارة بس، ما يوقف المندوب)
+const DELIVERY_CODE = false;
 const DELIVER_FAR_M = 300;
 async function deliverAlert(env, n, who, d) {
   const title = "تسليم يحتاج مراجعة · #" + (1000 + n);
