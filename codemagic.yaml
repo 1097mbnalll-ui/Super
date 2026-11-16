@@ -208,9 +208,15 @@ workflows:
     triggering:
       events:
         - tag
+        - push
       tag_patterns:
         - pattern: 'ios-native-*'
           include: true
+      # أو دفعة على فرع ios-codemagic (لما أجهزة ماك GitHub تعلق). ما يشتغل إلا بأمر المالك
+      branch_patterns:
+        - pattern: 'ios-codemagic'
+          include: true
+          source: true
     integrations:
       app_store_connect: ohod
     environment:
