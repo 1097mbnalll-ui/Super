@@ -259,9 +259,22 @@ struct SkyHome: View {
             head
             greeting
             if showFeatured, let group {
-                DeemahBanner(group: group) { path.append(Route.live("g:" + group.id)) }
+                // نفس تصميم الموقع لو صورته موجودة (store.app.banImg.featured)، وإلا الرسم الأصلي
+                if let u = catalog.store.banImg["featured"], let url = AppConfig.asset(u) {
+                    Button { path.append(Route.live("g:" + group.id)) } label: {
+                        RemoteImage(url: url, maxPixel: 1200, contentMode: .fill, blendWhite: false)
+                            .frame(maxWidth: .infinity).frame(height: BannerCarousel.height)
+                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    }
+                    .buttonStyle(PressableStyle(scale: 0.98))
+                    .accessibilityLabel(group.name)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
+                } else {
+                    DeemahBanner(group: group) { path.append(Route.live("g:" + group.id)) }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
+                }
             }
             if showPromos {
                 // العرض المميز داخل البنرات المتحركة لو قسم «featured» مطفي (FGB في الموقع)

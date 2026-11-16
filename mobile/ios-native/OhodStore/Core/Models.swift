@@ -17,7 +17,7 @@ enum AppConfig {
     static func asset(_ path: String?) -> URL? {
         guard let path, !path.isEmpty else { return nil }
         if path.hasPrefix("http") { return URL(string: path) }
-        guard path.hasPrefix("p/") || path.hasPrefix("cat/") else { return nil }
+        guard path.hasPrefix("p/") || path.hasPrefix("cat/") || path.hasPrefix("ban/") else { return nil }
         return URL(string: path, relativeTo: site)?.absoluteURL
     }
 }
@@ -324,6 +324,8 @@ struct StoreInfo: Sendable {
     var webScreens: Set<String> = []
     /// رأس الرئيسية من الموقع (store.app.liveHead): سما الرياض والشعار والبحث ورسالة الإقفال فوق لين أعلى الشاشة. افتراضياً مطفي
     var liveHead = false
+    /// صور البنرات بنفس تصميم الموقع (store.app.banImg = {id: "ban/<id>.png?v=…"}): تنولد من الموقع مع كل تحديث، فالبنرات تطابق الموقع بدون تحديث للتطبيق
+    var banImg: [String: String] = [:]
     /// سما الرياض في رئيسية الموقع (store.skyHome): ديمة والبنرات تنعرض داخل السما فوق، مع الرأس
     var skyHome = false
     /// خدمة الطباعة (store.print): «قريباً»، وأقل طلب لو السلة طباعة بس
@@ -471,6 +473,7 @@ enum CatalogParser {
         }
         if let app = s["app"] as? [String: Any] {
             store.liveHead = (app["liveHead"] as? Bool) ?? false
+            if let bi = app["banImg"] as? [String: Any] { store.banImg = bi.compactMapValues { str($0) } }
             if (app["web"] as? Bool) == true { store.webScreens = ["*"] }
             else if let l = app["web"] as? [Any] { store.webScreens = Set(l.compactMap { str($0) }) }
             // من 1.2: store.app.home = "web" يخلي الرئيسية من الموقع من أعلى الشاشة (1.1 ما يقراه، فيه شريط عنوان أبيض)

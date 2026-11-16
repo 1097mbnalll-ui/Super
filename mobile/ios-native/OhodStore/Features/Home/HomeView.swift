@@ -358,7 +358,7 @@ struct BannerCarousel: View {
     }
 
     @ViewBuilder private func page(_ banner: HomeBanner) -> some View {
-        if let g = banner.group {
+        if let g = banner.group, banner.picture == nil {
             DeemahBanner(group: g) { open(banner) }
         } else {
             Button { open(banner) } label: { BannerCard(banner: banner) }
@@ -530,6 +530,10 @@ struct BannerCarousel: View {
         if let g = featured {
             list.insert(HomeBanner(id: "featured", kicker: "", title: g.name, subtitle: "", button: "", style: .deep, images: [], route: nil, group: g), at: 0)
         }
+        // نفس تصميم بنرات الموقع (المالك ١٦ نوفمبر ٢٠٢٦: «طابقها اللي بالموقع»): صورة البنر من الموقع بدل الرسم، والضغط يفتح نفس الوجهة
+        for i in list.indices {
+            if let u = store.banImg[list[i].id], let url = AppConfig.asset(u) { list[i].picture = url; list[i].showText = false }
+        }
         return list
     }
 }
@@ -541,7 +545,7 @@ private struct BannerCard: View {
         ZStack {
             background
             if let pic = banner.picture {
-                RemoteImage(url: pic, maxPixel: 900, contentMode: .fill, blendWhite: false)
+                RemoteImage(url: pic, maxPixel: 1200, contentMode: .fill, blendWhite: false)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipped()
             }
