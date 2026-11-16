@@ -70,4 +70,8 @@ const key = 'B' + 'x'.repeat(86), auth = 'a'.repeat(22), sub = { endpoint: 'http
 r = await call('/push/sub', { session: tok, sub }); ok(r.ok, 'المجهز يفعّل إشعاراته');
 ok(sq.prepare("SELECT role FROM subs WHERE endpoint = ?").all(sub.endpoint).map((x) => x.role).join() === 'prep', 'ينسجل بدور prep مو admin');
 r = await call('/push/sub', { pin: '2468', sub: { ...sub, endpoint: 'https://push.example.com/' + 'f'.repeat(40) } }); ok(r.ok && sq.prepare("SELECT COUNT(*) n FROM subs WHERE role = 'admin'").get().n === 1, 'اشتراك الإدارة يبقى admin');
+// الإدارة تقدر تطلّع طلب للتوصيل حتى لو المجهز علّم منتجات ناقصة، ووضع التجهيز مطفي: المندوب بعد يقدر (المالك ١٦ نوفمبر)
+const o9 = (await mk('0551110009')).orderNo; const p9 = (await call('/admin/prep', A)).orders.find((o) => o.no === o9); const ck9 = {}; p9.lines.forEach((l) => ck9[l.key] = 'missing');
+await call('/admin/prep-save', { ...A, no: o9, version: p9.version, orderUpdated: p9.orderUpdated, stage: 'preparing', checks: ck9 });
+let s9 = await call('/driver/status', { ...A, no: o9, status: 'onway' }); ok(s9.ok, 'الإدارة تطلّع الطلب للتوصيل وهو ناقص: ' + JSON.stringify(s9.code || 'ok'));
 console.log(fails ? `\n${fails} فشل` : '\nكل الفحوص نجحت'); process.exit(fails ? 1 : 0);

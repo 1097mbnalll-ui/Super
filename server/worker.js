@@ -579,7 +579,7 @@ export default {
         const n = Number(String(body.no || "").replace(/\D/g, "")) - 1000;
         const st = String(body.status || "");
         if (!(n > 0) || !["new", "accepted", "onway", "delivered", "canceled"].includes(st)) return reply(400, { ok: false, code: "bad_request" });
-        if(st === 'onway' || (st === 'accepted' && actor && await prepMode(env))) { const prep=await env.DB.prepare('SELECT stage FROM prep_orders WHERE no=?').bind(n).first(); if(st === 'onway' ? prep && prep.stage!=='ready' : !prep || prep.stage!=='ready')return reply(409,{ok:false,code:'not_ready'}); }
+        if((st === 'onway' || st === 'accepted') && actor && await prepMode(env)) { const prep=await env.DB.prepare('SELECT stage FROM prep_orders WHERE no=?').bind(n).first(); if(st === 'onway' ? prep && prep.stage!=='ready' : !prep || prep.stage!=='ready')return reply(409,{ok:false,code:'not_ready'}); }
         let dchk = null;
         if (st === "delivered" && actor) {
           const r0 = await env.DB.prepare("SELECT status, data FROM orders WHERE no = ?").bind(n).first();
@@ -1308,7 +1308,8 @@ async function changeStatus(env, n, st, now = Date.now(), who = "", actor = null
     if(policy?.require_receipt){const receipt=await latestPosReceipt(env,n);if(!receipt||receipt.fingerprint!==await tokenHash(JSON.stringify(posDocument(old.data,n))))throw new Error('pos_required');}
   }
   const finance = await statusFinance(env,n,old.status,st,rec,who,now);
-  const handoff = st === 'onway' ? [P("SELECT CASE WHEN EXISTS(SELECT 1 FROM prep_orders WHERE no=? AND stage!='ready') THEN json('not_ready') ELSE 1 END",n)] : [];
+  // المندوب ما يطلع بطلب ما جهز (وضع التجهيز شغّال). الإدارة تقدر (المالك ١٦ نوفمبر ٢٠٢٦: «طلع للتوصيل» كان يرفض لأن المجهز علّم منتجات ناقصة والوضع مطفي)
+  const handoff = st === 'onway' && actor && await prepMode(env) ? [P("SELECT CASE WHEN EXISTS(SELECT 1 FROM prep_orders WHERE no=? AND stage!='ready') THEN json('not_ready') ELSE 1 END",n)] : [];
   const stmts = [guard, ...handoff, P("SELECT CASE WHEN status != ? OR data != ? THEN json('concurrent_status') ELSE 1 END FROM orders WHERE no = ?",old.status,old.data,n), ...finance, P("UPDATE orders SET status = ?, updated = ?, dms = ?, drv = ? WHERE no = ?", st, now, dms, drv, n)];
   if (who) stmts.push(logStmt(env, who, "status", "#" + (1000 + n), { from: old.status, to: st, total: Number(rec.total || 0) }));
   if ((st === "canceled") !== (old.status === "canceled")) {

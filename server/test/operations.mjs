@@ -130,7 +130,7 @@ test('preparer role is isolated and ready requires complete picking with concurr
  const base={session:prepToken,no:order.no,version:order.version,orderUpdated:order.orderUpdated};
  assert.equal((await call('/admin/prep-save',{...base,stage:'ready',checks:{0:'missing'}})).code,'missing_items');
  assert.equal((await call('/admin/prep-save',{...base,stage:'preparing',checks:{0:'missing'}})).ok,true);
- assert.equal((await call('/driver/status',{...owner,no:order.no,status:'onway'})).code,'not_ready');
+ assert.equal((await call('/driver/status',{...owner,as:'driver',no:order.no,status:'onway'})).code,'not_ready');   // المندوب ما يطلع بطلب ما جهز (الإدارة تقدر، قرار المالك ١٦ نوفمبر)
  assert.equal((await call('/admin/prep-save',{...base,stage:'ready',checks:{0:'picked'}})).code,'conflict');
  assert.equal((await call('/admin/prep-save',{...base,version:1,stage:'ready',checks:{0:'picked'}})).ok,true);
  const driver=await call('/driver/orders',owner);assert.equal(driver.orders.find(o=>o.no===order.no).prepStage,'ready');

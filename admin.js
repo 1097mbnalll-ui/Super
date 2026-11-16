@@ -1425,7 +1425,7 @@
       if (t.dataset.ost === "canceled" && t.dataset.c !== "1") { t.dataset.c = "1"; t.textContent = "متأكد؟ اضغط مرة ثانية"; return; }
       t.disabled = true; var no = t.dataset.no, stt = t.dataset.ost;
       api("/driver/status", { pin: adminPin, no: no, status: stt }).then(function(j){
-        if (!j.ok) { t.disabled = false; var m = $("oMsg"); if (m) { m.className = "status err"; m.textContent = "ما انحفظ، جرّب مرة ثانية."; } return; }
+        if (!j.ok) { t.disabled = false; var m = $("oMsg"); if (m) { m.className = "status err"; m.textContent = ({ not_ready: "الطلب ما جهز في شاشة التجهيز (فيه منتجات ناقصة أو ما خلص).", pos_required: "لازم الكاشير يعتمد إيصال الطلب أول.", taken: "أحد غيّر الطلب قبلك، حدّث الصفحة.", conflict: "أحد غيّر الطلب قبلك، حدّث الصفحة.", not_found: "الطلب ما انلقى." }[j.code]) || (j.code === "timeout" || j.code === "network" ? "ما فيه اتصال، جرّب مرة ثانية." : "ما انحفظ (" + (j.code || "?") + ")، جرّب مرة ثانية."); } return; }
         var o = oFind(no); if (o) { o.status = stt; o.updated = Date.now(); } openOrder(no); renderOList(); loadOrderAlerts(); if (stt === "canceled" || stt === "new") loadAdminStock();
       });
     }
