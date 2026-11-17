@@ -1033,15 +1033,89 @@
         '<div class="bed-sec"><button class="btn btn-ghost sm" type="button" data-bereset="' + id + '">رجّع البنر للشكل الافتراضي</button></div>') +
       '</div></details>';
   }
+  /* ---------- محرر البنرات الحي (١٧ نوفمبر ٢٠٢٦، طلب المالك: «البنر نفسه أعدّل عليه») ----------
+     كل بنر يطلع مثل ما يشوفه الزبون بالضبط، وتحته كل نص فيه بخانة (اضغط أي كلمة بالبنر وتفتح خانتها)، وتبديل المنتجات والتصميم والإظهار.
+     النصوص في store.banText[بنر]["<التصميم>:<رقم النص>"]، المنتجات store.banPicks، التصميم store.banArt (رقم يثبّته، بدونه يتبدّل كل يوم). */
+  var BE_LBL = { featured: "العرض المميز (أعلى الصفحة)", top: "أقوى خصم", multi: "عرض الكمية", daily: "عرض اليوم", offers: "عروض الأسبوع", deals: "منتجات السعر الرمزي", bakery: "المخبز", free: "التوصيل المجاني", catdeal: "عروض القسم", night: "طلعات السهرة (من ٧ المساء)", veg: "الخضار والفواكه", welcome: "كود الترحيب" };
+  var BE_PICK = { featured: ["صور المنتجات", 0], top: ["المنتج (لازم عليه خصم)", 1], multi: ["المنتج (لازم عليه عرض كمية)", 1], offers: ["صور المنتجات", 0], deals: ["صور المنتجات", 0], bakery: ["صور المنتجات", 0], catdeal: ["صور المنتجات", 0], night: ["المنتجات", 0], veg: ["صور المنتجات", 0] };
+  var beOpenId = null, beT = null;
+  function beCtx(fn){ var saved = S, imgs = D.imgs; S = draft.store; D.imgs = draft.imgs; try { return fn(); } catch(e){ return null; } finally { S = saved; D.imgs = imgs; } }
+  // كل البنرات المتاحة (حتى المخفية) بشكلها الحالي في المسودة
+  function beAll(noTextFor){
+    var st = draft.store, keepP = st.promos, keepT = noTextFor && st.banText ? st.banText[noTextFor] : null;
+    st.promos = orderOf(keepP, promoDefs()).map(function(x){ return { id: x.id, on: true }; }); if (keepT) delete st.banText[noTextFor];
+    var out = beCtx(function(){ var o = {}, t = document.createElement("div"); t.innerHTML = banners(); Array.prototype.forEach.call(t.querySelectorAll(".kq-ban[data-bid]"), function(b){ o[b.dataset.bid] = b.outerHTML; });
+      var fg = featuredGroup(); if (fg) { var f = featuredArt(fg); if (f) o.featured = f; } return o; }) || {};
+    if (keepP === undefined) delete st.promos; else st.promos = keepP; if (keepT) st.banText[noTextFor] = keepT; return out;
+  }
+  function beDesign(id){ var L = ART[id]; if (!L) return { i: 0, n: 0, auto: true }; return beCtx(function(){ var f = S.banArt && S.banArt[id]; return { i: artPick(id, L.length), n: L.length, auto: !(f != null && f !== "" && !isNaN(f)) }; }); }
+  function beShown(id){ if (id === "featured") return true; var x = orderOf(draft.store.promos, promoDefs()).filter(function(y){ return y.id === id; })[0]; return !x || x.on; }
+  function beTexts(html){ var d = document.createElement("div"); d.innerHTML = html || ""; return banTextNodes(d).map(function(n){ return n.nodeValue.trim(); }); }
+  function beLive(){
+    var box = $("beLive"); if (!box || !draft) return;
+    var all = beAll(), ids = ["featured"].concat(PROMO_DEF).filter(function(id){ return all[id]; }), missing = PROMO_DEF.filter(function(id){ return !all[id]; });
+    box.innerHTML = '<h2>البنرات اللي يشوفها الزبون</h2><p class="hint">كل بنر بشكله الحقيقي. اضغط «عدّل» وغيّر أي كلمة فيه، أو بدّل منتجاته أو تصميمه. الأسعار والنسب تتحدث لحالها من المنتجات. التغييرات تبان هنا على طول، وتوصل للزبائن بعد «حفظ».</p><div class="be-list">' +
+      ids.map(function(id){ var on = beShown(id), op = beOpenId === id;
+        return '<div class="be-item' + (op ? ' open' : '') + (on ? '' : ' off') + '" data-beid="' + id + '"><div class="be-head"><b>' + (BE_LBL[id] || PROMO_LABEL[id] || id) + '</b><span class="be-st">' + (on ? 'يطلع للزبون' : 'مخفي') + '</span>' +
+          '<button type="button" class="btn ' + (op ? 'btn-soft' : 'btn-brand') + ' sm" data-betog="' + id + '">' + (op ? 'تم' : 'عدّل') + '</button></div>' +
+          '<div class="be-prev ban-prev" data-beprev="' + id + '">' + all[id] + '</div>' + (op ? beForm(id, all[id]) : '') + '</div>'; }).join("") + '</div>' +
+      (missing.length ? '<p class="hint">ما تطلع الحين (ما فيه بيانات لها): ' + missing.map(function(id){ return BE_LBL[id] || id; }).join("، ") + '.</p>' : '');
+    setTimeout(function(){ var sv = D.imgs; D.imgs = draft.imgs; applyCuts(box); D.imgs = sv; }, 0);
+  }
+  function beForm(id, html){
+    var st = draft.store, d = beDesign(id), orig = beTexts(beAll(id)[id]), cur = beTexts(html), o = (st.banText && st.banText[id]) || {};
+    var pick = BE_PICK[id], picks = (st.banPicks && st.banPicks[id]) || [];
+    return '<div class="be-form">' +
+      (d.n > 1 ? '<div class="be-row"><span>التصميم</span><div class="be-des"><button type="button" class="btn btn-ghost sm" data-bedes="' + id + ':-1" aria-label="التصميم اللي قبل">›</button><b>' + num(d.i + 1) + ' من ' + num(d.n) + '</b><button type="button" class="btn btn-ghost sm" data-bedes="' + id + ':1" aria-label="التصميم اللي بعد">‹</button></div>' +
+        '<label class="chk"><input type="checkbox" data-beauto="' + id + '"' + (d.auto ? ' checked' : '') + '>يتبدّل كل يوم</label></div>' : '') +
+      '<div class="be-txts"><b>النصوص</b>' + (orig.length ? orig.map(function(t, i){ var k = d.i + ":" + i, v = o[k] != null ? o[k] : t;
+          return '<label class="be-tx" data-betx="' + i + '"><span>' + num(i + 1) + '</span><input type="text" data-bet="' + id + ':' + i + '" value="' + esc(v) + '" placeholder="' + esc(t) + '"' + (o[k] != null ? ' class="ed"' : '') + '>' + (o[k] != null ? '<button type="button" class="linkbtn" data-betr="' + id + ':' + i + '" title="رجّع النص الأصلي">↺</button>' : '') + '</label>'; }).join("") : '<p class="hint">ما فيه نصوص تنعدّل بهالتصميم.</p>') + '</div>' +
+      (pick ? '<div class="be-row"><span>' + pick[0] + '</span>' + (picks.length ? '<span class="be-pk">' + picks.slice(0, 4).map(function(x){ var p = dById(x); return p ? '<span class="fy-img" title="' + esc(p.name) + '">' + imgTag(p.img, "") + '</span>' : ''; }).join("") + '</span>' : '<span class="hint">تلقائي</span>') +
+        '<button type="button" class="btn btn-soft sm" data-bepick="' + id + '">' + (pick[1] ? 'اختر المنتج' : 'اختر المنتجات') + '</button>' + (picks.length ? '<button type="button" class="linkbtn" data-beauto2="' + id + '">رجّعها تلقائي</button>' : '') + '</div>' : '') +
+      (id !== "featured" ? '<label class="chk be-row"><input type="checkbox" data-beshow="' + id + '"' + (beShown(id) ? ' checked' : '') + '>يطلع للزبون</label>' : '<p class="hint">العرض المميز يتحكم فيه «عروض المجموعة» (أول عرض مفعّل).</p>') +
+      '<button type="button" class="btn btn-ghost sm" data-bereset2="' + id + '">رجّع البنر مثل ما كان</button></div>';
+  }
+  function bePrev(id){ var el = document.querySelector('[data-beprev="' + id + '"]'); if (!el) return; var h = beAll()[id]; if (h) { el.innerHTML = h; var sv = D.imgs; D.imgs = draft.imgs; applyCuts(el); D.imgs = sv; } }
+  document.addEventListener("input", function(e){
+    var t = e.target; if (mode !== "admin" || !draft || !t.dataset || !t.dataset.bet) return;
+    var k = t.dataset.bet.split(":"), id = k[0], i = Number(k[1]), st = draft.store, d = beDesign(id).i, key = d + ":" + i, orig = t.placeholder;
+    st.banText = st.banText || {}; var o = st.banText[id] = st.banText[id] || {};
+    if (!t.value.trim() || t.value.trim() === orig) delete o[key]; else o[key] = t.value.trim();
+    if (!Object.keys(o).length) delete st.banText[id]; if (!Object.keys(st.banText).length) delete st.banText;
+    t.classList.toggle("ed", !!(st.banText && st.banText[id] && st.banText[id][key])); markDirty();
+    clearTimeout(beT); beT = setTimeout(function(){ bePrev(id); }, 150);
+  });
+  // الضغط على كلمة داخل البنر يفتح خانتها
+  document.addEventListener("click", function(e){
+    var pv = mode === "admin" && e.target.closest && e.target.closest("[data-beprev]"); if (!pv) return;
+    e.preventDefault(); e.stopPropagation(); var id = pv.dataset.beprev;
+    if (beOpenId !== id) { beOpenId = id; beLive(); pv = document.querySelector('[data-beprev="' + id + '"]'); }
+    var r = document.caretRangeFromPoint ? document.caretRangeFromPoint(e.clientX, e.clientY) : (document.caretPositionFromPoint ? (function(p){ return p && { startContainer: p.offsetNode }; })(document.caretPositionFromPoint(e.clientX, e.clientY)) : null);
+    var n = r && r.startContainer, idx = n && n.nodeType === 3 ? banTextNodes(pv).indexOf(n) : -1;
+    if (idx < 0) { var lst = banTextNodes(pv), best = -1, bd = 1e9; lst.forEach(function(x, j){ var rr = document.createRange(); rr.selectNodeContents(x); var b = rr.getBoundingClientRect(), dx = Math.max(b.left - e.clientX, 0, e.clientX - b.right), dy = Math.max(b.top - e.clientY, 0, e.clientY - b.bottom), dd = dx + dy; if (dd < bd) { bd = dd; best = j; } }); if (bd < 30) idx = best; }
+    var inp = idx >= 0 && document.querySelector('[data-bet="' + id + ':' + idx + '"]'); if (inp) { inp.focus(); inp.select(); inp.closest(".be-tx").classList.add("hl"); setTimeout(function(){ inp.closest(".be-tx") && inp.closest(".be-tx").classList.remove("hl"); }, 1200); }
+  }, true);
+  document.addEventListener("click", function(e){
+    if (mode !== "admin" || !draft) return; var t, st = draft.store, y = window.scrollY, re = function(){ markDirty(); beLive(); window.scrollTo(0, y); };
+    if ((t = e.target.closest("[data-betog]"))) { beOpenId = beOpenId === t.dataset.betog ? null : t.dataset.betog; beLive(); window.scrollTo(0, y); return; }
+    if ((t = e.target.closest("[data-bedes]"))) { var k = t.dataset.bedes.split(":"), d = beDesign(k[0]); st.banArt = st.banArt || {}; st.banArt[k[0]] = ((d.i + Number(k[1]) + d.n) % d.n) + 1; re(); return; }
+    if ((t = e.target.closest("[data-beauto]"))) { var id = t.dataset.beauto; st.banArt = st.banArt || {}; if (t.checked) delete st.banArt[id]; else st.banArt[id] = beDesign(id).i + 1; re(); return; }
+    if ((t = e.target.closest("[data-betr]"))) { var k2 = t.dataset.betr.split(":"), dI = beDesign(k2[0]).i; if (st.banText && st.banText[k2[0]]) { delete st.banText[k2[0]][dI + ":" + k2[1]]; if (!Object.keys(st.banText[k2[0]]).length) delete st.banText[k2[0]]; } re(); return; }
+    if ((t = e.target.closest("[data-beshow]"))) { var sid = t.dataset.beshow, on = t.checked; st.promos = orderOf(st.promos, promoDefs()).map(function(x){ return x.id === sid ? { id: x.id, on: on } : x; }); re(); if (typeof renderLayout === "function") renderLayout(); return; }
+    if ((t = e.target.closest("[data-beauto2]"))) { if (st.banPicks) delete st.banPicks[t.dataset.beauto2]; re(); return; }
+    if ((t = e.target.closest("[data-bereset2]"))) { var rid = t.dataset.bereset2; ["banText", "banPicks", "banArt", "banEdit"].forEach(function(k){ if (st[k]) delete st[k][rid]; }); re(); return; }
+    if ((t = e.target.closest("[data-bepick]"))) { var pid = t.dataset.bepick, one = BE_PICK[pid][1];
+      ppOpen((BE_LBL[pid] || pid) + ": " + BE_PICK[pid][0], one ? "اختر منتج واحد." + (pid === "top" ? " لازم يكون عليه خصم (سعر قبل)." : " لازم يكون عليه عرض كمية.") : "أول المنتجات (اللي لها صور) تطلع داخل البنر.", (st.banPicks && st.banPicks[pid]) || [], function(ids){
+        ids = ids || []; if (one) { ids = ids.filter(function(x){ var p = dById(x); return p && (pid === "top" ? p.old > p.price : (p.packs && p.packs.length) || (typeof mustOf === "function" && mustOf(p))); }).slice(0, 1); if (!ids.length) { sToast(pid === "top" ? "اختر منتج عليه خصم" : "اختر منتج عليه عرض كمية"); return; } }
+        st.banPicks = st.banPicks || {}; if (ids.length) st.banPicks[pid] = ids; else delete st.banPicks[pid]; markDirty(); beLive(); }); return; }
+  });
   function renderBans(){
     var box = $("aBans"); if (!box || !draft) return;
     var st = draft.store; st.banPicks = st.banPicks || {}; st.bans = st.bans || []; st.banEdit = st.banEdit || {}; st.forYou = (st.forYou || []).filter(function(id){ return dById(id); });
     var saved = S, savedImgs = D.imgs; S = st; D.imgs = draft.imgs; var prev = {};
     try { var tmp = document.createElement("div"); tmp.innerHTML = banners(); Array.prototype.forEach.call(tmp.querySelectorAll(".kq-ban"), function(b){ prev[b.dataset.bid] = b.outerHTML; }); } catch(e){}
-    S = saved; D.imgs = savedImgs; setTimeout(function(){ var bx = $("aBans"); if (bx) { var sv2 = D.imgs; D.imgs = draft.imgs; applyCuts(bx); D.imgs = sv2; } }, 0);
-    box.innerHTML = '<div class="card"><h2>بنرات العروض</h2><p class="hint">كل بنر تقدر تغيّر كلامه ولونه وصوره، أو ترفع له تصميم جاهز. التغيير يبان في المعاينة على طول. ترتيب البنرات وإخفاؤها من «ترتيب الواجهة».</p><div class="alist">' +
-        PROMO_DEF.map(function(id){ var o = st.banEdit[id] || {};
-          return '<div class="banrow"><div class="ban-prev">' + (prev[id] || '<div class="ban-off">البنر مو ظاهر الحين (العرض مو مفعّل)</div>') + '</div><div class="ban-side"><b>' + PROMO_LABEL[id] + '</b>' + thumbs(st.banPicks[id], "الصور تلقائية") + banEditor(id, o, false) + '</div></div>'; }).join("") + '</div></div>' +
+    S = saved; D.imgs = savedImgs; setTimeout(beLive, 0); setTimeout(function(){ var bx = $("aBans"); if (bx) { var sv2 = D.imgs; D.imgs = draft.imgs; applyCuts(bx); D.imgs = sv2; } }, 0);
+    box.innerHTML = '<div class="card" id="beLive"></div>' +
       '<div class="card"><div class="sec-head" style="margin:0"><h2>بنرات خاصة</h2><button class="btn btn-brand" type="button" id="addBan">+ بنر جديد</button></div><p class="hint">سوّ بنر بعنوانك ولونك وصورك، واختر وش يصير لما الزبون يضغط عليه.</p><div class="alist">' +
         (st.bans.length ? st.bans.map(function(b){
           return '<div class="banrow custom"><div class="ban-prev">' + (prev[b.id] || '') + '</div><div class="ban-side"><div class="sec-head" style="margin:0"><b>' + esc(b.title || "بنر بدون عنوان") + '</b><button class="del" type="button" data-bandel="' + b.id + '">حذف البنر</button></div>' + thumbs(b.ids) + banEditor(b.id, b, true) + '</div></div>'; }).join("") : '<p class="empty">ما فيه بنرات خاصة. اضغط «+ بنر جديد».</p>') + '</div></div>' +

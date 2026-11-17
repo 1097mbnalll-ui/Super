@@ -262,6 +262,11 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .of-go{min-height:50px;font-size:16px}
 .of-pill{position:fixed;z-index:35;left:50%;transform:translateX(-50%);bottom:calc(84px + var(--sa-bottom,0px));max-width:calc(100% - 32px);border:0;border-radius:999px;background:#2B1300;color:#fff;font:inherit;font-weight:700;font-size:13.5px;padding:10px 16px;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (prefers-reduced-motion:reduce){.of-disc{transition:none!important}}
+.be-list{display:grid;gap:12px}.be-item{border:1px solid var(--line);border-radius:16px;padding:12px;display:grid;gap:10px;background:var(--surface)}.be-item.open{border-color:#0E8A6A;box-shadow:0 0 0 2px rgba(14,138,106,.15)}.be-item.off .be-prev{opacity:.45}
+.be-head{display:flex;align-items:center;gap:10px}.be-head b{flex:1;font-size:15px}.be-st{font-size:12px;color:var(--muted)}.be-item.off .be-st{color:#B3261E}
+.be-prev{max-width:420px;cursor:text}.be-prev *{cursor:text}.be-prev .kq-ban,.be-prev .kq-ban *{pointer-events:auto!important}.be-form{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:10px}
+.be-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.be-row>span:first-child{font-weight:700;font-size:13px;min-width:90px}.be-des{display:flex;align-items:center;gap:6px}.be-pk{display:flex;gap:4px}.be-pk .fy-img{width:36px;height:36px}
+.be-item.open .be-prev{position:sticky;top:64px;z-index:5;background:var(--surface);padding-bottom:6px}.be-txts{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}.be-txts>b,.be-txts>p{grid-column:1/-1}.be-tx{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:8px;border-radius:10px;padding:2px;transition:background .3s}.be-tx span{font-size:12px;color:var(--muted);text-align:center}.be-tx input{min-width:0;min-height:40px}.be-tx input.ed{border-color:#EE7417;background:#FFF7EE}.be-tx.hl{background:#FFF1D6}
 .pays{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .pays button{min-height:42px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
 .pays button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
@@ -2858,7 +2863,22 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     ]
   };
   // البنر الفني: يرجع "" لو ما فيه تصميم أو البيانات ناقصة (فيرجع البنر القديم)
-  function artBan(id, x, act, tag){ var L = ART[id]; if (!L || !L.length || S.banArtOff) return ""; var h = ""; try { h = L[artPick(id, L.length)](x); } catch(e){ h = ""; } if (!h) return "";
+  // نصوص البنر اللي يعدّلها المالك (store.banText = {<بنر>: {"<التصميم>:<رقم النص>": "النص الجديد"}}): كل نص بالبنر له رقم بترتيبه، والأرقام والأسعار ما تنعدّل (تتحدث من البيانات)
+  function banTxtOk(s){ s = String(s || "").replace(/ر\.س/g, "").trim(); return !!s && /[A-Za-z\u0621-\u064A]/.test(s); }
+  function banTextNodes(root){ var out = [], w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n; while ((n = w.nextNode())) if (banTxtOk(n.nodeValue) && !(n.parentNode && /^(STYLE|SCRIPT)$/.test(n.parentNode.nodeName))) out.push(n); return out; }
+  function banTextApply(id, d, h){
+    var o = S.banText && S.banText[id]; if (!o || LANG === "en" || !h) return h;
+    var keys = Object.keys(o).filter(function(k){ return k.indexOf(d + ":") === 0; }); if (!keys.length) return h;
+    try { var t = document.createElement("template"); t.innerHTML = h; var ns = banTextNodes(t.content);
+      keys.forEach(function(k){ var i = Number(k.split(":")[1]), n = ns[i]; if (n && typeof o[k] === "string") { var lead = (n.nodeValue.match(/^\s*/) || [""])[0], tail = (n.nodeValue.match(/\s*$/) || [""])[0]; n.nodeValue = lead + o[k] + tail; } });
+      var dv = document.createElement("div"); dv.appendChild(t.content.cloneNode(true)); return dv.innerHTML; } catch(e){ return h; }
+  }
+  function banPick(id, def){ var ids = S.banPicks && S.banPicks[id]; ids = ids && ids.length ? ids.filter(function(x){ var p = byId(x); return p && avail(p); }) : null; return ids && ids.length ? ids : def; }
+  function featuredGroup(){ return (S.groups || []).filter(function(g){ return g && g.on !== false && g.top !== false && grpItems(g).length; })[0]; }
+  function featuredArt(fg){ return fg ? artBan("featured", { name: fg.name || "", n: fg.n, w: fg.w || tr("حبات", "pcs"), short: String(fg.name || "").split(" ")[0], price: Number(fg.price), unit: grpOld(fg), before: Math.round(fg.n * grpOld(fg) * 100) / 100, save: grpSave(fg),
+      line1: tr("أي " + num(fg.n) + " " + (fg.w || "حبات"), "Any " + fg.n), line2: tr("بـ ", "for ") + num(Number(fg.price)) + " ر.س", was: tr("سابقاً " + num(grpOld(fg)) + " ر.س " + (function(w){ return /^ال/.test(w) ? "لل" + w.slice(2) : "لـ" + w; })(fg.w1 || "الحبة") + " الواحدة", "Was " + num(grpOld(fg)) + " SAR each"), go: tr("اختر نكهاتك", "Pick yours"),
+      ids: banPick("featured", grpItems(fg).filter(function(p){ return hasPic(p.img); }).map(function(p){ return p.id; })) }, 'data-chip="g:' + esc(fg.id) + '"') : ""; }
+  function artBan(id, x, act, tag){ var L = ART[id]; if (!L || !L.length || S.banArtOff) return ""; var h = "", dI = artPick(id, L.length); try { h = banTextApply(id, dI, L[dI](x)); } catch(e){ h = ""; } if (!h) return "";
     tag = tag || "button"; return '<' + tag + (tag === "button" ? ' type="button"' : '') + ' class="kq-ban kb artb" data-bid="' + esc(id) + '" ' + act + '>' + h + '</' + tag + '>'; }
   /* ---------- سما الرياض (١٥ نوفمبر ٢٠٢٦) ---------- */
   var SKYLINE = '<svg class="city" viewBox="0 0 342 60" preserveAspectRatio="none"><path d="M0 60V42h18v-8h14v8h10V28h12v14h16V34h10v-6h8v6h12v8h14V20h10v22h18V38h12v-10h6l4-8 4 8h6v10h12v4h20V14h4l8-14 8 14h4v28h16V32h22v10h14V24h10v18h18v-6h16v6h14v18z"/>' +
@@ -2898,7 +2918,10 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var topP = offers.filter(function(p){ return onSale(p); }).sort(function(a, b){ return (b.old - b.price) / b.old - (a.old - a.price) / a.old || (hasPic(b.img) ? 1 : 0) - (hasPic(a.img) ? 1 : 0); })[0];
     if (topP) B.top = banHTML("top", { tag: "button", style: "hero", big: tr("خصم ", "") + num(Math.round((topP.old - topP.price) / topP.old * 100)) + tr("٪", "% off"), act: 'data-open="' + topP.id + '"', k: tr("أقوى خصم اليوم · خصم ", "Top discount · ") + num(Math.round((topP.old - topP.price) / topP.old * 100)) + tr("٪", "% off"),
       title: esc(nm(topP)), go: tr("اطلبه الحين", "Order now"), ids: pk("top", [topP.id]), price: num(topP.price), old: num(topP.old) }, E.top);
+    // المالك يختار منتج بنر «أقوى خصم» بنفسه (لازم عليه خصم)
+    var tpk = banPick("top", null), tp0 = tpk && byId(tpk[0]); if (tp0 && avail(tp0) && onSale(tp0)) topP = tp0;
     var mulP = offers.filter(function(p){ return mustOf(p) && hasPic(p.img); })[0] || offers.filter(function(p){ return multiOf(p) && hasPic(p.img); })[0] || offers.filter(function(p){ return multiOf(p); })[0], mulO = mulP && multiOf(mulP);
+    var mpk = banPick("multi", null), mp0 = mpk && byId(mpk[0]); if (mp0 && avail(mp0) && (mustOf(mp0) || multiOf(mp0))) { mulP = mp0; mulO = multiOf(mp0); }
     var mulM = mulP && mustOf(mulP), mulGrp = mulM ? offers.filter(function(p){ return mustOf(p) && hasPic(p.img) && String(p.name).split(" ")[0] === String(mulP.name).split(" ")[0]; }) : [];
     if (mulM) B.multi = banHTML("multi", { tag: "button", style: "hero", act: 'data-open="' + mulP.id + '"', k: esc(String(nm(mulP)).split(" ").slice(0, 2).join(" ")),
       title: esc(mustLine(mulP, mulM)), sub: tr("كانت " + mustW(mulP, mulM).one + " بـ ", "Was ") + num(mulP.price) + (mustSave(mulP, mulM) > 0 ? tr(" · توفّر ", " · save ") + num(mustSave(mulP, mulM)) + tr(" ر.س", " SAR") : ""), go: tr("أبغى العرض", "Get the offer"),
@@ -2921,11 +2944,11 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (S.freeOver) { var fo = Number(S.freeOver), hv = Math.round(t.s * 100) / 100; B.free = artBan("free", { min: fo, have: hv, left: Math.max(0, Math.round((fo - hv) * 100) / 100), pct: Math.max(4, Math.min(100, Math.round(hv / fo * 100))) }, 'data-nav="cart"'); }
     var cOff = {}; offers.forEach(function(p){ var v = pctOf(p); if (!cOff[p.cat]) cOff[p.cat] = { n: 0, pct: 0, ids: [] }; cOff[p.cat].n++; cOff[p.cat].pct = Math.max(cOff[p.cat].pct, v); if (hasPic(p.img)) cOff[p.cat].ids.push(p.id); });
     var bestC = Object.keys(cOff).filter(function(k){ return cOff[k].ids.length >= 2 && catOf(k); }).sort(function(a, b){ return cOff[b].n - cOff[a].n; })[0];
-    if (bestC) B.catdeal = artBan("catdeal", { name: nm(catOf(bestC)), pct: cOff[bestC].pct, ids: cOff[bestC].ids }, 'data-chip="o:' + bestC + '"');
+    if (bestC) B.catdeal = artBan("catdeal", { name: nm(catOf(bestC)), pct: cOff[bestC].pct, ids: banPick("catdeal", cOff[bestC].ids) }, 'data-chip="o:' + bestC + '"');
     var hr = new Date().getHours(); if (hr >= 19 || hr < 2) { var snk = D.products.filter(function(p){ return avail(p) && hasPic(p.img) && (p.sub === "chips" || p.sub === "soft"); }).sort(shelfSort); var ch = snk.filter(function(p){ return p.sub === "chips"; })[0], so = snk.filter(function(p){ return p.sub === "soft"; })[0];
-      if (ch) B.night = artBan("night", { ids: [ch.id, (so || ch).id] }, 'data-opencat="' + ch.cat + '"'); }
+      if (ch) B.night = artBan("night", { ids: banPick("night", [ch.id, (so || ch).id]) }, 'data-opencat="' + ch.cat + '"'); }
     var vc = D.cats.filter(function(c){ return catSoon(c) && c.id !== "print"; }).map(function(c){ return { c: c, ids: D.products.filter(function(p){ return p.cat === c.id && hasPic(p.img); }).map(function(p){ return p.id; }) }; }).filter(function(v){ return v.ids.length >= 3; })[0];
-    if (vc) B.veg = artBan("veg", { name: nm(vc.c), ids: vc.ids.slice(0, 6) }, 'data-opencat="' + vc.c.id + '"');
+    if (vc) B.veg = artBan("veg", { name: nm(vc.c), ids: banPick("veg", vc.ids.slice(0, 6)) }, 'data-opencat="' + vc.c.id + '"');
     if (S.welcome && S.welcome.code) B.welcome = artBan("welcome", { code: S.welcome.code, amount: Number(S.welcome.amount) || 0, min: Number(S.welcome.min) || 0 }, 'data-nav="cart"');
     var ord = orderOf(S.promos, promoDefs()).filter(function(x){ return x.on && B[x.id]; });
     var ids = ord.map(function(x){ return x.id; }), list = ord.map(function(x){ return B[x.id]; });
@@ -3120,9 +3143,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     smPend = false; ["again", "due", "moment", "season", "myoffers"].forEach(function(id){ SEC[id] = smSlot(id); });
     // بنر ثابت فوق للعرض المميز (store.groups أول مجموعة مفعّلة)، والبنرات تحته تتحرك
     var fg = (S.groups || []).filter(function(g){ return g && g.on !== false && g.top !== false && grpItems(g).length; })[0];
-    var fgArt = fg ? artBan("featured", { name: fg.name || "", n: fg.n, w: fg.w || tr("حبات", "pcs"), short: String(fg.name || "").split(" ")[0], price: Number(fg.price), unit: grpOld(fg), before: Math.round(fg.n * grpOld(fg) * 100) / 100, save: grpSave(fg),
-      line1: tr("أي " + num(fg.n) + " " + (fg.w || "حبات"), "Any " + fg.n), line2: tr("بـ ", "for ") + num(Number(fg.price)) + " ر.س", was: tr("سابقاً " + num(grpOld(fg)) + " ر.س " + (function(w){ return /^ال/.test(w) ? "لل" + w.slice(2) : "لـ" + w; })(fg.w1 || "الحبة") + " الواحدة", "Was " + num(grpOld(fg)) + " SAR each"), go: tr("اختر نكهاتك", "Pick yours"),
-      ids: grpItems(fg).filter(function(p){ return hasPic(p.img); }).map(function(p){ return p.id; }) }, 'data-chip="g:' + esc(fg.id) + '"') : "";
+    var fgArt = featuredArt(fg);
     SEC.featured = fg && fgArt ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + fgArt.replace('class="kq-ban', 'class="kq-ban featured') + '</div>' : fg ? '<div class="wrap kq-sec-wrap" style="--banh:' + (Number(S.banH) || 200) + 'px">' + banHTML("featured", { tag: "button", style: "hero", act: 'data-chip="g:' + esc(fg.id) + '"', k: esc(fg.name || ""), title: esc(grpLine(fg)),
       sub: tr("كانت " + (fg.w1 || "الحبة") + " بـ ", "Was ") + num(grpOld(fg)) + (grpSave(fg) > 0 ? tr(" · توفّر ", " · save ") + num(grpSave(fg)) + tr(" ر.س", " SAR") : ""), go: tr("أبغى العرض", "Get the offer"),
       ids: grpItems(fg).filter(function(p){ return hasPic(p.img); }).slice(0, 3).map(function(p){ return p.id; }) }, (S.banEdit || {}).featured).replace('class="kq-ban', 'class="kq-ban featured') + '</div>' : '';
