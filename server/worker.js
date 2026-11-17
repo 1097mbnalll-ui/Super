@@ -160,7 +160,7 @@ export default {
       if (body.pay === "online") {
         if (!payOn(env, data)) return reply(400, { ok: false, code: "pay_off" });
         if (body.walletAmount) return reply(400, { ok: false, code: "bad_payment" });
-        if (!body.paid || body.payToken !== PAY_INTERNAL) {
+        if (!body.paid || body.payToken !== payInternal()) {
           await ensureSchema(env);
           const need0 = needOf(orderRecord(priced, body)), st0 = await readStock(env, Object.keys(need0));
           const sid0 = Object.keys(need0).find((id) => st0[id] != null && st0[id] < need0[id]);
@@ -2566,7 +2566,9 @@ async function deliverAlert(env, n, who, d) {
 }
 // ---------- الدفع الإلكتروني (ميسّر) ----------
 // المفتاح السري MOYASAR_SECRET وسر التنبيهات MOYASAR_WEBHOOK_SECRET في Cloudflare (المالك يحطها بنفسه)، والمفتاح العام في store.pay.pk
-const PAY_INTERNAL = randomHex(16);
+// يتولّد داخل أول طلب (Cloudflare يمنع توليد أرقام عشوائية خارج الطلبات)
+let PAY_INTERNAL_V = null;
+function payInternal() { return PAY_INTERNAL_V || (PAY_INTERNAL_V = randomHex(16)); }
 function safeEqual(a, b) { a = String(a); b = String(b); let d = a.length ^ b.length; for (let i = 0; i < Math.max(a.length, b.length); i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0); return d === 0; }
 function payOn(env, data) { const p = (data && data.store && data.store.pay) || {}; return !!(env.DB && env.MOYASAR_SECRET && p.on); }
 const MOYASAR = "https://api.moyasar.com/v1/";
@@ -2600,7 +2602,7 @@ async function payFinish(env, ref, pid, order, later) {
   if (!paidOk) return { ok: false, code: pm.status === "failed" ? "pay_failed" : "not_paid", status: 402, message: String(pm.source && pm.source.message || "").slice(0, 120) };
   if (ck.pay_id && ck.pay_id !== pid) return { ok: false, code: "pay_conflict", status: 409 };
   await env.DB.prepare("UPDATE pay_checkouts SET pay_id = ?, state = CASE WHEN state = 'pending' THEN 'paid' ELSE state END, updated = ? WHERE ref = ?").bind(pid, Date.now(), ref).run();
-  const via = String((pm.source || {}).type || ""), body = { ...safeJson(ck.body), pay: "online", payRef: ref, payToken: PAY_INTERNAL, requestId: "pay_" + ref, paid: { id: pid, amount: Number(ck.amount), via, at: Date.parse(pm.created_at || "") || Number(ck.created) } };
+  const via = String((pm.source || {}).type || ""), body = { ...safeJson(ck.body), pay: "online", payRef: ref, payToken: payInternal(), requestId: "pay_" + ref, paid: { id: pid, amount: Number(ck.amount), via, at: Date.parse(pm.created_at || "") || Number(ck.created) } };
   const r = await order(body);
   if (r.ok) return { ...r, paid: true };
   // انخصم من الزبون وما انسجل الطلب (خلص المنتج، المحل قفل...): نرجّع المبلغ كامل على طول
