@@ -1093,6 +1093,10 @@ export default {
       if (body.cfg) { const c = nudgeClean(body.cfg); await env.DB.batch([env.DB.prepare("INSERT INTO app_settings (k, v) VALUES ('nudge', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(JSON.stringify(c)), logStmt(env, staff(body), "nudge_save", "", { on: c.on })]); }
       return reply(200, { ok: true, cfg: await nudgeCfg(env), stats: await nudgeStats(env, Math.min(365, Math.max(1, Number(body.days) || 30))) });
     }
+    if (path === "/admin/visit-hours") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      return reply(200, { ok: true, ...(await readVisitHours(env, body)) });
+    }
     if (path === "/admin/staff-dev") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
@@ -1276,6 +1280,9 @@ async function ensureSchema(env) {
   extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS vday (day TEXT NOT NULL, dev TEXT NOT NULL, first_at INTEGER NOT NULL, last_at INTEGER NOT NULL, opens INTEGER NOT NULL DEFAULT 0, sess INTEGER NOT NULL DEFAULT 1, stage INTEGER NOT NULL DEFAULT 0, src TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL DEFAULT '', PRIMARY KEY (day, dev))"));
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS vday_last ON vday (last_at)"));
   extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_dev (dev TEXT PRIMARY KEY, at INTEGER NOT NULL)"));
+  // كل فتحة للموقع بوقتها (للساعات: أي ساعة فيها كم زائر، ومتى دخل كل واحد). ينمسح بعد ١٢٠ يوم
+  extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS vlog (at INTEGER NOT NULL, dev TEXT NOT NULL, src TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL DEFAULT '')"));
+  extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS vlog_at ON vlog (at)"));
   // عروض الرجعة (١٧ نوفمبر ٢٠٢٦): المنتجات اللي شافها الجهاز (v) واللي في سلته (c)، وأكواد خصم شخصية مربوطة بالجهاز
   extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS vprod (dev TEXT NOT NULL, id TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, n INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (dev, id, kind))"));
   extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings(k TEXT PRIMARY KEY,v TEXT NOT NULL)"));
@@ -2290,6 +2297,7 @@ async function recordHits(env, dev, list, staff, kind) {
     st.push(env.DB.prepare("INSERT INTO vday (day, dev, first_at, last_at, opens, sess, stage, src, kind) VALUES (?1, ?2, ?3, ?3, ?4, 1, ?5, ?6, ?7) ON CONFLICT(day, dev) DO UPDATE SET opens = opens + ?4, sess = sess + CASE WHEN ?4 = 1 AND ?3 - last_at > 1800000 THEN 1 ELSE 0 END, first_at = MIN(first_at, ?3), last_at = MAX(last_at, ?3), stage = MAX(stage, ?5), src = CASE WHEN src = '' THEN ?6 ELSE src END, kind = CASE WHEN kind = '' THEN ?7 ELSE kind END")
       .bind(riyadhDateAt(at), dev, at, open, stage, hitSrc(h.src), k));
     st.push(env.DB.prepare("INSERT INTO devices (dev, first_seen, last_seen) VALUES (?1, ?2, ?2) ON CONFLICT(dev) DO UPDATE SET first_seen = MIN(first_seen, ?2), last_seen = MAX(last_seen, ?2)").bind(dev, at));
+    if (open) st.push(env.DB.prepare("INSERT INTO vlog (at, dev, src, kind) VALUES (?, ?, ?, ?)").bind(at, dev, hitSrc(h.src), k));
   }
   const okId = (k) => typeof k === "string" && /^[\w-]{1,40}$/.test(k);
   let prevCart = null;
@@ -2308,9 +2316,30 @@ async function recordHits(env, dev, list, staff, kind) {
     }
   }
   if (staff) st.push(env.DB.prepare("INSERT OR IGNORE INTO staff_dev (dev, at) VALUES (?, ?)").bind(dev, now));
+  if (Math.random() < 0.002) st.push(env.DB.prepare("DELETE FROM vlog WHERE at < ?").bind(now - 120 * 864e5));
   if (st.length) await env.DB.batch(st);
 }
 // تقرير الزوار: كل الأرقام من سطور الأجهزة نفسها (زائر = جهاز مختلف)، والطلبات من جدول الطلبات. أجهزة الموظفين مستثناة
+// الزيارات بالساعة: يوم معيّن (day) أو آخر N يوم، ولو اختار ساعة (h) يرجع كل زيارة فيها بوقتها
+async function readVisitHours(env, body) {
+  await ensureSchema(env);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(body.day || "")) ? String(body.day) : null, days = Math.min(365, Math.max(1, Math.floor(Number(body.days) || 7)));
+  const from = day || riyadhDate(-(days - 1)), to = day || riyadhDate(), a = Date.parse(from + "T00:00:00+03:00"), b = Date.parse(to + "T00:00:00+03:00") + 864e5;
+  const NS = "dev NOT IN (SELECT dev FROM staff_dev)", H = "CAST(strftime('%H', at / 1000 + 10800, 'unixepoch') AS INTEGER)";
+  const Q = (q, ...x) => env.DB.prepare(q).bind(...x).all().then((r) => r.results || []);
+  const [hours, ords] = await Promise.all([
+    Q("SELECT " + H + " h, COUNT(DISTINCT dev) visitors, COUNT(*) opens FROM vlog WHERE at >= ? AND at < ? AND " + NS + " GROUP BY h", a, b),
+    Q("SELECT CAST(strftime('%H', created / 1000 + 10800, 'unixepoch') AS INTEGER) h, COUNT(*) n FROM orders WHERE created >= ? AND created < ? AND status != 'canceled' AND (dev IS NULL OR " + NS + ") GROUP BY h", a, b)]);
+  const om = {}; for (const r of ords) om[r.h] = r.n;
+  const out = { from, to, days: day ? 1 : days, hours: Array.from({ length: 24 }, (_, h) => { const r = hours.find((x) => x.h === h) || {}; return { h, visitors: r.visitors || 0, opens: r.opens || 0, orders: om[h] || 0 }; }) };
+  const tot = await Q("SELECT COUNT(DISTINCT dev) visitors, COUNT(*) opens FROM vlog WHERE at >= ? AND at < ? AND " + NS, a, b); out.visitors = (tot[0] && tot[0].visitors) || 0; out.opens = (tot[0] && tot[0].opens) || 0;
+  const h = Number(body.h);
+  if (Number.isInteger(h) && h >= 0 && h < 24) {
+    const rows = await Q("SELECT v.at, v.dev, v.src, v.kind, d.first_seen, (SELECT COUNT(*) FROM orders o WHERE o.dev = v.dev AND o.status != 'canceled' AND o.created >= v.at AND o.created < v.at + 864e5) ord FROM vlog v LEFT JOIN devices d ON d.dev = v.dev WHERE v.at >= ? AND v.at < ? AND " + H.replace("at", "v.at") + " = ? AND v." + NS + " ORDER BY v.at LIMIT 300", a, b, h);
+    out.h = h; out.list = rows.map((r) => ({ at: r.at, who: String(r.dev).slice(-4), src: r.src, kind: r.kind, fresh: r.first_seen != null && r.first_seen >= r.at - 6e4, ordered: r.ord > 0 }));
+  }
+  return out;
+}
 async function readVisits(env, days) {
   await ensureSchema(env);
   days = Math.min(365, Math.max(1, Math.floor(days)));

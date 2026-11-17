@@ -2247,6 +2247,10 @@
       ".vis-hours{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:2px;align-items:end;height:120px;padding-top:8px}.vis-hours div{background:#CFE9E0;border-radius:3px 3px 0 0;position:relative;min-height:2px}.vis-hours div.o{background:#0E8A6A}.vis-hlbl{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));font-size:9.5px;color:#66707C;text-align:center}",
       ".vis-acc{display:flex;gap:12px;align-items:center}.vis-acc .big{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}.vis-acc.good .big{color:#0E8A6A}.vis-acc.warn .big{color:#B5530A}",
       ".vis-link{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.vis-link code{font-size:12px;direction:ltr;overflow-wrap:anywhere;color:#334}",
+      ".vh-ctl{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:6px 0}.vh-ctl label{display:grid;gap:4px;font-size:12.5px}.vh-ctl input{min-height:38px}.vh-peak{margin:4px 0 8px;font-size:14px}",
+      ".vh-bars{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:3px;align-items:end;height:150px}.vh-b{height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;border:0;background:none;padding:0;cursor:pointer;border-radius:4px;min-width:0}",
+      ".vh-b i{display:block;width:100%;min-height:2px;background:#CFE9E0;border-radius:4px 4px 0 0}.vh-b.o i{background:#0E8A6A}.vh-b.on i{background:#EE7417}.vh-b small{font-size:9.5px;color:#66707C;order:-1}.vh-b:hover i{filter:brightness(.92)}.vh-b:focus-visible{outline:2px solid #EE7417}",
+      ".vh-lbl{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));font-size:9.5px;color:#66707C;text-align:center;margin-top:4px}.vh-det{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;display:grid;gap:10px}.vh-det h3{margin:0;font-size:15px}.vh-new{background:#E3F3EE;color:#0A5E49;border-radius:6px;padding:0 5px;font-size:11px}",
       ".nd-main{font-size:16px;margin:6px 0 10px}.nd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:12px}.nd-grid fieldset{border:1px solid var(--line);border-radius:12px;padding:12px;margin:0;display:grid;gap:8px;min-width:0}.nd-grid fieldset .hint{margin:0}",
       ".nd-grid label{display:grid;grid-template-columns:minmax(0,1fr) 120px;align-items:center;gap:8px;font-size:13px}.nd-in{display:flex;align-items:center;gap:4px}.nd-in input{width:100%;min-width:0;min-height:38px}.nd-in small{color:#66707C}.nd-tg{display:flex!important;gap:8px}.nd-tg b{font-size:15px}",
       ".nd-pz{display:grid;grid-template-columns:minmax(0,1.2fr) repeat(4,minmax(0,1fr)) auto;gap:6px}.nd-pz input,.nd-pz select{min-width:0;min-height:36px;padding:4px 6px}",
@@ -2285,9 +2289,7 @@
         '<div class="card"><h2>من وين جوا الزوار</h2><div class="vis-wrap"><table class="vis-tbl"><thead><tr><th>المصدر</th><th class="n">زوار</th><th class="n">طلبوا</th><th class="n">النسبة</th></tr></thead><tbody>' +
           (j.sources.length ? j.sources.map(function(s){ return '<tr><td>' + esc(VIS_SRC[s.src] || s.src) + '</td><td class="n">' + num(s.visitors) + '</td><td class="n">' + num(s.buyers) + '</td><td class="n">' + visPct(s.buyers, s.visitors) + '٪</td></tr>'; }).join("") : '<tr><td colspan="4">ما فيه زوار بهالفترة.</td></tr>') +
           '</tbody></table></div></div>' +
-        '<div class="card"><h2>أوقات الزيارات</h2><p class="hint">الأعمدة الفاتحة = زوار، والداكنة = فيها طلبات. بتوقيت الرياض.</p><div class="vis-hours">' +
-          Array.apply(null, Array(24)).map(function(_, h){ var x = hmap[h] || { visitors: 0, orders: 0 }; return '<div class="' + (x.orders ? "o" : "") + '" style="height:' + Math.round(x.visitors / maxH * 100) + '%" title="الساعة ' + h + ': ' + x.visitors + ' زائر، ' + x.orders + ' طلب"></div>'; }).join("") +
-          '</div><div class="vis-hlbl">' + Array.apply(null, Array(24)).map(function(_, h){ return '<span>' + (h % 3 === 0 ? h : "") + '</span>'; }).join("") + '</div></div>' +
+        '<div class="card" id="visHours"></div>' +
         (j.daily.length > 1 ? '<div class="card"><h2>يوم بيوم</h2><div class="vis-wrap"><table class="vis-tbl"><thead><tr><th>اليوم</th><th class="n">زوار</th><th class="n">جدد</th><th class="n">زيارات</th></tr></thead><tbody>' +
           j.daily.slice().reverse().map(function(d){ return '<tr><td>' + esc(d.day) + '</td><td class="n">' + num(d.visitors) + '</td><td class="n">' + num(d.fresh || 0) + '</td><td class="n">' + num(d.visits) + '</td></tr>'; }).join("") + '</tbody></table></div></div>' : '') +
         '<div class="card"><h2>الأجهزة</h2>' + (j.kinds.length ? j.kinds.map(function(k){ return visBar(k.visitors, j.visitors, k.kind === "m" ? "جوال" : k.kind === "d" ? "كمبيوتر" : k.kind === "ios" ? "تطبيق الآيفون" : k.kind || "غير معروف"); }).join("") : '<p class="hint">—</p>') + '</div>' +
@@ -2298,10 +2300,36 @@
         '<div class="card"><h2>أجهزة الموظفين</h2><p class="hint">أي جهاز دخل الإدارة أو صفحة المندوب ينعلّم تلقائياً وما ينحسب بالزوار. لو عندك جهاز ثاني تتصفح فيه المتجر ودخلت منه الإدارة، انعلّم خلاص.</p>' +
           '<div class="quick"><button type="button" class="btn btn-soft" id="visMe">استثني هالجهاز</button><button type="button" class="btn btn-ghost" id="visClr">صفّر القائمة (' + num(j.staffDevices) + ')</button></div><p class="status" id="visStMsg" aria-live="polite"></p>' +
           '<p class="hint">كيف ينحسب: الجهاز يرسل لحظة فتح الموقع (مو وقت الطلوع)، ولو ما وصل ينحفظ بالجهاز وينرسل بعدين بوقته. الروبوتات ما تنحسب. اللي ما يقدر نعدّه: متصفح قافل الجافاسكربت (نادر جداً). تطبيق الآيفون ينحسب من تحديثه الجاي.</p></div>';
-      renderNudge();
+      renderNudge(); renderVisHours();
       $("visBody").querySelectorAll("[data-viscp]").forEach(function(b){ b.onclick = function(){ var u = b.dataset.viscp; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function(){ b.textContent = "انسخ ✓"; }).catch(function(){ window.prompt("انسخ الرابط:", u); }); }; });
       $("visMe").onclick = function(){ markStaffDev(); api("/admin/staff-dev", { pin: adminPin, dev: devId() }).then(function(x){ $("visStMsg").textContent = x.ok ? "تم، هالجهاز ما ينحسب." : "ما زبط، جرّب مرة ثانية."; }); };
       $("visClr").onclick = function(){ if (!window.confirm("تصفير القائمة يخلّي أجهزة الموظفين تنحسب لين يدخلون الإدارة مرة ثانية. متأكد؟")) return; api("/admin/staff-dev", { pin: adminPin, clear: 1, dev: devId() }).then(function(x){ if (x.ok) renderVisits(); }); };
+    });
+  }
+  /* ---------- الزيارات بالساعة (١٧ نوفمبر ٢٠٢٦): اختر أي يوم وأي ساعة، ويطلع كم زائر وكم زيارة وكم طلب، ومتى دخل كل واحد ---------- */
+  var visH = { day: "", h: null };
+  function hName(h){ return h === 0 ? "١٢ بالليل" : h < 12 ? num(h) + " الصبح" : h === 12 ? "١٢ الظهر" : h < 16 ? num(h - 12) + " الظهر" : h < 18 ? num(h - 12) + " العصر" : num(h - 12) + " المساء"; }
+  function hRange(h){ return hName(h) + " – " + hName((h + 1) % 24); }
+  function renderVisHours(){
+    var box = $("visHours"); if (!box) return;
+    box.innerHTML = '<div class="sec-head" style="margin:0"><h2>الزيارات بالساعة</h2></div><div class="vh-ctl"><label>يوم معيّن<input type="date" id="vhDay" value="' + esc(visH.day) + '" max="' + new Date(Date.now() + 3 * 36e5).toISOString().slice(0, 10) + '"></label>' + (visH.day ? '<button type="button" class="btn btn-ghost sm" id="vhAll">رجوع لكل الفترة</button>' : '<span class="hint">أو المدة المختارة فوق</span>') + '</div><p class="hint" id="vhMsg">جاري التحميل…</p><div id="vhBody"></div>';
+    $("vhDay").onchange = function(){ visH.day = this.value; visH.h = null; renderVisHours(); };
+    if ($("vhAll")) $("vhAll").onclick = function(){ visH.day = ""; visH.h = null; renderVisHours(); };
+    api("/admin/visit-hours", visH.day ? { pin: adminPin, day: visH.day, h: visH.h } : { pin: adminPin, days: visDays, h: visH.h }).then(function(j){
+      if (!$("vhBody")) return;
+      if (!j.ok) { $("vhMsg").textContent = j.code === "not_found" ? "يحتاج تحديث الخادم." : "ما قدرنا نجيب الأرقام."; return; }
+      var hs = j.hours, mx = Math.max.apply(null, hs.map(function(x){ return x.visitors; }).concat([1])), peak = hs.slice().sort(function(a, b){ return b.visitors - a.visitors || b.opens - a.opens; })[0];
+      var pOrd = hs.slice().sort(function(a, b){ return b.orders - a.orders; })[0];
+      $("vhMsg").textContent = (j.days === 1 ? "يوم " + j.from : "من " + j.from + " لين " + j.to) + " · " + num(j.visitors) + " زائر · " + num(j.opens) + " زيارة · اضغط أي ساعة تشوف تفاصيلها";
+      $("vhBody").innerHTML = (peak && peak.visitors ? '<p class="vh-peak">أكثر ساعة زوار: <b>' + hRange(peak.h) + '</b> (' + num(peak.visitors) + ' زائر)' + (pOrd && pOrd.orders ? ' · أكثر ساعة طلبات: <b>' + hRange(pOrd.h) + '</b> (' + num(pOrd.orders) + ' طلب)' : '') + '</p>' : '<p class="hint">ما فيه زيارات مسجلة بهالفترة.</p>') +
+        '<div class="vh-bars" role="group" aria-label="الساعات">' + hs.map(function(x){ return '<button type="button" class="vh-b' + (visH.h === x.h ? ' on' : '') + (x.orders ? ' o' : '') + '" data-vh="' + x.h + '" title="' + hRange(x.h) + ': ' + x.visitors + ' زائر"><i style="height:' + Math.round(x.visitors / mx * 100) + '%"></i><small>' + (x.visitors || "") + '</small></button>'; }).join("") + '</div>' +
+        '<div class="vh-lbl">' + hs.map(function(x){ return '<span>' + (x.h % 3 === 0 ? (x.h === 0 ? "١٢ص" : x.h < 12 ? num(x.h) + "ص" : x.h === 12 ? "١٢ظ" : num(x.h - 12) + "م") : "") + '</span>'; }).join("") + '</div>' +
+        (j.h != null ? (function(){ var x = hs[j.h], L = j.list || [];
+          return '<div class="vh-det"><h3>' + hRange(j.h) + '</h3><div class="vis-kpis"><div class="vis-kpi"><b>' + num(x.visitors) + '</b><span>زائر مختلف</span></div><div class="vis-kpi"><b>' + num(x.opens) + '</b><span>زيارة</span></div><div class="vis-kpi"><b>' + num(x.orders) + '</b><span>طلب</span></div></div>' +
+            (L.length ? '<div class="vis-wrap"><table class="vis-tbl"><thead><tr><th>الوقت</th><th>الزائر</th><th>من وين</th><th>الجهاز</th><th>طلب بعدها؟</th></tr></thead><tbody>' + L.map(function(v){ var d = new Date(v.at + 3 * 36e5);
+              return '<tr><td>' + (j.days > 1 ? d.toISOString().slice(5, 10).replace("-", "/") + ' · ' : '') + String(d.getUTCHours() % 12 || 12) + ':' + String(d.getUTCMinutes()).padStart(2, "0") + (d.getUTCHours() < 12 ? ' ص' : ' م') + '</td><td>#' + esc(v.who) + (v.fresh ? ' <span class="vh-new">جديد</span>' : '') + '</td><td>' + esc(VIS_SRC[v.src] || v.src || "مباشر") + '</td><td>' + (v.kind === "m" ? "جوال" : v.kind === "d" ? "كمبيوتر" : esc(v.kind)) + '</td><td>' + (v.ordered ? '✅ طلب' : '—') + '</td></tr>'; }).join("") + '</tbody></table></div>' + (L.length >= 300 ? '<p class="hint">أول ٣٠٠ زيارة بس.</p>' : '') : '<p class="hint">ما فيه زيارات بهالساعة.</p>') +
+            '<p class="hint">«#» آخر ٤ حروف من رقم الجهاز (بدون أي بيانات شخصية): نفس الرقم = نفس الزبون.</p></div>'; })() : '');
+      $("vhBody").querySelectorAll("[data-vh]").forEach(function(b){ b.onclick = function(){ var h = Number(b.dataset.vh); visH.h = visH.h === h ? null : h; renderVisHours(); }; });
     });
   }
   /* ---------- عروض الرجعة: الإعدادات والتقرير (داخل «الزوار والتحويل») ---------- */

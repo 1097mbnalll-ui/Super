@@ -65,4 +65,16 @@ ok(r.visitors === 3 && r.daily.length === 2 && r.daily[0].visitors === 3 && r.da
 ok((await call('/admin/visits', { pin: '0000', days: 1 })).ok !== true, 'بدون رقم الإدارة مرفوض');
 const x = await call('/admin/staff-dev', { pin: '2468', dev: B }); ok(x.ok && x.n === 2, 'المالك يستثني جهاز');
 r = await rep(2); ok(r.visitors === 2, 'بعد استثناء ب: ٢');
+// الساعات: يوم معيّن وساعة معيّنة
+{ const day = '2026-11-20', at = (hh, mm) => Date.parse(day + 'T' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + ':00+03:00');
+  T = at(21, 50);
+  await call('/hit', { dev: dev('h'), q: [{ st: 0, at: at(21, 5), src: 'google' }] }); await call('/hit', { dev: dev('h'), q: [{ st: 0, at: at(21, 40) }] });
+  await call('/hit', { dev: dev('i'), q: [{ st: 0, at: at(21, 30) }] }); await call('/hit', { dev: dev('j'), q: [{ st: 0, at: at(9, 15) }] });
+  await call('/hit', { dev: S, staff: 1, q: [{ st: 0, at: at(21, 10) }] });
+  const hr = await call('/admin/visit-hours', { pin: '2468', day, h: 21 });
+  const h21 = hr.hours[21], h9 = hr.hours[9];
+  ok(hr.ok && h21.visitors === 2 && h21.opens === 3 && h9.visitors === 1, 'الساعة ٩ المساء: زائرين و٣ زيارات، و٩ الصبح زائر (الموظف مستثنى) ' + JSON.stringify(h21));
+  ok(hr.list && hr.list.length === 3 && hr.list[0].src === 'google' && new Date(hr.list[0].at + 3 * 36e5).getUTCMinutes() === 5, 'قائمة زيارات الساعة بوقت كل وحدة ومصدرها');
+  ok(hr.visitors === 3 && hr.opens === 4, 'مجموع اليوم: ٣ زوار و٤ زيارات');
+  ok((await call('/admin/visit-hours', { pin: '0000', day })).ok !== true, 'الساعات تحتاج رقم الإدارة'); }
 console.log(fails ? fails + ' فشل' : 'كل الفحوص نجحت'); process.exit(fails ? 1 : 0);
