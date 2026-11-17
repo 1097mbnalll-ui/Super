@@ -360,6 +360,8 @@ final class OrderCenter {
         ]
         let promo = cart.promoCode.trimmingCharacters(in: .whitespaces)
         if !promo.isEmpty { body["promo"] = promo }
+        let freeText = cart.free.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !freeText.isEmpty, !catalog.store.isOff("free") { body["free"] = String(freeText.prefix(600)) }
         let signature = Self.signature(body)
         var resendingOld = false
         // محاولة قديمة ما تأكدنا منها: بعد ٢٠ دقيقة ما نرسلها (لا ترسل سلة قديمة بدل الجديدة)
@@ -411,7 +413,7 @@ final class OrderCenter {
             if !pn.isEmpty { order2.printText = pn }
             let usedWallet = CatalogParser.num(body["walletAmount"]) ?? 0
             if usedWallet > 0 { order2.walletCents = Int((usedWallet * 100).rounded()); wallet?.spent(usedWallet) }
-            if !resendingOld { cart.note = "" }
+            if !resendingOld { cart.note = ""; cart.free = "" }
             if !orders.contains(where: { $0.no == no }) { orders.insert(order2, at: 0) }
             if orders.count > 30 { orders.removeLast(orders.count - 30) }
             CartPing.shared.orderPlaced()   // الخادم صفّر عدّ السلة مع الطلب

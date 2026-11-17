@@ -338,6 +338,7 @@ extension CartRowView {
 /// اختيار واحد عام فوق السلة (دراسة Baymard: البدائل لكل منتج تلخبط ٧٦٪)
 private struct SubstitutionPicker: View {
     @Environment(Cart.self) private var cart
+    @Environment(CatalogStore.self) private var catalog
     var body: some View {
         @Bindable var cart = cart
         VStack(alignment: .leading, spacing: 8) {
@@ -360,6 +361,16 @@ private struct SubstitutionPicker: View {
                 .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.line))
                 .padding(.top, 4)
+            if !catalog.store.isOff("free") {
+                Text("✍️ ما لقيت غرضك؟ اكتبه").font(.kufi(14, .bold)).padding(.top, 6)
+                Text("أي غرض مو موجود بالتطبيق، بالوزن أو العدد، ونجيبه لك").font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
+                TextField("مثال: ٢ كيلو برتقال، ربطة بقدونس", text: $cart.free, axis: .vertical)
+                    .lineLimit(1...4)
+                    .font(.ui(size: 14))
+                    .padding(10)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.line))
+            }
         }
     }
 }

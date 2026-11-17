@@ -229,7 +229,7 @@ private struct OrderBubble: View {
                 .contentShape(Circle())
             }
             .buttonStyle(PressableStyle(scale: 0.92))
-            .accessibilityLabel("طلبك \(order.no): \(OrderStatus.title(order.status))")
+            .accessibilityLabel("طلبك \(order.no): \(OrderStatus.title(order))")
 
             let hasSub = !(orders.subs[order.no] ?? []).isEmpty
             if showTip || hasSub {

@@ -132,6 +132,10 @@ final class Cart {
     var note: String = UserDefaults.standard.string(forKey: "cart.note") ?? "" {
         didSet { UserDefaults.standard.set(note, forKey: "cart.note") }
     }
+    /// «ما لقيت غرضك؟ اكتبه» (مثل الموقع): أغراض مو موجودة بالتطبيق بالوزن أو العدد، تنرسل مع الطلب (free)
+    var free: String = UserDefaults.standard.string(forKey: "cart.free") ?? "" {
+        didSet { UserDefaults.standard.set(free, forKey: "cart.free") }
+    }
     /// طلبات الطباعة: النوع ← صفحات ونسخ ووجهين (printJobs في الموقع)
     var printJobs: [String: [String: Int]] = (UserDefaults.standard.dictionary(forKey: "print.jobs") as? [String: [String: Int]]) ?? [:] {
         didSet { UserDefaults.standard.set(printJobs, forKey: "print.jobs") }
