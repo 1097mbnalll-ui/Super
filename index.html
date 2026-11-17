@@ -1196,6 +1196,15 @@ html.zs body{zoom:.86}
 .wr-pad{flex:none;width:50%}
 .wr-ind{position:absolute;left:50%;top:4px;width:4px;height:42px;margin-left:-2px;border-radius:3px;background:#0E8A6A;pointer-events:none}
 .wr-more{justify-self:center;border:0;background:none;color:#0E8A6A;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;padding:2px 8px}
+.lhero{margin:10px 0 6px;border-radius:24px;overflow:hidden;background:#FBF3E8;box-shadow:0 6px 20px rgba(90,45,12,.1)}
+.lhero svg{display:block;width:100%;height:auto;font-family:"Noto Kufi Arabic",inherit}
+.lh-neon{font-family:"Reem Kufi","Noto Kufi Arabic",inherit;filter:drop-shadow(0 0 4px rgba(255,178,94,.85))}.lh-lamp{filter:drop-shadow(0 0 5px rgba(255,178,94,.9))}
+.lh-sh{transform-origin:0 130px;transition:transform 2.8s cubic-bezier(.3,.1,.2,1)}.lh-bar{transition:transform 2.8s cubic-bezier(.3,.1,.2,1)}
+.lh-t{text-align:center;padding:12px 16px 18px;display:grid;gap:8px;justify-items:center}.lh-t h2{margin:0;font-size:20px;font-weight:900;color:#5a2d0c}.lh-t p{margin:0;font-size:13.5px;font-weight:600;color:#7a4a12}
+.lh-badge{display:inline-flex;align-items:center;gap:8px;background:#000;color:#fff;border-radius:12px;padding:7px 16px 7px 12px;direction:ltr;text-decoration:none}.lh-badge.soon{background:#1B1430}.lh-badge svg{width:24px;height:24px;fill:#fff}
+.lh-badge span{display:grid;text-align:left;line-height:1.1}.lh-badge small{font-size:10px;font-weight:600}.lh-badge b{font:700 18px system-ui,sans-serif;letter-spacing:-.3px}
+.lh-pop .lh-t{animation:lhPop .7s 2.4s both}@keyframes lhPop{0%{transform:scale(.9);opacity:.4}60%{transform:scale(1.05)}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.lh-sh,.lh-bar{transition:none}.lh-pop .lh-t{animation:none}}
 .wbuy{display:grid;gap:12px}.wbox{display:grid;gap:10px;width:100%}
 .wcard{display:grid;grid-template-columns:1fr 1px 1fr;background:#fff;border:1px solid #E7ECEA;border-radius:22px;box-shadow:0 8px 28px rgba(13,20,32,.07);overflow:hidden}
 .wf{position:relative;display:grid;gap:2px;padding:12px 16px 14px;cursor:text;transition:background .2s}
@@ -3238,6 +3247,57 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       if (EMBED) toApp({ t: "cart.add", key: id, qty: q }); else cart[id] = q; n++; });
     if (!EMBED) { saveCart(); refresh(); }
     sToast(n ? tr("انضاف " + num(n) + " منتج من طلباتك المعتادة", num(n) + " usual items added") : tr("طلباتك المعتادة موجودة بالسلة", "Your usual items are already in the cart")); }
+  /* ---------- «رولة المحل» لإطلاق التطبيق (المالك ١٧ نوفمبر ٢٠٢٦، بدل مربع العدّاد): واجهة المحل والرولة نازلة وعليها العدّاد ----------
+     store.appSoon = {at, url, when, heroDays (افتراضي ٧ أيام بعد الإطلاق), hero:false يطفيها}. الرولة ترتفع مع الوقت، ويوم الإطلاق العدّاد أحمر،
+     وعند الموعد ترتفع كاملة بحركة ويطلع الجوال وزر «حمّله الحين من App Store». في الموقع بس (مو داخل التطبيق). */
+  var LH_APPLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.37 12.77c-.03-2.69 2.2-3.98 2.3-4.04-1.25-1.83-3.2-2.08-3.9-2.11-1.66-.17-3.24.98-4.08.98-.84 0-2.14-.96-3.52-.93-1.81.03-3.48 1.05-4.41 2.67-1.88 3.26-.48 8.09 1.35 10.73.89 1.29 1.96 2.75 3.36 2.7 1.35-.05 1.86-.87 3.49-.87 1.63 0 2.09.87 3.51.84 1.45-.02 2.37-1.32 3.26-2.62 1.03-1.5 1.45-2.95 1.47-3.02-.03-.01-2.82-1.09-2.85-4.33zM13.69 4.86c.74-.9 1.24-2.15 1.11-3.39-1.07.04-2.36.71-3.13 1.61-.69.79-1.29 2.06-1.13 3.27 1.19.09 2.41-.6 3.15-1.49z" fill="currentColor"/></svg>';
+  function lhState(){ var A = S.appSoon || {}, AT = A.at ? Date.parse(A.at) : 0; if (EMBED || !AT || A.off || A.hero === false) return null;
+    var now = Date.now(); if (now > AT + (Number(A.heroDays) || 7) * 864e5) return null;
+    return { AT: AT, left: AT - now, url: /^https:\/\/apps\.apple\.com\//.test(A.url || "") ? A.url : "", when: A.when || "", today: new Date(AT + 108e5).toISOString().slice(0, 10) === new Date(now + 108e5).toISOString().slice(0, 10) }; }
+  function lhHour(AT){ var h = new Date(AT + 108e5).getUTCHours(), n = h % 12 || 12; return tr("الساعة " + "٠١٢٣٤٥٦٧٨٩".charAt(n % 10).replace(/^/, n >= 10 ? "١" : "") + " " + (h >= 17 && h < 20 ? "المغرب" : h >= 20 || h < 4 ? "الليل" : h >= 15 ? "العصر" : h >= 12 ? "الظهر" : "الصبح"), "at " + n + (h < 12 ? " AM" : " PM")); }
+  function lhFrac(left){ return left <= 0 ? 0 : Math.min(0.9, 0.4 + 0.5 * Math.min(1, left / (48 * 36e5))); }
+  function lhClock(l){ var t = Math.max(0, Math.floor(l / 1000)), h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, x = t % 60, z = function(n){ return (n < 10 ? "0" : "") + n; }; return z(h) + ":" + z(m) + ":" + z(x); }
+  function lhText(st){
+    var open = st.left <= 0;
+    var badge = open && st.url ? '<a class="lh-badge" href="' + esc(st.url) + '" target="_blank" rel="noopener">' + LH_APPLE + '<span><small>' + tr("حمّله الحين من", "Download on the") + '</small><b>App Store</b></span></a>'
+      : '<span class="lh-badge soon">' + LH_APPLE + '<span><small>' + tr("قريباً على", "Coming soon to") + '</small><b>App Store</b></span></span>';
+    return open ? '<h2>' + tr("فتحنا! 🎉", "We're open! 🎉") + '</h2><p>' + tr("تطبيق متاجر أحد نزل · حمّله", "The Matajer Ohod app is out · get it") + '</p>' + badge
+      : st.today ? '<h2>' + tr("اليوم نفتح أبواب التطبيق", "Today we open the app") + '</h2><p>' + lhHour(st.AT) + tr(" · خلّك قريب", " · stay close") + '</p>' + badge
+      : '<h2>' + tr("تطبيق متاجر أحد للآيفون", "Matajer Ohod iPhone app") + '</h2><p>' + tr("ينطلق ", "Launching ") + esc(st.when || "") + '</p>' + badge;
+  }
+  function lhLabel(st){
+    if (st.left <= 0) return '';
+    return st.today ? '<g class="lh-lab"><rect x="96" y="136" width="163" height="58" rx="12" fill="#C0392B"/><text x="177.5" y="160" text-anchor="middle" font-weight="800" font-size="12.5" fill="#fff">' + tr("اليوم ", "Today ") + lhHour(st.AT) + '</text><text id="lhClk" x="177.5" y="184" text-anchor="middle" font-weight="900" font-size="20" fill="#fff" direction="ltr">' + lhClock(st.left) + '</text></g>'
+      : '<g class="lh-lab"><rect x="84" y="148" width="187" height="112" rx="14" fill="#1B1430" opacity=".93"/><text x="177.5" y="175" text-anchor="middle" font-weight="800" font-size="13.5" fill="#fff">' + tr("نفتح أبواب التطبيق بعد", "The app opens in") + '</text><text id="lhClk" x="177.5" y="215" text-anchor="middle" font-weight="900" font-size="34" fill="#FFB25E" direction="ltr">' + lhClock(st.left) + '</text><text x="177.5" y="244" text-anchor="middle" font-weight="700" font-size="12" fill="#fff" opacity=".85">' + tr("ساعة · دقيقة · ثانية", "h · m · s") + '</text></g>';
+  }
+  function launchHeroHTML(){
+    var st = lhState(); if (!st) return ""; var f = lhFrac(st.left), sh = Math.round(198 * f), shelf = function(x, y, c){ return c.map(function(k, i){ return '<rect x="' + (x + i * 17) + '" y="' + (y - 18 - (i % 2) * 4) + '" width="13" height="' + (18 + (i % 2) * 4) + '" rx="3" fill="' + k + '"/>'; }).join("") + '<rect x="' + (x - 4) + '" y="' + y + '" width="56" height="6" fill="#C9A47A"/>'; };
+    var C = ["#E46A12", "#0E8A6A", "#F5B301", "#2B6CB0", "#C0392B"];
+    return '<div class="wrap"><section class="lhero" id="lhero" data-st="' + (st.left <= 0 ? "open" : st.today ? "today" : "soon") + '" aria-label="' + tr("إطلاق تطبيق متاجر أحد", "App launch") + '">' +
+      '<svg viewBox="0 0 355 345" role="img" aria-hidden="true"><defs><linearGradient id="lhW" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#F3E3CC"/><stop offset="1" stop-color="#E9D2B2"/></linearGradient>' +
+      '<pattern id="lhS" width="10" height="12" patternUnits="userSpaceOnUse"><rect width="10" height="12" fill="#BAC3CA"/><rect y="9" width="10" height="3" fill="#97A2AB"/></pattern>' +
+      '<linearGradient id="lhI" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#FFE9C7"/><stop offset="1" stop-color="#FFF7EA"/></linearGradient><clipPath id="lhD"><rect x="56" y="130" width="243" height="198"/></clipPath><clipPath id="lhR"><rect x="0" y="0" width="38" height="38" rx="10"/></clipPath><clipPath id="lhR2"><rect x="0" y="0" width="50" height="50" rx="12"/></clipPath></defs>' +
+      '<rect width="355" height="345" fill="url(#lhW)"/><rect y="330" width="355" height="15" fill="#D9C3A2"/><rect y="326" width="355" height="6" fill="#C9AE88"/>' +
+      '<rect x="22" y="72" width="311" height="18" fill="#0E8A6A"/><path d="M22 90h311l-10 26H32z" fill="#0B6B53"/><g fill="#fff" opacity=".92"><path d="M40 90l-6 26h18l4-26z"/><path d="M80 90l-3 26h18l1-26z"/><path d="M120 90v26h18v-26z"/><path d="M160 90l1 26h18l-1-26z"/><path d="M200 90l3 26h18l-3-26z"/><path d="M240 90l5 26h18l-5-26z"/><path d="M280 90l6 26h18l-6-26z"/></g>' +
+      '<rect x="70" y="14" width="215" height="50" rx="14" fill="#1B1430"/><g transform="translate(232,20)" clip-path="url(#lhR)"><image href="app-icon.webp" width="38" height="38"/></g><text x="150" y="49" text-anchor="middle" class="lh-neon" font-size="27" fill="#FFB25E">' + esc(sv("name")) + '</text>' +
+      '<rect x="48" y="124" width="259" height="208" rx="6" fill="#3A2A1E"/><g clip-path="url(#lhD)"><rect x="56" y="130" width="243" height="198" fill="url(#lhI)"/>' +
+      shelf(66, 150, C.slice(0, 3)) + shelf(66, 210, C.slice(2, 5)) + shelf(66, 270, [C[4], C[0], C[1]]) + shelf(241, 150, [C[1], C[4], C[2]]) + shelf(241, 210, [C[3], C[0], C[1]]) + shelf(241, 270, [C[2], C[3], C[4]]) +
+      '<g transform="translate(130,140)"><rect width="96" height="186" rx="18" fill="#111"/><rect x="5" y="5" width="86" height="176" rx="14" fill="#0E8A6A"/><rect x="35" y="9" width="26" height="6" rx="3" fill="#111"/><g transform="translate(23,46)" clip-path="url(#lhR2)"><image href="app-icon.webp" width="50" height="50"/></g><text x="48" y="118" text-anchor="middle" font-weight="800" font-size="11" fill="#fff">' + esc(sv("name")) + '</text><rect x="14" y="134" width="68" height="26" rx="8" fill="#fff" opacity=".18"/></g>' +
+      '<g class="lh-sh" id="lhSh" style="transform:scaleY(' + f + ')"><rect x="56" y="130" width="243" height="198" fill="url(#lhS)"/></g>' +
+      '<g class="lh-bar" id="lhBar" style="transform:translateY(' + sh + 'px)"><rect x="56" y="122" width="243" height="8" rx="2" fill="#6B7680"/><rect x="166" y="120" width="22" height="10" rx="3" fill="#3E4750"/></g></g>' +
+      '<rect x="52" y="124" width="251" height="10" rx="3" fill="#5A4636"/><g><line x1="30" y1="116" x2="30" y2="142" stroke="#5a3a1e" stroke-width="2"/><rect x="22" y="142" width="16" height="22" rx="5" fill="#FFB25E" class="lh-lamp"/><line x1="325" y1="116" x2="325" y2="142" stroke="#5a3a1e" stroke-width="2"/><rect x="317" y="142" width="16" height="22" rx="5" fill="#FFB25E" class="lh-lamp"/></g>' +
+      '<g id="lhLab">' + lhLabel(st) + '</g></svg><div class="lh-t" id="lhT">' + lhText(st) + '</div></section></div>';
+  }
+  setInterval(function(){
+    var el = $("lhero"); if (!el) return; var st = lhState(); if (!st) { el.remove(); return; }
+    var k = st.left <= 0 ? "open" : st.today ? "today" : "soon";
+    if (k !== el.dataset.st) { el.dataset.st = k; $("lhLab").innerHTML = lhLabel(st); $("lhT").innerHTML = lhText(st);
+      var f = lhFrac(st.left); $("lhSh").style.transform = "scaleY(" + f + ")"; $("lhBar").style.transform = "translateY(" + Math.round(198 * f) + "px)";
+      if (k === "open") { el.classList.add("lh-pop"); try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch(e){} }
+      return; }
+    var c = $("lhClk"); if (c) c.textContent = lhClock(st.left);
+    if (k !== "open" && Date.now() % 60000 < 1000) { var f2 = lhFrac(st.left); $("lhSh").style.transform = "scaleY(" + f2 + ")"; $("lhBar").style.transform = "translateY(" + Math.round(198 * f2) + "px)"; }
+  }, 1000);
   function homeHTML(){
     var h = '<div class="kq-head"><div class="wrap">' +
       (activeOrder() ? '<button class="trackbar" type="button" data-nav="sent"><span class="ic">' + ic("truck") + '</span><span class="t"><b>' + tr("طلبك ", "Order ") + esc(lastOrder.no) + ' · ' + ({ "new": lastOrder.prep === "ready" ? tr("جاهز وينتظر المندوب", "Ready, waiting for the driver") : lastOrder.prep === "preparing" ? tr("جاري تجهيزه", "Being prepared") : tr("ننتظر نأكده", "Waiting for confirmation"), accepted: tr("انقبل وجاري التجهيز", "Accepted, being prepared"), onway: tr("المندوب في الطريق", "Driver on the way") }[lastOrder.status] || "") + '</b><span>' + (lastOrder.status === "onway" && lastOrder.dc ? tr("رمز الاستلام: ", "Delivery code: ") + '<b dir="ltr" class="dcs">' + esc(lastOrder.dc) + '</b> · ' : '') + tr("اضغط لمتابعة الطلب", "Tap to track your order") + '</span>' + (lastOrder.subs && lastOrder.subs.length ? '<em class="trk-sub">' + tr("فيه بديل ينتظر موافقتك", "A replacement needs your answer") + '</em>' : '') + '</span>' + ic("fwd") + '</button>' :
@@ -3302,6 +3362,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       '<ol><li><i>١</i>' + tr("اختر أغراضك واضغط ＋", "Pick items, tap ＋") + '</li><li><i>٢</i>' + tr("افتح السلة", "Open the cart") + '</li><li><i>٣</i>' + tr("اكتب جوالك وموقعك واطلب", "Add phone & location, order") + '</li></ol>' +
       '<p>' + tr("الدفع كاش أو شبكة عند الاستلام · بدون تسجيل", "Pay cash or card on delivery · no sign-up") + '</p>' +
       '<div class="howto-b"><button type="button" class="btn btn-teal" data-freewrite>✍️ ' + tr("اكتب طلبك بنفسك", "Just write your order") + '</button><button type="button" class="btn btn-soft" data-nav="cats">' + tr("تصفّح الأقسام", "Browse aisles") + '</button></div></div></div>';
+    h += launchHeroHTML();
     orderOf(S.layout, LAYOUT_DEF).forEach(function(x){ if (x.on && SEC[x.id]) h += SEC[x.id]; });
     return h;
   }
@@ -5560,6 +5621,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var waitData = function(fn){ if (dataReady || !(GH || LIVEDATA || NATIVE)) fn(); else setTimeout(function(){ waitData(fn); }, 400); };
     waitData(function(){
     if (S.appSoon && S.appSoon.off) return;
+    if (lhState()) return;   // «رولة المحل» في الرئيسية بدل المربع والشريط
     var AT = S.appSoon && S.appSoon.at ? Date.parse(S.appSoon.at) : 0;
     if (AT && AT > Date.now() && !direct) {
       var tryOpen = function(){
