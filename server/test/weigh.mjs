@@ -35,7 +35,7 @@ ok(r.ok && r.subtotal === 30 && rec(r.orderNo).lines[0].qty === 2.5, '٢٫٥ ك�
 r = await call('/order', { items: { pantry0: 0.25 }, phone: '0557000012', lat: 24.84, lng: 46.83 });
 ok(r.ok && r.subtotal === 3 && rec(r.orderNo).lines[0].qty === 0.25, 'ربع كيلو = ٣: ' + r.subtotal);
 r = await call('/order', { items: { pantry0: 0.8333 }, phone: '0557000013', lat: 24.84, lng: 46.83 });
-ok(r.ok && r.subtotal === 9.96 && rec(r.orderNo).lines[0].qty === 0.83, 'تقريب الكمية لهللتين: ' + r.subtotal);
+ok(r.ok && r.subtotal === 10 && rec(r.orderNo).lines[0].qty === 0.833, 'تقريب الكمية لأقرب جرام: ' + r.subtotal);
 r = await call('/order', { items: { pantry0: 1.5, pantry1: 2 }, phone: '0557000014', lat: 24.84, lng: 46.83 });
 ok(r.ok && r.subtotal === 28 && sum(rec(r.orderNo)) === 28, 'وزن + منتج عادي = ٢٨: ' + r.subtotal);
 r = await call('/order', { items: { pantry1: 2.5 }, phone: '0557000015', lat: 24.84, lng: 46.83 });
@@ -44,6 +44,8 @@ r = await call('/order', { items: { pantry0: 0.05 }, phone: '0557000016', lat: 2
 ok(!r.ok, 'أقل من ١٠٠ جرام مرفوض: ' + JSON.stringify(r).slice(0, 60));
 r = await call('/order', { items: { pantry0: 99 }, phone: '0557000017', lat: 24.84, lng: 46.83 });
 ok(!r.ok, 'أكثر من ٥٠ كيلو مرفوض');
+r = await call('/order', { items: { pantry0: 0.125 }, phone: '0557000018', lat: 24.84, lng: 46.83 });
+ok(r.ok && r.subtotal === 1.5 && rec(r.orderNo).lines[0].qty === 0.125, 'ثمن كيلو (١٢٥ جرام) × ١٢ = ١٫٥: ' + r.subtotal);
 let qq = await call('/quote', { items: { pantry0: 1.75 } });
 ok(qq.ok && qq.subtotal === 21, 'التسعير للتطبيق (/quote) ١٫٧٥ كيلو = ٢١: ' + qq.subtotal);
 console.log(fails ? 'FAILED ' + fails : 'ALL PASS'); process.exit(fails ? 1 : 0);
