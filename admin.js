@@ -1407,10 +1407,30 @@
   var PP_SUGG = { "🛒 سلتك تنتظرك": "cart", "💚 اشتقنا لك": "lapsed", "🔁 اطلب مرة ثانية": "ordered", "⭐ قيّمنا": "ordered", "🙏 اعتذار": "ordered", "🤝 جارنا العزيز": "never", "🎁 كود هدية": "never", "🆕 وصلنا جديد": "all" };
   // لمين؟ شرائح المشتركين (الخادم يحسبها من جهاز الزبون المجهول: سلته وطلباته، بدون اسم ولا جوال)
   var PP_SEGS = [["all", "الكل"], ["cart", "سلتهم فيها أغراض وما كمّلوا (من ساعتين وأكثر)"], ["never", "ما طلبوا أبداً"], ["ordered", "طلبوا قبل"], ["lapsed", "طلبوا وانقطعوا"], ["loyal", "الزبائن الدائمين (٣ طلبات وأكثر)"]];
+  /* إشعار العروض (طلب المالك ١٧ نوفمبر ٢٠٢٦): قائمة أفضل العروض الحين، مرتبة من الأقوى. اختيار عرض يكتب الإشعار ويخليه يفتح المنتج */
+  function dealList(){
+    var out = [], st = draft.store || {}, short = function(n){ n = String(n || ""); return n.length > 34 ? n.slice(0, 33) + "…" : n; };
+    draft.products.forEach(function(p){
+      if (!p.stock || p.hidden || p.print || !(Number(p.price) > 0)) return;
+      if (Number(p.old) > Number(p.price)) { var pct = Math.round((p.old - p.price) / p.old * 100);
+        out.push({ p: p, pct: pct, kind: "sale", badge: pct + "٪-", line: num(p.price) + " ر.س بدل " + num(p.old), go: "p:" + p.id,
+          title: "🔥 " + short(p.name) + " بـ " + num(p.price) + " بس!", body: "بدل " + num(p.old) + " ر.س، وفّر " + pct + "٪. اطلبه الحين من " + (st.name || "متاجر أحد") + (st.eta ? " ويوصلك خلال " + st.eta : "") + "." }); }
+      (p.packs || []).forEach(function(x){ var n = Number(x.n), pr = Number(x.price); if (n > 1 && pr > 0 && pr < n * p.price) { var pct2 = Math.round((n * p.price - pr) / (n * p.price) * 100);
+        out.push({ p: p, pct: pct2, kind: "qty", badge: num(n) + " بـ " + num(pr), line: num(pr) + " ر.س بدل " + num(Math.round(n * p.price * 100) / 100), go: "p:" + p.id,
+          title: "🔥 " + num(n) + " " + short(p.name) + " بـ " + num(pr), body: "بدل " + num(Math.round(n * p.price * 100) / 100) + " ر.س، وفّر " + num(Math.round((n * p.price - pr) * 100) / 100) + " ر.س. العرض لين تخلص الكمية." }); } });
+    });
+    (st.groups || []).forEach(function(g){ if (!g || g.on === false || !(g.ids || []).length) return; var p0 = dById(g.ids[0]); if (!p0) return;
+      var reg = Number(p0.price) * Number(g.n), pct3 = reg > 0 ? Math.round((reg - g.price) / reg * 100) : 0;
+      out.push({ p: p0, pct: pct3, kind: "grp", badge: num(g.n) + " بـ " + num(g.price), line: "أي " + num(g.n) + " من " + (g.name || ""), go: "offers",
+        title: "🔥 " + short(g.name || "عرض") + ": أي " + num(g.n) + " بـ " + num(g.price), body: "اخلطها مثل ما تبي، أي " + num(g.n) + " بـ " + num(g.price) + " ر.س بس. شوف العرض الحين." }); });
+    out.sort(function(a, b){ return b.pct - a.pct; });
+    return out.slice(0, 40);
+  }
   function promoPushUI(box){
     var wrap = document.createElement("div"); wrap.id = "promoPush"; wrap.style.marginTop = "18px";
     var ph = promoPhrases();
     wrap.innerHTML = '<h2>إشعار للزبائن (التطبيق والموقع)</h2><p class="hint">يوصل للزبائن اللي فعّلوا إشعارات العروض من التطبيق أو الموقع. اختر عبارة جاهزة، عدّلها لو تبي، وجرّبها على جوالك أول. الحد ٤ إرسالات في اليوم عشان ما نزعج الزبون.</p>' +
+      '<div class="dl-wrap"><span class="dl-lab">إشعار عرض: اختر من أفضل العروض الحين</span><button type="button" class="dl-sel" id="dlSel" aria-expanded="false"><span id="dlCur">🔥 اختر عرض…</span><span aria-hidden="true">▾</span></button><div class="dl-menu" id="dlMenu" hidden></div></div>' +
       '<div class="pp-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">' + ph.map(function(x, i){ return '<button type="button" class="btn btn-soft" data-ppph="' + i + '" style="padding:6px 12px;font-size:12.5px">' + esc(x[0]) + '</button>'; }).join("") + '</div>' +
       '<div class="fields" style="max-width:460px"><label>العنوان (٦٠ حرف)<input id="ppT" maxlength="60" placeholder="مثال: عروض الأسبوع نزلت"></label><label>النص (١٨٠ حرف)<textarea id="ppB" maxlength="180" rows="3" placeholder="نص قصير يشجع الزبون يفتح التطبيق"></textarea></label>' +
       '<label>لمين؟<select id="ppS">' + PP_SEGS.map(function(g){ return '<option value="' + g[0] + '">' + esc(g[1]) + '</option>'; }).join("") + '</select></label>' +
@@ -1422,6 +1442,19 @@
       '<div class="actions"><button class="btn btn-soft" type="button" id="ppRs">احفظ التذكير</button></div><p class="status" id="ppRm"></p>';
     box.appendChild(wrap);
     var T = $("ppT"), B = $("ppB"), G = $("ppG"), M = $("ppMsg"), SG = $("ppS"), DY = $("ppD"), segN = null, segT = 0;
+    if (!$("dlCss")) { var dc = document.createElement("style"); dc.id = "dlCss"; dc.textContent = ".dl-wrap{max-width:460px;margin:10px 0 14px;position:relative}.dl-lab{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:6px}.dl-sel{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:48px;border:1.5px solid var(--line);border-radius:14px;background:#fff;padding:0 14px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;text-align:start}.dl-sel[aria-expanded=true]{border-color:#0E8A6A;box-shadow:0 0 0 3px rgba(14,138,106,.12)}.dl-menu{margin-top:6px;border:1.5px solid var(--line);border-radius:16px;background:#fff;max-height:420px;overflow:auto;box-shadow:0 12px 28px rgba(13,20,32,.12)}.dl-grp{font-size:11.5px;font-weight:800;color:var(--muted);background:#F2F5F4;padding:6px 14px;position:sticky;top:0}.dl-opt{display:flex;align-items:center;gap:10px;width:100%;padding:8px 12px;border:0;border-top:1px solid #F0F3F2;background:#fff;font:inherit;text-align:start;cursor:pointer}.dl-opt:hover{background:#F3FBF8}.dl-opt .im{width:42px;height:42px;flex:none;border-radius:10px;background:#F4F6F7;overflow:hidden;display:grid;place-items:center}.dl-opt .im img{width:100%;height:100%;object-fit:contain}.dl-opt .t{flex:1;min-width:0;font-size:13px;font-weight:700;line-height:1.4}.dl-opt .t small{display:block;color:var(--muted);font-size:11.5px}.dl-b{flex:none;background:#E8394F;color:#fff;font-weight:800;font-size:12px;padding:4px 9px;border-radius:999px;white-space:nowrap}.dl-b.q{background:#E8590C}"; document.head.appendChild(dc); }
+    var DL = dealList(), dlMenu = $("dlMenu"), dlSel = $("dlSel");
+    var dlRow = function(x, i){ return '<button type="button" class="dl-opt" data-dl="' + i + '"><span class="im">' + imgTag(x.p.img, "") + '</span><span class="t">' + esc(x.kind === "grp" ? x.line : x.p.name) + '<small>' + (x.kind === "grp" ? esc(x.badge) + " ر.س" : esc(x.line)) + '</small></span><span class="dl-b' + (x.kind === "sale" ? '' : ' q') + '">' + esc(x.badge) + '</span></button>'; };
+    var nOff = draft.products.filter(function(p){ return p.stock && Number(p.old) > Number(p.price); }).length;
+    dlMenu.innerHTML = (DL.length ? '<div class="dl-grp">🔥 أقوى العروض (من الأقوى)</div>' + DL.map(dlRow).join("") : '<p class="hint" style="padding:10px 14px">ما فيه عروض الحين. حط سعر «قبل الخصم» أو عرض كمية من المنتجات.</p>') +
+      '<div class="dl-grp">📰 عام</div><button type="button" class="dl-opt" data-dl="all"><span class="im">📰</span><span class="t">جريدة العروض (كل العروض)<small>' + num(nOff) + ' منتج عليه خصم</small></span></button>';
+    dlSel.addEventListener("click", function(){ var o = dlMenu.hidden; dlMenu.hidden = !o; dlSel.setAttribute("aria-expanded", o); });
+    dlMenu.addEventListener("click", function(e){ var b = e.target.closest("[data-dl]"); if (!b) return;
+      var x = b.dataset.dl === "all" ? { title: "📰 عروض الأسبوع نزلت", body: "أكثر من " + num(nOff) + " منتج عليه خصم. شوفها الحين قبل لا تخلص.", go: "offers", name: "جريدة العروض" } : DL[Number(b.dataset.dl)];
+      T.value = x.title.slice(0, 60); B.value = x.body.slice(0, 180);
+      var old = G.querySelector("option[data-dlp]"); if (old) old.remove();
+      if (/^p:/.test(x.go)) { var op = document.createElement("option"); op.value = x.go; op.dataset.dlp = "1"; op.textContent = "يفتح صفحة المنتج: " + x.p.name; G.appendChild(op); }
+      G.value = x.go; $("dlCur").textContent = "🔥 " + (x.name || (x.kind === "grp" ? x.line : x.p.name)); dlMenu.hidden = true; dlSel.setAttribute("aria-expanded", "false"); T.focus(); });
     var segName = function(){ var g = PP_SEGS.filter(function(x){ return x[0] === SG.value; })[0]; return g ? g[1] : "الكل"; };
     var paintSegs = function(){ var e = $("ppStat"); if (!e) return;
       $("ppDw").hidden = SG.value !== "lapsed";
