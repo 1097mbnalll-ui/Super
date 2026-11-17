@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -56,6 +57,34 @@ public class OwnerActivity extends AppCompatActivity {
     private ValueCallback<Uri[]> fileCb;
     private long lastBack;
     private volatile boolean offline = false;
+    private volatile String pageUrl = "";
+
+    /** الموقع (صفحة الإدارة) يناديه بعد دخول المالك: نبدأ متابعة الطلبات بالخلفية. ما فيه أي دالة تقرأ الرقم السري */
+    private class OwnerBridge {
+        @JavascriptInterface public void watch(String pin, String api) {
+            if (!pageUrl.startsWith("https://1097mbnalll-ui.github.io/Super")) return;
+            if (pin == null || pin.length() < 3 || pin.length() > 12 || api == null || !api.matches("^https://[a-z0-9.-]+\\.workers\\.dev/?$")) return;
+            runOnUiThread(() -> { askNotify(); OrderWatchService.start(OwnerActivity.this, pin, api); askBattery(); });
+        }
+        @JavascriptInterface public boolean watching() { return OrderWatchService.prefs(OwnerActivity.this).contains("pin"); }
+    }
+
+    private void askNotify() {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{ android.Manifest.permission.POST_NOTIFICATIONS }, 91);
+        }
+    }
+
+    /** مرة وحدة: نطلب من أندرويد ما يوقف التطبيق لتوفير البطارية، عشان الإشعارات توصل والجوال مقفل */
+    private void askBattery() {
+        try {
+            android.os.PowerManager pm = getSystemService(android.os.PowerManager.class);
+            android.content.SharedPreferences p = OrderWatchService.prefs(this);
+            if (pm == null || pm.isIgnoringBatteryOptimizations(getPackageName()) || p.getBoolean("askedBattery", false)) return;
+            p.edit().putBoolean("askedBattery", true).apply();
+            startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
+        } catch (Exception ignored) { }
+    }
     private android.net.ConnectivityManager.NetworkCallback netCb;
 
     @Override
@@ -97,6 +126,7 @@ public class OwnerActivity extends AppCompatActivity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                pageUrl = url == null ? "" : url;
                 if (url != null && url.startsWith("https://1097mbnalll-ui.github.io/Super")) offline = false;
                 if (url != null && url.startsWith("https://")) view.evaluateJavascript(GO_JS, null);
             }
@@ -134,6 +164,10 @@ public class OwnerActivity extends AppCompatActivity {
                 });
             }
         });
+
+        web.addJavascriptInterface(new OwnerBridge(), "OhodOwner");
+        // المتابعة كانت شغالة (دخلت قبل): نرجّعها لو أندرويد وقفها
+        if (OrderWatchService.prefs(this).contains("pin")) { askNotify(); OrderWatchService.start(this, null, null); }
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
         else if (!OfflinePage.online(this)) { web.loadDataWithBaseURL("https://1097mbnalll-ui.github.io/", offlinePage("no network"), "text/html", "utf-8", null); offline = true; }
