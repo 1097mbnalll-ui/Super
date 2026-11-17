@@ -135,9 +135,7 @@ struct HomeView: View {
         default:
             if let index = catalog.index {
                 if AppLook.current.showFeatured {
-                    SectionHeader(title: "مختارات لك", emoji: "✨", actionTitle: "كل العروض") { tab = .offers }
-                        .padding(.top, 18).padding(.bottom, 8)
-                    ProductGrid(products: forYou(index), showCategory: true)
+                    ForYouGrid(index: index, tab: $tab)
                 } else {
                     SectionHeader(title: "العروض", emoji: "🔥", actionTitle: "الكل") { tab = .offers }
                         .padding(.top, 18).padding(.bottom, 8)
@@ -777,6 +775,86 @@ struct LoadFailedView: View {
             Text("تأكد من الإنترنت وجرّب مرة ثانية.")
         } actions: {
             Button("جرّب مرة ثانية", action: retry).buttonStyle(.borderedProminent)
+        }
+    }
+}
+
+/// «لك» بنفس نظام الموقع بالضبط (chipList / chipItems): شريط (لك، العروض، الأقسام) وتحته المنتجات.
+/// «لك» = عرض اليوم، ثم مختارات المالك (store.forYou)، ثم المنتجات المطلوبة (rk ≥ forMinRk، افتراضي ٦٠) مرتبة بالأهمية
+/// (rk + ١٥ للمصوّر / −٣٠٠ بدون صورة + ١٠ للعرض) مع هزّة خفيفة تتجدد كل ١٠ دقايق، ودفعات ٤٨ وزر «عرض المزيد».
+struct ForYouGrid: View {
+    let index: CatalogIndex
+    @Binding var tab: AppTab
+    @Environment(CatalogStore.self) private var catalog
+    @State private var chip = "for"
+    @State private var shown = 48
+
+    private struct Chip: Identifiable { let id: String; let name: String }
+    private var chips: [Chip] {
+        var l = [Chip(id: "for", name: "لك ✨")]
+        if !index.offers.isEmpty { l.append(Chip(id: "offers", name: "العروض")) }
+        for c in catalog.categories { l.append(Chip(id: "c:" + c.id, name: c.name)) }
+        return l
+    }
+
+    private static func jitter(_ id: String, seed: Int) -> Double {
+        var h = Int32(truncatingIfNeeded: seed)
+        for u in id.unicodeScalars { h = h &* 31 &+ Int32(truncatingIfNeeded: u.value) }
+        return Double(UInt32(bitPattern: h) % 1000) / 1000
+    }
+
+    private func items(seed: Int) -> [Product] {
+        if chip == "offers" { return index.offers.filter { catalog.isAvailable($0) }.sorted { ($0.hasPhoto ? 1 : 0, $0.rk) > ($1.hasPhoto ? 1 : 0, $1.rk) } }
+        if chip.hasPrefix("c:") { return catalog.products(in: String(chip.dropFirst(2))).filter { !catalog.isSoon($0) } }
+        let st = catalog.store
+        let picks = st.forYou.compactMap { catalog.product($0) }.filter { catalog.isAvailable($0) }
+        let pickIDs = Set(picks.map(\.id))
+        var head: [Product] = []
+        if let dd = catalog.dailyDeal, !pickIDs.contains(dd.product.id) { head.append(dd.product) }
+        if st.forOnly, !picks.isEmpty { return head + picks }
+        let minRk = st.forMinRk ?? 60
+        let score: (Product) -> Double = { p in
+            p.rk + (p.hasPhoto ? 15 : -300) + ((p.discount != nil || p.quantityOffer != nil) ? 10 : 0) + Self.jitter(p.id, seed: seed) * min(18, p.rk * 0.2)
+        }
+        let rest = index.byCategory.values.joined()
+            .filter { !pickIDs.contains($0.id) && $0.rk >= minRk && catalog.isAvailable($0) && !catalog.isSoon($0) && head.first?.id != $0.id }
+        var seen = Set<String>()
+        let uniq = rest.filter { seen.insert($0.id).inserted }
+        return head + picks + uniq.map { ($0, score($0)) }.sorted { $0.1 > $1.1 }.map(\.0)
+    }
+
+    var body: some View {
+        // يتجدد كل ١٠ دقايق (مثل الموقع)
+        TimelineView(.periodic(from: .now, by: 600)) { ctx in
+            let seed = Int(ctx.date.timeIntervalSince1970 / 600)
+            let all = items(seed: seed)
+            VStack(alignment: .leading, spacing: 10) {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(chips) { c in
+                            Button { withAnimation(.smooth(duration: 0.2)) { chip = c.id; shown = 48 } } label: {
+                                Text(tv: c.name).font(.ui(size: 13.5, weight: .semibold))
+                                    .padding(.horizontal, 14).padding(.vertical, 8)
+                                    .foregroundStyle(chip == c.id ? .white : Theme.ink)
+                                    .background(chip == c.id ? Theme.ink : .white, in: Capsule())
+                                    .overlay(Capsule().strokeBorder(Theme.line, lineWidth: chip == c.id ? 0 : 1))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                }
+                .scrollIndicators(.hidden)
+                ProductGrid(products: Array(all.prefix(shown)), showCategory: chip == "for" || chip == "offers")
+                if all.count > shown {
+                    Button { shown += 48 } label: {
+                        Text(tv: "عرض المزيد (\(all.count - shown))").font(.ui(size: 14, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain).padding(.horizontal, 12)
+                }
+            }
+            .padding(.top, 18)
         }
     }
 }

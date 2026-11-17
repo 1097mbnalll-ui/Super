@@ -89,6 +89,8 @@ struct Product: Hashable, Sendable, Identifiable {
     var brand: String? = nil
     /// ينباع بالوزن (w في data.json): السعر لكل كيلو، والزبون يختار كم كيلو أو كم ريال
     var weighed = false
+    /// أهمية المنتج (rk من tools/daily/popularity.py: المبيعات والسلة والأساسيات)، لترتيب «لك» مثل الموقع
+    var rk: Double = 0
 
     var imageURL: URL? { AppConfig.asset(image) }
     var hasPhoto: Bool { image?.hasPrefix("p/") == true }
@@ -303,6 +305,8 @@ struct StoreInfo: Sendable {
     /// مختارات المالك أول الرئيسية (store.forYou)، وforOnly = الرئيسية تعرضها بس
     var forYou: [String] = []
     var forOnly = false
+    /// أقل أهمية (rk) للمنتجات في «لك» (store.forMinRk، افتراضي ٦٠ مثل الموقع)
+    var forMinRk: Double? = nil
     /// «باقي N بس» يطلع لما المخزون الحي ≤ lowAt (افتراضي ٣)
     var lowAt = 3
     /// بدون منطقة مرسومة: المسافة القصوى من المحل (كم) وموقع المحل [lat, lng]، ومركز الخريطة
@@ -452,6 +456,7 @@ enum CatalogParser {
         }
         store.forYou = (s["forYou"] as? [Any])?.compactMap { str($0) } ?? []
         store.forOnly = (s["forOnly"] as? Bool) ?? false
+        store.forMinRk = num(s["forMinRk"])
         if s["lowAt"] != nil, let v = num(s["lowAt"]) { store.lowAt = Int(v) }
         store.maxKm = num(s["maxKm"]).flatMap { $0 > 0 ? $0 : nil }
         func point(_ any: Any?) -> [Double]? {
@@ -526,7 +531,7 @@ enum CatalogParser {
                            barcode: str(p["bc"]), max: num(p["max"]).map { Int($0) },
                            badge: str(en ? (p["badge_en"] ?? p["badge"]) : p["badge"]), sugg: (p["sugg"] as? [Any])?.compactMap { str($0) } ?? [],
                            nameEN: str(en ? p["name"] : p["name_en"]), isPrint: p["print"] != nil && !(p["print"] is NSNull) && (p["print"] as? Bool) != false,
-                           soon: soon, brand: en ? nil : str(p["brand"]), weighed: (num(p["w"]) ?? 0) > 0)
+                           soon: soon, brand: en ? nil : str(p["brand"]), weighed: (num(p["w"]) ?? 0) > 0, rk: num(p["rk"]) ?? 0)
         }
         return Catalog(store: store, categories: cats, products: products)
     }
