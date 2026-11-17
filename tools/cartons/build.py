@@ -16,8 +16,8 @@ import sys, json, re, os, collections
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, 'cartons.json')
 CARTON_RE = re.compile(r'^(كرتون|كرتونه|شدّة|شدة|شده)')
-TARGET = {('drinks', 'soft'), ('drinks', 'water'), ('drinks', 'juice'), ('drinks', 'energy'),
-          ('dairy', 'milk'), ('dairy', 'laban'), ('care', 'paper')}
+TARGET = {('drinks', 'soft'), ('drinks', 'water'), ('juice', 'juice'), ('drinks', 'energy'),
+          ('dairy', 'milk'), ('dairy', 'laban'), ('clean', 'paper'), ('care', 'paper')}
 MIN_RK = {'soft': 55, 'water': 70, 'juice': 65, 'energy': 33, 'milk': 85, 'laban': 50, 'paper': 47}
 # المشروبات الغازية: الماركات الأساسية بس (بيبسي وأنواعه، كوكاكولا وأنواعها...)
 SOFT_BRANDS = re.compile(r'بيبسي|ببسي|سفن ?[اآ]ب|ميرندا|ميراندا|ديو|كوكا|كةكا|سبرايت|فانتا|شاني|شويبس')
@@ -100,8 +100,8 @@ def title_of(p):
     m = list(SIZE_RE.finditer(name))
     if m: sz = m[-1].group(0); name = (name[:m[-1].start()] + name[m[-1].end():])
     elif SIZE_RE.fullmatch(unit.strip()): sz = unit.strip()
-    if sz and p.get('cat') in ('drinks', 'dairy') and re.search(r'\d\s*(جم|ج)$', sz): sz = re.sub(r'(جم|ج)$', 'مل', sz)
-    if not sz and p.get('cat') == 'drinks':
+    if sz and p.get('cat') in ('drinks', 'juice', 'dairy') and re.search(r'\d\s*(جم|ج)$', sz): sz = re.sub(r'(جم|ج)$', 'مل', sz)
+    if not sz and p.get('cat') in ('drinks', 'juice'):
         mm = re.search(r'\s(\d{3,4})$', name)
         if mm: sz = mm.group(1) + ' مل'; name = name[:mm.start()]
     if sz: sz = re.sub(r'(\d)\s*(مل|ملي)$', r'\1 مل', re.sub(r'(\d)\s*لتر$', r'\1 لتر', sz))

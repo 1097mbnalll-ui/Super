@@ -1,0 +1,554 @@
+## الأقسام الجديدة (كل المنتجات)
+الألبان والبيض (dairy): 601
+الأجبان (cheese): 255
+المشروبات والمياه (drinks): 474
+العصائر (juice): 488
+الشاي والقهوة (tea): 352
+الشيبس والمكسرات (snacks): 683
+الشوكولاتة والحلويات (sweets): 1104
+البسكويت والكيك (biscuits): 991
+المثلجات (icecream): 298
+المعلبات والصلصات (pantry): 1366
+الأرز والدقيق (grains): 587
+اللحوم والدواجن (meat): 358
+المنظفات والورقيات (clean): 1258
+العناية الشخصية والأطفال (care): 872
+المنزل والمنوعات (misc): 1839
+المخبز (bakery): 16
+الخضار والفواكه (veg): 29
+المحمصة (roast): 0
+الطباعة (print): 2
+
+## الانتقالات (من ← إلى): 3878
+sweets → biscuits: 987
+sweets → snacks: 670
+pantry → grains: 586
+drinks → juice: 488
+drinks → tea: 342
+sweets → icecream: 297
+dairy → cheese: 255
+care → clean: 108
+sweets → sweets: 41
+sweets → pantry: 21
+drinks → misc: 11
+pantry → snacks: 10
+drinks → dairy: 10
+sweets → tea: 8
+drinks → care: 8
+sweets → dairy: 5
+drinks → clean: 5
+pantry → biscuits: 4
+dairy → snacks: 3
+pantry → meat: 3
+clean → care: 3
+pantry → dairy: 2
+pantry → sweets: 2
+dairy → grains: 1
+dairy → tea: 1
+pantry → tea: 1
+sweets → care: 1
+pantry → icecream: 1
+pantry → misc: 1
+sweets → meat: 1
+drinks → pantry: 1
+dairy → care: 1
+
+## نقل بالاسم (بدون sub) للمراجعة: 498
+FINAL | أوريو بسكويت شوكولاتة فانيليا | sweets → biscuits
+FINAL | أوريو بسكويت شوكولاتة | sweets → biscuits
+FINAL | ديمة كوكيز الشوكولاتة | sweets → biscuits
+FINAL | ديمة براوني كيك بالشوكولاتة | sweets → biscuits
+FINAL | امريكانا كيك بار فانيليا مغطى بالشوكولاتة سوبرمان 8 × 42 × 35 جم | sweets → biscuits
+FINAL | جالكسي شوكولاتة كرسبي | snacks → sweets
+FINAL | ديمة كوكيز الشوكولاتة الداكنة وجوز البيكان | sweets → biscuits
+FINAL | ديمة فانتازي كيك بالشوكولاتة | sweets → biscuits
+FINAL | ديمة نيو بسكويت مغطى بالشوكولاتة | sweets → biscuits
+FINAL | ديمة بسكويت شوكولاتة | sweets → biscuits
+FINAL | امريكانا كيك بار شوكولاتة غير مغطى 20 جم × 12 × 10 | sweets → biscuits
+FINAL | ديمة كب كيك شوكولاتة | sweets → biscuits
+FINAL | أمريكانا شوكو كوكيز أورجنال بقطع الشوكولاتة | sweets → biscuits
+FINAL | أمريكانا كيك رولز شوكولاتة | sweets → biscuits
+FINAL | أمريكانا كب كيك شوكولاتة | sweets → biscuits
+FINAL | جالكسي كيك فانيليا | sweets → biscuits
+FINAL | أمريكانا شوكو كوكيز شوكولاتة | sweets → biscuits
+FINAL | جالكسي كيك بالفانيلا | sweets → biscuits
+FINAL | أمريكانا كيك رولز بالشوكولاتة | sweets → biscuits
+FINAL | ديمة ميني بير كيك بالشوكولاتة | sweets → biscuits
+FINAL | أوريو بسكويت شوكولاتة داكنة | sweets → biscuits
+FINAL | ديمة بسكويت كريمة الشوكولاتة | sweets → biscuits
+FINAL | امريكانا فريش كيك شوكولاتة 220 | sweets → biscuits
+FINAL | امريكانا هيرشيز شوكو كوكيز شوكولاتة 12 × 100 جم 3+1 | sweets → biscuits
+FINAL | كادبوري ديري ميلك أوريو | sweets → biscuits
+FINAL | شوكولاتة ميلكا بار اوريو | sweets → biscuits
+FINAL | ديمة مارمو كيك بالشوكولاتة | sweets → biscuits
+FINAL | ملكا اوريو | sweets → biscuits
+FINAL | جالكسي كوكيز كبير | sweets → biscuits
+FINAL | أوزمو هوكسي بوكسي أصابع بسكويت بالشوكولاتة | sweets → biscuits
+FINAL | ميلكا ليو بسكويت بالشوكولاتة | sweets → biscuits
+FINAL | البطل فشار بقطع بسكويت الشوكولاتة | snacks → biscuits
+FINAL | جولن زيرو حلقات بسكويت بشوكولاتة الحليب بدون سكر | snacks → biscuits
+FINAL | بورقات حلاوة جلي حلقات سطل | snacks → sweets
+FINAL | برونتو سوفت كوكيز بقطع الشوكولاتة الداكنة | sweets → biscuits
+FINAL | برونتو سوفت كوكيز بقطع الشوكولاتة | sweets → biscuits
+FINAL | غندور يمامة كيك دبل شوكولاتة 20 جم | sweets → biscuits
+FINAL | تيشوب رينجو ويفر رول مغطى بالشوكولاتة | sweets → biscuits
+FINAL | تيشوب رينجو ويفر شوكولاتة | sweets → biscuits
+FINAL | امادا بسكويت نجمه 6 × 24 × 37 جم | sweets → biscuits
+FINAL | لواكر جاردينا ويفر بالشوكولاتة | sweets → biscuits
+FINAL | لواكر ساندويتش ويفر شوكولاتة | sweets → biscuits
+FINAL | تيشوب رينجو ويفر بالشوكولاتة | sweets → biscuits
+FINAL | كندر ترونكي ويفر | sweets → biscuits
+FINAL | كادبوري تايم أوت ويفر بالشوكولاتة | sweets → biscuits
+FINAL | بوب كيك شوكولاتة | sweets → biscuits
+FINAL | تيشوب بسكويت بكريمة الشوكلاته | sweets → biscuits
+FINAL | ميلكا تشوكو ويفر دائري | sweets → biscuits
+FINAL | ميدي كيك شوكولاتة | sweets → biscuits
+FINAL | ميجي يان يان بسكويت بالشوكولاتة | sweets → biscuits
+FINAL | بخاخ ثلج 226 | juice → misc
+FINAL | ميموريز جوي ويفر بكريمة الشوكولاتة | sweets → biscuits
+FINAL | بيكاديلي بسكويت دايجستيف شوكولاتة | sweets → biscuits
+FINAL | جولن زيرو ويفر شوكولاتة | sweets → biscuits
+FINAL | تيشوب رينجو بسكويت شوكولاتة وفانيلا | sweets → biscuits
+FINAL | نوتيلا بسكويت بكت 4 × 28 × 41.4 جم | sweets → biscuits
+FINAL | إيتي ويفر أب بالشوكولاتة بالحليب | sweets → biscuits
+FINAL | إيتي ويفر أب كلاسيك شوكولاتة | sweets → biscuits
+FINAL | إيتي ليل ويفر بالشوكولاتة | sweets → biscuits
+FINAL | تيشوب رينجو ويفر شوكولاتة بكريمة الفانيليا | sweets → biscuits
+FINAL | سفن دايز كيك بار شوكولاتة | sweets → biscuits
+FINAL | لوبو كيك شوكولاتة | sweets → biscuits
+FINAL | ويفر جولن زيرو بالشوكولاتة بدون سكر | sweets → biscuits
+FINAL | أولكر مكفيتز بسكويت شوكولاتة | sweets → biscuits
+FINAL | مكفيتز بسكويت دايجستيف شوكولاتة دارك | sweets → biscuits
+FINAL | نوتيلا بي ريدي ويفر 132 جم | sweets → biscuits
+FINAL | ميموريز كوكيز بقطع الشوكولاتة | sweets → biscuits
+FINAL | نوتيلا بسكويت أنبوب | sweets → biscuits
+FINAL | هرفي كوكيز طرية دبل شوكولاتة | sweets → biscuits
+FINAL | تيفاني نتي بايتس بسكويت شوكولاتة | sweets → biscuits
+FINAL | برونتو سوفت كوكيز بقطع الشوكولاتة المشكلة | sweets → biscuits
+FINAL | برونتو سوفت كوكيز بقطع الشوكولاتة الداكنة بدون سكر | sweets → biscuits
+FINAL | جولن زيرو بسكويت تابلت بالشوكولاتة بدون سكر | sweets → biscuits
+FINAL | ماكفيتيز ثينز بسكويت بالشوكولاتة بالحليب | sweets → biscuits
+FINAL | جولن زيرو بسكويت دايجستيف بالشوكولاتة الداكنة | sweets → biscuits
+FINAL | بسكويت امادا ستار نجمه باكت 24 × 6 × 37 باكيت | sweets → biscuits
+FINAL | ماكفيتيز بسكويت دايجستيف بالشوكولاتة | sweets → biscuits
+FINAL | بيتي كروكر كيك العائلة شوكولاتة | sweets → biscuits
+FINAL | سنكرز ويفر رول | sweets → biscuits
+FINAL | جولن بسكويت حبوب الشوفان بالشوكولاتة | sweets → biscuits
+FINAL | برونتو فاميلي كيك شوكولاتة | sweets → biscuits
+FINAL | جولون ميني كوكيز بالشوكولاتة خالي من الجلوتين | sweets → biscuits
+FINAL | جولن زيرو كوكيز بقطع الشوكولاتة بدون سكر | sweets → biscuits
+FINAL | فوشية ساندويتش الجبنة | cheese → grains
+FINAL | لوزين كب كيك بحشوة الشوكولاتة | sweets → biscuits
+FINAL | ساريتا كيك ماربل شوكولاتة | sweets → biscuits
+FINAL | أمادا بسكويت كوب | sweets → biscuits
+FINAL | أمادا بسكويت لوف بايت | sweets → biscuits
+FINAL | كيك جام شوكولاتة 16 × 165 جم | sweets → biscuits
+FINAL | كعك كيك الشاي 6 قطع بالشوكولاتة 32 × 144 جم بافيل | sweets → biscuits
+FINAL | ماكفيتيز ثينز بسكويت بالشوكولاتة الداكنة | sweets → biscuits
+FINAL | إم آند إمز كوكيز بالشوكولاتة 180 جم | sweets → biscuits
+FINAL | صيدا ميجور بسكويت ساندويتش شوكولاتة | sweets → biscuits
+FINAL | ماكفيتيز بسكويت دايجستيف بالشوكولاتة | sweets → biscuits
+FINAL | باونتي كوكيز | sweets → biscuits
+FINAL | أولكر مكفيتز بسكويت شوكولاتة بالحليب بورشن | sweets → biscuits
+FINAL | لوزين كب كيك شوكولاتة | sweets → biscuits
+FINAL | صن بايتس جبنة | cheese → snacks
+FINAL | أولكر ديلوكس ويفر شوكولاتة | sweets → biscuits
+FINAL | يونكرز بسكويت شوكولاتة | sweets → biscuits
+FINAL | كاجي بسكويت شوكولاتة | sweets → biscuits
+FINAL | تيفاني شنكوز كوكيز بالشوكولاتة | sweets → biscuits
+FINAL | هيرشيز كوكيز آند كريم شوكولاتة بيضاء | sweets → biscuits
+FINAL | ماكفيتيز نبلز شوكولاتة بيضاء | sweets → biscuits
+FINAL | ديمة كريم ماكسي بسكويت شوكولاتة بندق | snacks → biscuits
+RES | المراعي حلى فانيليا | sweets → dairy
+RES | أمريكانا هوت دوج بقري | pantry → meat
+FINAL | سي سي ستك فراولة | icecream → sweets
+FINAL | اوريو بالشوكولاتة والبندق 35 جم / / 12 حبة | snacks → biscuits
+RES | قودي شيرة الحلويات العربية اسود | sweets → pantry
+CLS | قودي أناناس حلقات صغير | pantry → sweets
+FINAL | جالكسي شوكولاتة بالحليب والمكسرات والزبيب | snacks → sweets
+RES | امريكانا مسحب الدجاج بالبقسماط حار | pantry → meat
+RES | امريكانا مسحب بالبقسماط دجاج عادي | pantry → meat
+RES | ديمة فستك مملح | sweets → snacks
+RES | الصافي دانيت حلى فانيليا | sweets → dairy
+RES | أمريكانا شابورة بر | pantry → grains
+FINAL | كتكو ستكس بطاطس بالفلفل الحار | icecream → snacks
+FINAL | جالكسي شوكولاتة بالبندق | snacks → sweets
+RES | نستله كوكو بفس حبوب إفطار | sweets → pantry
+FINAL | جالكسي حليب بالشوكولاتة والبندق | snacks → sweets
+FINAL | باجة مكسرات مشكل إكسترا 280 جم | sweets → snacks
+CLS | ستاربكس فرابتشينو مشروب قهوة | dairy → drinks
+RES | باجة قهوة سعودية بالقرنفل | sweets → tea
+RES | باجة قهوة سعودية بالزعفران | sweets → tea
+CLS | دانكن قهوة فانيليا فرنسية | pantry → drinks
+RES | البطل دبي سناك ذرة بالطماطم الحلوة | sweets → snacks
+CLS | تيفاني شنكوز كوكيز برقائق الشوكولاتة | pantry → sweets
+FINAL | تيفاني شنكوز كوكيز برقائق الشوكولاتة | sweets → biscuits
+FINAL | لواكر جاردينا ويفر بالبندق | snacks → biscuits
+FINAL | لواكر ساندويتش ويفر بالبندق | snacks → biscuits
+FINAL | تيشوب رينجو ويفر رول بالبندق والشوكولاتة | snacks → biscuits
+RES | صافيو حليب تعزيز المناعة بالشوكولاتة | drinks → dairy
+RES | صافيو حليب تعزيز المناعة بالفانيليا | drinks → dairy
+RES | بيوقلز رقائق ذرة أصلي | sweets → snacks
+RES | صافيو حليب تعزيز المناعة طويل الأجل سادة | drinks → dairy
+FINAL | ميموريز جوي ويفر بكريمة البندق | snacks → biscuits
+FINAL | جلي بورقات كيك | biscuits → sweets
+RES | هرفي شابورة بر 375 جم | pantry → grains
+RES | بيوقلز قراقيش ذرة بطعم الكاتشب | sweets → snacks
+RES | بيوقلز رقائق ذرة بالفلفل الأحمر الحلو | sweets → snacks
+RES | بسكريم بالقرفه | sweets → biscuits
+FINAL | ويفر واف اب بالبندق | snacks → biscuits
+FINAL | تيشوب رينجو ويفر بالبندق | snacks → biscuits
+RES | بيوقلز رقائق ذرة بنكهة المشوي المدخن | sweets → snacks
+RES | فوستر كلاركس خليط المهلبية | sweets → pantry
+RES | البستان بذور دوار الشمس | sweets → snacks
+RES | الزهراء فطائر كريب | sweets → pantry
+CLS | إيقل دهان جاوي بلسم أخضر | sweets → care
+RES | بسكريم كاكو 54 جم 5+1 × 24 | sweets → biscuits
+FINAL | جوفريك ويفر بالفستق | snacks → biscuits
+RES | ميني تكس | sweets → biscuits
+RES | فوستر كلاركس مسحوق كاسترد | sweets → pantry
+RES | أولكر كات كات تات بكريمة الكاسترد | sweets → biscuits
+RES | رقائق بطاطس بنكهة الخضار 75 جم رقم(6) ريسون | pantry → snacks
+FINAL | منتوس حلاوة رول فواكه | biscuits → sweets
+RES | البستان فصفص مصري بدون ملح | sweets → snacks
+CLS | ماكفيتيز دايجستف كريمز بسكويت بالفانيليا | pantry → sweets
+RES | بيوقلز رقائق ذرة بالفلفل الحار والليمون | sweets → snacks
+RES | البطل منفوخات الذرة بالجبنة | sweets → snacks
+CLS | سفن دايز سويس رول بالفانيليا 330 جم | pantry → sweets
+FINAL | ميلكا تشوكو ويفر بالبندق دائري | snacks → biscuits
+FINAL | لواكر تورتينا ويفر بالبندق | snacks → biscuits
+FINAL | تيفاني نتي بايتس بسكويت لوز | snacks → biscuits
+FINAL | إيتي ويفر أب بندق كلاسيك | snacks → biscuits
+FINAL | منتوس حلاوة رول فراولة | biscuits → sweets
+RES | السنبلة رقائق السبرينج رول | pantry → snacks
+RES | كودو تورتيلا بطاطس | pantry → snacks
+RES | البطل دبي سناك ذرة بالطماطم الحلوة | sweets → snacks
+CLS | كي دي دي بليتز آيس كريم فانيليا وتوت بري | pantry → sweets
+FINAL | أولكر شوكو ويفر بالبندق | snacks → biscuits
+RES | البستان بذور دوار الشمس | sweets → snacks
+FINAL | تيفاني نتي بايتس بسكويت فستق | snacks → biscuits
+RES | فونتي تورتيلا البطاطس | pantry → grains
+RES | دانيت حلى تيراميسو | sweets → dairy
+FINAL | منتوس حلاوة رول نعناع | biscuits → sweets
+RES | البستان بذور دوار الشمس | sweets → snacks
+RES | حلو زمان سحلب مصري | drinks → tea
+FINAL | بورقات جلي كيك علبة | biscuits → sweets
+FINAL | اولكر دوليكس ويفر بندق 10 × 24 × 40 جم | snacks → biscuits
+RES | البستان فصفص بدون ملح | sweets → snacks
+RES | فونتي تورتيلا عالي البروتين | pantry → grains
+RES | هرفي شابورة أصلية 375 جم | pantry → grains
+RES | مروج كرواسان سادة | sweets → biscuits
+FINAL | كادبوري ديري ميلك شوكولاتة بالبندق | snacks → sweets
+RES | لورباك زبدة مملحة | pantry → dairy
+RES | السنبلة رقائق باف باستري بر | pantry → snacks
+RES | باجة مشكل ملح حلو 120 جم | sweets → snacks
+RES | فونتي سب ساندوتش جامبو | pantry → grains
+RES | بيوقلز رقائق ذرة بالفلفل الحار | sweets → snacks
+RES | توتي شراب فواكه مشكلة مركز توت | sweets → pantry
+RES | كودو تورتيلا حار | pantry → snacks
+FINAL | بيكاديلي بسكويت ويفر بالبندق | snacks → biscuits
+FINAL | لواكر ساندويتش ويفر بالبندق | snacks → biscuits
+FINAL | رايس أب كيك حبوب الأرز الكاملة مع الشيا والكينوا | biscuits → snacks
+FINAL | رايس أب كيك حبوب الأرز الكاملة مع بذور دوار الشمس | biscuits → snacks
+RES | فونتي تورتيلا طازج 6.5 | pantry → grains
+RES | كودو تورتيلا أبيض | pantry → grains
+FINAL | ماكفيتيز جوي بسكويت بالبندق | snacks → biscuits
+CLS | نسكويك رقائق شوكولاتة | pantry → drinks
+RES | نسكويك رقائق شوكولاتة | drinks → pantry
+CLS | فرشلي ترمس | pantry → misc
+FINAL | ويفر روشن روشيتو بالبندق 34 جم اخضر | snacks → biscuits
+RES | برنقلز باربيكا حار | sweets → snacks
+RES | كتكو بليس رقائق العدس | sweets → snacks
+CLS | السنبلة ستربس دجاج حار 750 جم | sweets → meat
+RES | نسكويك بودرة شوكولاتة علبة | drinks → tea
+RES | فوشية شابورة سادة | pantry → grains
+RES | باجة قهوة تركية سادة | sweets → tea
+RES | باجة مشكل ملح حلو 280 جم | sweets → snacks
+RES | ماكفيتيز دايجستيف نبلز | sweets → biscuits
+FINAL | ماكفيتيز بسكويت كريمز بالبندق | snacks → biscuits
+RES | بيوقلز رقائق ذرة أصلي | sweets → snacks
+RES | صافيو حليب تعزيز المناعة بنكهة الموز | drinks → dairy
+CLS | جمل مخلل مشكل | sweets → pantry
+RES | هرشي شراب كارميل | sweets → pantry
+RES | فوشية شابورة بر | pantry → grains
+RES | جرينز خليط المهلبية | sweets → pantry
+RES | فرشلي شيرة الحلويات العربية | sweets → pantry
+RES | نسكويك مسحوق الشوكولاتة | drinks → tea
+RES | كيلوقز كوكو بوبس حبوب إفطار كيس أصفر | sweets → pantry
+RES | رقايق شوكو بكس | sweets → pantry
+FINAL | ماكفيتيز جوي بسكويت دايجستيف ساندويتش بالبندق | snacks → biscuits
+FINAL | فيردي ويفر بالكاكاو وكريمة البندق بدون سكر | snacks → biscuits
+RES | كتكو بليس رقائق الحمص | sweets → snacks
+RES | سيبا كسكسي متوسط | sweets → pantry
+RES | بيوقلز رقائق ذرة أصلي كبير أحمر | sweets → snacks
+RES | بيوقلز رقائق ذرة بنكهة المشوي المدخن | sweets → snacks
+RES | شتورة طرشي مشكل | sweets → pantry
+FINAL | شوكولاتة كريمة البندق المرجان | snacks → sweets
+RES | أولكر كات كات تات | sweets → biscuits
+RES | دانيت حلى غزل البنات | sweets → dairy
+RES | فرشلي حشوة وتزيين بالكرز | sweets → pantry
+RES | فونتي تورتيلا فريش | pantry → grains
+RES | كتكو بايتس كرات الجبن | sweets → snacks
+FINAL | بريتانيا بسكويت كاجو | snacks → biscuits
+FINAL | ديري ميلك بابلي اوريو | sweets → biscuits
+FINAL | ابو ولد بسكويت شوكولاتة بكريمه الفانيليا 45 جم البطل | sweets → biscuits
+FINAL | ديمه بسكويت نخاله ميني داجستيف مغطي بالشوكولاتة | sweets → biscuits
+FINAL | امريكانا كيك بار باتمان مغطى بالشوكولاتة 8 × 12 × 35 جم | sweets → biscuits
+FINAL | امريكانا كت كات كيك بار × 5 × 8 × 35 جم | sweets → biscuits
+FINAL | ديمه بسكويت بكريمة الشوكولاتة | sweets → biscuits
+FINAL | امريكانا هيرشي ميني شوكو كوكيز شوكولاتة 35 جم × 6 × 8 | sweets → biscuits
+FINAL | كوكيز جالكسي | sweets → biscuits
+FINAL | امريكانا شكو كوكيز علبة صفيح صغير شوكولاتة | sweets → biscuits
+FINAL | امريكانا هرشي شوكو كوكيز علبة شوكولاتة | sweets → biscuits
+FINAL | كيك مفن شوكولاتة ديمة | sweets → biscuits
+FINAL | ديمه كيك كيرفي بالشوكولاتة | sweets → biscuits
+FINAL | كيت كات كوكيز اثنين اصبع جديد | sweets → biscuits
+FINAL | كيك اوريومغطى بالشوكولاتة | sweets → biscuits
+FINAL | اوريو بسكويت شوكولاتة فانيليا | sweets → biscuits
+FINAL | ديمه حلوى اصابع جوسي كولا 32 حم | biscuits → sweets
+FINAL | ديمه حلوى اصابع جوسي كرز | biscuits → sweets
+FINAL | بورقات جيلي حلقات الخوخ | snacks → sweets
+FINAL | حلاوة جيلي حلقات خاتم فوفو | snacks → sweets
+FINAL | عيدان شوكو كل اعالم | snacks → sweets
+FINAL | شوكولاتة بالو بالو كرسبيس | snacks → sweets
+FINAL | حلقات الشوفان شوكولاتة | snacks → sweets
+FINAL | حلاوة خواتم | snacks → sweets
+FINAL | بخاخ ثلج صناعي | juice → misc
+FINAL | سفن ديز كيك بار شوكولاتة لوزين | sweets → biscuits
+FINAL | سنابل احد كب كيك شوكولاتة | sweets → biscuits
+FINAL | فونتي كيك بار شوكولاتة حشوة فانيليا | sweets → biscuits
+FINAL | امادا نجمه بسكويت ستار بالحليب | sweets → biscuits
+FINAL | البطل كوكيز بقطع الشوكولاتة | sweets → biscuits
+FINAL | كوكيز ديلاتس تيفاني رقائق الشكولاته | sweets → biscuits
+FINAL | فوشيه كب كيك شوكولاتة حبتين | sweets → biscuits
+FINAL | اونيكا سجنتشر ويفر بالشوكولاتة و الفول السوداني | sweets → biscuits
+FINAL | بسكويت بكريمة الشوكولاتة هلا | sweets → biscuits
+FINAL | بسكويت تيفاني كريمة شوكولاتة | sweets → biscuits
+FINAL | كيك يباني مثلث شوكولاتة | sweets → biscuits
+FINAL | كاكو برونتو كيك الشوكولاتة | sweets → biscuits
+FINAL | مروج الدولي بان كيك شوكولاتة | sweets → biscuits
+FINAL | كيك كريمة الشوكلاته | sweets → biscuits
+FINAL | جولن بسكويت ساندويش شوكولاتة 225 جم لتين | sweets → biscuits
+FINAL | جولن زيرو بسكويت شوفان بالشوكولاتة الداكنه 275 جم لتين | sweets → biscuits
+FINAL | جولن بسكويت شوفان بالشوكولاتة 220 جم لتين | sweets → biscuits
+FINAL | نوتلا بسكويت اكياس 304 جم 12 × 22T | sweets → biscuits
+FINAL | شوكولاتة اعواد بسكويت كلاون | sweets → biscuits
+FINAL | سويتز شريحة كيك بالشوكولاتة صباحو | sweets → biscuits
+FINAL | فونتي كيك العائله عرض شوكولاتة و هيل شد 2 | sweets → biscuits
+FINAL | بيتي كروكر خليط كوكيز بالشوكولاتة وقطع الشوكولاته | sweets → biscuits
+FINAL | جولن رقائق بسكويت شوكولاتة بدون سكر 150 جم لتين | sweets → biscuits
+FINAL | كيك ياباني مربع شوكولاتة | sweets → biscuits
+FINAL | بسكويت ويفر كراميل وشوكلاته 30 جم × 48 | sweets → biscuits
+FINAL | بسكويت كادبوري تايم اوت قطعتين | sweets → biscuits
+FINAL | بسكويت ريكو شوكولاتة بافيل 3 اصابع | sweets → biscuits
+FINAL | بسكويت شوكولاتة كوانتا المونداي | sweets → biscuits
+FINAL | سنابل احد باوند كيك شوكولاتة | sweets → biscuits
+FINAL | كيك اوب لاب مثلث شوكولاتة | sweets → biscuits
+FINAL | بسكويت توركانا شوكولاتة اصبعين | sweets → biscuits
+FINAL | هرفي كب كيك شوكولاتة | sweets → biscuits
+FINAL | بوب كيك شوكولاتة 45 جم | sweets → biscuits
+FINAL | بخاخ ثلج خيوط TB950 | juice → misc
+FINAL | بسكويت شوكولاتة دب لليان 6 × 8 × 15 جم | sweets → biscuits
+FINAL | مكفيتز نبلز دارك شوكولاتة | sweets → biscuits
+FINAL | كيك اوبا لاب مربع شوكولاتة | sweets → biscuits
+FINAL | بخاخ ثلج صغير | juice → misc
+FINAL | كوكيز شوكولاتة جاردن غيثه | sweets → biscuits
+FINAL | بيك اب بسكويت شوكولاتة و حليب | sweets → biscuits
+FINAL | روشن جوني كروكر ويفر شوكولاتة 1 كجم | sweets → biscuits
+FINAL | روشن جوني كروكر ويفر شوكولاتة حليب | sweets → biscuits
+FINAL | اولكر مكفتيز بسكويت هوبي نوب الشوفان شوكولاتة | sweets → biscuits
+FINAL | بخاخ سورتوبيا الماركات احمر | juice → misc
+FINAL | بخاخ سورتوبيا الماركات ازرق | juice → misc
+FINAL | غندور دونات كيك يمامة شوكولاتة | sweets → biscuits
+FINAL | غندوراليمامه كيك براوني شوكولاتة | sweets → biscuits
+FINAL | كب كيك شوكولاتة لوزين علبة | sweets → biscuits
+FINAL | كب كيك لوزين بالشوكولاتة | sweets → biscuits
+FINAL | سفن دايز كيك بار الشوكلاته | sweets → biscuits
+FINAL | صن بايت جبنة متبلة | cheese → snacks
+FINAL | صن بايتس جبنة وبصل | cheese → snacks
+FINAL | هرفي دبل كيك شوكولاتة | sweets → biscuits
+FINAL | كاكو كب كيك بحشوة الشوكولاتة | sweets → biscuits
+FINAL | كاكو كوكيز شوكولاتة | sweets → biscuits
+FINAL | برونتو ميني كوكيز شوكولاتة | sweets → biscuits
+FINAL | كوكيز برونتو شوكولاتة | sweets → biscuits
+FINAL | كيك نحول بالفانيلا والشوكلاتة 28 جم مخيف | sweets → biscuits
+FINAL | كيك بار شوكولاتة لوزين | sweets → biscuits
+FINAL | فونتي كيك العائلة شوكولاتة | sweets → biscuits
+FINAL | فونتي جامبو كيك سويس رول شوكولاتة | sweets → biscuits
+FINAL | ويفر تيفاني فارو شوكولاتة | sweets → biscuits
+FINAL | كتكو بسكويت شوكولاتة | sweets → biscuits
+FINAL | فريدي بسكويت الشوفان شوكولاتة 180 جم فنار المدينه | sweets → biscuits
+FINAL | فيردي ويفر بكريمه الشوكلاته 60 جم فنار المدينه | sweets → biscuits
+FINAL | هرشيز بسكويت مع الشوكولاتة | sweets → biscuits
+FINAL | بسكويت ليو ميلكا مربع | sweets → biscuits
+FINAL | جولن زيرو كوكيز بدون سكر مع حبيبات الشكولاتة 125 جم لتين | sweets → biscuits
+FINAL | جولن بسكويت حبوب كاملة بالشوكولاتة 200 جم لتين | sweets → biscuits
+FINAL | جولن زيرو ويفر بالشوكولاتة بدون سكر | sweets → biscuits
+FINAL | جولن بسكويت خالي من الجلوتين بكريمه الشوكلاته 230 جم لتين | sweets → biscuits
+FINAL | شوكو ميكو بسكويت بالشوكولاتة كاسات | sweets → biscuits
+FINAL | بسكويت اصابع شوكولاتة | sweets → biscuits
+FINAL | سراي بسكويت باميل صحون شوكولاتة | sweets → biscuits
+FINAL | بسكويت لوتي باي 18 قطعة شوكولاتة | sweets → biscuits
+FINAL | كيك ياباني شوكولاتة ترينجل | sweets → biscuits
+FINAL | حلاوة توفو احمر اصابع | biscuits → sweets
+FINAL | حلاوة بلوتو نعناع اصابع بافيل 12 × 24 × 15 جم | biscuits → sweets
+RES | بوك لورباك رذاذ الطبخ | pantry → dairy
+RES | الصافي داناو 5 فيتامينات 160 مل بدون سكر | drinks → dairy
+FINAL | بسكويت ديمه كريمة الشوكولاتة و البندق | snacks → biscuits
+FINAL | حلاو سي سي ستك | icecream → sweets
+RES | فاين جيب فاين | care → clean
+FINAL | ستكس عيدان بطاطس بالملح علبة | icecream → snacks
+RES | امريكانا شابورة بحبة البركة والشمر | pantry → grains
+FINAL | ستكس عيدان بطاطس حار ليمون علبة | icecream → snacks
+RES | شابورة دايت امريكانا | pantry → grains
+RES | رول جامبو فاين صحي | care → clean
+FINAL | بسكويت امادا ستكس بندق | icecream → biscuits
+RES | ديتول منضف مطابخ | care → clean
+FINAL | جالكسي بندق | snacks → sweets
+RES | فراولة امريكانا | sweets → pantry
+RES | ورق وتاليت فاين 4 رول | care → clean
+RES | قودي فيتو تشيني | sweets → pantry
+RES | قودي اناناس حلق وسط | sweets → pantry
+RES | الصافي دانيت مهلبية | sweets → dairy
+RES | كورن فلكس ميلو اوريو | drinks → pantry
+FINAL | جالكسي اكياس بندق | snacks → sweets
+FINAL | حلاو سي سي ستك | icecream → sweets
+FINAL | بسكويت امادا ستيك بالبندق | icecream → biscuits
+FINAL | مدار مكسرات اكسترا 400 جم حياة انتاج | sweets → snacks
+RES | لايف سائل لليدين | drinks → care
+RES | داناو 5 فيتامينات | drinks → dairy
+RES | غيار جهاز ارويك نكهة الكيوي | drinks → clean
+RES | صون بايت زيتون وزعتر بري | sweets → snacks
+RES | صن بايتس زيتون وزعت بري | sweets → snacks
+RES | صن بايتس زيتون وزعتر | sweets → snacks
+RES | زمزم رقائق خضار رقم (7)5 × 20 × 12 جم ريسون | pantry → snacks
+RES | صافيو تعزيز المناعة بنكهة الفانيليا | drinks → dairy
+RES | صافيو تعزيز المناعة شوكولاتة | drinks → dairy
+RES | دوار الشمس ماجيستك صن 4 × 10 × 25 جم | sweets → snacks
+FINAL | ويفر واو بالبندق | snacks → biscuits
+RES | صافيو تعزيز مناعة نكهة الموز | drinks → dairy
+FINAL | مصاص دونات سينيز | biscuits → sweets
+RES | البطل بطاكس بالمشوي | sweets → snacks
+FINAL | ويفر برونتبيل فستق | snacks → biscuits
+FINAL | ويفر برونتبيل بركات بندق 6 × 26 | snacks → biscuits
+FINAL | تيفاني ويفرفارو بالبندق فراولة | snacks → biscuits
+RES | كبتشينو ضرف | sweets → tea
+RES | لوتسي فانز ليس 14 جم بالشرف | sweets → snacks
+RES | البستان فصفص مصري بدون ملح | sweets → snacks
+RES | مروج كرواسان بالجبنة فيتا | sweets → biscuits
+RES | شوكو سانويتش الولكر | sweets → biscuits
+FINAL | بيكادلي ويفر واو بندق | snacks → biscuits
+RES | بسكويات بيكادلي فنيلا | sweets → biscuits
+RES | صافيو موز تعزيز المناعة | drinks → dairy
+RES | رولانا بلانكو 12 × 12 × 40 جم | sweets → biscuits
+RES | الفواصل تورتيلا يمي حار | pantry → grains
+RES | كانولي فور مي 3 قطع | sweets → biscuits
+RES | الفواصل تورتيلا يمي ابيض | pantry → grains
+RES | بيكاديلي فريسكو لفايف شكلاتة | sweets → biscuits
+RES | وان مكس تورتيلا بر دانات 6 × 240 جم | pantry → grains
+RES | رولانا ابيض 3 | sweets → biscuits
+FINAL | كريمة بندق بالشوكولاتة | snacks → sweets
+FINAL | ويفر رنا هايدي بالبندق | snacks → biscuits
+RES | ماكفتيز كريمة دارك فانيليا | sweets → biscuits
+FINAL | بسكويت نتي بايتس كاجو | snacks → biscuits
+RES | تورتيلا بر 25 سم مجمع امان | pantry → grains
+RES | تورتيلا بر 30 6 قطع سم امان | pantry → grains
+RES | مروج كرواسان بالفراولة | sweets → biscuits
+RES | مروج سدير فاير فنجر جبنة حار | sweets → snacks
+RES | سويتز قراميش اصلي | sweets → snacks
+RES | فيرو روشية | sweets → biscuits
+FINAL | كودبوري شوكولاتة بالمكسرات | snacks → sweets
+FINAL | حلاوة الجميل بالفستق | snacks → sweets
+RES | كاكو برونتو تورتيلا ابيض | pantry → grains
+FINAL | جلاكسي كيك بالبندق | snacks → biscuits
+RES | فوشيه جامبو سنادوتش بالسمسم 3 حبات | pantry → grains
+RES | نسكويك كيس اصفر تركي | drinks → tea
+RES | فونتي هوت دوغ | pantry → grains
+FINAL | ويفر ويف اب بكريمه البندق | snacks → biscuits
+FINAL | حلاوة حلواني فستق النخلة | snacks → sweets
+RES | بيوقلز جبن ناشو | sweets → snacks
+RES | كاتموناقهوه مطحونة قوية | drinks → tea
+RES | فوشية شابوره بالحليب 24 قطعة | pantry → grains
+RES | بيوقلز ذره فلفل احمر | sweets → snacks
+RES | ابو سالم بذور اليقطين | sweets → snacks
+CLS | صابون عناية | clean → care
+RES | شيرة الحلويات العربية هيل | sweets → pantry
+RES | تورتيلا ابيض 20 سم 8 قطع امان | pantry → grains
+RES | السنبلة فطيرة مشلتت سادة | pantry → grains
+RES | تورتيلا وان مكس حار دانات 250 جم 6 قطع 8 انش | pantry → grains
+FINAL | فاركوبطاطس فاركو حار نار 36 × 50 جم العروبه | sweets → snacks
+RES | ابو سالم فصفص مصري | sweets → snacks
+RES | اولكر شكو سندويش دارك فانيليا | pantry → biscuits
+RES | جيلي هوت دوج | pantry → sweets
+RES | بيكاديلي راش | sweets → biscuits
+RES | حبل مقاس 12 مل | drinks → misc
+RES | جاك بلاستيك 2 لتر | drinks → misc
+RES | جاك بلاستيك 4 لتر | drinks → misc
+RES | جلي هوت دوغ | pantry → sweets
+RES | هيدشولدر | drinks → care
+RES | فيت لازالة الشعر | drinks → care
+RES | بيوقلز كبير بطعم الجبن | sweets → snacks
+RES | بيوقلز ذره كاتشاب 125 جم فونتي | sweets → snacks
+RES | سيميلاك غين رقم 3 قولد | dairy → care
+RES | درامر صنوبر | drinks → clean
+FINAL | ويفر الفيدو كرانش بالبندق | snacks → biscuits
+FINAL | اولكر ديلوكس شوكو بندق | snacks → biscuits
+RES | لوجيك متعدد الاستخدام | drinks → clean
+RES | كتكو بليس رقائق الخضروات | sweets → snacks
+RES | اونو رول مطبخ 28 × 21 سم 40 ورقه | care → clean
+FINAL | ميموريز ميني رول ويفر بندق | snacks → biscuits
+FINAL | حلاوة حلواني فستق | snacks → sweets
+RES | مثبت شعر هاير سبراي | drinks → care
+RES | مثبت شعر هاير سبراي | drinks → care
+FINAL | شوكولاتة بالحليب والبندق والقشطة سوربريز | snacks → sweets
+RES | هرفي شابورة نخالة بدون سكر | pantry → grains
+RES | كاكو تورتيلا برونتو | pantry → grains
+RES | كاكو تورتيلا بر | pantry → grains
+FINAL | كرسان جامبو برونتو شوكولاتة والبندق | snacks → sweets
+RES | كاكو كرواسان بالزبدة | sweets → biscuits
+RES | تورتيلا وان مكس ابيض دانات 250 جم 6 قطع 8 انش | pantry → grains
+FINAL | باجه شاي احمر 25 فتله | sweets → tea
+RES | باجه قهوة تركية هيل | sweets → tea
+RES | باجه قهوة ذهبية ارابيكا | sweets → tea
+FINAL | باجه شاي اخضر 25 فتله | sweets → tea
+CLS | جينتو صابون رائحة الورد | clean → care
+RES | فونتي تورتيلا ابيض | pantry → grains
+RES | فونتي تورتيلا بر | pantry → grains
+RES | فونتي تورتيلا حار | pantry → snacks
+FINAL | فونتي بان كيك شوكولاتة بالبندق | snacks → sweets
+RES | كودو تورتيلا بر | pantry → grains
+RES | شيرة الحلويات العربية فانيليا | sweets → pantry
+RES | شيرة الحلويات العربية زعفران | sweets → pantry
+RES | كتكو بايتس سبيرالز باربيكا | sweets → snacks
+RES | كتكو بليس رقائق الخضروات الاصلية | sweets → snacks
+RES | ميكستا تورتيلا حلو و حامض | pantry → grains
+RES | ميكستا تورتيلا حار حلو | pantry → snacks
+RES | ويسي رقائق التورتيلا حار نار 160 جم العروبه | pantry → snacks
+RES | غوار اصلي شابوره كيك | pantry → grains
+FINAL | حلاوة فستقية باللوز | snacks → sweets
+FINAL | بسكويت بريتانيا بالفستق ولوز | snacks → biscuits
+RES | بيوقلز ذره فلفل احمر حلو | sweets → snacks
+RES | بيوقلز بطعم المشوي المدخن | sweets → snacks
+RES | بيوقلز المشوي المدخن | sweets → snacks
+CLS | صابون عنايه المستهلك | clean → care
+FINAL | فيردي بار شوكولاتة بندق 80 جم فنار المدينة | snacks → sweets
+FINAL | كودبوري شوكولاتة بالبندق | snacks → sweets
+FINAL | شوكولاتة ديري ميلك مكسرات | snacks → sweets
+RES | سطل زباله اسود 55 لتر | drinks → clean
+RES | سطل زباله اسود 65 لتر | drinks → clean
+RES | مروج سدير فاير فنجر دجاج سامينج حار | sweets → snacks
+FINAL | بسكويت لواكر باستري بالبندق | snacks → biscuits
+RES | فيرو روشية علب | sweets → biscuits
+RES | هيدشولدر | drinks → care
+RES | هيدشولدر نظافه واناقه | drinks → care
+RES | فيرو روشية 3 حبة | sweets → biscuits
+FINAL | بسكويت جوديفيا بندق | snacks → biscuits
+FINAL | ويفر بندق بيفا | snacks → biscuits
+FINAL | بسكويت بيرو لوز | snacks → biscuits
+RES | روح افزا | drinks → care
+FINAL | منتوس حلاوة رول توتي فروتي | biscuits → sweets
+RES | برطمان دائري غطاء احمر 500 مل | drinks → misc
+RES | برطمان اسطواني شفاف 1000 مل | drinks → misc
+RES | كاكو تورتيلا بالحبوب | pantry → grains
+RES | بيوقلز مشوي | sweets → snacks
+RES | بيوقلز بطعم اصلي | sweets → snacks

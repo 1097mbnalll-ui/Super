@@ -128,7 +128,7 @@ SHOW = {
   'care': ['paper', 'baby', 'hair', 'oral', 'body', 'deo', 'women', 'shave', 'tools'],
 }
 # ترتيب الأقسام الرئيسية: الأساسيات أول، والمشروبات ثم السناكس جنب بعض، و«قريباً» آخر شي
-CAT_ORDER = ['dairy', 'drinks', 'sweets', 'pantry', 'meat', 'cartons', 'clean', 'care', 'misc', 'bakery', 'cheese', 'veg', 'roast', 'print']
+CAT_ORDER = ['dairy', 'cheese', 'drinks', 'juice', 'tea', 'snacks', 'sweets', 'biscuits', 'icecream', 'pantry', 'grains', 'meat', 'cartons', 'clean', 'care', 'misc', 'bakery', 'veg', 'roast', 'print']  # الترتيب الجديد (REORG-PLAN)؛ بعد subs.py شغّل reorg.py
 
 def run(path, apply=False):
     d = json.load(open(path, encoding='utf-8'))
