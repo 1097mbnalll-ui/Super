@@ -2492,7 +2492,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       isDaily ? '<span class="kq-badge">' + ic("flame") + tr("عرض اليوم", "Deal of the day") + '</span>' :
       onSale(p) ? '<span class="kq-badge">' + tr("خصم ", "") + num(Math.max(1, Math.round((p.old - p.price) / p.old * 100))) + tr("٪", "% off") + '</span>' :
       mo ? '' :
-      (p.badge ? '<span class="kq-badge fresh">' + esc(bd(p)) + '</span>' : '');
+      (p.badge ? '<span class="kq-badge' + (/^عرض/.test(p.badge) ? '' : ' fresh') + '">' + esc(bd(p)) + '</span>' : '');
     var lf = left(p), low = avail(p) && lf != null && lf <= lowAt() ? '<span class="kq-left">' + tr("باقي ", "Only ") + lf + tr(" بس", " left") + '</span>' : '';
     // المنتج بدون صورة: بلاطة بلون القسم ورمزه واسم مختصر والحجم (phTag) بدل أيقونة الكيس
     var pic = hasPic(p.img) ? imgTag(p.img, nm(p)) : phTag(p);
