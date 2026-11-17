@@ -1196,6 +1196,13 @@ html.zs body{zoom:.86}
 .wr-pad{flex:none;width:50%}
 .wr-ind{position:absolute;left:50%;top:4px;width:4px;height:42px;margin-left:-2px;border-radius:3px;background:#0E8A6A;pointer-events:none}
 .wr-more{justify-self:center;border:0;background:none;color:#0E8A6A;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;padding:2px 8px}
+.lhero{position:relative}.lh-ov{position:absolute;left:15.8%;right:15.8%;top:0;pointer-events:none}
+.lh-lab{display:grid;justify-items:center;gap:6px;margin-top:56%}.lh-lab.today{margin-top:54%}
+.lh-lab em{font-style:normal;font-weight:800;font-size:13px;color:#fff;background:#1B1430;border-radius:10px;padding:4px 12px}
+.lh-lab.today em{background:#C0392B}
+.lh-cd{display:flex;gap:5px;direction:rtl;justify-content:center}.lh-cd span{min-width:46px;padding:6px 3px 5px;border-radius:12px;background:#1B1430;color:#FFB25E;display:grid;gap:1px;text-align:center;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+.lh-lab.today .lh-cd span{background:#C0392B;color:#fff}
+.lh-cd b{font-size:22px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;direction:ltr}.lh-cd i{font-style:normal;font-size:10px;font-weight:700;color:#fff;opacity:.85}
 .lhero{margin:10px 0 6px;border-radius:24px;overflow:hidden;background:#FBF3E8;box-shadow:0 6px 20px rgba(90,45,12,.1)}
 .lhero svg{display:block;width:100%;height:auto;font-family:"Noto Kufi Arabic",inherit}
 .lh-neon{font-family:"Reem Kufi","Noto Kufi Arabic",inherit;filter:drop-shadow(0 0 4px rgba(255,178,94,.85))}.lh-lamp{filter:drop-shadow(0 0 5px rgba(255,178,94,.9))}
@@ -3261,14 +3268,17 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var open = st.left <= 0;
     var badge = open && st.url ? '<a class="lh-badge" href="' + esc(st.url) + '" target="_blank" rel="noopener">' + LH_APPLE + '<span><small>' + tr("حمّله الحين من", "Download on the") + '</small><b>App Store</b></span></a>'
       : '<span class="lh-badge soon">' + LH_APPLE + '<span><small>' + tr("قريباً على", "Coming soon to") + '</small><b>App Store</b></span></span>';
-    return open ? '<h2>' + tr("فتحنا! 🎉", "We're open! 🎉") + '</h2><p>' + tr("تطبيق متاجر أحد نزل · حمّله", "The Matajer Ohod app is out · get it") + '</p>' + badge
-      : st.today ? '<h2>' + tr("اليوم نفتح أبواب التطبيق", "Today we open the app") + '</h2><p>' + lhHour(st.AT) + tr(" · خلّك قريب", " · stay close") + '</p>' + badge
-      : '<h2>' + tr("تطبيق متاجر أحد للآيفون", "Matajer Ohod iPhone app") + '</h2><p>' + tr("ينطلق ", "Launching ") + esc(st.when || "") + '</p>' + badge;
+    return open ? '<h2>' + tr("فتحنا! 🎉", "We're open! 🎉") + '</h2><p>' + tr("تطبيق متاجر أحد نزل في متجر آبل (App Store)، حمّله واطلب منه", "The Matajer Ohod app is on the App Store. Download it and order") + '</p>' + badge
+      : st.today ? '<h2>' + tr("تطبيق متاجر أحد ينزل اليوم", "Our app is out today") + '</h2><p>' + tr("في متجر آبل (App Store) ", "On the App Store ") + lhHour(st.AT) + tr("، وتقدر تحمّله وتطلب منه", ". Download it and order") + '</p>' + badge
+      : '<h2>' + tr("تطبيق متاجر أحد للآيفون", "Matajer Ohod iPhone app") + '</h2><p>' + tr("ينزل رسمياً في متجر آبل (App Store) يوم ", "Officially on the App Store ") + esc(st.when || "") + '</p>' + badge;
   }
+  // العدّاد فوق الرولة: مربعات HTML (يوم · ساعة · دقيقة · ثانية) فوق الرسمة، مو نص داخل SVG (سفاري يقلب ترتيب الأرقام)
+  function lhParts(l){ var t = Math.max(0, Math.floor(l / 1000)); return [Math.floor(t / 86400), Math.floor(t / 3600) % 24, Math.floor(t / 60) % 60, t % 60]; }
+  function lhBoxes(st){ var v = lhParts(st.left), lab = [tr("يوم", "days"), tr("ساعة", "hrs"), tr("دقيقة", "min"), tr("ثانية", "sec")];
+    return v.map(function(x, i){ if (i === 0 && !x) return ""; return '<span><b>' + (x < 10 ? "0" : "") + x + '</b><i>' + lab[i] + '</i></span>'; }).join(""); }
   function lhLabel(st){
     if (st.left <= 0) return '';
-    return st.today ? '<g class="lh-lab"><rect x="96" y="136" width="163" height="58" rx="12" fill="#C0392B"/><text x="177.5" y="160" text-anchor="middle" font-weight="800" font-size="12.5" fill="#fff">' + tr("اليوم ", "Today ") + lhHour(st.AT) + '</text><text id="lhClk" x="177.5" y="184" text-anchor="middle" font-weight="900" font-size="20" fill="#fff" direction="ltr">' + lhClock(st.left) + '</text></g>'
-      : '<g class="lh-lab"><rect x="84" y="148" width="187" height="112" rx="14" fill="#1B1430" opacity=".93"/><text x="177.5" y="175" text-anchor="middle" font-weight="800" font-size="13.5" fill="#fff">' + tr("نفتح أبواب التطبيق بعد", "The app opens in") + '</text><text id="lhClk" x="177.5" y="215" text-anchor="middle" font-weight="900" font-size="34" fill="#FFB25E" direction="ltr">' + lhClock(st.left) + '</text><text x="177.5" y="244" text-anchor="middle" font-weight="700" font-size="12" fill="#fff" opacity=".85">' + tr("ساعة · دقيقة · ثانية", "h · m · s") + '</text></g>';
+    return '<div class="lh-lab' + (st.today ? ' today' : '') + '"><em>' + (st.today ? tr("ينزل اليوم ", "Out today ") + lhHour(st.AT) : tr("باقي على نزول التطبيق", "App launches in")) + '</em><div class="lh-cd" id="lhClk">' + lhBoxes(st) + '</div></div>';
   }
   function launchHeroHTML(){
     var st = lhState(); if (!st) return ""; var f = lhFrac(st.left), sh = Math.round(198 * f), shelf = function(x, y, c){ return c.map(function(k, i){ return '<rect x="' + (x + i * 17) + '" y="' + (y - 18 - (i % 2) * 4) + '" width="13" height="' + (18 + (i % 2) * 4) + '" rx="3" fill="' + k + '"/>'; }).join("") + '<rect x="' + (x - 4) + '" y="' + y + '" width="56" height="6" fill="#C9A47A"/>'; };
@@ -3286,7 +3296,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       '<g class="lh-sh" id="lhSh" style="transform:scaleY(' + f + ')"><rect x="56" y="130" width="243" height="198" fill="url(#lhS)"/></g>' +
       '<g class="lh-bar" id="lhBar" style="transform:translateY(' + sh + 'px)"><rect x="56" y="122" width="243" height="8" rx="2" fill="#6B7680"/><rect x="166" y="120" width="22" height="10" rx="3" fill="#3E4750"/></g></g>' +
       '<rect x="52" y="124" width="251" height="10" rx="3" fill="#5A4636"/><g><line x1="30" y1="116" x2="30" y2="142" stroke="#5a3a1e" stroke-width="2"/><rect x="22" y="142" width="16" height="22" rx="5" fill="#FFB25E" class="lh-lamp"/><line x1="325" y1="116" x2="325" y2="142" stroke="#5a3a1e" stroke-width="2"/><rect x="317" y="142" width="16" height="22" rx="5" fill="#FFB25E" class="lh-lamp"/></g>' +
-      '<g id="lhLab">' + lhLabel(st) + '</g></svg><div class="lh-t" id="lhT">' + lhText(st) + '</div></section></div>';
+      '</svg><div class="lh-ov" id="lhLab">' + lhLabel(st) + '</div><div class="lh-t" id="lhT">' + lhText(st) + '</div></section></div>';
   }
   setInterval(function(){
     var el = $("lhero"); if (!el) return; var st = lhState(); if (!st) { el.remove(); return; }
@@ -3295,7 +3305,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       var f = lhFrac(st.left); $("lhSh").style.transform = "scaleY(" + f + ")"; $("lhBar").style.transform = "translateY(" + Math.round(198 * f) + "px)";
       if (k === "open") { el.classList.add("lh-pop"); try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch(e){} }
       return; }
-    var c = $("lhClk"); if (c) c.textContent = lhClock(st.left);
+    var c = $("lhClk"); if (c) c.innerHTML = lhBoxes(st);
     if (k !== "open" && Date.now() % 60000 < 1000) { var f2 = lhFrac(st.left); $("lhSh").style.transform = "scaleY(" + f2 + ")"; $("lhBar").style.transform = "translateY(" + Math.round(198 * f2) + "px)"; }
   }, 1000);
   function homeHTML(){
