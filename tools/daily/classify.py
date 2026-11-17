@@ -108,7 +108,7 @@ if __name__ == '__main__':
     res = []
     for p in d['products']:
         if p['cat'] == 'print': continue
-        c, how = classify(p['name'])
+        c, how = classify(p['name'] + ' ' + p.get('kw', ''))
         if c and ':' in c: nc, ns = c.split(':')
         else: nc, ns = c, None
         res.append((p, nc, ns, how))

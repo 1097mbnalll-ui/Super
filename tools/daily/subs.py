@@ -135,7 +135,7 @@ def run(path, apply=False):
     cats = {c['id']: c for c in d['cats']}
     moved, setsub, cnt, other = [], 0, collections.Counter(), collections.defaultdict(list)
     for p in d['products']:
-        n = norm(p['name'])
+        n = norm(p['name'] + ' ' + p.get('kw', ''))
         for frm, to, r in FIX:
             if p.get('cat') == frm and r.search(n):
                 moved.append((p['name'], frm, to)); p['cat'] = to; p.pop('sub', None); break

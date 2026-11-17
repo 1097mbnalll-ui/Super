@@ -3525,7 +3525,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       searchIxOf = D.products; SYN = null; var toks = {};
       searchNm = D.products.map(function(p){ return " " + normAr(nm(p) + " " + (p.name_en || "")).split(/\s+/).map(stripAl).join(" ") + " "; });
       searchIx = D.products.map(function(p, i){ var c = catOf(p.cat); var pk = p.packs || [];
-        var h = normAr(asciiDigits([p.name, p.name_en, p.bc, c && c.name, c && c.name_en, p.unit, pk.map(function(x){ return x.u; }).join(" "), isCarton(p) ? "كرتون كرتونه شده شد كراتين" : ""].join(" ")));
+        var h = normAr(asciiDigits([p.name, p.kw, p.name_en, p.bc, c && c.name, c && c.name_en, p.unit, pk.map(function(x){ return x.u; }).join(" "), isCarton(p) ? "كرتون كرتونه شده شد كراتين" : ""].join(" ")));
         h.split(/\s+/).forEach(function(t){ if (t.length >= 4) toks[stripAl(t)] = 1; });
         return " " + h + " " + h.split(/\s+/).map(stripAl).join(" ") + " "; });
       searchTok = Object.keys(toks);
