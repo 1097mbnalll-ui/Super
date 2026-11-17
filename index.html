@@ -4795,7 +4795,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     }
     clearInterval(alertTimer); loadOrderAlerts();
     alertTimer = setInterval(function(){ if (mode === 'admin' && !document.hidden) { loadOrderAlerts(); if(aTab==='prep')renderPreparation(); } }, 60000);
-    if(!ordersOnly())organizeAdminNavigation();
+    if(!ordersOnly()){organizeAdminNavigation();if(ADMX&&ADMX.adm2)ADMX.adm2();}
     showTab(aTab);
   }
   function endAdminSession(){
