@@ -158,6 +158,7 @@ struct CartView: View {
 
     private func checkout() {
         Analytics.shared.checkoutStarted()
+        Visits.shared.checkout()
         if orders.address == nil || OrderCenter.normalizedPhone(orders.phone) == nil {
             sendAfterAddress = true
             showAddress = true
@@ -489,7 +490,7 @@ private struct PromoCodeBox: View {
                     cart.promoCode = text.trimmingCharacters(in: .whitespaces).uppercased()
                     Task { await cart.refreshQuote(catalog, force: true)
                         let c = cart.quote?.promoCode ?? ""
-                        if c.hasPrefix("!") { note = ["!promo_invalid": "الكود غير صحيح", "!promo_expired": "الكود انتهى", "!promo_used": "استخدمت هالكود قبل", "!promo_limit": "الكود خلص", "!promo_min": "الكود يحتاج مبلغ أعلى"][c] ?? "ما قدرنا نطبق الكود"; cart.promoCode = "" }
+                        if c.hasPrefix("!") { note = ["!promo_invalid": "الكود غير صحيح", "!promo_expired": "الكود انتهى", "!promo_used": "استخدمت هالكود قبل", "!promo_limit": "الكود خلص", "!promo_min": "الكود يحتاج مبلغ أعلى", "!promo_need": "الخصم على منتج معيّن: أضفه للسلة"][c] ?? "ما قدرنا نطبق الكود"; cart.promoCode = "" }
                         else if !c.isEmpty { note = "تم تطبيق الكود ✓" }
                     }
                 }

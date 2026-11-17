@@ -120,6 +120,7 @@ struct RootView: View {
             if phase == .background { Analytics.shared.flush() }
             if phase == .active {
                 Analytics.shared.becameActive()
+                Visits.shared.opened()
                 Task {
                     await catalog.refreshIfStale()
                     await orders.refresh(catalog: catalog)
@@ -159,6 +160,16 @@ struct RootView: View {
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("بعدين") { seenSubs.insert(p.offer.id) } } }
             }
             .presentationDetents([.medium, .large])
+        }
+        // عرض الرجعة (من الخادم مع /hit): يطلع مرة وحدة، والكود ينطبق في السلة. يطفى من الإدارة بـ store.app.off = ["nudge"]
+        .sheet(isPresented: Binding(get: { OfferCenter.shared.showSheet && !showIntro && !catalog.store.isOff("nudge") && OfferCenter.shared.live != nil },
+                                    set: { OfferCenter.shared.showSheet = $0 })) {
+            if let o = OfferCenter.shared.live {
+                ReturnOfferSheet(offer: o) { tab = .cart }.presentationDetents([.medium, .large])
+            }
+        }
+        .onChange(of: tab) { _, t in
+            if t == .cart, cart.promoCode.isEmpty, !catalog.store.isOff("nudge"), let o = OfferCenter.shared.live { cart.promoCode = o.code; Task { await cart.refreshQuote(catalog, force: true) } }
         }
         .sheet(isPresented: $previewAddress) { AddressView() }
         .sheet(item: $previewDetails) { OrderDetailView(order: $0) }

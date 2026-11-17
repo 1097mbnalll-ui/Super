@@ -21,7 +21,7 @@ struct ProductView: View {
             }
         }
         .modifier(ZoomDestination(id: productID))
-        .onAppear { Analytics.shared.view(productID) }
+        .onAppear { Analytics.shared.view(productID); Visits.shared.viewed(productID) }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // المفضلة (مثل القلب أعلى صفحة المنتج في الموقع)

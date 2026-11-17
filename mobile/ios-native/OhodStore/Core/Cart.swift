@@ -112,7 +112,7 @@ final class Cart {
         quoting = rev
         var body: [String: Any] = ["items": payload(items)]
         let code = promoCode.trimmingCharacters(in: .whitespaces)
-        if !code.isEmpty { body["promo"] = code }
+        if !code.isEmpty { body["promo"] = code; body["dev"] = Device.id }
         let (status, j) = await API.post(catalog.apiBase, "/quote", body)
         guard status > 0, rev == revision else { return }
         let ok = j["ok"] as? Bool == true
@@ -185,6 +185,7 @@ final class Cart {
         revision &+= 1
         save()
         if old == 0 && q > 0 { Haptics.added(); Analytics.shared.addedToCart(key) } else if q == 0 { Haptics.removed() }
+        Visits.shared.cartChanged(order.filter { (lines[$0]?.qty ?? 0) > 0 })
     }
 
     func increment(_ key: String, limit: Int?) {

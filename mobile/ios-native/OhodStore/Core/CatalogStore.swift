@@ -419,6 +419,8 @@ final class CatalogStore {
         dataTag = tag
         dataVersion += 1
         Analytics.shared.apiBase = built.catalog.store.api.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        Visits.shared.apiBase = Analytics.shared.apiBase
+        Visits.shared.opened()
     }
 
     /// جلسة خاصة بملف المتجر: بدون كاش النظام (الملف ينحفظ عندنا، وكل نسخة ٢ ميقا ما لها داعي تنكرر في الكاش)

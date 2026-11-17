@@ -143,13 +143,14 @@ struct CurrentOrderCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(tv: "طلبك الحالي · \(order.no)").font(.ui(size: 13)).foregroundStyle(Theme.muted)
-                    Text(tv: driver?.near == true ? "المندوب قريب منك 🛵" : OrderStatus.title(order.status))
+                    Text(tv: driver?.near == true ? "المندوب قريب منك 🛵" : OrderStatus.title(order))
                         .font(.kufi(19, .bold, relativeTo: .title3))
                         .contentTransition(.opacity)
                     Text(tv: detailLine(driver)).font(.ui(size: 13.5)).foregroundStyle(Theme.muted)
                 }
                 ForEach(orders.subs[order.no] ?? []) { SubOfferCard(offer: $0, order: order) }
                 PrintWhatsAppCard(order: order)
+                if ["new", "accepted"].contains(order.status), order.track != false, !catalog.store.isOff("orderAdd") { OrderAddBox(order: order) }
                 VStack(spacing: 5) {
                     HStack(spacing: 6) {
                         ForEach(1...4, id: \.self) { i in
@@ -208,6 +209,7 @@ struct CurrentOrderCard: View {
                     }
                 }
                 .buttonStyle(PressableStyle(scale: 0.97))
+                if order.status != "delivered", order.status != "canceled", !catalog.store.isOff("suggest") { SuggestBox(order: order) }
                 if orders.canCancel(order, policy: catalog.store.custCancel) {
                     Button(role: .destructive) { confirmCancel = true } label: {
                         HStack(spacing: 6) {
@@ -253,7 +255,7 @@ struct CurrentOrderCard: View {
     }
 
     private func detailLine(_ driver: DriverInfo?) -> String {
-        guard order.status == "onway", let driver else { return OrderStatus.detail(order.status) }
+        guard order.status == "onway", let driver else { return OrderStatus.detail(order) }
         var parts: [String] = []
         if let m = driver.meters, m > 0 { parts.append(m < 1000 ? "يبعد \(Int(m.rounded())) م" : "يبعد \(Money.plain((m / 100).rounded() / 10)) كم") }
         if driver.before > 0 { parts.append(driver.before == 1 ? "قبلك توصيلة وحدة" : "قبلك \(driver.before) توصيلات") }
@@ -430,5 +432,84 @@ struct OrderDetailView: View {
             Text(tv: value).fontWeight(.semibold).foregroundStyle(color).multilineTextAlignment(.trailing)
         }
         .font(.ui(size: 14.5))
+    }
+}
+
+/// «نسيت شي؟ أضفه لطلبك» (نفس الموقع): نص يوصل المحل مع نفس الطلب، قبل ما يطلع المندوب
+private struct OrderAddBox: View {
+    let order: SavedOrder
+    @Environment(OrderCenter.self) private var orders
+    @Environment(CatalogStore.self) private var catalog
+    @State private var open = false
+    @State private var text = ""
+    @State private var busy = false
+    @State private var msg: String?
+    @State private var ok = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let f = order.free, !f.isEmpty {
+                Text(tv: "✍️ " + f).font(.ui(size: 13)).foregroundStyle(Theme.ink).frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if open {
+                Text("اكتب الغرض والوزن أو العدد، ويوصل المحل مع طلبك نفسه").font(.ui(size: 12.5)).foregroundStyle(Theme.muted)
+                TextField("مثال: ٢ لبن، كيلو طماطم", text: $text, axis: .vertical)
+                    .lineLimit(2...4).padding(10)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.line))
+                Button {
+                    busy = true
+                    Task { msg = await orders.addToOrder(order, text: text, catalog: catalog); ok = msg == nil; if ok { text = ""; open = false; msg = "انضافت لطلبك ✓" }; busy = false }
+                } label: { HStack { if busy { ProgressView().controlSize(.small) }; Text("أضف لطلبي") }.frame(maxWidth: .infinity) }
+                .buttonStyle(PrimaryButtonStyle()).disabled(busy)
+            } else {
+                Button { open = true; msg = nil } label: {
+                    Label("نسيت شي؟ أضفه لطلبك", systemImage: "plus.circle.fill").font(.ui(size: 14.5, weight: .semibold))
+                }
+            }
+            if let msg { Text(tv: msg).font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(ok ? Theme.brandDeep : Theme.copperInk) }
+        }
+        .padding(12)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+/// «كيف تجربتك معنا؟ وش تقترح؟» (نجوم ونص) قبل التوصيل، يوصل للإدارة في «التقييمات والاقتراحات»
+private struct SuggestBox: View {
+    let order: SavedOrder
+    @Environment(OrderCenter.self) private var orders
+    @Environment(CatalogStore.self) private var catalog
+    @State private var stars = 0
+    @State private var text = ""
+    @State private var busy = false
+    @State private var msg: String?
+
+    var body: some View {
+        if order.suggested == true {
+            Text("وصلنا اقتراحك، شكراً لك 💛").font(.ui(size: 13.5, weight: .semibold)).foregroundStyle(Theme.brandDeep)
+                .frame(maxWidth: .infinity).padding(10)
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("كيف تجربتك معنا؟ وش تقترح؟").font(.kufi(14, .bold))
+                HStack(spacing: 6) {
+                    ForEach(1...5, id: \.self) { i in
+                        Button { stars = i } label: { Image(systemName: i <= stars ? "star.fill" : "star").font(.system(size: 22)).foregroundStyle(i <= stars ? Color.orange : Theme.muted) }
+                            .buttonStyle(.plain)
+                    }
+                }
+                TextField("اقتراحك أو ملاحظتك (منتج تبونه نوفّره، شي نحسّنه…)", text: $text, axis: .vertical)
+                    .lineLimit(2...4).padding(10)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.line))
+                Button {
+                    busy = true
+                    Task { msg = await orders.suggest(order, stars: stars, text: text, catalog: catalog); busy = false }
+                } label: { HStack { if busy { ProgressView().controlSize(.small) }; Text("أرسل") }.font(.ui(size: 14.5, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 40) }
+                .disabled(busy || text.trimmingCharacters(in: .whitespaces).isEmpty)
+                if let msg { Text(tv: msg).font(.ui(size: 12.5)).foregroundStyle(Theme.copperInk) }
+            }
+            .padding(12)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
     }
 }

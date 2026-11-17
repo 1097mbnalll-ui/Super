@@ -63,6 +63,10 @@ struct SavedOrder: Codable, Identifiable, Equatable {
     var canRate: Bool? = nil
     /// الزبون قفل تذكير «قيّم طلبك»
     var rateSkip: Bool? = nil
+    /// مرحلة التجهيز من /track (preparing / ready) والطلب بالكتابة (free)، والزبون أرسل اقتراح
+    var prep: String? = nil
+    var free: String? = nil
+    var suggested: Bool? = nil
     var id: String { no }
     var count: Int { lines?.reduce(0) { $0 + $1.qty } ?? items.values.reduce(0, +) }
     /// طلب شغّال: حالته مفتوحة وعمره أقل من ١٢ ساعة (مثل activeOrder في الموقع)
@@ -151,6 +155,21 @@ struct SubOffer: Equatable, Identifiable {
 
 enum OrderStatus {
     static func title(_ s: String) -> String { tr(arTitle(s)) }
+    /// العنوان حسب الحالة ومرحلة التجهيز (مثل الموقع)
+    static func title(_ o: SavedOrder) -> String {
+        if o.status == "new" || o.status == "accepted" {
+            if o.prep == "ready" { return tr("طلبك جاهز وينتظر المندوب") }
+            if o.prep == "preparing" { return tr("جاري تجهيز طلبك") }
+        }
+        return title(o.status)
+    }
+    static func detail(_ o: SavedOrder) -> String {
+        if o.status == "new" || o.status == "accepted" {
+            if o.prep == "ready" { return tr("خلّصنا تجهيزه، والمندوب ياخذه الحين") }
+            if o.prep == "preparing" { return tr("نجمع أغراضك من الرفوف") }
+        }
+        return detail(o.status)
+    }
     static func detail(_ s: String) -> String { tr(arDetail(s)) }
     private static func arTitle(_ s: String) -> String {
         switch s {
@@ -396,6 +415,7 @@ final class OrderCenter {
             if !orders.contains(where: { $0.no == no }) { orders.insert(order2, at: 0) }
             if orders.count > 30 { orders.removeLast(orders.count - 30) }
             CartPing.shared.orderPlaced()   // الخادم صفّر عدّ السلة مع الطلب
+            if !promo.isEmpty { OfferCenter.shared.drop(promo) }
             cart.remove(sent: sent, catalog: catalog)
             if order2.track != false { Push.shared.register(no: no, phone: order2.phone, api: catalog.apiBase) }
             Haptics.success()
@@ -444,7 +464,10 @@ final class OrderCenter {
             return .failure(.message("فيه منتج في سلتك نفد للتو. راجع السلة وأرسل مرة ثانية."))
         case "pack_only":
             return .failure(.message("فيه عرض ينباع بالمجموعة بس (مثل ٣ علب). كمّل الاختيار من السلة وأرسل مرة ثانية."))
+        case "promo_need":
+            return .failure(.message("خصمك الخاص على منتج معيّن: أضفه للسلة، أو شيل الكود وأرسل."))
         case "promo_invalid", "promo_expired", "promo_used", "promo_limit", "promo_min":
+            OfferCenter.shared.drop(cart.promoCode)
             cart.promoCode = ""
             return .failure(.message(["promo_invalid": "كود الخصم غير صحيح.", "promo_expired": "كود الخصم انتهى.", "promo_used": "استخدمت هالكود قبل.", "promo_limit": "الكود خلص عدد استخداماته.", "promo_min": "الكود يحتاج مبلغ أعلى."][json["code"] as? String ?? ""]! + " شلناه، اضغط «أرسل الطلب» مرة ثانية."))
         case "item_limit":
@@ -500,6 +523,22 @@ final class OrderCenter {
                     if list.count > (subs[order.no] ?? []).count { Haptics.warning() }
                     subs[order.no] = list.isEmpty ? nil : list
                 }
+            }
+            // الإدارة سعّرت أو عدّلت الطلب، ومرحلة التجهيز (نفس شاشة الموقع)
+            if json["ok"] as? Bool == true, let i = orders.firstIndex(where: { $0.no == order.no }) {
+                var o = orders[i]
+                let pr = json["prep"] as? String
+                if o.prep != pr { o.prep = pr }
+                if let t = CatalogParser.num(json["total"]), abs(t - o.total) > 0.004 { o.total = t; Haptics.warning() }
+                if let f = CatalogParser.num(json["fee"]) { o.fee = f }
+                if let fr = json["free"] as? String { o.free = fr.isEmpty ? nil : fr }
+                if let ls = json["lines"] as? [[String: Any]], !ls.isEmpty {
+                    let nl = ls.enumerated().map { k, l in SavedLine(key: "s\(k)", name: l["name"] as? String ?? "", unit: l["unit"] as? String ?? "",
+                                                                    qty: Int(CatalogParser.num(l["qty"]) ?? 0), price: CatalogParser.num(l["price"]) ?? 0) }
+                    let old = (o.lines ?? []).map { "\($0.name)|\($0.qty)|\($0.price)" }, new = nl.map { "\($0.name)|\($0.qty)|\($0.price)" }
+                    if old != new { o.lines = nl; o.subtotal = nl.reduce(0) { $0 + $1.total } }
+                }
+                if o != orders[i] { orders[i] = o }
             }
             // تقييم الطلب الواصل (الخادم القديم ما يرجعه: نخليه مجهول)
             if json["ok"] as? Bool == true, json["canRate"] != nil, let i = orders.firstIndex(where: { $0.no == order.no }) {
@@ -562,6 +601,37 @@ final class OrderCenter {
     }
 
     /// الزبون قفل تذكير «قيّم طلبك»
+    /// «نسيت شي؟ أضفه لطلبك» (قبل خروج المندوب بس): يرجع رسالة خطأ أو nil
+    func addToOrder(_ order: SavedOrder, text: String, catalog: CatalogStore) async -> String? {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return "اكتب الغرض اللي تبي تضيفه" }
+        let (status, j) = await API.post(catalog.apiBase, "/order-add", ["no": order.no, "phone": order.phone, "text": String(t.prefix(600))])
+        if j["ok"] as? Bool == true {
+            if let i = orders.firstIndex(where: { $0.no == order.no }) { orders[i].free = (j["free"] as? String) ?? ((orders[i].free.map { $0 + "\n➕ " } ?? "") + t) }
+            Haptics.success(); return nil
+        }
+        switch j["code"] as? String ?? "" {
+        case "closed": return "المندوب طلع بطلبك، ما نقدر نضيف عليه. اطلب طلب جديد."
+        case "too_long": return "الإضافات كثيرة، كلّم المحل."
+        case "slow_down": return "انتظر شوي وجرّب مرة ثانية."
+        default: return status == 0 ? "تأكد من النت وجرّب مرة ثانية." : "ما قدرنا نضيفها، كلّم المحل."
+        }
+    }
+
+    /// «وش تقترح علينا؟» (نجوم ونص) قبل التوصيل
+    func suggest(_ order: SavedOrder, stars: Int, text: String, catalog: CatalogStore) async -> String? {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return "اكتب اقتراحك" }
+        var body: [String: Any] = ["no": order.no, "text": String(t.prefix(800))]
+        if stars > 0 { body["stars"] = stars }
+        let (status, j) = await API.post(catalog.apiBase, "/suggest", body)
+        if j["ok"] as? Bool == true {
+            if let i = orders.firstIndex(where: { $0.no == order.no }) { orders[i].suggested = true }
+            Haptics.success(); return nil
+        }
+        return j["code"] as? String == "slow_down" ? "أرسلت كثير، جرّب بعدين." : status == 0 ? "تأكد من النت وجرّب مرة ثانية." : "ما قدرنا نرسله، جرّب بعدين."
+    }
+
     func skipRating(_ order: SavedOrder) {
         if let i = orders.firstIndex(where: { $0.no == order.no }) { orders[i].rateSkip = true }
     }
