@@ -8,6 +8,7 @@ struct ProductView: View {
     @State private var packIndex: Int? = nil   // nil = الحبة
     @State private var qty = 1
     @State private var justAdded = false
+    @State private var wGrams = 0   // الوزن المختار بالجرام (الخضار والفواكه)
     @Environment(\.livePath) private var livePath
 
     var body: some View {
@@ -133,6 +134,14 @@ struct ProductView: View {
                         .padding(.horizontal, 16)
                 }
 
+                if available, packIndex == nil, catalog.isWeighed(product) {
+                    Text("كم تبي؟")
+                        .font(.kufi(16, .bold))
+                        .padding(.horizontal, 18).padding(.top, 20).padding(.bottom, 10)
+                    WeightPicker(product: product, grams: $wGrams)
+                        .padding(.horizontal, 16)
+                }
+
 
                 // «يحلى معه» من اختيار المالك (sugg)، وإلا «ممكن يعجبك» من نفس القسم
                 let picked = product.sugg.compactMap { catalog.product($0) }.filter { $0.id != product.id && catalog.isAvailable($0) }
@@ -170,8 +179,8 @@ struct ProductView: View {
                 .padding(.horizontal, 16).padding(.vertical, 10)
                 .background(.bar)
             } else if available, packIndex == nil, catalog.isWeighed(product) {
-                // بالوزن: الزبون يكتب كم كيلو أو كم ريال، والثاني ينحسب (مثل الموقع)
-                WeightBuyBar(product: product)
+                // بالوزن: الاختيار فوق في الصفحة (WeightPicker)، وتحت زر الإضافة بس
+                WeightAddBar(product: product, grams: $wGrams)
                     .padding(.horizontal, 16)
                     .padding(.top, 10)
                     .padding(.bottom, 6)
@@ -345,17 +354,25 @@ private struct QuantityOfferBox: View {
 }
 
 
-/// شريط الشراء بالوزن (نفس الموقع): خانتين مربوطة «الوزن | المبلغ» يكتب فيها أي رقم، وأزرار سريعة ⅛ ¼ ½ ١ كيلو. السعر لكل كيلو
-struct WeightBuyBar: View {
+/// اختيار الوزن (الخضار والفواكه، ١٧ نوفمبر ٢٠٢٦ طلب المالك «مرتبة أكثر»):
+/// ١) أحجام جاهزة بكروت واضحة (ربع، نص، كيلو، كيلوين) وتحت كل واحد سعره
+/// ٢) زر − / + يزيد وينقص ربع كيلو
+/// ٣) «تبي وزن أو مبلغ معيّن؟» تنفتح وفيها خانتين (الوزن بالكيلو أو المبلغ بالريال)
+/// والزر تحت (WeightAddBar) يضيف للسلة بالوزن المختار. السعر لكل كيلو، والخادم يحسب نفس الشي.
+struct WeightPicker: View {
     let product: Product
+    @Binding var grams: Int
     @Environment(Cart.self) private var cart
-    @State private var grams = 0
+    @State private var custom = false
     @State private var kgText = ""
     @State private var sarText = ""
-    @State private var loaded = false
     @FocusState private var field: Field?
     enum Field { case kg, sar }
 
+    static let green = Color(hex: 0x0E8A6A)
+    private static let sizes: [(Int, String)] = [(250, "ربع كيلو"), (500, "نص كيلو"), (1000, "كيلو"), (2000, "كيلوين")]
+    static func price(_ p: Product, _ g: Int) -> Double { (p.price * Double(g) / 1000 * 100).rounded() / 100 }
+    static func label(_ g: Int) -> String { g < 1000 ? "\(g) جرام" : "\(Weight.kg(g)) كيلو" }
     private static func parse(_ s: String) -> Double {
         var t = ""
         for ch in s {
@@ -364,109 +381,207 @@ struct WeightBuyBar: View {
         }
         return Double(t) ?? 0
     }
-    private var ok: Bool { grams >= 100 && grams <= 50000 && product.price > 0 }
-    private var total: Double { (product.price * Double(grams) / 1000 * 100).rounded() / 100 }
-    private static let quick: [(Int, String)] = [(125, "⅛"), (250, "¼"), (500, "½"), (1000, "1")]
-
-    private func setGrams(_ g: Int, from: Field?) {
-        grams = g
-        if from != .kg { kgText = g > 0 ? Weight.kg(g) : "" }
-        if from != .sar { sarText = g > 0 ? Money.plain((product.price * Double(g) / 1000 * 100).rounded() / 100) : "" }
-    }
 
     var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 0) {
-                box(title: "الوزن", unit: "كيلو", text: $kgText, which: .kg)
-                Rectangle().fill(Theme.line).frame(width: 1).padding(.vertical, 16)
-                box(title: "المبلغ", unit: "ر.س", text: $sarText, which: .sar)
+        VStack(alignment: .leading, spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                ForEach(Self.sizes, id: \.0) { s in tile(s.0, s.1) }
             }
-            .background(.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color(hex: 0xE7ECEA)))
-            .shadow(color: Theme.ink.opacity(0.07), radius: 14, y: 6)
-            .onChange(of: kgText) { _, v in if field == .kg { setGrams(Int((Self.parse(v) * 1000).rounded()), from: .kg) } }
-            .onChange(of: sarText) { _, v in if field == .sar, product.price > 0 { setGrams(Int((Self.parse(v) / product.price * 1000).rounded()), from: .sar) } }
-
-            HStack(spacing: 4) {
-                ForEach(Self.quick, id: \.0) { q in
-                    let on = grams == q.0
-                    Button { field = nil; setGrams(q.0, from: nil) } label: {
-                        HStack(spacing: 3) {
-                            Text(verbatim: q.1).font(.ui(size: 16, weight: .heavy))
-                            Text(tv: "كيلو").font(.ui(size: 11, weight: .bold)).foregroundStyle(Theme.muted)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 40)
-                        .foregroundStyle(on ? Color(hex: 0x0E8A6A) : Theme.ink)
-                        .background(on ? Color.white : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .shadow(color: on ? Theme.ink.opacity(0.1) : .clear, radius: 4, y: 2)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(4)
-            .background(Color(hex: 0xF2F5F4), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-            Text(tv: grams <= 0 ? "اكتب أي وزن أو أي مبلغ، أو اختر من فوق"
-                 : !ok ? "من ١٠٠ جرام إلى ٥٠ كيلو"
-                 : grams < 1000 ? "≈ \(grams) جرام" : "≈ \(Weight.kg(grams)) كيلو")
-                .font(.ui(size: 12.5, weight: .bold))
-                .foregroundStyle(Theme.muted)
-
-            Button {
-                cart.setWeight(product.id, grams: grams)
-                field = nil
-                Haptics.added()
-            } label: {
-                HStack {
-                    Text(tv: cart.line(product.id).qty > 0 ? "حدّث السلة" : "أضف للسلة")
-                    Spacer()
-                    if ok { Text(tv: Money.sar(total)) }
-                }
-                .font(.kufi(16, .bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 22)
-                .frame(maxWidth: .infinity, minHeight: 54)
-                .background(Color(hex: 0x0E8A6A), in: Capsule())
-            }
-            .buttonStyle(PressableStyle(scale: 0.97))
-            .disabled(!ok)
-            .opacity(ok ? 1 : 0.45)
+            stepper
+            customBox
         }
         .onAppear {
-            guard !loaded else { return }
-            loaded = true
-            let q = cart.line(product.id).qty
-            if q > 0, cart.isWeighed(product.id) { setGrams(q, from: nil) }
+            if grams == 0, cart.isWeighed(product.id) { grams = cart.line(product.id).qty }
+            sync()
+        }
+        .onChange(of: grams) { _, _ in sync() }
+        .onChange(of: kgText) { _, v in if field == .kg { grams = Int((Self.parse(v) * 1000).rounded()) } }
+        .onChange(of: sarText) { _, v in if field == .sar, product.price > 0 { grams = Int((Self.parse(v) / product.price * 1000).rounded()) } }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("تم") { field = nil }
+            }
         }
     }
 
-    @ViewBuilder
-    private func box(title: String, unit: String, text: Binding<String>, which: Field) -> some View {
+    private func sync() {
+        if field != .kg { kgText = grams > 0 ? Weight.kg(grams) : "" }
+        if field != .sar { sarText = grams > 0 ? Money.plain(Self.price(product, grams)) : "" }
+    }
+
+    // كرت حجم جاهز: الاسم كبير، الوزن بالجرام، والسعر
+    private func tile(_ g: Int, _ name: String) -> some View {
+        let on = grams == g
+        return Button {
+            field = nil
+            grams = g
+            Haptics.selected()
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(tv: name).font(.kufi(16, .bold)).foregroundStyle(Theme.ink)
+                    Spacer(minLength: 0)
+                    Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(on ? Self.green : Theme.line)
+                }
+                Text(tv: Self.label(g)).font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Theme.muted)
+                Text(tv: Money.sar(Self.price(product, g)))
+                    .font(.ui(size: 15.5, weight: .bold))
+                    .foregroundStyle(on ? Self.green : Theme.ink)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(on ? Color(hex: 0xEEF9F4) : Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(on ? Self.green : Theme.line, lineWidth: on ? 2 : 1))
+            .animation(.snappy(duration: 0.18), value: on)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    // − الوزن الحالي + (ربع كيلو مع كل ضغطة)
+    private var stepper: some View {
+        let down = max(250, ((grams - 1) / 250) * 250)
+        let up = min(50000, (grams / 250 + 1) * 250)
+        return VStack(spacing: 6) {
+            Text("أو زِد ونقّص بربع كيلو").font(.ui(size: 12.5, weight: .semibold)).foregroundStyle(Theme.muted)
+            HStack(spacing: 12) {
+                stepButton("minus", enabled: grams > 250, label: "نقّص ربع كيلو") { grams = down }
+                VStack(spacing: 2) {
+                    Text(tv: grams > 0 ? Self.label(grams) : "اختر الوزن")
+                        .font(.kufi(19, .bold)).foregroundStyle(Theme.ink)
+                        .contentTransition(.numericText(value: Double(grams)))
+                    if grams > 0 {
+                        Text(tv: Money.sar(Self.price(product, grams)))
+                            .font(.ui(size: 13.5, weight: .bold)).foregroundStyle(Self.green)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .animation(.snappy(duration: 0.18), value: grams)
+                stepButton("plus", enabled: grams < 50000, label: "زِد ربع كيلو") { grams = up }
+            }
+        }
+        .padding(10)
+        .background(Color(hex: 0xF2F5F4), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func stepButton(_ icon: String, enabled: Bool, label: String, _ act: @escaping () -> Void) -> some View {
+        Button {
+            field = nil
+            act()
+            Haptics.selected()
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .bold))
+                .frame(width: 48, height: 48)
+                .foregroundStyle(enabled ? Color.white : Theme.muted)
+                .background(enabled ? Self.green : Theme.line, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .accessibilityLabel(Text(tv: label))
+    }
+
+    // خانة اختيارية: الوزن بالكيلو أو المبلغ بالريال (الثاني ينحسب)
+    @ViewBuilder private var customBox: some View {
+        Button {
+            withAnimation(.snappy(duration: 0.2)) { custom.toggle() }
+            if !custom { field = nil }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "pencil.line")
+                Text("تبي وزن أو مبلغ معيّن؟ اكتبه")
+                Spacer(minLength: 0)
+                Image(systemName: custom ? "chevron.up" : "chevron.down")
+            }
+            .font(.ui(size: 14, weight: .semibold))
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, 4).padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        if custom {
+            HStack(spacing: 10) {
+                input("الوزن", unit: "كيلو", text: $kgText, which: .kg)
+                input("المبلغ", unit: "ر.س", text: $sarText, which: .sar)
+            }
+            Text(tv: grams > 0 && (grams < 100 || grams > 50000) ? "الوزن من ١٠٠ جرام إلى ٥٠ كيلو" : "اكتب واحد منهم والثاني ينحسب لحاله")
+                .font(.ui(size: 12, weight: .semibold))
+                .foregroundStyle(grams > 0 && (grams < 100 || grams > 50000) ? Theme.copperInk : Theme.muted)
+        }
+    }
+
+    private func input(_ title: String, unit: String, text: Binding<String>, which: Field) -> some View {
         let active = field == which
-        VStack(alignment: .leading, spacing: 2) {
+        return VStack(alignment: .leading, spacing: 4) {
             Text(tv: title).font(.ui(size: 12, weight: .bold)).foregroundStyle(Theme.muted)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 TextField("0", text: text)
                     .keyboardType(.decimalPad)
                     .focused($field, equals: which)
-                    .font(.kufi(26, .bold))
+                    .font(.kufi(20, .bold))
                     .foregroundStyle(Theme.ink)
-                    .fixedSize()
                 Text(tv: unit).font(.ui(size: 13, weight: .bold)).foregroundStyle(Theme.muted)
-                Spacer(minLength: 0)
             }
             .environment(\.layoutDirection, .leftToRight)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 14)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(active ? LinearGradient(colors: [Color(hex: 0xEEF9F4), .white], startPoint: .top, endPoint: .bottom) : LinearGradient(colors: [.white, .white], startPoint: .top, endPoint: .bottom))
-        .overlay(alignment: .bottom) {
-            Capsule().fill(Color(hex: 0x0E8A6A)).frame(height: 3).padding(.horizontal, 16).opacity(active ? 1 : 0)
-        }
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(active ? Self.green : Theme.line, lineWidth: active ? 2 : 1))
         .contentShape(Rectangle())
         .onTapGesture { field = which }
-        .animation(.snappy(duration: 0.2), value: active)
+    }
+}
+
+/// الزر تحت في صفحة منتج بالوزن: «أضف للسلة · نص كيلو · ٤٫٠٠»، وبعد الإضافة «في السلة ✓» وزر سلة المهملات يشيله
+struct WeightAddBar: View {
+    let product: Product
+    @Binding var grams: Int
+    @Environment(Cart.self) private var cart
+    private var ok: Bool { grams >= 100 && grams <= 50000 && product.price > 0 }
+
+    var body: some View {
+        let inCart = cart.isWeighed(product.id) ? cart.line(product.id).qty : 0
+        let same = inCart > 0 && inCart == grams
+        HStack(spacing: 10) {
+            if inCart > 0 {
+                Button {
+                    cart.setWeight(product.id, grams: 0)
+                    Haptics.removed()
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 17, weight: .semibold))
+                        .frame(width: 54, height: 54)
+                        .foregroundStyle(Theme.copperInk)
+                        .background(Theme.copperSoft, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("شيله من السلة"))
+            }
+            Button {
+                cart.setWeight(product.id, grams: grams)
+                Haptics.added()
+            } label: {
+                HStack(spacing: 8) {
+                    Text(tv: !ok ? "اختر الوزن من فوق" : same ? "في السلة ✓" : inCart > 0 ? "حدّث السلة" : "أضف للسلة")
+                    Spacer(minLength: 4)
+                    if ok { Text(tv: "\(WeightPicker.label(grams)) · \(Money.sar(WeightPicker.price(product, grams)))") }
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .font(.kufi(15.5, .bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .background(same ? Theme.brandDeep : WeightPicker.green, in: Capsule())
+            }
+            .buttonStyle(PressableStyle(scale: 0.97))
+            .disabled(!ok || same)
+            .opacity(ok ? 1 : 0.45)
+        }
+        .animation(.snappy(duration: 0.2), value: inCart > 0)
     }
 }
