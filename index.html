@@ -3387,7 +3387,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       tr('<div class="fld"><label for="cPromo">كود الخصم <small>(إذا عندك)</small></label><div class="pcode-row"><input id="cPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="اكتب الكود" value="', '<div class="fld"><label for="cPromo">Promo code <small>(optional)</small></label><div class="pcode-row"><input id="cPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Enter code" value="') + esc(promoRule ? promoRule.code : "") + '"><button class="btn btn-soft" type="button" id="cPromoBtn">' + (promoRule ? tr("شيل", "Remove") : tr("طبّق", "Apply")) + '</button></div><p class="promo-msg" id="cPromoMsg" aria-live="polite"></p></div>' +
       '<div class="box totals" id="cTot">' + checkoutTotals(t) + '</div>' +
       walletCheckoutHTML(t.all) + '<div id="sendErr"></div></div></div>' +
-      '</div>' + '<div class="bottomcta"><button class="btn btn-orange" type="button" id="sendOrder"' + (t.any && !isClosed() ? '' : ' disabled') + '><span>' + sendLbl() + '</span><span>' + rial(t.all) + '</span></button></div>';
+      '</div>' + '<div class="bottomcta"><button class="btn btn-orange" type="button" id="sendOrder"' + (t.any && !isClosed() ? '' : ' disabled') + tr('><span>أرسل الطلب</span><span>', '><span>Place order</span><span>') + rial(t.all) + '</span></button></div>';
   }
   // رمز الاستلام (١٦ نوفمبر ٢٠٢٦): الزبون يعطيه المندوب عند الباب، والمندوب ما يقدر يسلّم بدونه
   function dcodeHTML(o){
@@ -3897,7 +3897,6 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   try{checkoutAttempt=JSON.parse(localStorage.getItem('ohod-checkout-attempt')||'null');}catch(e){}
   function saveCheckoutAttempt(value){checkoutAttempt=value;try{if(value){var saved=JSON.parse(JSON.stringify(value));delete saved.payload.walletToken;localStorage.setItem('ohod-checkout-attempt',JSON.stringify(saved));}else localStorage.removeItem('ohod-checkout-attempt');}catch(e){}}
   // ---------- الدفع الإلكتروني (ميسّر): store.pay = {on, pk, v (نسخة نموذج الدفع), methods} ----------
-  function sendLbl(){ return form.pay === "online" && payReady() ? tr("ادفع وأرسل الطلب", "Pay & place order") : tr("أرسل الطلب", "Place order"); }
   function payReady(){ return !!(S.pay && S.pay.on && S.pay.pk && apiUrl() && !EMBED && !APP && !NATIVE); }
   function loadPayLib(cb){
     if (window.Moyasar) return cb(true);
@@ -4067,7 +4066,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if ((t = e.target.closest("[data-pdel]"))) { delete cart[t.dataset.pdel]; saveCart(); refresh(); return; }
     if ((t = e.target.closest("[data-catsub]"))) { openSub = t.dataset.catsub; refresh(); var onS = document.querySelector('[data-catsub][aria-pressed="true"]'); if (onS && onS.scrollIntoView) onS.scrollIntoView({ inline: "center", block: "nearest" }); return; }
     if ((t = e.target.closest("[data-sub]"))) { form.sub = t.dataset.sub; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-sub]"), function(b){ b.setAttribute("aria-pressed", b.dataset.sub === form.sub); }); return; }
-    if ((t = e.target.closest("[data-pay]"))) { form.pay = t.dataset.pay; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-pay]"), function(b){ b.setAttribute("aria-pressed", b.dataset.pay === form.pay); }); var so = $("sendOrder") && $("sendOrder").querySelector("span"); if (so) so.textContent = sendLbl(); return; }
+    if ((t = e.target.closest("[data-pay]"))) { form.pay = t.dataset.pay; saveForm(); Array.prototype.forEach.call(document.querySelectorAll("[data-pay]"), function(b){ b.setAttribute("aria-pressed", b.dataset.pay === form.pay); }); return; }
     if ((t = e.target.closest("[data-term]"))) { q = t.dataset.term; $("q").value = q; renderSearch(); return; }
     if ((t = e.target.closest("[data-pdpack]"))) { pdPack = Number(t.dataset.pdpack); pdQty = 1; render(); return; }
     if ((t = e.target.closest("[data-open]"))) { openProd = t.dataset.open; pdQty = stepOf(byId(t.dataset.open)); pdPack = t.dataset.openpack != null ? Number(t.dataset.openpack) : -1; evAdd("v", openProd); if (screen === "product") { render(); window.scrollTo(0,0); } else show("product"); return; }
