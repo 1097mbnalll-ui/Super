@@ -1849,6 +1849,29 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     l.forEach(function(t){ var parts = t.nodeValue.split("ر.س"), fr = document.createElement("span"); fr.className = "sarw"; parts.forEach(function(x, i){ if (i) fr.appendChild(sarEl()); if (x) fr.appendChild(document.createTextNode(x)); }); t.parentNode.replaceChild(fr, t); }); }
   if (window.MutationObserver) new MutationObserver(function(ms){ ms.forEach(function(m){ if (m.type === "characterData") sarize(m.target.parentNode); else m.addedNodes.forEach(function(n){ if (n.nodeType === 3) sarize(n.parentNode); else if (n.nodeType === 1) sarize(n); }); }); })
     .observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  // قفل التطبيق لين الإطلاق الرسمي (المالك ١٧ نوفمبر ٢٠٢٦، بدون تحديث للتطبيق): store.app.launch = {at, msg}
+  // داخل التطبيق بس (embed): شاشة وحدة فيها الرسالة والعدّاد، وما يقدر يتصفح ولا يطلب. أول ما يجي الموعد تفتح لحالها
+  function launchLock(){
+    var L = (S && S.app && S.app.launch) || null, AT = L && L.at ? Date.parse(L.at) : 0;
+    if (!EMBED || !AT || AT <= Date.now() || document.getElementById("launchLock")) return;
+    var w = document.createElement("div"); w.id = "launchLock"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true");
+    w.style.cssText = "position:fixed;inset:0;z-index:2147483000;background:linear-gradient(180deg,#FFF6EC,#fff 60%);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:inherit;color:#0D1420;overflow:hidden;touch-action:none";
+    w.innerHTML = '<div style="display:grid;gap:14px;justify-items:center;max-width:360px">' +
+      '<img src="app-icon.webp" alt="" width="84" height="84" style="border-radius:22px;box-shadow:0 10px 28px rgba(13,20,32,.15)">' +
+      '<h1 style="margin:4px 0 0;font-size:24px;font-weight:800">' + esc(D.store.name || "متاجر أحد") + '</h1>' +
+      '<p style="margin:0;font-size:16.5px;font-weight:700;line-height:1.7">' + esc(L.msg || "يتم إطلاق التطبيق رسمياً يوم الخميس الساعة ٦ المغرب") + '</p>' +
+      '<div id="llCd" dir="rtl" style="display:flex;gap:8px;justify-content:center"></div>' +
+      '<p style="margin:0;font-size:14px;color:#596171">' + esc(L.sub || "نشوفك يوم الإطلاق 🎉") + '</p></div>';
+    document.body.appendChild(w); try { document.documentElement.style.overflow = "hidden"; } catch(e){}
+    var lab = ["يوم", "ساعة", "دقيقة", "ثانية"], cd = w.querySelector("#llCd");
+    var paint = function(){
+      var l = AT - Date.now(); if (l <= 0) { clearInterval(t); location.reload(); return; }
+      var v = [Math.floor(l / 864e5), Math.floor(l / 36e5) % 24, Math.floor(l / 6e4) % 60, Math.floor(l / 1e3) % 60];
+      cd.innerHTML = v.map(function(x, i){ return '<span style="min-width:64px;padding:10px 4px;border-radius:16px;background:#111;color:#fff;display:grid;gap:2px"><b style="font-size:26px;font-weight:800;font-variant-numeric:tabular-nums">' + (x < 10 ? "0" : "") + x + '</b><i style="font-style:normal;font-size:11px;opacity:.75">' + lab[i] + '</i></span>'; }).join("");
+    };
+    var t = setInterval(paint, 1000); paint();
+    toApp({ t: "h", h: Math.max(window.innerHeight || 0, 640) });
+  }
   function toApp(m){ try { if (window.webkit && webkit.messageHandlers && webkit.messageHandlers.ohod) webkit.messageHandlers.ohod.postMessage(m); } catch(e){} }
   var LANG = "ar"; try { LANG = localStorage.getItem("ohod-lang") || (D.store && D.store.lang) || "ar"; } catch(e){ LANG = (D.store && D.store.lang) || "ar"; }
   if (LANG !== "en") LANG = "ar";
@@ -5549,7 +5572,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         var w = document.createElement("div");
         w.innerHTML = '<div class="sheet as-sheet" id="appSoonBox" role="dialog" aria-modal="true" aria-labelledby="asT"><div class="panel as-box">' +
           '<div class="as-app"><img src="app-icon.webp" alt="" width="64" height="64"><span><b>' + tr("متاجر أحد", "Matajer Ohod") + '</b><em>' + tr("بقالة ومخبز · حي الرمال", "Grocery & bakery") + '</em><i class="as-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.37 12.77c-.03-2.69 2.2-3.98 2.3-4.04-1.25-1.83-3.2-2.08-3.9-2.11-1.66-.17-3.24.98-4.08.98-.84 0-2.14-.96-3.52-.93-1.81.03-3.48 1.05-4.41 2.67-1.88 3.26-.48 8.09 1.35 10.73.89 1.29 1.96 2.75 3.36 2.7 1.35-.05 1.86-.87 3.49-.87 1.63 0 2.09.87 3.51.84 1.45-.02 2.37-1.32 3.26-2.62 1.03-1.5 1.45-2.95 1.47-3.02-.03-.01-2.82-1.09-2.85-4.33zM13.69 4.86c.74-.9 1.24-2.15 1.11-3.39-1.07.04-2.36.71-3.13 1.61-.69.79-1.29 2.06-1.13 3.27 1.19.09 2.41-.6 3.15-1.49z"/></svg>App Store</i></span></div>' +
-          '<h2 id="asT">' + tr("تطبيق متاجر أحد للآيفون", "Matajer Ohod iPhone app") + '</h2><p class="as-sub">' + tr("ينزل في متجر آبل بعد", "Coming to the App Store in") + '</p>' +
+          '<h2 id="asT">' + tr("تطبيق متاجر أحد للآيفون", "Matajer Ohod iPhone app") + '</h2><p class="as-sub">' + (S.appSoon.sub ? esc(S.appSoon.sub) : tr("ينزل في متجر آبل بعد", "Coming to the App Store in")) + '</p>' +
           '<div class="as-cd" id="asCd"></div>' +
           '<p class="as-note">' + tr("أسرع وأسهل، وتوصلك العروض أول بأول", "Faster, easier, and offers first") + '</p>' +
           '<button class="btn btn-ink" type="button" id="asOk">' + tr("تمام", "OK") + '</button></div></div>';
@@ -5566,6 +5589,20 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         box.addEventListener("click", function(e){ if (e.target === box) close(); });
       };
       setTimeout(tryOpen, 1200);
+      return;
+    }
+    // بعد الإطلاق (store.appSoon.at فات): شريط «نزل · حمّله» يفتح متجر آبل (store.appSoon.url)، وبدون رابط ما يطلع «قريباً»
+    if (AT && AT <= Date.now()) {
+      var U = S.appSoon && /^https:\/\/apps\.apple\.com\//.test(S.appSoon.url || "") ? S.appSoon.url : "";
+      if (!U || !/iPhone|iPad|Macintosh/.test(navigator.userAgent)) return;
+      try { if (localStorage.getItem("ohod-as-day") === new Date().toDateString()) return; localStorage.setItem("ohod-as-day", new Date().toDateString()); } catch(e){}
+      setTimeout(function(){
+        if (mode !== "store" || $("appSoon") || $("introSheet")) return;
+        var a = document.createElement("a"); a.id = "appSoon"; a.className = "as-bar"; a.href = U; a.target = "_blank"; a.rel = "noopener";
+        a.innerHTML = '<span><b>' + tr("تطبيق متاجر أحد للآيفون نزل", "Our iPhone app is out") + '</b> · ' + tr("حمّله", "Get it") + '</span>';
+        document.body.appendChild(a); requestAnimationFrame(function(){ a.classList.add("on"); });
+        setTimeout(function(){ a.classList.remove("on"); setTimeout(function(){ a.remove(); }, 350); }, 9000);
+      }, 2400);
       return;
     }
     setTimeout(function(){
@@ -5676,6 +5713,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   if (GH || LIVEDATA || NATIVE) dataLoad().then(function(nd){
     dataReady = true;
     if (nd && nd.store && nd.products && nd.imgs) { var hadApi = !!apiUrl(); applyData(nd); if (!hadApi) loadStock(); if (mode === "store" && screen !== "checkout") refresh(); }
+    try { launchLock(); } catch(e){}
     // رابط من إشعار (?go=offers أو o:<قسم>): يفتح العروض أو القسم مرة وحدة
     try { var gp = (location.search.match(/[?&]go=([^&]+)/) || [])[1]; if (gp && !EMBED && mode === "store") { gp = decodeURIComponent(gp); history.replaceState(null, "", location.pathname + location.hash);
       if (gp === "offers") { chip = "offers"; show("home"); } else if (gp === "cart") { show("cart"); } else if (/^[oc]:/.test(gp) && catOf(gp.slice(2))) { openCat = gp.slice(2); openSub = ""; show("cat"); }
