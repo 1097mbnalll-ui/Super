@@ -122,13 +122,18 @@ struct ReturnOfferSheet: View {
                     Text(i < prizes.count ? OfferCenter.prizeText(prizes[i]) : "")
                         .font(.ui(size: 12, weight: .bold)).foregroundStyle(Color(hex: 0x2B1300))
                         .frame(width: 80)
-                        .position(x: c.x + r * 0.62 * cos((Double(i) + 0.5) * seg * .pi / 180 - .pi / 2),
-                                  y: c.y + r * 0.62 * sin((Double(i) + 0.5) * seg * .pi / 180 - .pi / 2))
+                        .position(labelPoint(i, seg: seg, r: r, c: c))
                 }
                 Circle().stroke(.white, lineWidth: 6)
                 Circle().fill(.white).frame(width: r * 0.3, height: r * 0.3).shadow(radius: 2)
             }
         }
+    }
+
+    private func labelPoint(_ i: Int, seg: Double, r: CGFloat, c: CGPoint) -> CGPoint {
+        let a: Double = (Double(i) + 0.5) * seg * Double.pi / 180 - Double.pi / 2
+        let d: Double = Double(r) * 0.62
+        return CGPoint(x: Double(c.x) + d * cos(a), y: Double(c.y) + d * sin(a))
     }
 
     private func spin() {

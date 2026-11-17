@@ -61,7 +61,8 @@ final class Visits {
             let sig = ids.sorted().joined(separator: ",")
             guard sig != UserDefaults.standard.string(forKey: "hit.c") else { return }
             UserDefaults.standard.set(sig, forKey: "hit.c")
-            self?.add(ids.isEmpty ? ["st": 0, "o": 0, "ids": [String]()] : ["st": 2, "ids": ids])
+            let h: [String: Any] = ids.isEmpty ? ["st": 0, "o": 0, "ids": [String]()] : ["st": 2, "ids": ids]
+            self?.add(h)
         }
     }
 
@@ -77,13 +78,14 @@ final class Visits {
         guard !busy, !apiBase.isEmpty, !queue.isEmpty else { return }
         busy = true
         let batch = queue, n = batch.count, base = apiBase
-        Task {
+        Task { [weak self] in
             let (status, j) = await API.post(base, "/hit", ["dev": Device.id, "staff": 0, "q": batch])
-            busy = false
+            guard let self else { return }
+            self.busy = false
             if status == 200 || status == 400 {
-                queue.removeFirst(min(n, queue.count)); save()
+                self.queue.removeFirst(min(n, self.queue.count)); self.save()
                 if let o = j["offer"] as? [String: Any] { OfferCenter.shared.got(o) }
-                if !queue.isEmpty { flush() }
+                if !self.queue.isEmpty { self.flush() }
             }
         }
     }
