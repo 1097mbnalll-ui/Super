@@ -192,6 +192,8 @@ struct RootView: View {
         if go == "offers" { tab = .offers }
         else if go == "cart" { tab = .cart }   // تذكير السلة «🛒 سلتك تنتظرك»
         else if go.hasPrefix("o:") || go.hasPrefix("c:") { tab = .categories; categoriesPath = NavigationPath(); categoriesPath.append(Route.category(String(go.dropFirst(2)))) }
+        // إشعار عرض منتج (p:<المنتج>): يفتح صفحة المنتج مباشرة
+        else if go.hasPrefix("p:"), go.count > 2 { tab = .home; homePath = NavigationPath(); homePath.append(Route.product(String(go.dropFirst(2)))) }
     }
 
     private func applyLaunchArguments() {
