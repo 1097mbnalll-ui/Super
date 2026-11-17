@@ -1184,6 +1184,18 @@ html.zs body{zoom:.86}
 .as-bar{position:fixed;left:50%;bottom:calc(98px + env(safe-area-inset-bottom,0px));z-index:9000;display:flex;align-items:center;gap:9px;max-width:calc(100% - 32px);padding:10px 14px 10px 12px;border:0;border-radius:999px;background:#111;color:#fff;font:600 13.5px inherit;box-shadow:0 10px 28px rgba(0,0,0,.25);cursor:pointer;opacity:0;transform:translate(-50%,16px);transition:opacity .3s,transform .35s cubic-bezier(.2,1.3,.3,1)}
 .as-bar.on{opacity:1;transform:translate(-50%,0)}.as-bar svg{width:17px;height:17px;fill:#fff;flex:none;margin-top:-2px}.as-bar span{white-space:nowrap}.as-bar b{font-weight:800}.as-bar i{font-style:normal;opacity:.55;font-size:11px;margin-inline-start:4px}
 .sarw{display:inline}.skel{background:linear-gradient(90deg,#F1F3F5 25%,#E7EBEF 50%,#F1F3F5 75%);background-size:200% 100%;animation:skel 1.2s linear infinite}@keyframes skel{to{background-position:-200% 0}}svg.sar{width:.8em;height:.8em;fill:currentColor;vertical-align:-.08em;margin:0 .12em;display:inline-block;flex:none}
+.wr-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.wr-b{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:#F2F5F4;color:#0E8A6A;font:700 24px/1 system-ui,sans-serif;cursor:pointer}
+.wr-v{flex:1;display:grid;justify-items:center;line-height:1.15}.wr-v b{font-size:32px;font-weight:800;color:var(--ink,#0D1420);font-variant-numeric:tabular-nums}.wr-v span{font-size:16px;font-weight:700;color:#0E8A6A;min-height:20px}
+.wr-rul{position:relative;height:72px;background:#F2F5F4;border-radius:16px;overflow:hidden}
+.wr-sc{height:100%;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x}
+.wr-sc::-webkit-scrollbar{display:none}
+.wr-t{flex:none;width:16px;position:relative;scroll-snap-align:center}
+.wr-t i{position:absolute;left:7px;top:8px;width:2px;height:12px;border-radius:2px;background:#C9D2CE}.wr-t.h i{height:22px}.wr-t.m i{height:30px;background:#8F9C96}
+.wr-t em{position:absolute;left:8px;bottom:5px;transform:translateX(-50%);font-style:normal;font-size:11px;font-weight:600;color:var(--muted,#596171);white-space:nowrap}
+.wr-pad{flex:none;width:50%}
+.wr-ind{position:absolute;left:50%;top:4px;width:4px;height:42px;margin-left:-2px;border-radius:3px;background:#0E8A6A;pointer-events:none}
+.wr-more{justify-self:center;border:0;background:none;color:#0E8A6A;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;padding:2px 8px}
 .wbuy{display:grid;gap:12px}.wbox{display:grid;gap:10px;width:100%}
 .wcard{display:grid;grid-template-columns:1fr 1px 1fr;background:#fff;border:1px solid #E7ECEA;border-radius:22px;box-shadow:0 8px 28px rgba(13,20,32,.07);overflow:hidden}
 .wf{position:relative;display:grid;gap:2px;padding:12px 16px 14px;cursor:text;transition:background .2s}
@@ -2239,17 +2251,39 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (!c.kg) return tr("اكتب أي وزن أو أي مبلغ، أو اختر من فوق", "Type any weight or amount, or pick above");
     if (!c.ok) return tr("من ١٠٠ جرام إلى ٥٠ كيلو", "From 100 g to 50 kg");
     return c.kg < 1 ? "≈ " + num(Math.round(c.kg * 1000)) + tr(" جرام", " g") : "≈ " + fq3(c.kg) + tr(" كيلو", " kg"); }
-  var W_Q = [[0.125, "⅛"], [0.25, "¼"], [0.5, "½"], [1, "1"]];
+  // شكل «المسطرة» (اعتمده المالك ١٧ نوفمبر ٢٠٢٦، نفس تطبيق الآيفون): الوزن والسعر كبير، − و + ومسطرة تنسحب، و«وزن أو مبلغ آخر» يفتح الخانتين
+  // الخطوة من الإدارة (store.app.weigh.step بالجرام، افتراضي ربع كيلو)
+  function wStep(){ var w = ((S && S.app) || {}).weigh || {}, st = Number(w.step) || 250; return ([50, 100, 125, 250, 500].indexOf(st) >= 0 ? st : 250) / 1000; }
+  var W_MAX = 20, W_PX = 16, wMore = false;
+  function wLbl(kg){ return kg < 1 ? num(Math.round(kg * 1000)) + tr(" جرام", " g") : fq3(kg) + tr(" كيلو", " kg"); }
+  function wRulHTML(){ var st = wStep(), n = Math.round(W_MAX / st), h = '';
+    for (var i = 1; i <= n; i++) { var g = Math.round(i * st * 1000), cls = g % 1000 === 0 ? ' m' : g % 500 === 0 ? ' h' : '';
+      h += '<span class="wr-t' + cls + '"><i></i>' + (g % 500 === 0 ? '<em>' + fq3(g / 1000) + '</em>' : '') + '</span>'; }
+    return '<div class="wr-rul"><div class="wr-sc" id="wRul" dir="ltr" tabindex="-1" aria-hidden="true"><span class="wr-pad"></span>' + h + '<span class="wr-pad"></span></div><i class="wr-ind" aria-hidden="true"></i></div>'; }
   function wBoxHTML(p){
     var c = wCalc(p);
-    return '<div class="wbox" id="wBox"><div class="wcard">' +
+    setTimeout(function(){ wRulInit(p); }, 0);
+    return '<div class="wbox" id="wBox">' +
+      '<div class="wr-top"><button type="button" class="wr-b" data-wstep="-1" aria-label="' + tr("نقّص", "Less") + '">−</button>' +
+      '<div class="wr-v" aria-live="polite"><b id="wBig">' + (c.kg ? wLbl(c.kg) : "—") + '</b><span id="wBigP">' + (c.kg ? rial(c.sar) : "") + '</span></div>' +
+      '<button type="button" class="wr-b" data-wstep="1" aria-label="' + tr("زِد", "More") + '">+</button></div>' +
+      wRulHTML() +
+      '<button type="button" class="wr-more" id="wMoreBtn" aria-expanded="' + wMore + '">' + tr("وزن أو مبلغ آخر", "Other weight or amount") + ' ‹</button>' +
+      '<div class="wcard" id="wCard"' + (wMore ? '' : ' hidden') + '>' +
       '<label class="wf"><span class="wl">' + tr("الوزن", "Weight") + '</span><span class="wv"><input id="wKg" type="text" inputmode="decimal" autocomplete="off" placeholder="0" value="' + (pdW.kg ? fq3(pdW.kg) : "") + '"><em>' + tr("كيلو", "kg") + '</em></span></label>' +
       '<span class="wdiv" aria-hidden="true"></span>' +
       '<label class="wf"><span class="wl">' + tr("المبلغ", "Amount") + '</span><span class="wv"><input id="wSar" type="text" inputmode="decimal" autocomplete="off" placeholder="0" value="' + (pdW.kg ? num(c.sar) : "") + '"><em>' + tr("ر.س", "SAR") + '</em></span></label></div>' +
-      '<div class="wq" role="group" aria-label="' + tr("اختيار سريع", "Quick pick") + '">' + W_Q.map(function(x){ return '<button type="button" data-wv="' + x[0] + '" aria-pressed="' + (Math.abs((pdW.kg || 0) - x[0]) < 0.0005) + '">' + x[1] + ' <small>' + tr("كيلو", "kg") + '</small></button>'; }).join("") + '</div>' +
-      '<div class="wres" id="wRes" aria-live="polite">' + wRes(p) + '</div></div>';
+      '<div class="wres" id="wRes" aria-live="polite"' + (wMore ? '' : ' hidden') + '>' + wRes(p) + '</div></div>';
   }
+  // المسطرة: تمرير أفقي عادي (يشتغل ناعم على الآيفون)، وكل شرطة = خطوة. الوزن يتغير بس لما الزبون يحرّكها نص خطوة أو أكثر
+  function wRulPos(sc){ var st = wStep(); sc.scrollLeft = Math.max(0, (Math.round((pdW.kg || st) / st) - 1) * W_PX); }
+  function wRulInit(p){ var sc = $("wRul"); if (!sc || sc.dataset.on) return; sc.dataset.on = "1";
+    var pad = Math.max(0, sc.clientWidth / 2 - W_PX / 2); Array.prototype.forEach.call(sc.querySelectorAll(".wr-pad"), function(x){ x.style.width = pad + "px"; });
+    wRulPos(sc); var raf = 0;
+    sc.addEventListener("scroll", function(){ if (raf) return; raf = requestAnimationFrame(function(){ raf = 0; var st = wStep(), v = Math.min(W_MAX, (Math.round(sc.scrollLeft / W_PX) + 1) * st);
+      if (Math.abs(v - (pdW.kg || 0)) < st / 2 - 0.0001) return; var wp = byId(openProd); if (!wp || !isW(wp)) return; pdW.kg = Math.round(v * 1000) / 1000; wSync(wp, "rul"); }); }, { passive: true }); }
   function wSync(p, from){ var c = wCalc(p), r = $("wRes"), b = $("wAdd"), t = $("wTot"), k = $("wKg"), s2 = $("wSar");
+    var bg = $("wBig"), bp = $("wBigP"), sc = $("wRul"); if (bg) bg.textContent = c.kg ? wLbl(c.kg) : "—"; if (bp) bp.innerHTML = c.kg ? rial(c.sar) : ""; if (sc && from !== "rul") wRulPos(sc);
     if (from !== "kg" && k) k.value = pdW.kg ? fq3(pdW.kg) : "";
     if (from !== "sar" && s2) s2.value = pdW.kg ? num(c.sar) : "";
     Array.prototype.forEach.call(document.querySelectorAll("#wBox [data-wv]"), function(x){ x.setAttribute("aria-pressed", Math.abs((pdW.kg || 0) - Number(x.dataset.wv)) < 0.0005); });
@@ -3392,7 +3426,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       (pairs.length ? '<div class="pd-sugg"><b>' + (p.sugg && p.sugg.length ? tr("يحلى معه", "Goes well with") : tr("ينشرى معه عادة", "Often bought with")) + '</b><div class="rail">' + pairs.map(function(x){ return card(x); }).join("") + '</div></div>' : '') +
       '</div></div></div>' +
       (avail(p) && grpOf(packBase) ? '<div class="buybar"><button class="btn btn-ink go" type="button" data-gpick="' + esc(grpOf(packBase).id) + '" data-gpre="' + packBase.id + '">' + tr("أضف للسلة", "Add to cart") + '</button></div>' :
-      (avail(p) && !isDaily && pdPack < 0 && isW(p) ? (function(){ if (pdW.id !== p.id) pdW = { id: p.id, kg: cart[p.id] || 0 };
+      (avail(p) && !isDaily && pdPack < 0 && isW(p) ? (function(){ if (pdW.id !== p.id) { pdW = { id: p.id, kg: cart[p.id] || 1 }; wMore = false; }
         var c = wCalc(p); return '<div class="buybar wbuy">' + wBoxHTML(p) + '<button class="btn btn-ink go" type="button" id="wAdd" data-addw="' + p.id + '"' + (c.ok ? '' : ' disabled') + '>' + (cart[p.id] ? tr("حدّث السلة", "Update cart") : tr("أضف للسلة", "Add to cart")) + '<span id="wTot">' + (c.ok ? rial(c.sar) : '') + '</span></button></div>'; })() :
       avail(p) ? tr('<div class="buybar"><div class="qtybig"><button type="button" data-pq="-1" aria-label="نقص">', '<div class="buybar"><div class="qtybig"><button type="button" data-pq="-1" aria-label="Decrease">') + ic("minus") + '</button><b id="pq">' + pdQty + tr('</b><button type="button" data-pq="1" aria-label="زيادة">', '</b><button type="button" data-pq="1" aria-label="Increase">') + ic("plus") + '</button></div>' +
         '<button class="btn btn-ink go" type="button" data-addprod="' + p.id + '" data-kind="' + (isDaily ? "t" : "") + tr('">أضف للسلة<span id="pqTotal">', '">Add to cart<span id="pqTotal">') + rial(price * pdQty) + '</span></button></div>' : ''));
@@ -4286,6 +4320,12 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         if (!canAddProduct(wp.id, wc.kg - (cart[wp.id] || 0))) { sToast(tr("الكمية تتجاوز الحد المسموح", "Above the purchase limit")); return; }
         cart[wp.id] = wc.kg; saveCart(); evAdd("c", wp.id); show("back"); return; }
       pdW.kg = Number(t.dataset.wv); wSync(wp); return; }
+    if ((t = e.target.closest("[data-wstep],#wMoreBtn")) && screen === "product") {
+      var wp2 = byId(openProd); if (!wp2 || !isW(wp2)) return;
+      if (t.id === "wMoreBtn") { wMore = !wMore; t.setAttribute("aria-expanded", wMore); $("wCard").hidden = !wMore; $("wRes").hidden = !wMore; if (wMore) { var ki = $("wKg"); if (ki) ki.focus(); } return; }
+      var st2 = wStep(), d = Number(t.dataset.wstep), k0 = pdW.kg || 0;
+      var nk = d > 0 ? (Math.floor(k0 / st2 + 0.0001) + 1) * st2 : (Math.ceil(k0 / st2 - 0.0001) - 1) * st2;
+      pdW.kg = Math.round(Math.min(W_MAX, Math.max(st2, nk)) * 1000) / 1000; wSync(wp2); return; }
     if ((t = e.target.closest("[data-pq]"))) { var cur = pdPack >= 0 ? openProd + "~" + pdPack : openProd, p = byId(cur), dd = daily(), lim = lineOf((dd && dd.p.id === cur ? "t:" : "") + cur).limit;
       var stq = pdPack < 0 ? stepOf(p) : 1; pdQty = Math.max(stq, pdQty + Number(t.dataset.pq) * stq); if (lim) pdQty = Math.min(pdQty, lim);
       $("pq").textContent = pdQty; $("pqTotal").textContent = rial((dd && dd.p.id === cur ? dd.price : p.price) * pdQty); return; }

@@ -230,12 +230,12 @@
         return '<div style="margin:6px 0"><b>' + t[1] + '</b><div class="pays" style="max-width:520px;margin-top:4px">' + t[2].map(function(n){ return '<button type="button" data-apptab="' + t[0] + '" data-v="' + n + '" aria-pressed="' + (cur === n) + '" style="font-size:20px">' + (APP_TAB_ICONS[n] || n) + '</button>'; }).join("") + '</div></div>'; }).join("");
   }
   // شاشة الوزن (الخضار والفواكه) في التطبيق: store.app.weigh = {style, sizes, money, step, input}
-  var WEIGH_STYLES = [["chips","شرائح + عدّاد"],["ruler","مسطرة تنسحب"],["money","بالوزن أو بالمبلغ"],["wheel","عجلة اختيار"]];
+  var WEIGH_STYLES = [["ruler","مسطرة تنسحب (المعتمد)"],["chips","شرائح + عدّاد"],["money","بالوزن أو بالمبلغ"],["wheel","عجلة اختيار"]];
   function weighCfg(){ var A = appLook(); A.weigh = A.weigh || {}; return A.weigh; }
   function weighHTML(){
-    var W = (draft.store.app || {}).weigh || {}, st = W.style || "chips", step = W.step || 250;
+    var W = (draft.store.app || {}).weigh || {}, st = W.style || "ruler", step = W.step || 250;
     var b = function(k, v, cur, l){ return '<button type="button" data-wset="' + k + '" data-v="' + v + '" aria-pressed="' + (String(cur) === String(v)) + '">' + l + '</button>'; };
-    return '<h3>شاشة الوزن (الخضار والفواكه)</h3><p class="hint">شكل اختيار الوزن في صفحة المنتج اللي ينباع بالكيلو. يتغيّر عند الزبائن بدون تحديث للتطبيق (من نسخة 1.3).</p>' +
+    return '<h3>شاشة الوزن (الخضار والفواكه)</h3><p class="hint">شكل اختيار الوزن في تطبيق الآيفون (من نسخة 1.3)، ويتغيّر عند الزبائن بدون تحديث. الموقع يستخدم المسطرة، والخطوة تحت تنطبق على الموقع والتطبيق.</p>' +
       '<div class="pays" style="max-width:560px;margin:6px 0 12px;flex-wrap:wrap">' + WEIGH_STYLES.map(function(o){ return b("style", o[0], st, o[1]); }).join("") + '</div>' +
       '<label class="fld" style="display:grid;gap:4px;margin:8px 0;max-width:420px"><b>الأحجام الجاهزة (بالجرام، بينها فاصلة)</b><input data-wk="sizes" dir="ltr" value="' + esc((W.sizes || [250,500,1000,1500,2000]).join(", ")) + '"></label>' +
       '<label class="fld" style="display:grid;gap:4px;margin:8px 0;max-width:420px"><b>المبالغ الجاهزة (بالريال، لشكل «بالوزن أو بالمبلغ»)</b><input data-wk="money" dir="ltr" value="' + esc((W.money || [5,10,15,20]).join(", ")) + '"></label>' +

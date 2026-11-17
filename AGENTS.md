@@ -416,3 +416,8 @@ KV: `pin` (رقم الإدارة مشفّر)، `driver_pin` (قديم)، `fail:<
 - فرع `mobile-app`: عدّاد الزوار `/hit` (`Core/Visits.swift`)، عروض الرجعة (`OfferCenter` + `Features/Promos/ReturnOfferSheet.swift`، تطفى بـ `store.app.off = ["nudge"]`)، شاشة الطلب (مرحلة التجهيز، الإجمالي والأسطر من `/track`، «نسيت شي؟» `/order-add` تطفى بـ `orderAdd`، الاقتراحات `/suggest` تطفى بـ `suggest`)، «ما لقيت غرضك؟» في السلة (`free`، تطفى بـ `free`)، رابط سياسة الاسترجاع. البنرات ما تغيّرت (أمر المالك).
 - البناء: دفعة لفرع `ios-codemagic` (Codemagic) أو `ios-release` (GitHub macOS، يعلق بالدور أحياناً).
 - التقديم للمراجعة بدون ماك: `.github/workflows/ios-submit.yml` + `mobile/ios-native/scripts/asc_submit.py`. الوضع في `mobile/ios-native/submit.mode` (`status` قراءة بس / `submit`)، ودفعة لفرع `ios-submit`. يربط آخر بناء صالح لنسخة `MARKETING_VERSION`، و«وش الجديد» من `whatsnew.txt`، و`releaseType = AFTER_APPROVAL` (خط أحمر: ما يسحب أي نسخة).
+
+### شاشة الوزن «المسطرة» وشاشة المجهز (١٧ نوفمبر ٢٠٢٦)
+- **المالك اعتمد «المسطرة» للموقع والتطبيق:** الوزن والسعر كبير، − و +، ومسطرة تنسحب (تمرير أفقي بـ scroll-snap، شرطة لكل خطوة)، و«وزن أو مبلغ آخر» يفتح خانتي الوزن والمبلغ. يبدأ من ١ كيلو (أو اللي بالسلة). الموقع: `wBoxHTML`/`wRulInit`/`wStep` في index.html.
+- **`store.app.weigh = {style, sizes, money, step, input}`** من الإدارة («الألوان واللغة» ← «شاشة الوزن»): `step` (١٠٠/٢٥٠/٥٠٠ جرام) للموقع والتطبيق، والباقي للتطبيق بس (من 1.3): `style` = ruler (الافتراضي) / chips / money / wheel.
+- **شاشة المجهز:** الضغطة على المنتج تغيّر كرته والعدّاد والأزرار بس (`prepPatch`)، والتحديث كل ١٠ ثواني ما يعيد الرسم لو ما تغيّر شي (`prepSig`). لا ترجع لإعادة رسم الصفحة كاملة مع كل ضغطة: كانت تعلّق وتنط في الآيفون.
