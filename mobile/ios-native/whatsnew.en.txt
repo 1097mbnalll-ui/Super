@@ -1,7 +1,2 @@
-• Clearer order tracking: preparing / ready stages and updated totals
-• Forgot something? Add it to your order before the driver leaves
-• Special offers just for you, including a gift wheel
-• Fruits by weight: order by kilo or by riyal
-• Send us your suggestions from the order page
-• Returns & refunds policy in Account
+• Clearer weighed fruits & vegetables: pick a quarter, half or a kilo with its price, or adjust by a quarter kilo
 • Improvements and fixes
