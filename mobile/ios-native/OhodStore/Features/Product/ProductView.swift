@@ -345,69 +345,76 @@ private struct QuantityOfferBox: View {
 }
 
 
-/// شريط الشراء بالوزن: «بالكيلو» أو «بالريال»، خانة الرقم، أزرار سريعة، والنتيجة. السعر لكل كيلو
+/// شريط الشراء بالوزن (نفس الموقع): خانتين مربوطة «الوزن | المبلغ» يكتب فيها أي رقم، وأزرار سريعة ⅛ ¼ ½ ١ كيلو. السعر لكل كيلو
 struct WeightBuyBar: View {
     let product: Product
     @Environment(Cart.self) private var cart
-    @State private var byRiyal = false
-    @State private var text = ""
+    @State private var grams = 0
+    @State private var kgText = ""
+    @State private var sarText = ""
     @State private var loaded = false
-    @FocusState private var focused: Bool
+    @FocusState private var field: Field?
+    enum Field { case kg, sar }
 
-    private var value: Double { Double(text.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "٫", with: ".")) ?? 0 }
-    /// الكمية بالجرام (لأقرب ١٠ جرام)
-    private var grams: Int {
-        guard product.price > 0, value > 0 else { return 0 }
-        let kg = byRiyal ? value / product.price : value
-        return Int((kg * 100).rounded()) * 10
+    private static func parse(_ s: String) -> Double {
+        var t = ""
+        for ch in s {
+            if let v = ch.wholeNumberValue { t.append(String(v)) }
+            else if ch == "." || ch == "," || ch == "٫" { t.append(".") }
+        }
+        return Double(t) ?? 0
     }
-    private var ok: Bool { grams >= 100 && grams <= 50000 }
+    private var ok: Bool { grams >= 100 && grams <= 50000 && product.price > 0 }
     private var total: Double { (product.price * Double(grams) / 1000 * 100).rounded() / 100 }
+    private static let quick: [(Int, String)] = [(125, "⅛"), (250, "¼"), (500, "½"), (1000, "1")]
+
+    private func setGrams(_ g: Int, from: Field?) {
+        grams = g
+        if from != .kg { kgText = g > 0 ? Weight.kg(g) : "" }
+        if from != .sar { sarText = g > 0 ? Money.plain((product.price * Double(g) / 1000 * 100).rounded() / 100) : "" }
+    }
 
     var body: some View {
-        VStack(spacing: 8) {
-            Picker("", selection: $byRiyal) {
-                Text(tv: "بالكيلو").tag(false)
-                Text(tv: "بالريال").tag(true)
+        VStack(spacing: 10) {
+            HStack(spacing: 0) {
+                box(title: "الوزن", unit: "كيلو", text: $kgText, which: .kg)
+                Rectangle().fill(Theme.line).frame(width: 1).padding(.vertical, 16)
+                box(title: "المبلغ", unit: "ر.س", text: $sarText, which: .sar)
             }
-            .pickerStyle(.segmented)
-            .onChange(of: byRiyal) { _, r in
-                // نحوّل الرقم المكتوب للطريقة الثانية عشان ما يضيع
-                guard value > 0 else { return }
-                if r { text = Money.plain(((value * product.price)).rounded()).replacingOccurrences(of: ".00", with: "") }
-                else { text = Weight.kg(Int((value / product.price * 100).rounded()) * 10) }
-            }
-            HStack {
-                TextField(byRiyal ? "كم ريال؟" : "كم كيلو؟", text: $text)
-                    .keyboardType(.decimalPad)
-                    .focused($focused)
-                    .font(.kufi(20, .bold))
-                    .multilineTextAlignment(.leading)
-                    .environment(\.layoutDirection, .leftToRight)
-                Text(tv: byRiyal ? "ر.س" : "كيلو").font(.ui(size: 15, weight: .bold)).foregroundStyle(Theme.muted)
-            }
-            .padding(.horizontal, 14)
-            .frame(minHeight: 50)
-            .background(.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.line, lineWidth: 1.5))
-            HStack(spacing: 8) {
-                ForEach(byRiyal ? ["5", "10", "20", "50"] : ["0.5", "1", "2", "5"], id: \.self) { v in
-                    Button { text = v; focused = false } label: {
-                        Text(tv: v).font(.ui(size: 14, weight: .bold)).frame(maxWidth: .infinity, minHeight: 36)
+            .background(.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color(hex: 0xE7ECEA)))
+            .shadow(color: Theme.ink.opacity(0.07), radius: 14, y: 6)
+            .onChange(of: kgText) { _, v in if field == .kg { setGrams(Int((Self.parse(v) * 1000).rounded()), from: .kg) } }
+            .onChange(of: sarText) { _, v in if field == .sar, product.price > 0 { setGrams(Int((Self.parse(v) / product.price * 1000).rounded()), from: .sar) } }
+
+            HStack(spacing: 4) {
+                ForEach(Self.quick, id: \.0) { q in
+                    let on = grams == q.0
+                    Button { field = nil; setGrams(q.0, from: nil) } label: {
+                        HStack(spacing: 3) {
+                            Text(verbatim: q.1).font(.ui(size: 16, weight: .heavy))
+                            Text(tv: "كيلو").font(.ui(size: 11, weight: .bold)).foregroundStyle(Theme.muted)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .foregroundStyle(on ? Color(hex: 0x0E8A6A) : Theme.ink)
+                        .background(on ? Color.white : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .shadow(color: on ? Theme.ink.opacity(0.1) : .clear, radius: 4, y: 2)
                     }
-                    .foregroundStyle(Theme.ink)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Theme.line, lineWidth: 1.5))
+                    .buttonStyle(.plain)
                 }
             }
-            Text(tv: value <= 0 ? "اكتب الكمية أو اختر من فوق"
-                 : !ok ? "الكمية من ٠٫١ كيلو إلى ٥٠ كيلو"
-                 : byRiyal ? "تحصل على ≈ \(Weight.kg(grams)) كيلو · \(Money.sar(total))" : "\(Weight.kg(grams)) كيلو = \(Money.sar(total))")
-                .font(.ui(size: 14, weight: .bold))
-                .foregroundStyle(Theme.brandDeep)
+            .padding(4)
+            .background(Color(hex: 0xF2F5F4), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            Text(tv: grams <= 0 ? "اكتب أي وزن أو أي مبلغ، أو اختر من فوق"
+                 : !ok ? "من ١٠٠ جرام إلى ٥٠ كيلو"
+                 : grams < 1000 ? "≈ \(grams) جرام" : "≈ \(Weight.kg(grams)) كيلو")
+                .font(.ui(size: 12.5, weight: .bold))
+                .foregroundStyle(Theme.muted)
+
             Button {
                 cart.setWeight(product.id, grams: grams)
-                focused = false
+                field = nil
                 Haptics.added()
             } label: {
                 HStack {
@@ -415,17 +422,51 @@ struct WeightBuyBar: View {
                     Spacer()
                     if ok { Text(tv: Money.sar(total)) }
                 }
+                .font(.kufi(16, .bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 22)
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .background(Color(hex: 0x0E8A6A), in: Capsule())
             }
-            .buttonStyle(PrimaryButtonStyle())
+            .buttonStyle(PressableStyle(scale: 0.97))
             .disabled(!ok)
-            .opacity(ok ? 1 : 0.5)
+            .opacity(ok ? 1 : 0.45)
         }
         .onAppear {
-            // لو المنتج بالسلة: نبدأ من وزنه
             guard !loaded else { return }
             loaded = true
             let q = cart.line(product.id).qty
-            if q > 0, cart.isWeighed(product.id) { text = Weight.kg(q) }
+            if q > 0, cart.isWeighed(product.id) { setGrams(q, from: nil) }
         }
+    }
+
+    @ViewBuilder
+    private func box(title: String, unit: String, text: Binding<String>, which: Field) -> some View {
+        let active = field == which
+        VStack(alignment: .leading, spacing: 2) {
+            Text(tv: title).font(.ui(size: 12, weight: .bold)).foregroundStyle(Theme.muted)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                TextField("0", text: text)
+                    .keyboardType(.decimalPad)
+                    .focused($field, equals: which)
+                    .font(.kufi(26, .bold))
+                    .foregroundStyle(Theme.ink)
+                    .fixedSize()
+                Text(tv: unit).font(.ui(size: 13, weight: .bold)).foregroundStyle(Theme.muted)
+                Spacer(minLength: 0)
+            }
+            .environment(\.layoutDirection, .leftToRight)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(active ? LinearGradient(colors: [Color(hex: 0xEEF9F4), .white], startPoint: .top, endPoint: .bottom) : LinearGradient(colors: [.white, .white], startPoint: .top, endPoint: .bottom))
+        .overlay(alignment: .bottom) {
+            Capsule().fill(Color(hex: 0x0E8A6A)).frame(height: 3).padding(.horizontal, 16).opacity(active ? 1 : 0)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { field = which }
+        .animation(.snappy(duration: 0.2), value: active)
     }
 }
