@@ -385,6 +385,19 @@ export default {
     }
 
     // تحليل التصفح: مشاهدات المنتجات، الإضافة للسلة، البحث (بدون أي بيانات شخصية)
+    // عدّاد الزوار الدقيق: الجهاز يرسل عند فتح الصفحة (st=0) وعند أول مشاهدة منتج (1) وأول إضافة للسلة (2) والوصول للدفع (3).
+    // اللي ما وصل ينحفظ بالجهاز وينرسل بعدين بوقته الأصلي (at)، فما يضيع شي. بدون اسم ولا جوال
+    if (path === "/hit") {
+      const dev = normDev(body.dev);
+      if (!dev) return reply(400, { ok: false, code: "bad_request" });
+      if (!env.DB) return reply(200, { ok: true });
+      const ua = request.headers.get("User-Agent") || "";
+      if (/bot|crawl|spider|headless|preview|slurp|facebookexternalhit|lighthouse|pingdom|monitor/i.test(ua)) return reply(200, { ok: true, skipped: "bot" });
+      if (await rateHit(env, "hit:" + ip, 600, 3600)) return reply(429, { ok: false, code: "slow_down" });
+      await ensureSchema(env);
+      await recordHits(env, dev, Array.isArray(body.q) ? body.q.slice(0, 40) : [body], !!body.staff, /iPhone|iPad|Android|Mobile/i.test(ua) ? "m" : "d");
+      return reply(200, { ok: true });
+    }
     if (path === "/ev") {
       if (!env.DB) return reply(200, { ok: true });
       if (await rateHit(env, "ev:" + ip, 40, 3600)) return reply(429, { ok: false, code: "slow_down" });
@@ -1066,6 +1079,18 @@ export default {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       try { return reply(200, { ok: true, ...(await verifyStats(env, String(body.from || ""), String(body.to || ""), !!body.fix)) }); } catch { return reply(502, { ok: false, code: "db" }); }
     }
+    if (path === "/admin/visits") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      return reply(200, { ok: true, ...(await readVisits(env, Number(body.days) || 7)) });
+    }
+    if (path === "/admin/staff-dev") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      if (body.clear) await env.DB.prepare("DELETE FROM staff_dev").run();
+      const dev = normDev(body.dev); if (dev) await env.DB.prepare("INSERT OR IGNORE INTO staff_dev (dev, at) VALUES (?, ?)").bind(dev, Date.now()).run();
+      const n = await env.DB.prepare("SELECT COUNT(*) n FROM staff_dev").first();
+      return reply(200, { ok: true, n: (n && n.n) || 0 });
+    }
     if (path === "/admin/stats") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       return reply(200, { ok: true, ...(await readStats(env, Number(body.days) || 30)) });
@@ -1237,6 +1262,10 @@ async function ensureSchema(env) {
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS orders_dev ON orders (dev, status) WHERE dev IS NOT NULL"));
   extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS devices (dev TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, cart_n INTEGER NOT NULL DEFAULT 0, cart_at INTEGER NOT NULL DEFAULT 0, orders_n INTEGER NOT NULL DEFAULT 0, last_order_at INTEGER NOT NULL DEFAULT 0, reminded_at INTEGER NOT NULL DEFAULT 0)"));
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS devices_cart ON devices (cart_at) WHERE cart_n > 0"));
+  // الزوار (١٧ نوفمبر ٢٠٢٦): سطر لكل جهاز بكل يوم. أجهزة الموظفين في staff_dev وتنستثنى من التقارير
+  extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS vday (day TEXT NOT NULL, dev TEXT NOT NULL, first_at INTEGER NOT NULL, last_at INTEGER NOT NULL, opens INTEGER NOT NULL DEFAULT 0, sess INTEGER NOT NULL DEFAULT 1, stage INTEGER NOT NULL DEFAULT 0, src TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL DEFAULT '', PRIMARY KEY (day, dev))"));
+  extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS vday_last ON vday (last_at)"));
+  extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_dev (dev TEXT PRIMARY KEY, at INTEGER NOT NULL)"));
   const scols = ((await env.DB.prepare("PRAGMA table_info(subs)").all()).results || []).map((r) => r.name);
   if (!scols.includes("dev")) extra.push(env.DB.prepare("ALTER TABLE subs ADD COLUMN dev TEXT"));
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS subs_dev ON subs (dev) WHERE dev IS NOT NULL"));
@@ -2128,6 +2157,61 @@ async function rateHit(env, key, max, secs) {
   return !!row && row.n > max;
 }
 
+function hitSrc(x) { const v = String(x || "").toLowerCase().trim(); return /^[a-z0-9._-]{1,30}$/.test(v) ? v : ""; }
+async function recordHits(env, dev, list, staff, kind) {
+  const now = Date.now(), st = [];
+  for (const h of list) {
+    if (!h || typeof h !== "object") continue;
+    let at = Math.floor(Number(h.at) || now); if (!(at > now - 3 * 864e5 && at < now + 5 * 60e3)) at = now;
+    const stage = Math.max(0, Math.min(3, Math.floor(Number(h.st) || 0))), open = stage === 0 && h.o !== 0 ? 1 : 0;
+    const k = h.app === "ios" || h.app === "android" ? h.app : kind;
+    st.push(env.DB.prepare("INSERT INTO vday (day, dev, first_at, last_at, opens, sess, stage, src, kind) VALUES (?1, ?2, ?3, ?3, ?4, 1, ?5, ?6, ?7) ON CONFLICT(day, dev) DO UPDATE SET opens = opens + ?4, sess = sess + CASE WHEN ?4 = 1 AND ?3 - last_at > 1800000 THEN 1 ELSE 0 END, first_at = MIN(first_at, ?3), last_at = MAX(last_at, ?3), stage = MAX(stage, ?5), src = CASE WHEN src = '' THEN ?6 ELSE src END, kind = CASE WHEN kind = '' THEN ?7 ELSE kind END")
+      .bind(riyadhDateAt(at), dev, at, open, stage, hitSrc(h.src), k));
+    st.push(env.DB.prepare("INSERT INTO devices (dev, first_seen, last_seen) VALUES (?1, ?2, ?2) ON CONFLICT(dev) DO UPDATE SET first_seen = MIN(first_seen, ?2), last_seen = MAX(last_seen, ?2)").bind(dev, at));
+  }
+  if (staff) st.push(env.DB.prepare("INSERT OR IGNORE INTO staff_dev (dev, at) VALUES (?, ?)").bind(dev, now));
+  if (st.length) await env.DB.batch(st);
+}
+// تقرير الزوار: كل الأرقام من سطور الأجهزة نفسها (زائر = جهاز مختلف)، والطلبات من جدول الطلبات. أجهزة الموظفين مستثناة
+async function readVisits(env, days) {
+  await ensureSchema(env);
+  days = Math.min(365, Math.max(1, Math.floor(days)));
+  const now = Date.now(), from = riyadhDate(-(days - 1)), fromMs = Date.parse(from + "T00:00:00+03:00");
+  const Q = (q, ...a) => env.DB.prepare(q).bind(...a).all().then((r) => r.results || []);
+  const NS = "dev NOT IN (SELECT dev FROM staff_dev)";
+  const [tot, daily, srcs, hours, kinds, ord, cover, live, staffN, prevTot] = await Promise.all([
+    Q("SELECT COUNT(DISTINCT dev) visitors, SUM(sess) visits, SUM(opens) opens, COUNT(DISTINCT CASE WHEN stage >= 1 THEN dev END) viewed, COUNT(DISTINCT CASE WHEN stage >= 2 THEN dev END) carted, COUNT(DISTINCT CASE WHEN stage >= 3 THEN dev END) checkout FROM vday WHERE day >= ? AND " + NS, from),
+    Q("SELECT v.day, COUNT(*) visitors, SUM(v.sess) visits, SUM(CASE WHEN date(d.first_seen / 1000 + 10800, 'unixepoch') = v.day THEN 1 ELSE 0 END) fresh FROM vday v LEFT JOIN devices d ON d.dev = v.dev WHERE v.day >= ? AND v." + NS + " GROUP BY v.day ORDER BY v.day", from),
+    Q("SELECT src, COUNT(DISTINCT dev) visitors FROM vday WHERE day >= ? AND " + NS + " GROUP BY src ORDER BY visitors DESC LIMIT 15", from),
+    Q("SELECT CAST(strftime('%H', first_at / 1000 + 10800, 'unixepoch') AS INTEGER) h, COUNT(*) visitors FROM vday WHERE day >= ? AND " + NS + " GROUP BY h", from),
+    Q("SELECT kind, COUNT(DISTINCT dev) visitors FROM vday WHERE day >= ? AND " + NS + " GROUP BY kind", from),
+    Q("SELECT dev, day, total, src, CAST(strftime('%H', created / 1000 + 10800, 'unixepoch') AS INTEGER) h FROM orders WHERE created >= ? AND status != 'canceled'", fromMs),
+    Q("SELECT o.no, o.dev, o.day, (SELECT COUNT(*) FROM vday v WHERE v.dev = o.dev AND v.day = o.day) seen FROM orders o WHERE o.created >= ? AND o.status != 'canceled' AND o.dev IS NOT NULL", fromMs),
+    Q("SELECT COUNT(DISTINCT dev) n FROM vday WHERE last_at >= ? AND " + NS, now - 5 * 60e3),
+    Q("SELECT COUNT(*) n FROM staff_dev"),
+    Q("SELECT COUNT(DISTINCT dev) visitors FROM vday WHERE day >= ? AND day < ? AND " + NS, riyadhDate(-(2 * days - 1)), from),
+  ]);
+  const staffSet = new Set((await Q("SELECT dev FROM staff_dev")).map((r) => r.dev));
+  const custOrders = ord.filter((o) => !o.dev || !staffSet.has(o.dev));
+  const buyers = new Set(custOrders.filter((o) => o.dev).map((o) => o.dev));
+  const t = tot[0] || {};
+  const newV = (await Q("SELECT COUNT(DISTINCT v.dev) n FROM vday v JOIN devices d ON d.dev = v.dev WHERE v.day >= ? AND d.first_seen >= ? AND v." + NS, from, fromMs))[0];
+  const bySrc = {};
+  const srcBuy = await Q("SELECT v.src, COUNT(DISTINCT o.dev) buyers FROM orders o JOIN vday v ON v.dev = o.dev AND v.day = o.day WHERE o.created >= ? AND o.status != 'canceled' AND o." + NS + " GROUP BY v.src", fromMs);
+  for (const r of srcBuy) bySrc[r.src] = r.buyers;
+  const oh = {}; for (const o of custOrders) oh[o.h] = (oh[o.h] || 0) + 1;
+  const covered = cover.filter((c) => !staffSet.has(c.dev));
+  return {
+    days, from, now,
+    visitors: t.visitors || 0, visits: t.visits || 0, opens: t.opens || 0, fresh: (newV && newV.n) || 0, prevVisitors: (prevTot[0] && prevTot[0].visitors) || 0,
+    funnel: { visited: t.visitors || 0, viewed: t.viewed || 0, carted: t.carted || 0, checkout: t.checkout || 0, ordered: buyers.size },
+    orders: custOrders.length, ordersNoDev: custOrders.filter((o) => !o.dev).length, revenue: Math.round(custOrders.reduce((s, o) => s + Number(o.total || 0), 0) * 100) / 100,
+    daily, sources: srcs.map((r) => ({ src: r.src, visitors: r.visitors, buyers: bySrc[r.src] || 0 })),
+    hours: hours.map((r) => ({ h: r.h, visitors: r.visitors, orders: oh[r.h] || 0 })),
+    kinds, live: (live[0] && live[0].n) || 0, staffDevices: (staffN[0] && staffN[0].n) || 0,
+    coverage: { orders: covered.length, seen: covered.filter((c) => c.seen > 0).length, missing: covered.filter((c) => !c.seen).map((c) => c.no).slice(0, 20) },
+  };
+}
 async function recordEvents(env, b) {
   await ensureSchema(env);
   const day = riyadhDate(), P = (q, ...a) => env.DB.prepare(q).bind(...a);

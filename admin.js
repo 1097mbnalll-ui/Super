@@ -19,11 +19,12 @@
   function uid(p){ return p + Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
   function markDirty(){ dirty = true; if($("aSave"))$("aSave").disabled=!!adminProtectionCheck; var s = $("aState"); if (s) { s.textContent = "فيه تعديلات ما انحفظت"; s.className = "adm-state dirty"; } }
   function adminShell(){
+    if (typeof markStaffDev === "function") markStaffDev();
     if(staffAuth && staffAuth.user.role === "cashier"){cashierShell();return;}
     if (staffAuth && staffAuth.user.role === "preparer") { preparerShell(); return; }
     if (ordersOnly()) { ordersShell(); return; }
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
-    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["rates","التقييمات والاقتراحات","spark"],["sign","ورقة عرض للمحل","tag"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
+    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["rates","التقييمات والاقتراحات","spark"],["sign","ورقة عرض للمحل","tag"],["visits","الزوار والتحويل","user"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
       '<aside class="adm-side"><div class="adm-brand"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b>' + esc(D.store.name) + '</b><span>لوحة الإدارة</span></div></div>' +
       '<nav class="adm-nav" aria-label="أقسام الإدارة">' + TABS.map(function(x){ return '<button type="button" data-atab="' + x[0] + '"' + (x[0] === aTab ? ' aria-current="page"' : '') + '>' + ic(x[2]) + '<span>' + x[1] + '</span>' + (x[0] === "prods" ? '<em class="n">' + draft.products.length + '</em>' : x[0] === "cats" ? '<em class="n">' + draft.cats.length + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
@@ -32,6 +33,7 @@
       '<button class="btn btn-brand" type="button" id="aSave">حفظ تغييرات المتجر</button></div><div class="adm-body">' +
       '<section class="adm-panel" data-panel="over" id="aOver"></section>' +
       '<section class="adm-panel" data-panel="stats" id="aStats"></section>' +
+      '<section class="adm-panel" data-panel="visits" id="aVisits"></section>' +
       '<section class="adm-panel" data-panel="olist" id="aOList"></section>' +
       '<section class="adm-panel" data-panel="log" id="aLog"></section>' +
       '<section class="adm-panel" data-panel="cust" id="aCust"></section>' +
@@ -168,6 +170,7 @@
     if (id === "alerts") loadOrderAlerts();
     if (id === "over") renderOver();
     if (id === "stats") renderStats();
+    if (id === "visits") renderVisits();
     if (id === "olist") { if (!staffCache && apiUrl()) loadStaff(function(){ if (aTab === "olist") renderOList(); }); renderOList(); }
     if (id === "log") renderLog();
     if (id === "cust") renderWinback();
@@ -1130,7 +1133,7 @@
       '<div class="chartbox"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + MET[statMetric][0] + '، أعلى قيمة ' + Math.round(mx) + '" preserveAspectRatio="none"><line class="base" x1="0" x2="' + W + '" y1="' + (H - 18) + '" y2="' + (H - 18) + '"></line>' + bars + '</svg><div class="axis"><span>' + days[0].day.slice(5) + '</span><span>أعلى: ' + num(Math.round(mx)) + MET[statMetric][1] + '</span><span>' + days[days.length - 1].day.slice(5) + '</span></div></div>');
     // funnel
     if (A.visits) { var fun = [["زاروا المتجر", A.visits], ["أضافوا للسلة", A.carts], ["فتحوا صفحة الطلب", A.checkouts], ["أرسلوا الطلب", A.orders]];
-      h += sec("رحلة الزبون", '<div class="funnel">' + fun.map(function(x){ return '<div class="frow"><span>' + x[0] + '</span><i class="meter"><i style="width:' + Math.max(2, pct(x[1], A.visits)) + '%"></i></i><b>' + num(x[1]) + '</b><em>' + pct(x[1], A.visits) + '٪</em></div>'; }).join("") + '</div>' +
+      h += sec("رحلة الزبون (تقريبي)", '<p class="hint">الأرقام الدقيقة (زوار مختلفين، مصادر، دقة العدّاد) في <button type="button" class="linkbtn" data-atab="visits">الزوار والتحويل</button>.</p><div class="funnel">' + fun.map(function(x){ return '<div class="frow"><span>' + x[0] + '</span><i class="meter"><i style="width:' + Math.max(2, pct(x[1], A.visits)) + '%"></i></i><b>' + num(x[1]) + '</b><em>' + pct(x[1], A.visits) + '٪</em></div>'; }).join("") + '</div>' +
         (A.carts > A.orders ? '<p class="hint">' + num(A.carts - A.orders) + ' زيارة أضافت للسلة وما كمّلت الطلب. جرّب توصيل مجاني أقل، أو عرض يشجّع.</p>' : ''), "كل زيارة تنحسب مرة. ما نحفظ أي بيانات شخصية للزوار."); }
     // heatmap weekday x hour
     if (j.hours.length) { var hm = {}, hmx = 0, byDow = [0,0,0,0,0,0,0], byH = {};
@@ -2154,6 +2157,74 @@
     if ((t = e.target.closest("[data-sgs]"))) { sg.paper = t.dataset.sgs; renderSign(); return; }
   });
 
+  /* ---------- الزوار والتحويل (١٧ نوفمبر ٢٠٢٦): من عدّاد /hit الدقيق. زائر = جهاز مختلف، وأجهزة الموظفين مستثناة ---------- */
+  var visDays = 7, visData = null;
+  var VIS_SRC = { "": "مباشر (كتب الرابط أو من المفضلة)", qr: "ملصق QR", bag: "ورقة الكيس", google: "قوقل", bing: "بنق", instagram: "انستقرام", facebook: "فيسبوك", tiktok: "تيك توك", snapchat: "سناب شات", x: "إكس (تويتر)", whatsapp: "واتساب", wa: "واتساب", "wa-group": "قروب واتساب الحي", push: "إشعار من المتجر", track: "رابط تتبع الطلب", "home-icon": "أيقونة على شاشة الجوال" };
+  var VIS_LINKS = [["qr", "ملصق QR عند الكاشير"], ["bag", "ورقة داخل الكيس"], ["wa-group", "قروب واتساب الحي"], ["instagram", "انستقرام"], ["snapchat", "سناب شات"]];
+  function visPct(a, b){ return b ? Math.round(a / b * 1000) / 10 : 0; }
+  function visBar(v, max, label, sub){ var w = max ? Math.max(2, Math.round(v / max * 100)) : 0; return '<div class="vis-bar"><span class="l">' + label + '</span><span class="t"><i style="width:' + w + '%"></i></span><b>' + num(v) + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>'; }
+  function renderVisits(){
+    var box = $("aVisits"); if (!box) return;
+    if (!$("visCss")) { var st = document.createElement("style"); st.id = "visCss"; st.textContent = [
+      ".vis-chips{display:flex;gap:6px;flex-wrap:wrap}.vis-chips button{min-height:36px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font:inherit;font-weight:700;font-size:13px;padding:0 14px;cursor:pointer}.vis-chips button[aria-pressed=true]{background:#17212B;color:#fff;border-color:#17212B}",
+      ".vis-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}.vis-kpi{background:#F4F5F7;border-radius:12px;padding:12px;display:grid;gap:2px}.vis-kpi b{font-size:26px;font-variant-numeric:tabular-nums;line-height:1.2}.vis-kpi span{font-size:12.5px;color:#66707C}.vis-kpi small{font-size:12px;font-weight:700}.vis-kpi small.up{color:#0E8A6A}.vis-kpi small.down{color:#B3261E}",
+      ".vis-bar{display:grid;grid-template-columns:minmax(90px,170px) minmax(0,1fr) 52px;align-items:center;gap:10px;font-size:13.5px;padding:4px 0}.vis-bar .t{height:12px;background:#EEF0F3;border-radius:6px;overflow:hidden}.vis-bar .t i{display:block;height:100%;background:#0E8A6A;border-radius:6px}.vis-bar b{font-variant-numeric:tabular-nums;text-align:end}.vis-bar small{grid-column:2/-1;color:#66707C;font-size:12px;margin-top:-4px}",
+      ".vis-tbl{width:100%;border-collapse:collapse;font-size:13.5px}.vis-tbl th,.vis-tbl td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:start}.vis-tbl td.n,.vis-tbl th.n{text-align:end;font-variant-numeric:tabular-nums}.vis-wrap{overflow-x:auto}",
+      ".vis-hours{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:2px;align-items:end;height:120px;padding-top:8px}.vis-hours div{background:#CFE9E0;border-radius:3px 3px 0 0;position:relative;min-height:2px}.vis-hours div.o{background:#0E8A6A}.vis-hlbl{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));font-size:9.5px;color:#66707C;text-align:center}",
+      ".vis-acc{display:flex;gap:12px;align-items:center}.vis-acc .big{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}.vis-acc.good .big{color:#0E8A6A}.vis-acc.warn .big{color:#B5530A}",
+      ".vis-link{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.vis-link code{font-size:12px;direction:ltr;overflow-wrap:anywhere;color:#334}",
+      "@media (max-width:600px){.vis-bar{grid-template-columns:96px minmax(0,1fr) 40px;font-size:12.5px}}"
+    ].join("\n"); document.head.appendChild(st); }
+    var chips = '<div class="vis-chips" role="group" aria-label="المدة">' + [[1, "اليوم"], [7, "٧ أيام"], [30, "٣٠ يوم"], [90, "٣ شهور"]].map(function(x){ return '<button type="button" data-visd="' + x[0] + '" aria-pressed="' + (visDays === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div>';
+    box.innerHTML = '<div class="card"><div class="sec-head" style="margin:0 0 10px"><h2>الزوار والتحويل</h2><button class="btn btn-soft sm" type="button" id="visRe">تحديث</button></div>' + chips + '<p class="hint" id="visMsg">جاري التحميل…</p></div><div id="visBody"></div>';
+    box.querySelectorAll("[data-visd]").forEach(function(b){ b.onclick = function(){ visDays = Number(b.dataset.visd); renderVisits(); }; });
+    $("visRe").onclick = renderVisits;
+    api("/admin/visits", { pin: adminPin, days: visDays }).then(function(j){
+      var msg = $("visMsg"); if (!msg) return;
+      if (!j.ok) { msg.textContent = j.code === "not_found" ? "هذا القسم يحتاج تحديث الخادم في Cloudflare." : "ما قدرنا نجيب الأرقام (" + (j.code || "خطأ") + ")."; return; }
+      visData = j; msg.textContent = "من " + j.from + (j.days > 1 ? " لين اليوم" : "") + " · زائر = جهاز مختلف · أجهزة الموظفين مستثناة (" + num(j.staffDevices) + " جهاز)";
+      var f = j.funnel, ch = j.prevVisitors ? Math.round((j.visitors - j.prevVisitors) / j.prevVisitors * 100) : null;
+      var kpi = function(v, l, sub, cls){ return '<div class="vis-kpi"><b>' + v + '</b><span>' + l + '</span>' + (sub ? '<small class="' + (cls || "") + '">' + sub + '</small>' : '') + '</div>'; };
+      var acc = j.coverage.orders ? visPct(j.coverage.seen, j.coverage.orders) : null;
+      var maxH = 1, hmap = {}; (j.hours || []).forEach(function(h){ hmap[h.h] = h; if (h.visitors > maxH) maxH = h.visitors; });
+      var base = location.origin + location.pathname;
+      $("visBody").innerHTML =
+        '<div class="card"><div class="vis-kpis">' +
+          kpi(num(j.visitors), "زائر مختلف", ch == null ? "" : (ch >= 0 ? "▲ " : "▼ ") + Math.abs(ch) + "٪ عن الفترة اللي قبلها", ch == null ? "" : ch >= 0 ? "up" : "down") +
+          kpi(num(j.fresh), "زائر جديد", num(Math.max(0, j.visitors - j.fresh)) + " راجعين") +
+          kpi(num(j.visits), "زيارة (جلسة)", num(j.opens) + " فتحة للصفحة") +
+          kpi(visPct(f.ordered, j.visitors) + "٪", "نسبة اللي طلبوا", num(f.ordered) + " زبون طلب") +
+          kpi(num(j.live), "متواجدين الحين", "آخر ٥ دقايق") +
+        '</div></div>' +
+        '<div class="card"><h2>رحلة الزبون</h2><p class="hint">كل رقم = أجهزة مختلفة. يوريك وين يوقف الزباين.</p>' +
+          visBar(f.visited, f.visited, "زاروا الموقع") + visBar(f.viewed, f.visited, "شافوا منتج", visPct(f.viewed, f.visited) + "٪ من الزوار") +
+          visBar(f.carted, f.visited, "أضافوا للسلة", visPct(f.carted, f.visited) + "٪ من الزوار") + visBar(f.checkout, f.visited, "وصلوا صفحة الطلب", visPct(f.checkout, f.carted) + "٪ من اللي أضافوا") +
+          visBar(f.ordered, f.visited, "طلبوا فعلاً", visPct(f.ordered, f.checkout) + "٪ من اللي وصلوا صفحة الطلب") +
+          (f.checkout > f.ordered ? '<p class="hint">' + num(f.checkout - f.ordered) + ' وصلوا صفحة الطلب وما طلبوا. شيّك رسوم التوصيل والحد الأدنى ومنطقة التوصيل.</p>' : '') + '</div>' +
+        '<div class="card"><h2>دقة العدّاد</h2>' + (acc == null ? '<p class="hint">ما فيه طلبات من الموقع بهالفترة نقيس عليها.</p>' :
+          '<div class="vis-acc ' + (acc >= 98 ? "good" : "warn") + '"><span class="big">' + acc + '٪</span><span>من طلبات الموقع (' + num(j.coverage.orders) + ' طلب) لقينا زيارة صاحبها مسجلة بنفس اليوم. ' + (acc >= 98 ? 'العدّاد ما فوّت أحد.' : 'فيه طلبات ما انسجلت زيارتها: يمكن من نسخة قديمة للموقع أو التطبيق.') + '</span></div>' +
+          (j.coverage.missing.length ? '<p class="hint">طلبات بدون زيارة: ' + j.coverage.missing.map(function(n){ return '#' + n; }).join("، ") + '</p>' : '')) +
+          (j.ordersNoDev ? '<p class="hint">' + num(j.ordersNoDev) + ' طلب بدون جهاز (مدخل من الإدارة بالتلفون أو الواتساب، أو من نسخة قديمة) ما ينحسب بالزوار.</p>' : '') + '</div>' +
+        '<div class="card"><h2>من وين جوا الزوار</h2><div class="vis-wrap"><table class="vis-tbl"><thead><tr><th>المصدر</th><th class="n">زوار</th><th class="n">طلبوا</th><th class="n">النسبة</th></tr></thead><tbody>' +
+          (j.sources.length ? j.sources.map(function(s){ return '<tr><td>' + esc(VIS_SRC[s.src] || s.src) + '</td><td class="n">' + num(s.visitors) + '</td><td class="n">' + num(s.buyers) + '</td><td class="n">' + visPct(s.buyers, s.visitors) + '٪</td></tr>'; }).join("") : '<tr><td colspan="4">ما فيه زوار بهالفترة.</td></tr>') +
+          '</tbody></table></div></div>' +
+        '<div class="card"><h2>أوقات الزيارات</h2><p class="hint">الأعمدة الفاتحة = زوار، والداكنة = فيها طلبات. بتوقيت الرياض.</p><div class="vis-hours">' +
+          Array.apply(null, Array(24)).map(function(_, h){ var x = hmap[h] || { visitors: 0, orders: 0 }; return '<div class="' + (x.orders ? "o" : "") + '" style="height:' + Math.round(x.visitors / maxH * 100) + '%" title="الساعة ' + h + ': ' + x.visitors + ' زائر، ' + x.orders + ' طلب"></div>'; }).join("") +
+          '</div><div class="vis-hlbl">' + Array.apply(null, Array(24)).map(function(_, h){ return '<span>' + (h % 3 === 0 ? h : "") + '</span>'; }).join("") + '</div></div>' +
+        (j.daily.length > 1 ? '<div class="card"><h2>يوم بيوم</h2><div class="vis-wrap"><table class="vis-tbl"><thead><tr><th>اليوم</th><th class="n">زوار</th><th class="n">جدد</th><th class="n">زيارات</th></tr></thead><tbody>' +
+          j.daily.slice().reverse().map(function(d){ return '<tr><td>' + esc(d.day) + '</td><td class="n">' + num(d.visitors) + '</td><td class="n">' + num(d.fresh || 0) + '</td><td class="n">' + num(d.visits) + '</td></tr>'; }).join("") + '</tbody></table></div></div>' : '') +
+        '<div class="card"><h2>الأجهزة</h2>' + (j.kinds.length ? j.kinds.map(function(k){ return visBar(k.visitors, j.visitors, k.kind === "m" ? "جوال" : k.kind === "d" ? "كمبيوتر" : k.kind === "ios" ? "تطبيق الآيفون" : k.kind || "غير معروف"); }).join("") : '<p class="hint">—</p>') + '</div>' +
+        '<div class="card"><h2>روابط تعرف منها مصدر الزبون</h2><p class="hint">استخدم هالروابط في الملصقات والقروبات، ويطلع لك هنا كم زبون جا من كل واحد وكم طلب.</p>' +
+          VIS_LINKS.map(function(x){ var u = base + "?src=" + x[0]; return '<div class="vis-link"><div><b>' + x[1] + '</b><br><code>' + esc(u) + '</code></div><button type="button" class="btn btn-soft sm" data-viscp="' + esc(u) + '">انسخ</button></div>'; }).join("") + '</div>' +
+        '<div class="card"><h2>تقارير مساعدة</h2><div class="quick"><button type="button" class="btn btn-ghost" data-atab="stats">المنتجات الأكثر مبيعاً والبحث بدون نتيجة</button><button type="button" class="btn btn-ghost" data-atab="cust">الزباين اللي ما رجعوا</button><button type="button" class="btn btn-ghost" data-atab="rates">التقييمات</button></div></div>' +
+        '<div class="card"><h2>أجهزة الموظفين</h2><p class="hint">أي جهاز دخل الإدارة أو صفحة المندوب ينعلّم تلقائياً وما ينحسب بالزوار. لو عندك جهاز ثاني تتصفح فيه المتجر ودخلت منه الإدارة، انعلّم خلاص.</p>' +
+          '<div class="quick"><button type="button" class="btn btn-soft" id="visMe">استثني هالجهاز</button><button type="button" class="btn btn-ghost" id="visClr">صفّر القائمة (' + num(j.staffDevices) + ')</button></div><p class="status" id="visStMsg" aria-live="polite"></p>' +
+          '<p class="hint">كيف ينحسب: الجهاز يرسل لحظة فتح الموقع (مو وقت الطلوع)، ولو ما وصل ينحفظ بالجهاز وينرسل بعدين بوقته. الروبوتات ما تنحسب. اللي ما يقدر نعدّه: متصفح قافل الجافاسكربت (نادر جداً). تطبيق الآيفون ينحسب من تحديثه الجاي.</p></div>';
+      $("visBody").querySelectorAll("[data-viscp]").forEach(function(b){ b.onclick = function(){ var u = b.dataset.viscp; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function(){ b.textContent = "انسخ ✓"; }).catch(function(){ window.prompt("انسخ الرابط:", u); }); }; });
+      $("visMe").onclick = function(){ markStaffDev(); api("/admin/staff-dev", { pin: adminPin, dev: devId() }).then(function(x){ $("visStMsg").textContent = x.ok ? "تم، هالجهاز ما ينحسب." : "ما زبط، جرّب مرة ثانية."; }); };
+      $("visClr").onclick = function(){ if (!window.confirm("تصفير القائمة يخلّي أجهزة الموظفين تنحسب لين يدخلون الإدارة مرة ثانية. متأكد؟")) return; api("/admin/staff-dev", { pin: adminPin, clear: 1, dev: devId() }).then(function(x){ if (x.ok) renderVisits(); }); };
+    });
+  }
   /* ---------- لوحة الإدارة الجديدة (adm2، ١٧ نوفمبر ٢٠٢٦): شريط سفلي للجوال، قائمة كاملة، شريط حفظ عائم، منتجات خفيفة ---------- */
   var A2_TABS = [["over", "الرئيسية", "home"], ["olist", "الطلبات", "cart"], ["prods", "المنتجات", "box"], ["offers", "العروض", "tag"]];
   var A2_CSS = [
