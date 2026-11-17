@@ -83,7 +83,7 @@ struct ProductView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         if catalog.isSoon(product) { Text("قريباً").font(.ui(size: 22, weight: .bold)).foregroundStyle(Theme.copper) }
-                        else { PriceLabel(price: unitPrice, old: pack == nil ? product.old : nil, size: 24) }
+                        else { PriceLabel(price: unitPrice, old: pack == nil ? product.old : nil, size: 24, perKilo: pack == nil && product.weighed) }
                         Text(tv: pack.map { "/ \($0.unit)" } ?? (product.packs.isEmpty ? "/ \(product.unit)" : "/ الحبة"))
                             .font(.ui(size: 14, weight: .semibold)).foregroundStyle(Theme.muted)
                     }

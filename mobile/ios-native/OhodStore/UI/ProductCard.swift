@@ -124,7 +124,7 @@ struct ProductCard: View {
                             .lineLimit(1).minimumScaleFactor(0.7)
                     }
                 } else {
-                    PriceLabel(price: product.price, old: available ? product.old : nil, size: 17)
+                    PriceLabel(price: product.price, old: available ? product.old : nil, size: 17, perKilo: product.weighed)
                 }
             }
             .padding(6)
