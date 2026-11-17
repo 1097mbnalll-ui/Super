@@ -176,6 +176,8 @@ struct PriceLabel: View {
     let price: Double
     var old: Double? = nil
     var size: CGFloat = 15
+    /// منتج بالوزن: «ر.س / كيلو»
+    var perKilo = false
     var body: some View {
         let size = self.size * AppLook.current.priceScale
         HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -183,7 +185,7 @@ struct PriceLabel: View {
                 .font(.kufi(size, .bold, relativeTo: .headline))
                 .foregroundStyle(old == nil ? Theme.ink : Theme.copperInk)
                 .contentTransition(.numericText(value: price))
-            Text(verbatim: AppLang.english ? "SAR" : Money.sym).font(.ui(size: size * 0.72, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text(verbatim: (AppLang.english ? "SAR" : Money.sym) + (perKilo ? (AppLang.english ? " / kg" : " / كيلو") : "")).font(.ui(size: size * 0.72, weight: .semibold)).foregroundStyle(Theme.ink)
             if let old {
                 Text(tv: Money.plain(old))
                     .font(.ui(size: size * 0.68))
