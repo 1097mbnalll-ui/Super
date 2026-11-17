@@ -74,6 +74,17 @@ extension Font {
     }
 }
 
+/// الوزن بالجرام ← «١٫٢٥ كغ» (بدون أصفار زايدة)
+enum Weight {
+    static func kg(_ grams: Int) -> String {
+        var s = String(format: "%.2f", Double(grams) / 1000)
+        while s.hasSuffix("0") { s.removeLast() }
+        if s.hasSuffix(".") { s.removeLast() }
+        return s
+    }
+    static func label(_ grams: Int) -> String { kg(grams) + (AppLang.english ? " kg" : " كغ") }
+}
+
 enum Money {
     /// أرقام إنجليزية بخانتين (قرار المالك): 2.00
     static func plain(_ value: Double) -> String { String(format: "%.2f", value) }

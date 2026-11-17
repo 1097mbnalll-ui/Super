@@ -88,6 +88,9 @@ final class CatalogStore {
     private(set) var index: CatalogIndex?
     private(set) var failed = false
     private(set) var liveStock: [String: Int] = [:]
+    /// الخادم يدعم البيع بالوزن (weigh في /stock). قبلها المنتج بالكيلو ينباع بالكيلو الصحيح مثل قبل
+    private(set) var weighOK = false
+    func isWeighed(_ p: Product) -> Bool { weighOK && p.weighed }
     @ObservationIgnored private var lastStock = Date.distantPast
 
     var store: StoreInfo {
@@ -388,6 +391,7 @@ final class CatalogStore {
         guard let result = try? await URLSession.shared.data(for: req),
               let json = try? JSONSerialization.jsonObject(with: result.0) as? [String: Any],
               let stock = json["stock"] as? [String: Any] else { return }
+        weighOK = (json["weigh"] as? Bool) == true
         var live: [String: Int] = [:]
         for (k, v) in stock { if let n = CatalogParser.num(v) { live[k] = Int(n) } }
         liveStock = live

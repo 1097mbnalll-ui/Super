@@ -169,6 +169,13 @@ struct ProductView: View {
                 .buttonStyle(PrimaryButtonStyle())
                 .padding(.horizontal, 16).padding(.vertical, 10)
                 .background(.bar)
+            } else if available, packIndex == nil, catalog.isWeighed(product) {
+                // بالوزن: الزبون يكتب كم كيلو أو كم ريال، والثاني ينحسب (مثل الموقع)
+                WeightBuyBar(product: product)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .padding(.bottom, 6)
+                    .background(.bar)
             } else if available {
                 // الشريط تحت يعدّل السلة نفسها: قبل الإضافة زر واحد، وبعدها عداد السلة ومجموع المنتج فيها
                 let line = cart.line(key)
@@ -334,5 +341,91 @@ private struct QuantityOfferBox: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.copperSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.copper, lineWidth: 1.5))
+    }
+}
+
+
+/// شريط الشراء بالوزن: «بالكيلو» أو «بالريال»، خانة الرقم، أزرار سريعة، والنتيجة. السعر لكل كيلو
+struct WeightBuyBar: View {
+    let product: Product
+    @Environment(Cart.self) private var cart
+    @State private var byRiyal = false
+    @State private var text = ""
+    @State private var loaded = false
+    @FocusState private var focused: Bool
+
+    private var value: Double { Double(text.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "٫", with: ".")) ?? 0 }
+    /// الكمية بالجرام (لأقرب ١٠ جرام)
+    private var grams: Int {
+        guard product.price > 0, value > 0 else { return 0 }
+        let kg = byRiyal ? value / product.price : value
+        return Int((kg * 100).rounded()) * 10
+    }
+    private var ok: Bool { grams >= 100 && grams <= 50000 }
+    private var total: Double { (product.price * Double(grams) / 1000 * 100).rounded() / 100 }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Picker("", selection: $byRiyal) {
+                Text(tv: "بالكيلو").tag(false)
+                Text(tv: "بالريال").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: byRiyal) { _, r in
+                // نحوّل الرقم المكتوب للطريقة الثانية عشان ما يضيع
+                guard value > 0 else { return }
+                if r { text = Money.plain(((value * product.price)).rounded()).replacingOccurrences(of: ".00", with: "") }
+                else { text = Weight.kg(Int((value / product.price * 100).rounded()) * 10) }
+            }
+            HStack {
+                TextField(byRiyal ? "كم ريال؟" : "كم كيلو؟", text: $text)
+                    .keyboardType(.decimalPad)
+                    .focused($focused)
+                    .font(.kufi(20, .bold))
+                    .multilineTextAlignment(.leading)
+                    .environment(\.layoutDirection, .leftToRight)
+                Text(tv: byRiyal ? "ر.س" : "كيلو").font(.ui(size: 15, weight: .bold)).foregroundStyle(Theme.muted)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 50)
+            .background(.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.line, lineWidth: 1.5))
+            HStack(spacing: 8) {
+                ForEach(byRiyal ? ["5", "10", "20", "50"] : ["0.5", "1", "2", "5"], id: \.self) { v in
+                    Button { text = v; focused = false } label: {
+                        Text(tv: v).font(.ui(size: 14, weight: .bold)).frame(maxWidth: .infinity, minHeight: 36)
+                    }
+                    .foregroundStyle(Theme.ink)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Theme.line, lineWidth: 1.5))
+                }
+            }
+            Text(tv: value <= 0 ? "اكتب الكمية أو اختر من فوق"
+                 : !ok ? "الكمية من ٠٫١ كيلو إلى ٥٠ كيلو"
+                 : byRiyal ? "تحصل على ≈ \(Weight.kg(grams)) كيلو · \(Money.sar(total))" : "\(Weight.kg(grams)) كيلو = \(Money.sar(total))")
+                .font(.ui(size: 14, weight: .bold))
+                .foregroundStyle(Theme.brandDeep)
+            Button {
+                cart.setWeight(product.id, grams: grams)
+                focused = false
+                Haptics.added()
+            } label: {
+                HStack {
+                    Text(tv: cart.line(product.id).qty > 0 ? "حدّث السلة" : "أضف للسلة")
+                    Spacer()
+                    if ok { Text(tv: Money.sar(total)) }
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(!ok)
+            .opacity(ok ? 1 : 0.5)
+        }
+        .onAppear {
+            // لو المنتج بالسلة: نبدأ من وزنه
+            guard !loaded else { return }
+            loaded = true
+            let q = cart.line(product.id).qty
+            if q > 0, cart.isWeighed(product.id) { text = Weight.kg(q) }
+        }
     }
 }

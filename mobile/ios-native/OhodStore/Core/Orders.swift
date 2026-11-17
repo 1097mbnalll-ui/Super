@@ -334,7 +334,7 @@ final class OrderCenter {
         }
         let keyOrder = snapshot.rows.map(\.key)
         var body: [String: Any] = [
-            "items": items, "phone": phone, "name": name, "details": address.details,
+            "items": cart.payload(items), "phone": phone, "name": name, "details": address.details,
             "note": [cart.printNote(catalog), cart.note.trimmingCharacters(in: .whitespacesAndNewlines)].filter { !$0.isEmpty }.joined(separator: "\n"),
             "pay": cart.payment == "card" ? "card" : "cash", "sub": cart.substitution,
             "lat": (address.lat * 1e6).rounded() / 1e6, "lng": (address.lng * 1e6).rounded() / 1e6, "walletAmount": walletUse,
@@ -379,7 +379,8 @@ final class OrderCenter {
             var order2 = order
             if !resendingOld {
                 order2.lines = snapshot.rows.filter { $0.available }.map {
-                    SavedLine(key: $0.key, name: $0.product.name, unit: $0.unitLabel, qty: $0.qty, price: ($0.lineTotal / Double(Swift.max(1, $0.qty)) * 100).rounded() / 100,
+                    SavedLine(key: $0.key, name: $0.product.name, unit: $0.weighed ? Weight.label($0.qty) : $0.unitLabel, qty: $0.weighed ? 1 : $0.qty,
+                              price: $0.weighed ? $0.lineTotal : ($0.lineTotal / Double(Swift.max(1, $0.qty)) * 100).rounded() / 100,
                               old: $0.offerSaving > 0.009 ? $0.unitPrice : ($0.pack == nil ? $0.product.old : nil))
                 }
                 order2.subtotal = snapshot.subtotal; order2.fee = snapshot.fee; order2.savings = snapshot.savings

@@ -30,10 +30,13 @@ struct CartRow: Identifiable {
     var bundles: Int { offer.map { qty / $0.count } ?? 0 }
     var loose: Int { qty - bundles * (offer?.count ?? 1) }
     var lineTotal: Double {
-        guard let o = offer else { return unitPrice * Double(qty) }
+        guard let o = offer else { return weighed ? (unitPrice * units * 100).rounded() / 100 : unitPrice * Double(qty) }
         return Double(bundles) * o.price + Double(loose) * unitPrice
     }
-    var regularTotal: Double { unitPrice * Double(qty) }
+    var regularTotal: Double { unitPrice * units }
+    /// سطر بالوزن: الكمية بالجرام (١٢٥٠ = ١٫٢٥ كيلو) والسعر لكل كيلو
+    var weighed = false
+    var units: Double { weighed ? Double(qty) / 1000 : Double(qty) }
     var offerSaving: Double { regularTotal - lineTotal }
     /// كم حبة باقي عشان ينطبق العرض (للمرة الجاية)
     var missingForOffer: Int? {
@@ -43,7 +46,7 @@ struct CartRow: Identifiable {
     }
     var saving: Double {
         if promo != nil { return Swift.max(0, (product.price - unitPrice) * Double(qty)) }
-        return (pack == nil ? (product.discount ?? 0) * Double(qty) : 0) + offerSaving
+        return (pack == nil ? (product.discount ?? 0) * units : 0) + offerSaving
     }
 }
 
@@ -78,6 +81,20 @@ struct CartTotals {
 final class Cart {
     @ObservationIgnored private var lines: [String: CartLine] = [:]
     @ObservationIgnored private var order: [String] = []
+    /// الأسطر اللي بالوزن: كميتها بالجرام (تنرسل للخادم بالكيلو)
+    @ObservationIgnored private(set) var wkeys: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "cart.wkeys") ?? [])
+    func isWeighed(_ key: String) -> Bool { wkeys.contains(key) }
+    /// يحط وزن السطر (بالجرام): من ١٠٠ جرام إلى ٥٠ كيلو، وصفر يشيله
+    func setWeight(_ key: String, grams: Int) {
+        if grams > 0 { wkeys.insert(key) }
+        set(key, grams > 0 ? Swift.max(100, grams) : 0)
+    }
+    /// اللي ينرسل للخادم: السطر بالوزن بالكيلو (١٫٢٥)، والباقي بالعدد
+    func payload(_ items: [String: Int]) -> [String: Any] {
+        var o: [String: Any] = [:]
+        for (k, v) in items { o[k] = wkeys.contains(k) ? Double(v) / 1000 : v }
+        return o
+    }
     /// يتغير مع كل تعديل: الإجمالي والشارة يراقبونه
     private(set) var revision = 0
 
@@ -93,7 +110,7 @@ final class Cart {
         let rev = revision, items = orderItems(catalog)
         guard !items.isEmpty, !catalog.apiBase.isEmpty, force || quoting != rev else { if items.isEmpty { quote = nil }; return }
         quoting = rev
-        var body: [String: Any] = ["items": items]
+        var body: [String: Any] = ["items": payload(items)]
         let code = promoCode.trimmingCharacters(in: .whitespaces)
         if !code.isEmpty { body["promo"] = code }
         let (status, j) = await API.post(catalog.apiBase, "/quote", body)
@@ -104,8 +121,8 @@ final class Cart {
                       code: ok ? nil : j["code"] as? String, group: j["id"] as? String, n: Int(CatalogParser.num(j["n"]) ?? 0))
     }
     /// السلة الحالية بمفاتيحها (للصفحات الحية من الموقع)
-    var snapshot: [String: Int] { _ = revision; var o: [String: Int] = [:]; for k in order { if let q = lines[k]?.qty, q > 0 { o[k] = q } }; return o }
-    func add(key: String, delta: Int) { set(key, Swift.max(0, line(key).qty + delta)) }
+    var snapshot: [String: Int] { _ = revision; var o: [String: Int] = [:]; for k in order { if let q = lines[k]?.qty, q > 0 { o[k] = wkeys.contains(k) ? 1 : q } }; return o }
+    func add(key: String, delta: Int) { set(key, Swift.max(0, line(key).qty + delta * (wkeys.contains(key) ? 500 : 1))) }
 
     /// «لو منتج ناقص» اختيار واحد عام فوق السلة (swap / remove / call)
     var substitution: String = UserDefaults.standard.string(forKey: "cart.sub2") ?? "call" {
@@ -151,7 +168,7 @@ final class Cart {
 
     var count: Int {
         _ = revision
-        return order.reduce(0) { $0 + (lines[$1]?.qty ?? 0) }
+        return order.reduce(0) { $0 + (wkeys.contains($1) ? ((lines[$1]?.qty ?? 0) > 0 ? 1 : 0) : (lines[$1]?.qty ?? 0)) }
     }
 
     var isEmpty: Bool { count == 0 }
@@ -159,7 +176,8 @@ final class Cart {
     func set(_ key: String, _ qty: Int) {
         let l = line(key)
         let old = l.qty
-        let q = max(0, min(qty, 99))
+        let q = max(0, min(qty, wkeys.contains(key) ? 50000 : 99))
+        if q == 0 { wkeys.remove(key) }
         guard q != old else { return }
         l.qty = q
         if q > 0, !order.contains(key) { order.append(key) }
@@ -171,6 +189,8 @@ final class Cart {
 
     func increment(_ key: String, limit: Int?) {
         let l = line(key)
+        // بالوزن: نص كيلو كل ضغطة
+        if wkeys.contains(key) { set(key, Swift.min(50000, l.qty + 500)); return }
         if let limit, l.qty >= limit {
             Haptics.warning()
             return
@@ -178,11 +198,12 @@ final class Cart {
         set(key, l.qty + 1)
     }
 
-    func decrement(_ key: String) { set(key, line(key).qty - 1) }
+    func decrement(_ key: String) { set(key, line(key).qty - (wkeys.contains(key) ? 500 : 1)) }
 
     func clear() {
         for k in order { lines[k]?.qty = 0 }
         order.removeAll()
+        wkeys.removeAll()
         revision &+= 1
         save()
         Haptics.removed()
@@ -191,6 +212,7 @@ final class Cart {
     /// أقصى كمية لسطر: حد المنتج (بالحبات) والمخزون الحي
     func limit(for key: String, in catalog: CatalogStore) -> Int? {
         if let pl = catalog.promoLine(key) { return pl.limit }
+        if wkeys.contains(key) { return nil }
         guard let r = catalog.resolve(key) else { return nil }
         let per = r.pack?.count ?? 1
         // الحد والمخزون بالحبات لكل المنتج: الحبة والكرتون والعروض تنجمع (canAddProduct في الموقع)
@@ -228,11 +250,12 @@ final class Cart {
             }
             guard let r = catalog.resolve(key) else { continue }
             var row = CartRow(key: key, product: r.product, pack: r.pack, qty: qty, available: catalog.isAvailable(r.product))
+            row.weighed = r.pack == nil && wkeys.contains(key)
             // منتج داخل عرض مجموعة (ديمة): الخادم يسعّره بالمجموعة، مو بعرض الكمية
-            if r.pack == nil, catalog.group(for: r.product.id) == nil, let q = r.product.quantityOffer { row.offer = (q.index, q.count, q.price) }
+            if !row.weighed, r.pack == nil, catalog.group(for: r.product.id) == nil, let q = r.product.quantityOffer { row.offer = (q.index, q.count, q.price) }
             t.rows.append(row)
             guard row.available else { continue }
-            t.count += qty
+            t.count += row.weighed ? 1 : qty
             t.subtotal += row.lineTotal
             t.savings += row.saving
         }
@@ -340,7 +363,7 @@ final class Cart {
     func piecesInCart(_ productID: String, catalog: CatalogStore) -> Int {
         var n = 0
         for key in order {
-            guard let q = lines[key]?.qty, q > 0 else { continue }
+            guard let q = lines[key]?.qty, q > 0, !wkeys.contains(key) else { continue }
             if let pl = catalog.promoLine(key) { if pl.product.id == productID { n += q }; continue }
             if let r = catalog.resolve(key), r.product.id == productID { n += q * (r.pack?.count ?? 1) }
         }
@@ -399,7 +422,9 @@ final class Cart {
             // خيار عرض الكمية يرجع حبات (العرض ينطبق لحاله في السلة)
             var key = k0
             if let pi = r.packIndex, let o = r.product.quantityOffer, o.index == pi { key = r.product.id; q *= o.count }
-            let cap = limit(for: key, in: catalog) ?? 99
+            // طلب قديم بالوزن (الكمية بالجرام): يرجع بالوزن
+            if r.pack == nil, catalog.isWeighed(r.product), q >= 100 { wkeys.insert(key) }
+            let cap = wkeys.contains(key) ? 50000 : (limit(for: key, in: catalog) ?? 99)
             let l = line(key)
             let newQty = min(l.qty + q, cap)
             guard newQty > l.qty else { continue }
@@ -416,7 +441,7 @@ final class Cart {
         var remaining = max(0, left)
         for key in order {
             let pl = catalog.promoLine(key)
-            guard let l = lines[key], let pid = pl?.product.id ?? catalog.resolve(key)?.product.id, pid == productID else { continue }
+            guard !wkeys.contains(key), let l = lines[key], let pid = pl?.product.id ?? catalog.resolve(key)?.product.id, pid == productID else { continue }
             let per = pl != nil ? 1 : (catalog.resolve(key)?.pack?.count ?? 1)
             let q = min(l.qty, remaining / per)
             remaining -= q * per
@@ -446,9 +471,11 @@ final class Cart {
     private func save() {
         var dict: [String: Int] = [:]
         for k in order { if let q = lines[k]?.qty, q > 0 { dict[k] = q } }
+        wkeys = wkeys.filter { dict[$0] != nil }
         UserDefaults.standard.set(dict, forKey: "cart.items")
         UserDefaults.standard.set(order, forKey: "cart.order")
-        CartPing.shared.changed(count: dict.values.reduce(0, +))
+        UserDefaults.standard.set(Array(wkeys), forKey: "cart.wkeys")
+        CartPing.shared.changed(count: dict.reduce(0) { $0 + (wkeys.contains($1.key) ? 1 : $1.value) })
     }
 
     private func restore() {

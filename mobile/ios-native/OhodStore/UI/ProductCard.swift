@@ -182,12 +182,15 @@ struct CardQuantityControl: View {
         let cap = cart.limit(for: key, in: catalog) ?? limit
         // زر + يتصرف حسب الموقع (store.app.tap)، مثل منتج داخل عرض مجموعة: يفتح نافذة الاختيار الحية والمنتج محطوط فيها
         let live = key.contains(":") || key.contains("~") ? nil : catalog.product(key).flatMap { catalog.tap("add", $0) }
+        let weighed = !key.contains(":") && !key.contains("~") && (catalog.product(key).map(catalog.isWeighed) ?? false)
         Group {
             if line.qty == 0 || live != nil {
                 HStack {
                     Spacer(minLength: 0)
                     Button {
                         if let live, let lp = livePath { lp.wrappedValue.append(Route.live(live.page)); return }
+                        // بالوزن: أول ضغطة كيلو، وبعدها نص كيلو (والكيلو أو الريال بالضبط من صفحة المنتج)
+                        if weighed { cart.setWeight(key, grams: 1000); return }
                         cart.increment(key, limit: cap)
                     } label: {
                         // الزر متناسق مع حجم الكرت والسعر، ويكبر ويصغر مع الخط من «شكل التطبيق»
@@ -207,7 +210,8 @@ struct CardQuantityControl: View {
                 }
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else {
-                StepperCapsule(qty: line.qty, atLimit: cap.map { line.qty >= $0 } ?? false,
+                StepperCapsule(qty: line.qty, weightLabel: cart.isWeighed(key) ? Weight.label(line.qty) : nil,
+                               atLimit: cap.map { line.qty >= $0 } ?? false,
                                onPlus: { cart.increment(key, limit: cap) },
                                onMinus: { cart.decrement(key) })
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
@@ -220,6 +224,8 @@ struct CardQuantityControl: View {
 /// [+ ٢ −] (− يصير سلة مهملات عند ١). الأرقام تتقلب بنعومة
 struct StepperCapsule: View {
     let qty: Int
+    /// سطر بالوزن: يكتب «١٫٢٥ كغ» بدل العدد، وكل ضغطة نص كيلو
+    var weightLabel: String? = nil
     var atLimit = false
     var compact = false
     /// صفحة المنتج: عداد كبير جنب زر «في السلة»
@@ -236,18 +242,19 @@ struct StepperCapsule: View {
             }
             .opacity(atLimit ? 0.45 : 1)
             .accessibilityLabel("زيادة")
-            Text(tv: String(qty))
+            Text(tv: weightLabel ?? String(qty))
                 .font(.kufi(large ? 17 : 14, .bold))
+                .lineLimit(1).minimumScaleFactor(0.7)
                 .contentTransition(.numericText(value: Double(qty)))
                 .frame(minWidth: 22)
                 .animation(.snappy, value: qty)
             Button(action: onMinus) {
-                Image(systemName: qty == 1 ? "trash" : "minus")
+                Image(systemName: (weightLabel == nil ? qty == 1 : qty <= 500) ? "trash" : "minus")
                     .contentTransition(.symbolEffect(.replace))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .contentShape(Rectangle())
             }
-            .accessibilityLabel(qty == 1 ? "شيل من السلة" : "نقص")
+            .accessibilityLabel((weightLabel == nil ? qty == 1 : qty <= 500) ? "شيل من السلة" : "نقص")
         }
         .font(.ui(size: compact ? 13 : 14, weight: .semibold))
         .foregroundStyle(.white)

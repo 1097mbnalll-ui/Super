@@ -87,6 +87,8 @@ struct Product: Hashable, Sendable, Identifiable {
     var soon = false
     /// الماركة الصغيرة فوق الاسم (مثل «المراعي ›»)، عربي بس
     var brand: String? = nil
+    /// ينباع بالوزن (w في data.json): السعر لكل كيلو، والزبون يختار كم كيلو أو كم ريال
+    var weighed = false
 
     var imageURL: URL? { AppConfig.asset(image) }
     var hasPhoto: Bool { image?.hasPrefix("p/") == true }
@@ -524,7 +526,7 @@ enum CatalogParser {
                            barcode: str(p["bc"]), max: num(p["max"]).map { Int($0) },
                            badge: str(en ? (p["badge_en"] ?? p["badge"]) : p["badge"]), sugg: (p["sugg"] as? [Any])?.compactMap { str($0) } ?? [],
                            nameEN: str(en ? p["name"] : p["name_en"]), isPrint: p["print"] != nil && !(p["print"] is NSNull) && (p["print"] as? Bool) != false,
-                           soon: soon, brand: en ? nil : str(p["brand"]))
+                           soon: soon, brand: en ? nil : str(p["brand"]), weighed: (num(p["w"]) ?? 0) > 0)
         }
         return Catalog(store: store, categories: cats, products: products)
     }

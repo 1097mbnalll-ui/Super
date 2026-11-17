@@ -292,7 +292,7 @@ private struct CartRowView: View {
                     }
                     PriceLabel(price: row.lineTotal,
                                old: row.promo != nil ? row.product.price * Double(row.qty)
-                                   : row.offerSaving > 0.009 ? row.regularTotal : (row.pack == nil && row.product.old != nil ? (row.product.old ?? 0) * Double(row.qty) : nil),
+                                   : row.offerSaving > 0.009 ? row.regularTotal : (row.pack == nil && row.product.old != nil ? (row.product.old ?? 0) * row.units : nil),
                                size: 14)
                         .opacity(row.locked ? 0.45 : 1)
                 } else {
@@ -308,7 +308,7 @@ private struct CartRowView: View {
                                onMinus: { withAnimation(.snappy) { _ = cart.setBundle(bid, n - 1, catalog: catalog) } })
             } else if row.available {
                 let cap = cart.limit(for: row.key, in: catalog) ?? row.product.max
-                StepperCapsule(qty: row.qty, atLimit: cap.map { row.qty >= $0 } ?? false, compact: true,
+                StepperCapsule(qty: row.qty, weightLabel: row.weighed ? Weight.label(row.qty) : nil, atLimit: cap.map { row.qty >= $0 } ?? false, compact: true,
                                onPlus: { withAnimation(.snappy) { cart.increment(row.key, limit: cap) } },
                                onMinus: { withAnimation(.snappy) { cart.decrement(row.key) } })
             } else {
