@@ -226,6 +226,16 @@ struct PromoSlot: Hashable, Sendable {
     let on: Bool
 }
 
+/// إعدادات شاشة الوزن (store.app.weigh)
+struct WeighUI: Sendable {
+    static let styles: Set<String> = ["chips", "ruler", "money", "wheel"]
+    var style = "chips"
+    var sizes: [Int] = [250, 500, 1000, 1500, 2000]
+    var money: [Double] = [5, 10, 15, 20]
+    var step = 250
+    var input = true
+}
+
 struct StoreInfo: Sendable {
     var name = "متاجر أحد"
     var phone = ""
@@ -336,6 +346,9 @@ struct StoreInfo: Sendable {
     /// store.app.off = ["banners","banImg","featured","sky","intro","rate","wallet","favorites","addresses","subs","cancel","promoPush","search","cats","catgrid","grid","catoffers","print","map","notes","promo"]
     var off: Set<String> = []
     func isOff(_ k: String) -> Bool { off.contains(k) }
+    /// شاشة الوزن (الخضار والفواكه) من ملف المتجر بدون تحديث (store.app.weigh، طلب المالك ١٧ نوفمبر ٢٠٢٦ «مرونة وعدة تصاميم»):
+    /// style = chips (شرائح + عدّاد) / ruler (مسطرة) / money (بالوزن أو بالمبلغ) / wheel (عجلة)، sizes بالجرام، money بالريال، step خطوة الزيادة، input خانة «وزن أو مبلغ آخر»
+    var weigh = WeighUI()
     /// سما الرياض في رئيسية الموقع (store.skyHome): ديمة والبنرات تنعرض داخل السما فوق، مع الرأس
     var skyHome = false
     /// خدمة الطباعة (store.print): «قريباً»، وأقل طلب لو السلة طباعة بس
@@ -490,6 +503,19 @@ enum CatalogParser {
             else if let l = app["web"] as? [Any] { store.webScreens = Set(l.compactMap { str($0) }) }
             // من 1.2: store.app.home = "web" يخلي الرئيسية من الموقع من أعلى الشاشة (1.1 ما يقراه، فيه شريط عنوان أبيض)
             if str(app["home"]) == "web" { store.webScreens.insert("home") }
+            if let w = app["weigh"] as? [String: Any] {
+                if let v = str(w["style"]), WeighUI.styles.contains(v) { store.weigh.style = v }
+                if let a = w["sizes"] as? [Any] {
+                    let l = a.compactMap { num($0) }.map { Int($0) }.filter { $0 >= 100 && $0 <= 50000 }
+                    if !l.isEmpty { store.weigh.sizes = Array(l.prefix(8)) }
+                }
+                if let a = w["money"] as? [Any] {
+                    let l = a.compactMap { num($0) }.filter { $0 > 0 && $0 <= 1000 }
+                    if !l.isEmpty { store.weigh.money = Array(l.prefix(8)) }
+                }
+                if let v = num(w["step"]), [50, 100, 125, 250, 500].contains(Int(v)) { store.weigh.step = Int(v) }
+                if let v = w["input"] as? Bool { store.weigh.input = v }
+            }
         }
         if let app = s["app"] as? [String: Any], let taps = app["tap"] as? [[String: Any]] {
             let set: (Any?) -> Set<String>? = { v in
