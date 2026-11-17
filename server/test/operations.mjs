@@ -126,7 +126,7 @@ test('preparer role is isolated and ready requires complete picking with concurr
  for(const path of ['/admin/day-report','/admin/payment','/admin/cash','/admin/wallet','/admin/wallet-credit','/admin/cashback','/driver/status','/admin/orders'])assert.equal((await call(path,{session:prepToken,pin:'2468'})).status,403,path);
  assert.equal((await call('/admin/prep',{session:ordersToken})).status,403);
  const product=catalog.products.find(p=>p.stock),made=await call('/admin/order-new',{...owner,lines:[{id:product.id,qty:2}],phone});
- const list=await call('/admin/prep',{session:prepToken});const order=list.orders.find(o=>o.no===made.order.no);assert.ok(order);assert.ok(!('phone' in order));assert.ok(!('price' in order.lines[0]));
+ const list=await call('/admin/prep',{session:prepToken});const order=list.orders.find(o=>o.no===made.order.no);assert.ok(order);assert.ok(!('phone' in order));assert.ok(!('address' in order)&&!('details' in order)&&!('name' in order));assert.ok(typeof order.lines[0].price==='number'&&order.total>0); // المالك ١٧ نوفمبر: المجهز يشوف الأسعار والإجمالي، بدون جوال ولا عنوان
  const base={session:prepToken,no:order.no,version:order.version,orderUpdated:order.orderUpdated};
  assert.equal((await call('/admin/prep-save',{...base,stage:'ready',checks:{0:'missing'}})).code,'missing_items');
  assert.equal((await call('/admin/prep-save',{...base,stage:'preparing',checks:{0:'missing'}})).ok,true);
