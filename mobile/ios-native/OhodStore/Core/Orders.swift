@@ -535,8 +535,16 @@ final class OrderCenter {
                 if let f = CatalogParser.num(json["fee"]) { o.fee = f }
                 if let fr = json["free"] as? String { o.free = fr.isEmpty ? nil : fr }
                 if let ls = json["lines"] as? [[String: Any]], !ls.isEmpty {
-                    let nl = ls.enumerated().map { k, l in SavedLine(key: "s\(k)", name: l["name"] as? String ?? "", unit: l["unit"] as? String ?? "",
-                                                                    qty: Int(CatalogParser.num(l["qty"]) ?? 0), price: CatalogParser.num(l["price"]) ?? 0) }
+                    // نفس شكل أسطر الطلب المحفوظة: السطر بالوزن (كمية بكسور مثل ١٫٥ كيلو) = سطر واحد بسعره الكامل ووحدته «١٫٥ كيلو»
+                    let prev = o.lines ?? []
+                    let nl: [SavedLine] = ls.enumerated().map { k, l in
+                        let name = l["name"] as? String ?? "", q = CatalogParser.num(l["qty"]) ?? 0, pr = CatalogParser.num(l["price"]) ?? 0
+                        let key = prev.first(where: { $0.name == name })?.key ?? "s\(k)"
+                        if abs(q - q.rounded()) > 0.0001 {
+                            return SavedLine(key: key, name: name, unit: Weight.label(Int((q * 1000).rounded())), qty: 1, price: (q * pr * 100).rounded() / 100)
+                        }
+                        return SavedLine(key: key, name: name, unit: l["unit"] as? String ?? "", qty: Int(q.rounded()), price: pr)
+                    }
                     let old = (o.lines ?? []).map { "\($0.name)|\($0.qty)|\($0.price)" }, new = nl.map { "\($0.name)|\($0.qty)|\($0.price)" }
                     if old != new { o.lines = nl; o.subtotal = nl.reduce(0) { $0 + $1.total } }
                 }
