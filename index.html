@@ -1184,6 +1184,10 @@ html.zs body{zoom:.86}
 .as-bar{position:fixed;left:50%;bottom:calc(98px + env(safe-area-inset-bottom,0px));z-index:9000;display:flex;align-items:center;gap:9px;max-width:calc(100% - 32px);padding:10px 14px 10px 12px;border:0;border-radius:999px;background:#111;color:#fff;font:600 13.5px inherit;box-shadow:0 10px 28px rgba(0,0,0,.25);cursor:pointer;opacity:0;transform:translate(-50%,16px);transition:opacity .3s,transform .35s cubic-bezier(.2,1.3,.3,1)}
 .as-bar.on{opacity:1;transform:translate(-50%,0)}.as-bar svg{width:17px;height:17px;fill:#fff;flex:none;margin-top:-2px}.as-bar span{white-space:nowrap}.as-bar b{font-weight:800}.as-bar i{font-style:normal;opacity:.55;font-size:11px;margin-inline-start:4px}
 .sarw{display:inline}.skel{background:linear-gradient(90deg,#F1F3F5 25%,#E7EBEF 50%,#F1F3F5 75%);background-size:200% 100%;animation:skel 1.2s linear infinite}@keyframes skel{to{background-position:-200% 0}}svg.sar{width:.8em;height:.8em;fill:currentColor;vertical-align:-.08em;margin:0 .12em;display:inline-block;flex:none}
+.wbuy{display:grid;gap:10px}.wbox{display:grid;gap:8px;width:100%}.wtog{display:grid;grid-template-columns:1fr 1fr;background:var(--soft,#EEF2F5);border-radius:14px;padding:3px}.wtog button{min-height:38px;border:0;border-radius:11px;background:none;font:inherit;font-weight:700;font-size:14px;color:var(--muted,#596171);cursor:pointer}.wtog button[aria-pressed="true"]{background:#fff;color:var(--ink,#0D1420);box-shadow:0 1px 4px rgba(13,20,32,.12)}
+.wfld{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line,#DCE2E8);border-radius:14px;background:#fff;padding:0 14px}.wfld input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:22px;font-weight:800;min-height:52px;text-align:start;direction:ltr}.wfld span{font-weight:700;color:var(--muted,#596171)}
+.wchips{display:flex;gap:8px}.wchips button{flex:1;min-height:38px;border-radius:12px;border:1.5px solid var(--line,#DCE2E8);background:#fff;font:inherit;font-weight:700;font-size:14px;cursor:pointer}.wres{font-weight:700;font-size:14px;color:var(--teal-deep,#0E8A6A);text-align:center;min-height:20px}
+.stepper .wq{background:none;border:0;font:inherit;font-weight:800;padding:0 2px;min-width:52px;white-space:nowrap;cursor:pointer;color:inherit}
 .kq-badge.soon{background:#E8590C}.kq-now.soon,.price.soon{color:#E8590C;font-size:15px;font-weight:800}
 .kq-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;background:#E8394F;color:#fff;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:700;z-index:2}
 /* ---------- banners v2 ---------- */
@@ -2025,6 +2029,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (!apiUrl()) return;
     fetch(apiUrl() + "/stock", { cache: "no-store" }).then(function(r){ return r.json(); }).then(function(j){
       if (!j || !j.ok || !j.stock) return; var ch = JSON.stringify(j.stock) !== JSON.stringify(LIVE); LIVE = j.stock;
+      if (!!j.weigh !== WEIGH_OK) { WEIGH_OK = !!j.weigh; ch = true; }
       if (ch && mode === "store" && screen !== "checkout" && screen !== "search") refresh();
     }).catch(function(){});
   }
@@ -2203,6 +2208,31 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   }
   function dealOn(){ return !!(DEAL && DEAL.on); }
   function dealsList(){ return dealOn() ? (DEAL.ids || []).map(byId).filter(function(p){ return avail(p); }) : []; }
+  /* ---------- منتج بالوزن (١٧ نوفمبر ٢٠٢٦، طلب المالك): الزبون يكتب كم كيلو أو كم ريال والباقي ينحسب ---------- */
+  // يشتغل بس لما الخادم يقول إنه يدعم الوزن (weigh)، وإلا يبقى المنتج بالكيلو الصحيح مثل قبل. داخل تطبيق الآيفون (embed) ما يتغير شي
+  var WEIGH_OK = false, pdW = { id: "", mode: "kg", v: "" };
+  function isW(p){ return !!(p && p.w && WEIGH_OK && !EMBED && !p.base); }
+  function fq(q){ return String(Math.round(Number(q || 0) * 100) / 100); }
+  function qb(p, id, q){ return isW(p) ? '<button type="button" class="wq" data-open="' + p.id + '" aria-label="' + tr("غيّر الوزن", "Change weight") + '">' + fq(q) + " " + tr("كغ", "kg") + '</button>' : '<b>' + q + '</b>'; }
+  function wCalc(p){
+    var P = Number(p.price) || 0, v = Number(pdW.v) || 0, kg = 0;
+    if (pdW.mode === "sar") kg = P > 0 ? Math.round(v / P * 100) / 100 : 0; else kg = Math.round(v * 100) / 100;
+    var ok = kg >= 0.1 && kg <= 50 && P > 0;
+    return { kg: kg, sar: Math.round(kg * P * 100) / 100, ok: ok };
+  }
+  function wRes(p){ var c = wCalc(p);
+    if (!Number(pdW.v)) return tr("اكتب الكمية أو اختر من تحت", "Enter an amount or pick below");
+    if (!c.ok) return tr("الكمية من ٠٫١ كيلو إلى ٥٠ كيلو", "From 0.1 kg to 50 kg");
+    return pdW.mode === "sar" ? tr("تحصل على ≈ ", "You get ≈ ") + fq(c.kg) + tr(" كيلو · ", " kg · ") + rial(c.sar) : fq(c.kg) + tr(" كيلو = ", " kg = ") + rial(c.sar); }
+  function wBoxHTML(p){
+    var kg = pdW.mode === "kg", ch = kg ? [0.5, 1, 2, 5] : [5, 10, 20, 50];
+    return '<div class="wbox" id="wBox"><div class="wtog" role="group" aria-label="' + tr("طريقة الشراء", "Buy by") + '"><button type="button" data-wm="kg" aria-pressed="' + kg + '">' + tr("بالكيلو", "By kilo") + '</button><button type="button" data-wm="sar" aria-pressed="' + !kg + '">' + tr("بالريال", "By riyal") + '</button></div>' +
+      '<label class="wfld"><input id="wIn" type="number" inputmode="decimal" min="0" step="' + (kg ? "0.25" : "1") + '" value="' + esc(pdW.v) + '" placeholder="' + (kg ? tr("كم كيلو؟", "How many kg?") : tr("كم ريال؟", "How many riyals?")) + '"><span>' + (kg ? tr("كيلو", "kg") : tr("ر.س", "SAR")) + '</span></label>' +
+      '<div class="wchips">' + ch.map(function(x){ return '<button type="button" data-wv="' + x + '">' + x + (kg ? "" : "") + '</button>'; }).join("") + '</div>' +
+      '<div class="wres" id="wRes" aria-live="polite">' + wRes(p) + '</div></div>';
+  }
+  function wSync(p){ var c = wCalc(p), r = $("wRes"), b = $("wAdd"), t = $("wTot"); if (r) r.textContent = wRes(p); if (b) b.disabled = !c.ok; if (t) t.textContent = c.ok ? rial(c.sar) : ""; }
+  document.addEventListener("input", function(e){ if (e.target && e.target.id === "wIn" && screen === "product") { var wp = byId(openProd); if (!wp || !isW(wp)) return; pdW.v = e.target.value; wSync(wp); } });
   function lineOf(key){
     var k = String(key).split(":");
     if (k[0] === "x" && k.length === 3) { var bb = banOf(k[1]), al = bundleAlloc(bb), bp = byId(k[2]); if (!al || !bp || al.alloc[bp.id] == null) return null; return { key: key, p: bp, kind: "x", ban: bb.id, price: al.alloc[bp.id], limit: 0 }; }
@@ -2289,7 +2319,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       var q = Number(cart[k]) || 0;
       if (L.kind === "d") { dn += q; dsum += q * L.price; dsv += Math.max(0, Number(L.p.price) - L.price) * q; }
       else if (L.kind === "r" && String(k).indexOf("~") < 0 && grpOf(L.p)) { var gg = grpOf(L.p); n += q; (GT[gg.id] || (GT[gg.id] = { g: gg, u: 0, reg: 0 })).u += q; GT[gg.id].reg += q * L.p.price; }
-      else { var ao = autoOffer(k); n += q; base += ao ? ao.total : q * L.price;
+      else { var ao = autoOffer(k); n += isW(L.p) ? 1 : q; base += ao ? ao.total : Math.round(q * L.price * 100) / 100;
         // وفّرت: الخصم (السعر قبل)، وعرض الكمية، وعرض اليوم والباقة (الفرق عن السعر العادي)
         if (ao) sv += ao.regular - ao.total; else if (L.kind === "t" || L.kind === "x") sv += Math.max(0, Number(L.p.price) - L.price) * q;
         if (L.kind === "r" && String(k).indexOf("~") < 0 && onSale(L.p)) sv += (L.p.old - L.p.price) * q; } });
@@ -2330,8 +2360,9 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var full = L.limit && n >= L.limit;
     var mst = !kind && mustOf(p);
     if (!n && mst) return '<span class="ctl" data-for="' + key + '"><button class="add wide" type="button" data-act="inc" data-id="' + key + '" aria-label="' + tr("أضف ", "Add ") + num(mst.n) + '">' + ic("plus") + tr("أضف ", "Add ") + num(mst.n) + '</button></span>';
+    if (!n && !kind && isW(p)) return '<span class="ctl" data-for="' + key + '"><button class="add" type="button" data-open="' + p.id + '" aria-label="' + tr("اختر الكمية: ", "Choose amount: ") + esc(nm(p)) + '">' + ic("plus") + '</button></span>';
     if (!n) return '<span class="ctl" data-for="' + key + '"><button class="add" type="button" data-act="inc" data-id="' + key + tr('" aria-label="أضف ', '" aria-label="Add ') + esc(nm(p)) + tr(' للسلة">', ' to cart">') + ic("plus") + '</button></span>';
-    return '<span class="ctl" data-for="' + key + '"><span class="stepper"><button type="button" data-act="dec" data-id="' + key + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button><b>' + n + '</b><button class="plus" type="button" data-act="inc" data-id="' + key + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full ? ' disabled' : '') + '>' + ic("plus") + '</button></span></span>';
+    return '<span class="ctl" data-for="' + key + '"><span class="stepper"><button type="button" data-act="dec" data-id="' + key + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button>' + qb(p, key, n) + '<button class="plus" type="button" data-act="inc" data-id="' + key + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full ? ' disabled' : '') + '>' + ic("plus") + '</button></span></span>';
   }
   // عرض الكمية: أول خيار بيع لأكثر من حبة سعره أرخص من الحبة (مثل ٣ بـ ١٠)
   function multiOf(p){
@@ -3335,8 +3366,10 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       (pairs.length ? '<div class="pd-sugg"><b>' + (p.sugg && p.sugg.length ? tr("يحلى معه", "Goes well with") : tr("ينشرى معه عادة", "Often bought with")) + '</b><div class="rail">' + pairs.map(function(x){ return card(x); }).join("") + '</div></div>' : '') +
       '</div></div></div>' +
       (avail(p) && grpOf(packBase) ? '<div class="buybar"><button class="btn btn-ink go" type="button" data-gpick="' + esc(grpOf(packBase).id) + '" data-gpre="' + packBase.id + '">' + tr("أضف للسلة", "Add to cart") + '</button></div>' :
+      (avail(p) && !isDaily && pdPack < 0 && isW(p) ? (function(){ if (pdW.id !== p.id) pdW = { id: p.id, mode: "kg", v: cart[p.id] ? fq(cart[p.id]) : "" };
+        var c = wCalc(p); return '<div class="buybar wbuy">' + wBoxHTML(p) + '<button class="btn btn-ink go" type="button" id="wAdd" data-addw="' + p.id + '"' + (c.ok ? '' : ' disabled') + '>' + (cart[p.id] ? tr("حدّث السلة", "Update cart") : tr("أضف للسلة", "Add to cart")) + '<span id="wTot">' + (c.ok ? rial(c.sar) : '') + '</span></button></div>'; })() :
       avail(p) ? tr('<div class="buybar"><div class="qtybig"><button type="button" data-pq="-1" aria-label="نقص">', '<div class="buybar"><div class="qtybig"><button type="button" data-pq="-1" aria-label="Decrease">') + ic("minus") + '</button><b id="pq">' + pdQty + tr('</b><button type="button" data-pq="1" aria-label="زيادة">', '</b><button type="button" data-pq="1" aria-label="Increase">') + ic("plus") + '</button></div>' +
-        '<button class="btn btn-ink go" type="button" data-addprod="' + p.id + '" data-kind="' + (isDaily ? "t" : "") + tr('">أضف للسلة<span id="pqTotal">', '">Add to cart<span id="pqTotal">') + rial(price * pdQty) + '</span></button></div>' : '');
+        '<button class="btn btn-ink go" type="button" data-addprod="' + p.id + '" data-kind="' + (isDaily ? "t" : "") + tr('">أضف للسلة<span id="pqTotal">', '">Add to cart<span id="pqTotal">') + rial(price * pdQty) + '</span></button></div>' : ''));
   }
   // البحث: يتجاهل الهمزات والتاء المربوطة والتشكيل، وكل كلمة لازم تنوجد (حليب المراعي = المراعي حليب)، ويقبل الباركود
   function normAr(s){ return String(s || "").toLowerCase().replace(/[إأآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/ؤ/g, "و").replace(/ئ/g, "ي").replace(/[\u064B-\u0652\u0640]/g, ""); }
@@ -3522,7 +3555,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       var tag = L.kind === "d" ? tr('<span class="ltag deal">عرض ', '<span class="ltag deal">') + num(L.price) + '</span>' : L.kind === "t" ? tr('<span class="ltag day">عرض اليوم</span>', '<span class="ltag day">Deal of the day</span>') :
         aoL ? (aoL.miss && !aoL.b ? '<span class="ltag miss">' + tr('زود ' + num(aoL.miss) + ' وتحصل على عرض ' + num(aoL.mo.n) + ' بـ ' + num(aoL.mo.price), 'Add ' + aoL.miss + ' for ' + aoL.mo.n + ' at ' + num(aoL.mo.price)) + '</span>' : '<span class="ltag ok">' + tr('✓ عرض ' + num(aoL.mo.n) + ' بـ ' + num(aoL.mo.price) + ' انطبق', '✓ Offer applied') + '</span>') : '';
       return '<div class="line' + (off ? ' off' : '') + '"><span class="plate" style="background:' + tint(p.cat) + '">' + imgTag(p.img, "") + '</span><span class="nm"><b>' + esc(nm(p)) + tag + '</b><span>' + esc(un(p)) + '</span><span class="price' + (L.kind !== "r" ? ' sale' : '') + '" style="font-size:14px">' + (off ? tr('مقفول', 'Locked') : aoL && aoL.b ? rial(aoL.total) + ' <s style="color:var(--muted);font-weight:400;font-size:12px">' + rial(aoL.regular) + '</s>' : rial(L.price * cart[k])) + '</span></span>' +
-        '<span class="stepper"><button type="button" data-act="dec" data-id="' + k + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button><b>' + cart[k] + '</b><button type="button" data-act="inc" data-id="' + k + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full || off ? ' disabled' : '') + '>' + ic("plus") + '</button></span></div>'; }).join("") + '</div>';
+        '<span class="stepper"><button type="button" data-act="dec" data-id="' + k + tr('" aria-label="نقص">', '" aria-label="Decrease">') + ic("minus") + '</button>' + qb(p, k, cart[k]) + '<button type="button" data-act="inc" data-id="' + k + tr('" aria-label="زيادة"', '" aria-label="Increase"') + (full || off ? ' disabled' : '') + '>' + ic("plus") + '</button></span></div>'; }).join("") + '</div>';
     if (fillL.length) h += '<div class="kq-sec" style="margin-top:4px"><h2>' + ic("truck") + fillTitle(fillL, gap) + '</h2></div><div class="rail cart-rail">' + fillL.map(function(p){ return card(p); }).join("") + '</div>';
     // «ممكن نسيت؟»: منتج تشتريه عادة (طلبته مرتين أو أكثر) وما هو بالسلة. الزبون الجديد يشوف «أضف قبل لا تطلب» (أشياء صغيرة مطلوبة)
     var inCart = {}; Object.keys(cart).forEach(function(k){ var L = lineOf(k); if (L) inCart[L.p.base || L.p.id] = 1; });
@@ -4212,7 +4245,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       al.ids.forEach(function(id){ var k = "x:" + bid + ":" + id, n = (cart[k] || 0) + d; if (n <= 0) delete cart[k]; else cart[k] = n; if (d > 0) evAdd("c", id); });
       saveCart(); refresh(); if (t.dataset.addbund) sToast(tr("انضافت الباقة للسلة", "Bundle added to cart")); return; }
     if ((t = e.target.closest("[data-act]"))) {
-      var id = t.dataset.id, inc = t.dataset.act !== "dec", L0 = lineOf(id), stp = L0 && L0.kind === "r" && String(id).indexOf("~") < 0 ? stepOf(L0.p) : 1, n = (cart[id] || 0) + (inc ? stp : -stp);
+      var id = t.dataset.id, inc = t.dataset.act !== "dec", L0 = lineOf(id), stp = L0 && L0.kind === "r" && String(id).indexOf("~") < 0 ? (isW(L0.p) ? 0.5 : stepOf(L0.p)) : 1, n = Math.round(((cart[id] || 0) + (inc ? stp : -stp)) * 100) / 100;
       if (L0 && inc && !canAddProduct(L0.p.id,stp)){sToast(tr("وصلت للحد المسموح من هذا المنتج","This product reached its purchase limit"));return;}
       if (!L0 || (inc && L0.limit && n > L0.limit) || (inc && L0.kind === "d" && !totals().unlocked)) return;
       if (inc) evAdd("c", L0.p.id);
@@ -4220,6 +4253,16 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       if (n <= 0) delete cart[id]; else cart[id] = n; saveCart();
       if (!fastCart(id, un0)) refresh(); return;
     }
+    if ((t = e.target.closest("[data-wm],[data-wv],[data-addw]")) && screen === "product") {
+      var wp = byId(openProd); if (!wp || !isW(wp)) return;
+      if (t.dataset.addw) { var wc = wCalc(wp); if (!wc.ok) { sToast(tr("الكمية من ٠٫١ كيلو إلى ٥٠ كيلو", "From 0.1 kg to 50 kg")); return; }
+        if (!canAddProduct(wp.id, wc.kg - (cart[wp.id] || 0))) { sToast(tr("الكمية تتجاوز الحد المسموح", "Above the purchase limit")); return; }
+        cart[wp.id] = wc.kg; saveCart(); evAdd("c", wp.id); show("back"); return; }
+      if (t.dataset.wm) { var wcn = wCalc(wp); if (t.dataset.wm === pdW.mode) return;
+        pdW.mode = t.dataset.wm; pdW.v = !wcn.ok ? "" : pdW.mode === "sar" ? fq(Math.round(wcn.sar)) : fq(wcn.kg); }
+      else pdW.v = t.dataset.wv;
+      var bx = $("wBox"); if (bx) { bx.outerHTML = wBoxHTML(wp); var wi = $("wIn"); if (wi && t.dataset.wm) wi.focus(); }
+      wSync(wp); return; }
     if ((t = e.target.closest("[data-pq]"))) { var cur = pdPack >= 0 ? openProd + "~" + pdPack : openProd, p = byId(cur), dd = daily(), lim = lineOf((dd && dd.p.id === cur ? "t:" : "") + cur).limit;
       var stq = pdPack < 0 ? stepOf(p) : 1; pdQty = Math.max(stq, pdQty + Number(t.dataset.pq) * stq); if (lim) pdQty = Math.min(pdQty, lim);
       $("pq").textContent = pdQty; $("pqTotal").textContent = rial((dd && dd.p.id === cur ? dd.price : p.price) * pdQty); return; }

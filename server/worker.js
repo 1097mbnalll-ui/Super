@@ -56,7 +56,7 @@ export default {
     if (request.method === "POST" && !/^\/(?:track|rate|ev|stats|mine|driver\/(?:orders|pending|loc|loc-off|cash|login|push)|admin\/(?:orders|alerts|today|stats|log|team|prep|pos-orders|openitems|driver-loc|staff|cash|day-report|settlement-requests))$/.test(path)) stockCache.at = 0;
     if (request.method === "GET" && path === "/stock") {
       // كل زائر يسأل عن المخزون كل دقيقة؛ مع آلاف المنتجات نخزن النتيجة ١٥ ثانية بدل ما نقرأ القاعدة كل مرة
-      if (!stockCache.body || Date.now() - stockCache.at > 15000) stockCache = { at: Date.now(), body: JSON.stringify({ ok: true, stock: env.DB ? await readShownStock(env) : {} }) };
+      if (!stockCache.body || Date.now() - stockCache.at > 15000) stockCache = { at: Date.now(), body: JSON.stringify({ ok: true, weigh: true, stock: env.DB ? await readShownStock(env) : {} }) };
       if (env.DB) later(cartRemindCheck(env));
       return new Response(stockCache.body, { headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=10" } });
     }
@@ -1499,8 +1499,8 @@ async function editOrder(env, data, body, who) {
       if (same) same.qty += c.qty; else lines.push({ ...c, cost: 0 });
       continue;
     }
-    const id = String(x.id || ""), q = Math.floor(Number(x.qty)), pr = Number(x.price);
-    const p = byId[id] || oldBy[id];
+    const id = String(x.id || ""), pr = Number(x.price);
+    const p = byId[id] || oldBy[id], q = wQty(p, x.qty);
     if (!p || !(q > 0 && q <= (p.print || oldBy[id] ? 5000 : 500)) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
     // اسم المنتج يتصحح في الطلب لو المالك كتبه (مثل اسم غلط)، وإلا اسم المتجر
     const nm = typeof x.name === "string" && x.name.trim() ? x.name.trim().slice(0, 120) : (oldBy[id] && oldBy[id].name) || p.name;
@@ -1643,7 +1643,7 @@ function priceOrder(data, body, quote) {
   const dealLines = [];
   const bund = {}, grp = {};
   for (const [key, rawQty] of Object.entries(items)) {
-    let qty = Math.floor(Number(rawQty));
+    let qty = wQty(byId[String(key)], rawQty);
     if (!(qty > 0 && qty <= 5000)) continue;   // الطباعة بالصفحة: ١٢٠ صفحة × ٣ نسخ = ٣٦٠ سطر واحد؛ الباقي أقصاه ٢٠٠ (تحت)
     const parts = String(key).split(":");
     if (!(parts.length === 1 || (parts.length === 2 && ['r','t','d'].includes(parts[0])) || (parts.length === 3 && parts[0] === 'x'))) return {error:'bad_items'};
@@ -2722,7 +2722,7 @@ function manualOrder(data, body) {
       if (same) same.qty += c.qty; else lines.push(c);
       continue;
     }
-    const p = byId[String(x.id || "")], q = Math.floor(Number(x.qty)), pr = x.price == null ? Number(p && p.price) : Number(x.price);
+    const p = byId[String(x.id || "")], q = wQty(p, x.qty), pr = x.price == null ? Number(p && p.price) : Number(x.price);
     if (!p || !(q > 0 && q <= 500) || !(pr >= 0 && pr < 100000)) return { error: "bad_line" };
     const same = lines.find((l) => l.id === p.id && l.price === round2(pr));
     if (same) same.qty += q; else lines.push({ id: p.id, name: p.name, unit: p.unit || "", qty: q, price: round2(pr), regularPrice: Math.max(round2(pr),Number(p.price)||0,Number(p.old)||0), tag: "" });
@@ -3022,6 +3022,11 @@ async function driverFor(env, n, d, drv) {
   return out;
 }
 
+// المنتج اللي ينباع بالوزن (w: ١ بالبيانات): الكمية بالكيلو وتقبل كسور (٠٫٢٥، ١٫٥…)، والسعر لكل كيلو. غيره كمية صحيحة مثل قبل
+function wQty(p, raw) {
+  if (p && p.w) { const v = Math.round(Number(raw) * 100) / 100; return v >= 0.1 && v <= 50 ? v : NaN; }
+  return Math.floor(Number(raw));
+}
 // ---------- الموظفين: كل مندوب وكل كاشير له اسم ورقم سري ----------
 // الرقم ينحفظ مشفّر (نفس طريقة رقم المندوب القديم، فالرقم القديم يشتغل بدون تغيير)
 async function staffHash(env, pin) { return hashPin(env, "driver:" + pin); }

@@ -570,6 +570,7 @@
         '<label class="wide">تأكد قبل لا تاخذه <small>(افصل بفاصلة)</small><input data-f="checks" value="' + esc(p.checks || "") + '" placeholder="مثال: العلبة صفراء، ٢٠٠ جرام مو الكبيرة، شيّك تاريخ الانتهاء"></label>' +
         '<label>الحد لكل طلب<input data-f="max" type="number" min="0" step="1" inputmode="numeric" value="' + esc(p.max || "") + '" placeholder="بدون حد"></label>' +
         '<div class="tools wide"><label class="chk"><input type="checkbox" data-f="stock"' + (p.stock ? ' checked' : '') + '>متوفر</label>' +
+        '<label class="chk" title="الزبون يختار كم كيلو أو كم ريال، والسعر هنا لكل كيلو"><input type="checkbox" data-f="wt"' + (p.w ? ' checked' : '') + '>يُباع بالوزن (كيلو)</label>' +
         '<input data-f="badge" value="' + esc(p.badge || "") + '" placeholder="شارة: يُخبز يوميًا" aria-label="شارة المنتج" style="width:150px">' +
         '<button class="btn btn-soft sm" type="button" data-sugg="' + p.id + '">المقترحات' + (p.sugg && p.sugg.length ? ' (' + p.sugg.length + ')' : '') + '</button>' +
         mvBtns('prod', p.id) + '<button class="del" type="button" data-del-prod="' + p.id + '">حذف</button></div></div>';
@@ -729,6 +730,7 @@
     var row = t.closest("[data-row]"); if (!row || !(t.dataset.f || t.dataset.pf)) return;
     var p = dById(row.dataset.row), f = t.dataset.f;
     if (f === "stock") { p.stock = t.checked; row.classList.toggle("off", !t.checked); }
+    else if (f === "wt") { if (t.checked) { p.w = 1; if (!p.unit) p.unit = "كيلو"; } else delete p.w; }
     else if (f === "price") p.price = Number(t.value || 0);
     else if (f === "old") { var v = Number(t.value || 0); if (v) p.old = v; else delete p.old; }
     else if (f === "cost") { costEdit[p.id] = t.value === "" ? null : Math.max(0, Number(t.value) || 0); var mt = row.querySelector(".mtag"); if (mt) mt.outerHTML = marginTag(p); else { var lb = t.closest("label"); if (lb) lb.insertAdjacentHTML("afterbegin", ""); } }
@@ -754,7 +756,7 @@
     if (f === "cat") renderACats();
   }
   document.addEventListener("input", onAdminInput);
-  document.addEventListener("change", function(e){ if (e.target.dataset && (e.target.dataset.f === "cat" || e.target.dataset.f === "stock" || e.target.dataset.f === "ukind")) onAdminInput(e); });
+  document.addEventListener("change", function(e){ if (e.target.dataset && (e.target.dataset.f === "cat" || e.target.dataset.f === "stock" || e.target.dataset.f === "wt" || e.target.dataset.f === "ukind")) onAdminInput(e); });
   document.addEventListener("click", function(e){
     if (mode !== "admin" || !draft) return;
     var t;
