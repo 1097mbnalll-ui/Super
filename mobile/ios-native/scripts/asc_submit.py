@@ -33,6 +33,7 @@ def call(method, path, data=None, ok=(200, 201, 204)):
 print("الوضع:", MODE, "| النسخة:", VER)
 app = call("GET", "/v1/apps?filter[bundleId]=sa.ohod.store")["data"][0]
 AID = app["id"]
+print("رابط التطبيق: https://apps.apple.com/sa/app/id" + AID)
 vers = call("GET", f"/v1/apps/{AID}/appStoreVersions?filter[platform]=IOS&limit=10")["data"]
 for v in vers:
     a = v["attributes"]; print("  نسخة", a["versionString"], "→", a.get("appStoreState") or a.get("appVersionState"), "| release:", a.get("releaseType"))
