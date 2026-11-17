@@ -1,0 +1,22 @@
+# تقديم نسخة الآيفون للمراجعة (App Store Connect API، بدون ماك). يشتغل مع الرفع لفرع ios-submit.
+# MODE في mobile/ios-native/submit.mode: status = قراءة بس (الحالة والنسخ والبناءات)، submit = يربط آخر بناء صالح ويقدّم للمراجعة
+# قرار المالك (خط أحمر): النسخة الجديدة تنزل بعد الموافقة (AFTER_APPROVAL) والنسخة الحالية تبقى شغّالة لين تنزل. ما يسحب أي نسخة.
+name: ios-submit
+on:
+  push:
+    branches: [ios-submit]
+permissions:
+  contents: read
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: App Store Connect
+        env:
+          KID: ${{ secrets.ASC_KEY_ID }}
+          ISS: ${{ secrets.ASC_ISSUER_ID }}
+          P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          pip install -q pyjwt cryptography requests
+          python3 mobile/ios-native/scripts/asc_submit.py
