@@ -84,6 +84,10 @@ ok(h.offer && h.offer.src === 'view' && h.offer.need === Y && h.offer.views === 
 const G = dev('g');
 await open(G); await hit(G, { st: 1, id: Y }); await hit(G, { st: 2, ids: [Y] }); await hit(G, { st: 0, o: 0, ids: [] }); T += M; await hit(G, { st: 1, id: X }); T += D;
 h = await open(G); ok(h.offer && h.offer.need === Y, 'الأكثر اهتمام يفوز على آخر واحد شافه: ' + (h.offer && (h.offer.need === Y ? 'Y' : 'X')));
+// ح: جهاز جديد يرسل زيارة وسلة بتاريخ قبل يومين (تزوير الوقت) ← ما ياخذ عرض من أول يوم
+const H = dev('h');
+await call('/hit', { dev: H, q: [{ st: 0, at: T - 2 * D }, { st: 2, at: T - 2 * D, ids: [P2] }] });
+ok(!(await open(H)).offer, 'تزوير تاريخ الزيارة ما يجيب عرض من أول يوم');
 // التقرير
 r = await call('/admin/nudge', { pin: '2468', days: 60 });
 const st = Object.fromEntries(r.stats.map((x) => [x.src, x]));

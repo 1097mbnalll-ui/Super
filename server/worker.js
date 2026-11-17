@@ -1274,7 +1274,7 @@ async function ensureSchema(env) {
   extra.push(env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS orders_cid ON orders (cid) WHERE cid IS NOT NULL"));
   // جهاز الزبون المجهول (شرائح إشعارات العروض): بدون اسم ولا جوال، بس عدّادات
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS orders_dev ON orders (dev, status) WHERE dev IS NOT NULL"));
-  extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS devices (dev TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, cart_n INTEGER NOT NULL DEFAULT 0, cart_at INTEGER NOT NULL DEFAULT 0, orders_n INTEGER NOT NULL DEFAULT 0, last_order_at INTEGER NOT NULL DEFAULT 0, reminded_at INTEGER NOT NULL DEFAULT 0)"));
+  extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS devices (dev TEXT PRIMARY KEY, first_seen INTEGER NOT NULL, last_seen INTEGER NOT NULL, cart_n INTEGER NOT NULL DEFAULT 0, cart_at INTEGER NOT NULL DEFAULT 0, orders_n INTEGER NOT NULL DEFAULT 0, last_order_at INTEGER NOT NULL DEFAULT 0, reminded_at INTEGER NOT NULL DEFAULT 0, srv INTEGER)"));
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS devices_cart ON devices (cart_at) WHERE cart_n > 0"));
   // الزوار (١٧ نوفمبر ٢٠٢٦): سطر لكل جهاز بكل يوم. أجهزة الموظفين في staff_dev وتنستثنى من التقارير
   extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS vday (day TEXT NOT NULL, dev TEXT NOT NULL, first_at INTEGER NOT NULL, last_at INTEGER NOT NULL, opens INTEGER NOT NULL DEFAULT 0, sess INTEGER NOT NULL DEFAULT 1, stage INTEGER NOT NULL DEFAULT 0, src TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL DEFAULT '', PRIMARY KEY (day, dev))"));
@@ -1286,6 +1286,9 @@ async function ensureSchema(env) {
   // عروض الرجعة (١٧ نوفمبر ٢٠٢٦): المنتجات اللي شافها الجهاز (v) واللي في سلته (c)، وأكواد خصم شخصية مربوطة بالجهاز
   extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS vprod (dev TEXT NOT NULL, id TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, n INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (dev, id, kind))"));
   extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings(k TEXT PRIMARY KEY,v TEXT NOT NULL)"));
+  // srv = أول وقت استلم فيه الخادم نفسه هالجهاز (ما ينأخذ من وقت الجهاز، عشان ما أحد يرجّع التاريخ وياخذ عرض رجعة من أول زيارة)
+  const dcols = ((await env.DB.prepare("PRAGMA table_info(devices)").all()).results || []).map((r) => r.name);
+  if (dcols.length && !dcols.includes("srv")) { extra.push(env.DB.prepare("ALTER TABLE devices ADD COLUMN srv INTEGER")); extra.push(env.DB.prepare("UPDATE devices SET srv = first_seen WHERE srv IS NULL")); }
   const vcols = ((await env.DB.prepare("PRAGMA table_info(vprod)").all()).results || []).map((r) => r.name);
   if (vcols.length && !vcols.includes("n")) extra.push(env.DB.prepare("ALTER TABLE vprod ADD COLUMN n INTEGER NOT NULL DEFAULT 1"));
   const pcols = ((await env.DB.prepare("PRAGMA table_info(promo_codes)").all()).results || []).map((r) => r.name);
@@ -2225,11 +2228,12 @@ async function nudgeFor(env, dev) {
   await ensureSchema(env);
   const now = Date.now(), cfg = await nudgeCfg(env);
   if (!cfg.on) return null;
-  const pre = await env.DB.prepare("SELECT (SELECT 1 FROM staff_dev WHERE dev = ?1) staff, (SELECT COUNT(*) FROM orders WHERE dev = ?1 AND status != 'canceled') ord, (SELECT COUNT(*) FROM promo_codes WHERE dev = ?1 AND src LIKE 'nudge%') n, (SELECT MAX(created) FROM promo_codes WHERE dev = ?1 AND src LIKE 'nudge%') last, (SELECT COUNT(DISTINCT day) FROM vday WHERE dev = ?1) days, (SELECT COUNT(*) FROM vday WHERE dev = ?1 AND day < ?2) before").bind(dev, riyadhDate()).first();
+  const pre = await env.DB.prepare("SELECT (SELECT 1 FROM staff_dev WHERE dev = ?1) staff, (SELECT COUNT(*) FROM orders WHERE dev = ?1 AND status != 'canceled') ord, (SELECT COUNT(*) FROM promo_codes WHERE dev = ?1 AND src LIKE 'nudge%') n, (SELECT MAX(created) FROM promo_codes WHERE dev = ?1 AND src LIKE 'nudge%') last, (SELECT COUNT(DISTINCT day) FROM vday WHERE dev = ?1) days, (SELECT COUNT(*) FROM vday WHERE dev = ?1 AND day < ?2) before, (SELECT srv FROM devices WHERE dev = ?1) srv").bind(dev, riyadhDate()).first();
   if (!pre || pre.staff || pre.ord > 0) return null;
   const act = await nudgeActive(env, dev, now);
   if (act) { let data = null; if (act.need) data = await loadData(env).catch(() => null); return nudgeOut(env, act, data); }
-  if (!(pre.before > 0)) return null;   // أول يوم يزورنا: ما نعطيه شي (عشان مسح المتصفح ما يجيب عروض)
+  // أول يوم يزورنا: ما نعطيه شي (عشان مسح المتصفح ما يجيب عروض). «أول يوم» بساعة الخادم (srv)، مو بالوقت اللي يرسله الجهاز
+  if (!(pre.before > 0) || !(pre.srv > 0 && pre.srv < Date.parse(riyadhDate() + "T00:00:00+03:00"))) return null;
   if (pre.n >= cfg.maxPerDev || (pre.last && now - pre.last < cfg.cooldown * 864e5)) return null;
   const today0 = Date.parse(riyadhDate() + "T00:00:00+03:00");
   const data = await loadData(env).catch(() => null); if (!data) return null;
@@ -2296,7 +2300,7 @@ async function recordHits(env, dev, list, staff, kind) {
     const k = h.app === "ios" || h.app === "android" ? h.app : kind;
     st.push(env.DB.prepare("INSERT INTO vday (day, dev, first_at, last_at, opens, sess, stage, src, kind) VALUES (?1, ?2, ?3, ?3, ?4, 1, ?5, ?6, ?7) ON CONFLICT(day, dev) DO UPDATE SET opens = opens + ?4, sess = sess + CASE WHEN ?4 = 1 AND ?3 - last_at > 1800000 THEN 1 ELSE 0 END, first_at = MIN(first_at, ?3), last_at = MAX(last_at, ?3), stage = MAX(stage, ?5), src = CASE WHEN src = '' THEN ?6 ELSE src END, kind = CASE WHEN kind = '' THEN ?7 ELSE kind END")
       .bind(riyadhDateAt(at), dev, at, open, stage, hitSrc(h.src), k));
-    st.push(env.DB.prepare("INSERT INTO devices (dev, first_seen, last_seen) VALUES (?1, ?2, ?2) ON CONFLICT(dev) DO UPDATE SET first_seen = MIN(first_seen, ?2), last_seen = MAX(last_seen, ?2)").bind(dev, at));
+    st.push(env.DB.prepare("INSERT INTO devices (dev, first_seen, last_seen, srv) VALUES (?1, ?2, ?2, ?3) ON CONFLICT(dev) DO UPDATE SET first_seen = MIN(first_seen, ?2), last_seen = MAX(last_seen, ?2), srv = COALESCE(srv, ?3)").bind(dev, at, now));
     if (open) st.push(env.DB.prepare("INSERT INTO vlog (at, dev, src, kind) VALUES (?, ?, ?, ?)").bind(at, dev, hitSrc(h.src), k));
   }
   const okId = (k) => typeof k === "string" && /^[\w-]{1,40}$/.test(k);
