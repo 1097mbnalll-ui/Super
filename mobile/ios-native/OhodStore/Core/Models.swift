@@ -229,7 +229,7 @@ struct PromoSlot: Hashable, Sendable {
 /// إعدادات شاشة الوزن (store.app.weigh)
 struct WeighUI: Sendable {
     static let styles: Set<String> = ["chips", "ruler", "money", "wheel"]
-    var style = "chips"
+    var style = "ruler"
     var sizes: [Int] = [250, 500, 1000, 1500, 2000]
     var money: [Double] = [5, 10, 15, 20]
     var step = 250

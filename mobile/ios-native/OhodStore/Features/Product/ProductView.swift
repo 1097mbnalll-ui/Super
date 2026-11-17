@@ -353,8 +353,8 @@ private struct QuantityOfferBox: View {
 
 
 /// شاشة الوزن (الخضار والفواكه). المالك يختار شكلها من الإدارة بدون تحديث (store.app.weigh.style):
-///  chips  شرائح أحجام بسعرها + عدّاد تحت (الافتراضي)
-///  ruler  مسطرة تنسحب والوزن والسعر كبير فوق
+///  ruler  مسطرة تنسحب والوزن والسعر كبير فوق (الافتراضي، اعتمده المالك ١٧ نوفمبر ٢٠٢٦، ونفسه في الموقع)
+///  chips  شرائح أحجام بسعرها + عدّاد تحت
 ///  money  زر «بالوزن / بالمبلغ»: أحجام أو مبالغ جاهزة
 ///  wheel  عجلة اختيار (مثل منبّه الآيفون)
 /// وفي كل الأشكال رابط «وزن أو مبلغ آخر» (store.app.weigh.input) يفتح خانتين يكتب فيها الزبون.
@@ -387,10 +387,10 @@ struct WeightPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             switch cfg.style {
-            case "ruler": rulerBody
+            case "chips": chipsBody
             case "money": moneyBody
             case "wheel": wheelBody
-            default: chipsBody
+            default: rulerBody
             }
         }
         .onAppear {
