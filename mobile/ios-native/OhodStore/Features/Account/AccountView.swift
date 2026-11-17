@@ -111,6 +111,10 @@ struct AccountView: View {
                     Link(destination: URL(string: "privacy.html", relativeTo: AppConfig.site)!.absoluteURL) {
                         row("سياسة الخصوصية", systemImage: "hand.raised")
                     }
+                    Divider().padding(.trailing, 52)
+                    Link(destination: URL(string: "returns.html", relativeTo: AppConfig.site)!.absoluteURL) {
+                        row("الاستبدال والاسترجاع", systemImage: "arrow.uturn.backward.circle")
+                    }
                 }
                 .foregroundStyle(Theme.ink)
                 .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
