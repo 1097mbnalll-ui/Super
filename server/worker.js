@@ -87,7 +87,7 @@ export default {
       const pr = priceOrder(data, body, true);
       if (pr.error) return reply(200, { ok: false, code: pr.error, id: pr.id, n: pr.n, min: pr.min });
       let promo = 0, promoCode = "";
-      if (body.promo && env.DB) { const pc = await promoCheck(env, body.promo, normPhone(body.phone) || null, pr.subtotal); if (!pc.error) { promo = promoAmount(pc.rule, pr.subtotal); promoCode = pc.rule.code; } else promoCode = "!" + pc.error; }
+      if (body.promo && env.DB) { const pc = await promoCheck(env, body.promo, normPhone(body.phone) || null, pr.subtotal, normDev(body.dev), body.items); if (!pc.error) { promo = promoAmount(pc.rule, pr.subtotal); promoCode = pc.rule.code; } else promoCode = "!" + pc.error; }
       const gift = !promo ? (pr.gift || 0) : 0;
       const S = data.store || {}, onlyPrint = pr.lines.length > 0 && pr.lines.every((l) => l.p.print), minOrder = onlyPrint && S.print && S.print.minOrder != null ? Number(S.print.minOrder) || 0 : Number(S.minOrder) || 0;
       return reply(200, { ok: true, subtotal: pr.subtotal, fee: pr.fee, gift, promo, promoCode, total: round2(pr.subtotal + pr.fee - gift - promo), count: pr.count,
@@ -97,8 +97,8 @@ export default {
     if (path === "/promo/check") {
       if (!env.DB) return reply(503, { ok: false, code: "promo_invalid" });
       if (await rateHit(env, "promo:" + ip, 15, 600)) return reply(429, { ok: false, code: "slow_down" });
-      const pc = await promoCheck(env, body.code, normPhone(body.phone) || null, null);
-      if (pc.error) return reply(400, { ok: false, code: pc.error });
+      const pc = await promoCheck(env, body.code, normPhone(body.phone) || null, null, normDev(body.dev), body.items && typeof body.items === "object" ? body.items : null);
+      if (pc.error && !(pc.error === "promo_need" && pc.rule)) return reply(400, { ok: false, code: pc.error });
       return reply(200, { ok: true, ...pc.rule });
     }
     // الدفع الإلكتروني: الزبون رجع من صفحة الدفع (finish)، أو ميسّر بلّغنا (hook). الاثنين يتأكدون من ميسّر نفسه ويسجّلون الطلب مرة وحدة
@@ -145,10 +145,10 @@ export default {
         if (km > maxKm) return reply(400, { ok: false, code: "too_far", km: Math.round(km * 10) / 10, max: maxKm });
       }
       if (body.promo) {
-        const pc = await promoCheck(env, body.promo, priced.phone, priced.subtotal);
-        if (pc.error) return reply(400, { ok: false, code: pc.error, min: pc.min });
+        const pc = await promoCheck(env, body.promo, priced.phone, priced.subtotal, normDev(body.dev), body.items);
+        if (pc.error) return reply(400, { ok: false, code: pc.error, min: pc.min, need: pc.need });
         priced.gift = 0; priced.promo = pc.rule.code; priced.promoAmt = promoAmount(pc.rule, priced.subtotal);
-        priced.promoRule = { kind: pc.rule.kind, value: pc.rule.value, min: pc.rule.min, cap: pc.rule.cap };
+        priced.promoRule = { kind: pc.rule.kind, value: pc.rule.value, min: pc.rule.min, cap: pc.rule.cap, ...(pc.rule.need ? { need: pc.rule.need } : {}) };
         priced.total = round2(priced.subtotal + priced.fee - priced.promoAmt);
       }
       if (priced.gift && env.DB) {
@@ -395,8 +395,12 @@ export default {
       if (/bot|crawl|spider|headless|preview|slurp|facebookexternalhit|lighthouse|pingdom|monitor/i.test(ua)) return reply(200, { ok: true, skipped: "bot" });
       if (await rateHit(env, "hit:" + ip, 600, 3600)) return reply(429, { ok: false, code: "slow_down" });
       await ensureSchema(env);
-      await recordHits(env, dev, Array.isArray(body.q) ? body.q.slice(0, 40) : [body], !!body.staff, /iPhone|iPad|Android|Mobile/i.test(ua) ? "m" : "d");
-      return reply(200, { ok: true });
+      const hl = Array.isArray(body.q) ? body.q.slice(0, 40) : [body];
+      await recordHits(env, dev, hl, !!body.staff, /iPhone|iPad|Android|Mobile/i.test(ua) ? "m" : "d");
+      // فتح الصفحة الحين (مو إرسال متأخر): نشوف لو يستاهل «عرض رجعة»
+      const fresh = hl.some((h) => h && Number(h.st || 0) === 0 && h.o !== 0 && Math.abs(Date.now() - (Number(h.at) || Date.now())) < 10 * 60e3);
+      let offer = null; if (fresh && !body.staff) offer = await nudgeFor(env, dev).catch(() => null);
+      return reply(200, { ok: true, ...(offer ? { offer } : {}) });
     }
     if (path === "/ev") {
       if (!env.DB) return reply(200, { ok: true });
@@ -1083,6 +1087,12 @@ export default {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       return reply(200, { ok: true, ...(await readVisits(env, Number(body.days) || 7)) });
     }
+    if (path === "/admin/nudge") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      if (body.cfg) { const c = nudgeClean(body.cfg); await env.DB.batch([env.DB.prepare("INSERT INTO app_settings (k, v) VALUES ('nudge', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(JSON.stringify(c)), logStmt(env, staff(body), "nudge_save", "", { on: c.on })]); }
+      return reply(200, { ok: true, cfg: await nudgeCfg(env), stats: await nudgeStats(env, Math.min(365, Math.max(1, Number(body.days) || 30))) });
+    }
     if (path === "/admin/staff-dev") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
@@ -1266,6 +1276,14 @@ async function ensureSchema(env) {
   extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS vday (day TEXT NOT NULL, dev TEXT NOT NULL, first_at INTEGER NOT NULL, last_at INTEGER NOT NULL, opens INTEGER NOT NULL DEFAULT 0, sess INTEGER NOT NULL DEFAULT 1, stage INTEGER NOT NULL DEFAULT 0, src TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL DEFAULT '', PRIMARY KEY (day, dev))"));
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS vday_last ON vday (last_at)"));
   extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_dev (dev TEXT PRIMARY KEY, at INTEGER NOT NULL)"));
+  // عروض الرجعة (١٧ نوفمبر ٢٠٢٦): المنتجات اللي شافها الجهاز (v) واللي في سلته (c)، وأكواد خصم شخصية مربوطة بالجهاز
+  extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS vprod (dev TEXT NOT NULL, id TEXT NOT NULL, kind TEXT NOT NULL, at INTEGER NOT NULL, n INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (dev, id, kind))"));
+  extra.push(env.DB.prepare("CREATE TABLE IF NOT EXISTS app_settings(k TEXT PRIMARY KEY,v TEXT NOT NULL)"));
+  const vcols = ((await env.DB.prepare("PRAGMA table_info(vprod)").all()).results || []).map((r) => r.name);
+  if (vcols.length && !vcols.includes("n")) extra.push(env.DB.prepare("ALTER TABLE vprod ADD COLUMN n INTEGER NOT NULL DEFAULT 1"));
+  const pcols = ((await env.DB.prepare("PRAGMA table_info(promo_codes)").all()).results || []).map((r) => r.name);
+  for (const [c, t] of [["dev", "TEXT"], ["need", "TEXT"], ["src", "TEXT"], ["pi", "INTEGER"]]) if (!pcols.includes(c)) extra.push(env.DB.prepare("ALTER TABLE promo_codes ADD COLUMN " + c + " " + t));
+  extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS promo_dev ON promo_codes (dev) WHERE dev IS NOT NULL"));
   const scols = ((await env.DB.prepare("PRAGMA table_info(subs)").all()).results || []).map((r) => r.name);
   if (!scols.includes("dev")) extra.push(env.DB.prepare("ALTER TABLE subs ADD COLUMN dev TEXT"));
   extra.push(env.DB.prepare("CREATE INDEX IF NOT EXISTS subs_dev ON subs (dev) WHERE dev IS NOT NULL"));
@@ -1489,7 +1507,7 @@ async function editOrder(env, data, body, who) {
   // هدية الاعتذار تبقى بعد التعديل ما دام المنتجات ٣٠ وفوق
   const gift = Number(rec.gift) > 0 && subtotal >= GIFT.min ? Number(rec.gift) : 0;
   // كود الخصم ينحسب من جديد على المبلغ الجديد (النسبة تتغير، والمبلغ الثابت يبقى ما دام فوق الحد الأدنى)
-  const promoAmt = rec.promo && rec.promoRule ? promoAmount(rec.promoRule, subtotal) : 0;
+  const promoAmt = rec.promo && rec.promoRule && (!rec.promoRule.need || lines.some((l) => String(l.id).split("~")[0] === rec.promoRule.need)) ? promoAmount(rec.promoRule, subtotal) : 0;
   const nr = { ...rec, lines, subtotal, fee, total: round2(subtotal + fee - gift - promoAmt), count: lines.reduce((s, l) => s + l.qty, 0), st: 1,
     edits: (rec.edits || []).concat([{ at: Date.now(), before: rec.total, after: round2(subtotal + fee - gift - promoAmt) }]).slice(-20) };
   if (gift) nr.gift = gift; else delete nr.gift;
@@ -1578,14 +1596,18 @@ function promoAmount(rule, subtotal) {
   return round2(Math.max(0, Math.min(a, subtotal)));
 }
 // يرجع القاعدة أو كود الخطأ: promo_invalid / promo_expired / promo_min / promo_used / promo_limit
-async function promoCheck(env, code, phone, subtotal) {
+async function promoCheck(env, code, phone, subtotal, dev, items) {
   code = normCode(code);
   if (!code || !env.DB) return { error: "promo_invalid" };
   await ensureSchema(env);
   const r = await env.DB.prepare("SELECT * FROM promo_codes WHERE code = ?").bind(code).first();
   if (!r || !r.active) return { error: "promo_invalid" };
   if (r.until && Date.now() > r.until) return { error: "promo_expired" };
-  const rule = { code, kind: r.kind, value: r.value, min: r.min, cap: r.cap, until: r.until };
+  // عرض الرجعة: كود شخصي لجهاز واحد، ومرة وحدة لكل جوال من كل عروض الرجعة، وبعضها يحتاج منتج معيّن بالسلة
+  if (r.dev && r.dev !== dev) return { error: "promo_invalid" };
+  const rule = { code, kind: r.kind, value: r.value, min: r.min, cap: r.cap, until: r.until, ...(r.need ? { need: r.need } : {}), ...(r.src ? { src: r.src } : {}) };
+  if (r.need && items && !Object.keys(items).some((k) => String(k).split(":").pop().split("~")[0] === r.need)) return { error: "promo_need", need: r.need, rule };
+  if (r.src && /^nudge/.test(r.src) && phone) { const u = await env.DB.prepare("SELECT 1 x FROM orders o WHERE o.phone = ? AND o.status != 'canceled' AND json_extract(o.data, '$.promo') IN (SELECT code FROM promo_codes WHERE src LIKE 'nudge%') LIMIT 1").bind(phone).first(); if (u) return { error: "promo_used" }; }
   if (subtotal != null && subtotal < Number(r.min || 0)) return { error: "promo_min", min: r.min, rule };
   if (r.max_uses > 0) { const u = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE status != 'canceled' AND json_extract(data, '$.promo') = ?").bind(code).first(); if ((u?.n || 0) >= r.max_uses) return { error: "promo_limit" }; }
   if (phone && r.per_phone > 0) { const u = await env.DB.prepare("SELECT COUNT(*) n FROM orders WHERE phone = ? AND status != 'canceled' AND json_extract(data, '$.promo') = ?").bind(phone, code).first(); if ((u?.n || 0) >= r.per_phone) return { error: "promo_used" }; }
@@ -2157,6 +2179,106 @@ async function rateHit(env, key, max, secs) {
   return !!row && row.n > max;
 }
 
+// ---------- عروض الرجعة (١٧ نوفمبر ٢٠٢٦): زائر رجع وما طلب قبل ← عرض شخصي يقنعه يطلب ----------
+// cart: ترك سلة بيوم سابق ← نسبة على الطلب بحد أعلى ما يتعدى ربح السلة. view: شاف منتج بيوم سابق ← المنتج أرخص (ينتهي بـ ٩٥ هللة).
+// wheel: زار N أيام بدون طلب ← عجلة هدايا (الجائزة يختارها الخادم). كل عرض = كود في promo_codes مربوط بالجهاز، مرة وحدة، وله وقت.
+// حارس الهامش: السعر بعد الخصم ما ينزل عن التكلفة + minMargin٪ (pcost)، والمنتج بدون تكلفة أقصاه noCostPct٪.
+const NUDGE_DEF = { on: false, minMargin: 8, noCostPct: 5, cooldown: 7, maxPerDev: 3,
+  cart: { on: true, pct: 10, cap: 15, hours: 48 },
+  view: { on: true, pct: 10, hours: 48 },
+  wheel: { on: true, visits: 3, hours: 72, prizes: [
+    { kind: "percent", value: 5, cap: 10, min: 30, w: 45 }, { kind: "amount", value: 5, min: 35, w: 35 },
+    { kind: "percent", value: 10, cap: 15, min: 50, w: 15 }, { kind: "amount", value: 10, min: 70, w: 5 }] } };
+function nudgeClean(c) {
+  const n = (v, lo, hi, d) => { v = Number(v); return v >= lo && v <= hi ? Math.round(v * 100) / 100 : d; };
+  c = c && typeof c === "object" ? c : {}; const D = NUDGE_DEF, cc = c.cart || {}, cv = c.view || {}, cw = c.wheel || {};
+  const prizes = (Array.isArray(cw.prizes) && cw.prizes.length ? cw.prizes : D.wheel.prizes).slice(0, 8).map((x) => ({ kind: x.kind === "amount" ? "amount" : "percent", value: n(x.value, 1, x.kind === "amount" ? 50 : 30, 5), cap: n(x.cap, 0, 100, 0), min: n(x.min, 0, 500, 0), w: n(x.w, 0, 100, 1) })).filter((x) => x.w > 0);
+  return { on: !!c.on, minMargin: n(c.minMargin, 0, 50, D.minMargin), noCostPct: n(c.noCostPct, 0, 20, D.noCostPct), cooldown: n(c.cooldown, 1, 90, D.cooldown), maxPerDev: n(c.maxPerDev, 1, 10, D.maxPerDev),
+    cart: { on: cc.on !== false, pct: n(cc.pct, 1, 30, D.cart.pct), cap: n(cc.cap, 1, 100, D.cart.cap), hours: n(cc.hours, 6, 168, D.cart.hours) },
+    view: { on: cv.on !== false, pct: n(cv.pct, 1, 30, D.view.pct), hours: n(cv.hours, 6, 168, D.view.hours) },
+    wheel: { on: cw.on !== false, visits: n(cw.visits, 2, 20, D.wheel.visits), hours: n(cw.hours, 6, 168, D.wheel.hours), prizes: prizes.length ? prizes : D.wheel.prizes } };
+}
+async function nudgeCfg(env) { const r = await env.DB.prepare("SELECT v FROM app_settings WHERE k = 'nudge'").first().catch(() => null); return nudgeClean(r ? safeJson(r.v) : null); }
+// أقصى خصم (ريال) يتحمله سعر المنتج بدون ما ينزل تحت التكلفة + الهامش
+function nudgeRoom(price, cost, cfg) { price = Number(price) || 0; if (!(price > 0)) return 0; if (cost > 0) return Math.max(0, price - cost * (1 + cfg.minMargin / 100)); return price * cfg.noCostPct / 100; }
+function nudgeCode() { const c = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", r = crypto.getRandomValues(new Uint8Array(6)); let s = "R"; for (const x of r) s += c[x % c.length]; return s; }
+async function nudgeActive(env, dev, now) {
+  const r = await env.DB.prepare("SELECT c.* FROM promo_codes c WHERE c.dev = ? AND c.src LIKE 'nudge%' AND c.active = 1 AND c.until > ? AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.status != 'canceled' AND json_extract(o.data, '$.promo') = c.code) ORDER BY c.created DESC LIMIT 1").bind(dev, now).first();
+  return r || null;
+}
+async function nudgeOut(env, r, data) {
+  const o = { code: r.code, src: String(r.src || "").replace("nudge-", ""), kind: r.kind, value: r.value, cap: r.cap, min: r.min, until: r.until, ...(r.need ? { need: r.need } : {}), ...(r.pi != null ? { pi: r.pi } : {}) };
+  if (o.src === "wheel") { const cfg = await nudgeCfg(env); o.prizes = cfg.wheel.prizes.map((x) => ({ kind: x.kind, value: x.value, cap: x.cap, min: x.min })); }
+  if (o.src === "cart") { const ids = ((await env.DB.prepare("SELECT id FROM vprod WHERE dev = ? AND kind = 'c' ORDER BY at DESC LIMIT 6").bind(r.dev).all()).results || []).map((x) => x.id); o.ids = ids; }
+  if (r.need && data) { const p = (data.products || []).find((x) => x.id === r.need); if (p) { o.price = Number(p.price); o.newPrice = Math.round((Number(p.price) - Number(r.value)) * 100) / 100; } }
+  if (r.need && r.dev) { const vs = (await env.DB.prepare("SELECT kind, n FROM vprod WHERE dev = ? AND id = ? AND kind IN ('v', 'a')").bind(r.dev, r.need).all()).results || []; for (const x of vs) o[x.kind === "v" ? "views" : "adds"] = x.n; }
+  return o;
+}
+async function nudgeFor(env, dev) {
+  await ensureSchema(env);
+  const now = Date.now(), cfg = await nudgeCfg(env);
+  if (!cfg.on) return null;
+  const pre = await env.DB.prepare("SELECT (SELECT 1 FROM staff_dev WHERE dev = ?1) staff, (SELECT COUNT(*) FROM orders WHERE dev = ?1 AND status != 'canceled') ord, (SELECT COUNT(*) FROM promo_codes WHERE dev = ?1 AND src LIKE 'nudge%') n, (SELECT MAX(created) FROM promo_codes WHERE dev = ?1 AND src LIKE 'nudge%') last, (SELECT COUNT(DISTINCT day) FROM vday WHERE dev = ?1) days, (SELECT COUNT(*) FROM vday WHERE dev = ?1 AND day < ?2) before").bind(dev, riyadhDate()).first();
+  if (!pre || pre.staff || pre.ord > 0) return null;
+  const act = await nudgeActive(env, dev, now);
+  if (act) { let data = null; if (act.need) data = await loadData(env).catch(() => null); return nudgeOut(env, act, data); }
+  if (!(pre.before > 0)) return null;   // أول يوم يزورنا: ما نعطيه شي (عشان مسح المتصفح ما يجيب عروض)
+  if (pre.n >= cfg.maxPerDev || (pre.last && now - pre.last < cfg.cooldown * 864e5)) return null;
+  const today0 = Date.parse(riyadhDate() + "T00:00:00+03:00");
+  const data = await loadData(env).catch(() => null); if (!data) return null;
+  const byId = {}; for (const p of data.products || []) byId[p.id] = p;
+  const okP = (p) => p && p.stock !== false && !p.soon && Number(p.price) > 0;
+  const rows = (await env.DB.prepare("SELECT id, kind, at, n FROM vprod WHERE dev = ? ORDER BY at DESC LIMIT 80").bind(dev).all()).results || [];
+  // اهتمام الزبون بكل منتج: كم يوم شافه + ٣ × كم مرة أضافه للسلة (الإضافة أقوى من المشاهدة)، والأحدث يفوز بالتعادل
+  const want = {};
+  for (const r of rows) { if (r.kind === "c") continue; const w = want[r.id] || (want[r.id] = { id: r.id, v: 0, a: 0, at: 0, old: false }); if (r.kind === "v") w.v = r.n || 1; if (r.kind === "a") w.a = r.n || 1; w.at = Math.max(w.at, r.at); }
+  for (const r of rows) if (r.kind !== "c" && r.at < today0 && want[r.id]) want[r.id].old = true;
+  const score = (w) => w.v + 3 * w.a;
+  const costOf = async (ids) => { const m = {}; if (!ids.length) return m; const cs = (await env.DB.prepare("SELECT id, cost FROM pcost WHERE id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids)).all()).results || []; for (const r of cs) m[r.id] = Number(r.cost); return m; };
+  const make = async (src, rule, hours, note) => {
+    const code = nudgeCode(), until = now + hours * 3600e3;
+    await env.DB.prepare("INSERT INTO promo_codes (code, kind, value, min, cap, until, max_uses, per_phone, active, note, created, who, dev, need, src, pi) VALUES (?, ?, ?, ?, ?, ?, 1, 1, 1, ?, ?, 'nudge', ?, ?, ?, ?)")
+      .bind(code, rule.kind, rule.value, rule.min || 0, rule.cap || 0, until, note, now, dev, rule.need || null, "nudge-" + src, rule.pi == null ? null : rule.pi).run();
+    return nudgeOut(env, { code, kind: rule.kind, value: rule.value, min: rule.min || 0, cap: rule.cap || 0, until, need: rule.need, pi: rule.pi, src: "nudge-" + src, dev }, data);
+  };
+  // ١) سلة متروكة من يوم قبل (المنتجات مرتبة بالأكثر اهتمام)
+  const cart = rows.filter((r) => r.kind === "c" && r.at < today0 && okP(byId[r.id])).sort((x, y) => (want[y.id] ? score(want[y.id]) : 0) - (want[x.id] ? score(want[x.id]) : 0));
+  if (cfg.cart.on && cart.length) {
+    const cs = await costOf(cart.map((r) => r.id));
+    const room = cart.reduce((sum, r) => sum + nudgeRoom(byId[r.id].price, cs[r.id], cfg), 0);
+    const cap = Math.floor(Math.min(cfg.cart.cap, room));
+    if (cap >= 2) return make("cart", { kind: "percent", value: cfg.cart.pct, cap, min: 0 }, cfg.cart.hours, "عرض رجعة: سلة متروكة");
+  }
+  // ٢) المنتج اللي يبغاه أكثر شي (شافه أيام أكثر / أضافه للسلة أكثر) من يوم قبل وما اشتراه
+  const seen = Object.values(want).filter((w) => w.old && okP(byId[w.id])).sort((x, y) => score(y) - score(x) || y.at - x.at);
+  if (cfg.view.on && seen.length) {
+    const cs = await costOf(seen.slice(0, 8).map((r) => r.id));
+    for (const r of seen.slice(0, 8)) {
+      const p = byId[r.id], price = Number(p.price), room = nudgeRoom(price, cs[r.id], cfg);
+      // أقل سعر مسموح = السعر − الأقل من (النسبة، هامش الربح)، ونطلع لأقرب سعر ينتهي بـ ٩٥ هللة فوقه (ما ينزل تحت الحد أبداً)
+      // قاعدة المالك: لو السعر الجديد رقم صحيح ينقص ٥ هللات (١١ ← ١٠٫٩٥)، ولو ما يتحمل الهامش نرجع لأقرب سعر ٩٥ هللة فوقه
+      const maxOff = Math.min(price * cfg.view.pct / 100, room);
+      let np = Math.round((price - Math.floor(maxOff * 20 + 1e-9) / 20) * 100) / 100;
+      if (Math.abs(np - Math.round(np)) < 1e-9) np = price - (np - 0.05) <= maxOff + 1e-9 ? np - 0.05 : np + 0.95;
+      np = Math.round(np * 100) / 100;
+      const off = Math.round((price - np) * 100) / 100;
+      if (np > 0 && np < price && off >= 0.5 && off <= maxOff + 1e-9) return make("view", { kind: "amount", value: off, min: 0, need: r.id }, cfg.view.hours, "عرض رجعة: " + String(p.name || "").slice(0, 40));
+    }
+  }
+  // ٣) يزورنا كثير وما طلب: عجلة الهدايا (الجائزة من الخادم)
+  if (cfg.wheel.on && pre.days >= cfg.wheel.visits) {
+    const P = cfg.wheel.prizes, tot = P.reduce((a, x) => a + x.w, 0); let x = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296 * tot, pi = 0;
+    for (; pi < P.length - 1; pi++) { x -= P[pi].w; if (x < 0) break; }
+    const z = P[pi]; return make("wheel", { kind: z.kind, value: z.value, cap: z.cap, min: z.min, pi }, cfg.wheel.hours, "عرض رجعة: عجلة الهدايا");
+  }
+  return null;
+}
+// تقرير عروض الرجعة: كم عرض انعطى، وكم انستخدم، وكم كلّف، وكم جاب مبيعات
+async function nudgeStats(env, days) {
+  const from = Date.now() - days * 864e5;
+  const rows = (await env.DB.prepare("SELECT c.src, COUNT(*) given, SUM(CASE WHEN o.no IS NOT NULL THEN 1 ELSE 0 END) used, IFNULL(SUM(json_extract(o.data, '$.promoAmt')), 0) cost, IFNULL(SUM(o.total), 0) sales FROM promo_codes c LEFT JOIN orders o ON o.status != 'canceled' AND json_extract(o.data, '$.promo') = c.code WHERE c.src LIKE 'nudge%' AND c.created >= ? GROUP BY c.src").bind(from).all()).results || [];
+  return rows.map((r) => ({ src: String(r.src).replace("nudge-", ""), given: r.given, used: r.used, cost: Math.round(r.cost * 100) / 100, sales: Math.round(r.sales * 100) / 100 }));
+}
 function hitSrc(x) { const v = String(x || "").toLowerCase().trim(); return /^[a-z0-9._-]{1,30}$/.test(v) ? v : ""; }
 async function recordHits(env, dev, list, staff, kind) {
   const now = Date.now(), st = [];
@@ -2168,6 +2290,22 @@ async function recordHits(env, dev, list, staff, kind) {
     st.push(env.DB.prepare("INSERT INTO vday (day, dev, first_at, last_at, opens, sess, stage, src, kind) VALUES (?1, ?2, ?3, ?3, ?4, 1, ?5, ?6, ?7) ON CONFLICT(day, dev) DO UPDATE SET opens = opens + ?4, sess = sess + CASE WHEN ?4 = 1 AND ?3 - last_at > 1800000 THEN 1 ELSE 0 END, first_at = MIN(first_at, ?3), last_at = MAX(last_at, ?3), stage = MAX(stage, ?5), src = CASE WHEN src = '' THEN ?6 ELSE src END, kind = CASE WHEN kind = '' THEN ?7 ELSE kind END")
       .bind(riyadhDateAt(at), dev, at, open, stage, hitSrc(h.src), k));
     st.push(env.DB.prepare("INSERT INTO devices (dev, first_seen, last_seen) VALUES (?1, ?2, ?2) ON CONFLICT(dev) DO UPDATE SET first_seen = MIN(first_seen, ?2), last_seen = MAX(last_seen, ?2)").bind(dev, at));
+  }
+  const okId = (k) => typeof k === "string" && /^[\w-]{1,40}$/.test(k);
+  let prevCart = null;
+  for (const h of list) {
+    if (!h || typeof h !== "object") continue;
+    let at = Math.floor(Number(h.at) || now); if (!(at > now - 3 * 864e5 && at < now + 5 * 60e3)) at = now;
+    // v = شاف المنتج (n = كم يوم شافه، الجهاز يرسل كل منتج مرة باليوم)
+    if (okId(h.id)) st.push(env.DB.prepare("INSERT INTO vprod (dev, id, kind, at, n) VALUES (?, ?, 'v', ?, 1) ON CONFLICT(dev, id, kind) DO UPDATE SET n = n + 1, at = MAX(at, excluded.at)").bind(dev, h.id, at));
+    if (Array.isArray(h.ids)) {   // محتوى السلة الحالي (c، يستبدل اللي قبله)، وكل منتج جديد بالسلة يزيد عدّاد «أضافه» (a) اللي ما ينمسح
+      const ids = h.ids.filter(okId).slice(0, 15);
+      if (prevCart === null) prevCart = new Set((((await env.DB.prepare("SELECT id FROM vprod WHERE dev = ? AND kind = 'c'").bind(dev).all()).results) || []).map((r) => r.id));
+      for (const id of ids) if (!prevCart.has(id)) st.push(env.DB.prepare("INSERT INTO vprod (dev, id, kind, at, n) VALUES (?, ?, 'a', ?, 1) ON CONFLICT(dev, id, kind) DO UPDATE SET n = n + 1, at = MAX(at, excluded.at)").bind(dev, id, at));
+      st.push(env.DB.prepare("DELETE FROM vprod WHERE dev = ? AND kind = 'c'").bind(dev));
+      for (const id of ids) st.push(env.DB.prepare("INSERT OR IGNORE INTO vprod (dev, id, kind, at) VALUES (?, ?, 'c', ?)").bind(dev, id, at));
+      prevCart = new Set(ids);
+    }
   }
   if (staff) st.push(env.DB.prepare("INSERT OR IGNORE INTO staff_dev (dev, at) VALUES (?, ?)").bind(dev, now));
   if (st.length) await env.DB.batch(st);

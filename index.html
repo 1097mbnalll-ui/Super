@@ -250,6 +250,18 @@ s.was{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
 .phone span{font-family:var(--display);font-weight:700;font-size:13px;color:var(--muted);padding-right:10px;border-right:1px solid var(--line)}
 .phone input{flex:1;border:0;outline:0;background:transparent;font-family:var(--display);font-weight:700;font-size:16px;color:var(--ink);min-width:0;letter-spacing:.04em}
 .err{color:var(--sale);font-size:12.5px;font-weight:700}
+.of-panel{position:relative;display:grid;gap:12px;text-align:center;padding-top:22px}.of-panel h2{margin:0;font-size:20px;line-height:1.35}.of-x{position:absolute;top:10px;inset-inline-start:10px;min-height:36px;width:36px;padding:0;border-radius:50%}
+.of-why{margin:0;font-size:13.5px;color:var(--orange-text,#B5530A);font-weight:600}.of-sub{margin:0;color:var(--muted);font-size:14.5px}.of-sub b{color:var(--orange-text,#B5530A);font-size:17px}.of-left{margin:0;font-size:12.5px;color:var(--muted)}
+.of-prod{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;align-items:center;text-align:start;background:var(--tile,#F4F5F7);border-radius:16px;padding:10px}.of-prod b{display:block;font-size:15px}.of-prod small{color:var(--muted)}
+.of-img{display:block;width:88px;height:88px;border-radius:12px;background:#fff;overflow:hidden}.of-img img{width:100%;height:100%;object-fit:contain}.of-price{display:block;margin-top:4px}.of-price s{color:var(--muted);font-size:13px}.of-price b{display:inline;color:var(--sale,#F2335B);font-size:19px}
+.of-thumbs{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}.of-thumbs .of-img{width:64px;height:64px;border:1px solid var(--line)}
+.of-wheel{position:relative;width:min(280px,78vw);aspect-ratio:1;margin:4px auto 0}.of-disc{position:absolute;inset:0;border-radius:50%;border:6px solid #fff;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.of-lbl{position:absolute;left:calc(50% - 46px);top:0;width:92px;height:50%;transform-origin:50% 100%;display:flex;justify-content:center;padding-top:16px;box-sizing:border-box}.of-lbl b{font-size:13px;line-height:1.2;color:#2B1300;max-width:70px}
+.of-hub{position:absolute;inset:42%;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}.of-pin{position:absolute;z-index:2;top:-10px;left:calc(50% - 12px);width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:22px solid var(--sale,#F2335B)}
+.of-spin{min-height:50px;font-size:17px}.of-win{display:grid;gap:4px;background:#FFF4E5;border-radius:16px;padding:12px}.of-win b{font-size:19px;color:#B5530A}.of-win small{color:var(--muted)}.of-code{font-size:13px}.of-code code{font-weight:800;letter-spacing:.06em;direction:ltr}
+.of-go{min-height:50px;font-size:16px}
+.of-pill{position:fixed;z-index:35;left:50%;transform:translateX(-50%);bottom:calc(84px + var(--sa-bottom,0px));max-width:calc(100% - 32px);border:0;border-radius:999px;background:#2B1300;color:#fff;font:inherit;font-weight:700;font-size:13.5px;padding:10px 16px;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (prefers-reduced-motion:reduce){.of-disc{transition:none!important}}
 .pays{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .pays button{min-height:42px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
 .pays button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
@@ -1968,9 +1980,10 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function giftRow(t){ return t.gift ? '<div class="saved"><span>' + tr("هدية اعتذار", "Apology gift") + '</span><span>−' + rial(t.gift) + '</span></div>' : ''; }
   // كود الخصم: الخادم يتأكد منه (/promo/check) ويحسبه وقت الطلب. ما يجتمع مع «هدية اعتذار»
   var promoRule = null;
-  function promoAmt(r, s){ if (!r || s < Number(r.min || 0)) return 0; var a = r.kind === "percent" ? s * Number(r.value) / 100 : Number(r.value); if (r.kind === "percent" && Number(r.cap) > 0) a = Math.min(a, Number(r.cap)); return Math.round(Math.max(0, Math.min(a, s)) * 100) / 100; }
-  function promoRow(t){ if (!promoRule) return ''; return t.promo ? '<div class="saved"><span>' + tr("كود الخصم ", "Promo ") + esc(promoRule.code) + '</span><span>−' + rial(t.promo) + '</span></div>' : '<div class="saved"><span>' + tr("الكود ", "Code ") + esc(promoRule.code) + tr(" يحتاج منتجات بـ ", " needs items worth ") + num(promoRule.min) + tr(" ر.س", " SAR") + '</span><span></span></div>'; }
-  var PROMO_ERR = { promo_invalid: ["الكود غير صحيح أو موقوف.", "Invalid code."], promo_expired: ["انتهت صلاحية الكود.", "This code has expired."], promo_used: ["استخدمت هالكود قبل بنفس الجوال.", "You already used this code."], promo_limit: ["الكود خلص عدد استخداماته.", "This code has reached its limit."], promo_min: ["الكود يحتاج مبلغ أعلى للمنتجات.", "Your items total is below this code's minimum."], slow_down: ["محاولات كثيرة، جرّب بعد شوي.", "Too many tries, please wait."] };
+  function cartHasBase(id){ for (var k in cart) if (cart[k] > 0 && String(k).split(":").pop().split("~")[0] === id) return true; return false; }
+  function promoAmt(r, s){ if (!r || s < Number(r.min || 0) || (r.need && !cartHasBase(r.need))) return 0; var a = r.kind === "percent" ? s * Number(r.value) / 100 : Number(r.value); if (r.kind === "percent" && Number(r.cap) > 0) a = Math.min(a, Number(r.cap)); return Math.round(Math.max(0, Math.min(a, s)) * 100) / 100; }
+  function promoRow(t){ if (!promoRule) return ''; if (!t.promo && promoRule.need && !cartHasBase(promoRule.need)) { var np = byId(promoRule.need); return '<div class="saved"><span>' + tr("أضف «", "Add “") + esc(np ? nm(np) : "") + tr("» للسلة عشان ينطبق خصمك", "” to your cart to get your discount") + '</span><span></span></div>'; } return t.promo ? '<div class="saved"><span>' + tr("كود الخصم ", "Promo ") + esc(promoRule.code) + '</span><span>−' + rial(t.promo) + '</span></div>' : '<div class="saved"><span>' + tr("الكود ", "Code ") + esc(promoRule.code) + tr(" يحتاج منتجات بـ ", " needs items worth ") + num(promoRule.min) + tr(" ر.س", " SAR") + '</span><span></span></div>'; }
+  var PROMO_ERR = { promo_invalid: ["الكود غير صحيح أو موقوف.", "Invalid code."], promo_expired: ["انتهت صلاحية الكود.", "This code has expired."], promo_used: ["استخدمت هالكود قبل بنفس الجوال.", "You already used this code."], promo_limit: ["الكود خلص عدد استخداماته.", "This code has reached its limit."], promo_min: ["الكود يحتاج مبلغ أعلى للمنتجات.", "Your items total is below this code's minimum."], promo_need: ["خصمك على منتج معيّن: أضفه للسلة عشان ينطبق.", "This discount is for a specific item. Add it to your cart."], slow_down: ["محاولات كثيرة، جرّب بعد شوي.", "Too many tries, please wait."] };
   function promoMsg(code){ var m = PROMO_ERR[code] || ["ما قدرنا نتأكد من الكود، جرّب مرة ثانية.", "Could not check the code, try again."]; return tr(m[0], m[1]); }
   function applyPromo(){
     var inp = $("cPromo"), msg = $("cPromoMsg"), btn = $("cPromoBtn"); if (!inp) return;
@@ -1978,10 +1991,10 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     if (promoRule && (!code || code === promoRule.code)) { promoRule = null; inp.value = ""; msg.className = "promo-msg"; msg.textContent = ""; btn.textContent = tr("طبّق", "Apply"); updateCheckoutTotals(); return; }
     if (!code) return;
     btn.disabled = true; msg.className = "promo-msg"; msg.textContent = tr("جاري التحقق…", "Checking…");
-    fetchJSON(apiUrl() + "/promo/check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: code, phone: normPhone(form.phone) }) }).then(function(j){
+    fetchJSON(apiUrl() + "/promo/check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: code, phone: normPhone(form.phone), dev: devId(), items: cart }) }).then(function(j){
       btn.disabled = false;
       if (!j || !j.ok) { promoRule = null; msg.className = "promo-msg bad"; msg.textContent = promoMsg(j && j.code); updateCheckoutTotals(); return; }
-      promoRule = { code: j.code, kind: j.kind, value: j.value, min: j.min, cap: j.cap };
+      promoRule = { code: j.code, kind: j.kind, value: j.value, min: j.min, cap: j.cap, need: j.need || "" };
       msg.className = "promo-msg ok"; msg.textContent = tr("تم تطبيق الكود: ", "Code applied: ") + (j.kind === "percent" ? num(j.value) + "٪" + (j.cap > 0 ? tr(" (حتى ", " (up to ") + num(j.cap) + tr(" ر.س)", " SAR)") : "") : num(j.value) + tr(" ر.س", " SAR")) + (j.min > 0 ? tr(" على طلب ", " on orders from ") + num(j.min) + tr(" ر.س وفوق", " SAR") : "");
       btn.textContent = tr("شيل", "Remove"); updateCheckoutTotals();
     });
@@ -2030,7 +2043,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function hitFlush(){
     if (hitBusy || EMBED || !apiUrl()) return; var q = hitQ(); if (!q.length) return; hitBusy = true; var n = q.length;
     fetch(apiUrl() + "/hit", { method: "POST", keepalive: true, headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ dev: devId(), staff: isStaffDev() ? 1 : 0, q: q }) })
-      .then(function(r){ hitBusy = false; if (r.ok || r.status === 400) { hitSave(hitQ().slice(n)); if (hitQ().length) setTimeout(hitFlush, 500); } }).catch(function(){ hitBusy = false; });
+      .then(function(r){ hitBusy = false; if (r.ok || r.status === 400) { hitSave(hitQ().slice(n)); if (hitQ().length) setTimeout(hitFlush, 500); if (r.ok) r.json().then(function(j){ if (j && j.offer) offerGot(j.offer); }).catch(function(){}); } }).catch(function(){ hitBusy = false; });
   }
   function hitAdd(h){ if (EMBED) return; var q = hitQ(); q.push(h); hitSave(q); hitFlush(); }
   function markStaffDev(){ if (isStaffDev()) return; try { localStorage.setItem("ohod-staffdev", "1"); } catch(e){} hitAdd({ st: 0, o: 0, at: Date.now() }); }
@@ -2053,9 +2066,109 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     HSTM = { d: d, s: st }; try { localStorage.setItem("ohod-hitst", JSON.stringify(HSTM)); } catch(e){}
     hitAdd({ st: st, at: Date.now(), src: hitSrc() });
   }
+  // المنتجات اللي شافها (لعروض الرجعة): كل منتج مرة باليوم، وبالكثير ١٥
+  function hitView(id){
+    if (EMBED || mode !== "store" || !apiUrl() || !id) return; id = String(id).split("~")[0];
+    var d = rDay(), v = { d: d, ids: [] }; try { v = JSON.parse(localStorage.getItem("ohod-hitv") || "null") || v; } catch(e){}
+    if (v.d !== d) v = { d: d, ids: [] }; if (v.ids.indexOf(id) >= 0 || v.ids.length >= 15) return;
+    v.ids.push(id); try { localStorage.setItem("ohod-hitv", JSON.stringify(v)); } catch(e){}
+    HSTM = { d: d, s: Math.max(1, (HSTM && HSTM.d === d && HSTM.s) || 0) }; try { var cur = JSON.parse(localStorage.getItem("ohod-hitst") || "null"); if (!cur || cur.d !== d || cur.s < 1) localStorage.setItem("ohod-hitst", JSON.stringify({ d: d, s: 1 })); } catch(e){}
+    hitAdd({ st: 1, id: id, at: Date.now(), src: hitSrc() });
+  }
+  // محتوى السلة (أرقام المنتجات بس) بعد ٣ ثواني من آخر تغيير، ولو تغيّر عن آخر مرة
+  var hitCartT = null;
+  function hitCartSoon(){ clearTimeout(hitCartT); hitCartT = setTimeout(hitCartNow, 3000); }
+  function hitCartNow(){
+    clearTimeout(hitCartT); hitCartT = null; if (EMBED || mode !== "store" || !apiUrl()) return;
+    var ids = []; Object.keys(cart).forEach(function(k){ if (cart[k] > 0) { var b = String(k).split(":").pop().split("~")[0]; if (/^[\w-]{1,40}$/.test(b) && ids.indexOf(b) < 0) ids.push(b); } });
+    ids = ids.slice(0, 15); var sig = ids.slice().sort().join(","), last = null; try { last = localStorage.getItem("ohod-hitc"); } catch(e){}
+    if (sig === last) return; try { localStorage.setItem("ohod-hitc", sig); } catch(e){}
+    if (ids.length) { var d = rDay(); HSTM = { d: d, s: Math.max(2, (HSTM && HSTM.d === d && HSTM.s) || 0) }; try { var cur = JSON.parse(localStorage.getItem("ohod-hitst") || "null"); if (!cur || cur.d !== d || cur.s < 2) localStorage.setItem("ohod-hitst", JSON.stringify({ d: d, s: 2 })); } catch(e){} }
+    hitAdd(ids.length ? { st: 2, ids: ids, at: Date.now(), src: hitSrc() } : { st: 0, o: 0, ids: [], at: Date.now() });
+  }
+  document.addEventListener("visibilitychange", function(){ if (document.hidden && hitCartT) hitCartNow(); });
   setTimeout(function(){ if (EMBED || !apiUrl()) return; if (mode === "store") hitAdd({ st: 0, at: Date.now(), src: hitSrc() }); else hitFlush(); }, 600);
   window.addEventListener("online", hitFlush);
   setInterval(function(){ if (hitQ().length) hitFlush(); }, 60000);
+  /* ---------- عروض الرجعة (١٧ نوفمبر ٢٠٢٦): الخادم يعطي الزائر الراجع اللي ما طلب عرض شخصي مع رد /hit ----------
+     cart: سلتك محفوظة وعليها خصم. view: المنتج اللي شفته صار أرخص لك. wheel: عجلة هدايا (الجائزة محددة من الخادم).
+     الكود مربوط بهالجهاز وينطبق تلقائي في صفحة الطلب، والخادم يتأكد من كل شي وقت الطلب. */
+  var OFFER = null;
+  try { OFFER = JSON.parse(localStorage.getItem("ohod-offer") || "null"); } catch(e){}
+  function offerLive(){ return OFFER && OFFER.code && OFFER.until > Date.now() ? OFFER : null; }
+  function offerSave(){ try { if (OFFER) localStorage.setItem("ohod-offer", JSON.stringify(OFFER)); else localStorage.removeItem("ohod-offer"); } catch(e){} }
+  function offerDrop(code){ if (OFFER && (!code || OFFER.code === code)) { OFFER = null; offerSave(); offerUi(); } }
+  function offerLeft(o){ var m = Math.max(0, Math.round((o.until - Date.now()) / 60000)); return m >= 120 ? tr("باقي ", "") + num(Math.floor(m / 60)) + tr(" ساعة", "h left") : m >= 60 ? tr("باقي ساعة", "1h left") : tr("باقي ", "") + num(m) + tr(" دقيقة", " min left"); }
+  function prizeLbl(x){ return x.kind === "percent" ? tr("خصم ", "") + num(x.value) + "٪" + tr("", " off") : num(x.value) + tr(" ر.س خصم", " SAR off"); }
+  function prizeSub(x){ return (x.kind === "percent" && x.cap > 0 ? tr("لين ", "up to ") + num(x.cap) + tr(" ر.س", " SAR") : "") + (x.min > 0 ? (x.kind === "percent" && x.cap > 0 ? " · " : "") + tr("على طلب ", "on orders ") + num(x.min) + tr(" ر.س وفوق", " SAR+") : ""); }
+  function offerGot(o){
+    if (!o || !o.code || EMBED || NATIVE) return;
+    var isNew = !OFFER || OFFER.code !== o.code;
+    var keep = isNew ? {} : { seen: OFFER.seen, spun: OFFER.spun };
+    OFFER = Object.assign({}, o, keep); offerSave(); offerUi();
+    if (!OFFER.seen) setTimeout(function(){ if (mode === "store" && screen !== "checkout" && screen !== "sent" && !document.querySelector(".sheet:not([hidden])")) offerSheet(); }, 1500);
+  }
+  function offerAdd(id){
+    var L = lineOf(id); if (!L || !avail(L.p)) { sToast(tr("المنتج خلص للأسف", "Sorry, this item is out of stock")); return false; }
+    var st = stepOf(L.p); if (!canAddProduct(L.p.id, st)) { sToast(tr("وصلت للحد المسموح من هذا المنتج", "Purchase limit reached")); return false; }
+    if (!cart[id]) { cart[id] = st; saveCart(); refresh(); } return true;
+  }
+  function offerWhy(o){ var w = []; if (o.views > 1) w.push(tr("شفته ", "You viewed it ") + num(o.views) + tr(" مرات", " times")); if (o.adds > 0) w.push(o.adds > 1 ? tr("أضفته للسلة ", "added it to your cart ") + num(o.adds) + tr(" مرات", " times") : tr("أضفته للسلة قبل", "added it to your cart before")); return w.length ? '<p class="of-why">' + w.join(tr(" و", " and ")) + tr("، فخصّصنا لك سعر أقل 💛", ", so here is a special price 💛") + '</p>' : ''; }
+  function offerHead(o){
+    if (o.src === "cart") return '<h2 id="ofT">' + tr("رجعت؟ سلتك محفوظة 🛒", "Welcome back! Your cart is saved 🛒") + '</h2><p class="of-sub">' + tr("وعليها خصم ", "And it has ") + '<b>' + num(o.value) + '٪</b>' + tr(" لك أنت بس", " off just for you") + (o.cap ? tr(" (لين ", " (up to ") + num(o.cap) + tr(" ر.س)", " SAR)") : "") + '</p>';
+    if (o.src === "view") { var p = byId(o.need); return '<h2 id="ofT">' + tr("المنتج اللي عجبك صار أرخص لك 👀", "The item you liked is cheaper for you 👀") + '</h2>' + (p ? '<div class="of-prod"><span class="of-img">' + imgTag(p.img, nm(p)) + '</span><span><b>' + esc(nm(p)) + '</b><small>' + esc(p.unit || "") + '</small><span class="of-price"><s>' + rial(o.price || p.price) + '</s> <b>' + rial(o.newPrice || (p.price - o.value)) + '</b></span></span></div>' + offerWhy(o) : ''); }
+    return '<h2 id="ofT">' + tr("عجلة الهدايا 🎁", "Gift wheel 🎁") + '</h2><p class="of-sub">' + tr("لأنك تزورنا كثير، لفّ العجلة وخذ هديتك", "You visit us a lot. Spin and get your gift") + '</p>';
+  }
+  function wheelHTML(o){
+    var P = o.prizes || [], n = P.length || 1, seg = 360 / n, cols = ["#FFE3C7", "#DDF1EA", "#FFF4CC", "#E9E4FF", "#FFDDE6", "#DDEBFF", "#F1F5D7", "#FCE7D6"];
+    var grad = P.map(function(_, i){ return cols[i % cols.length] + " " + (i * seg) + "deg " + ((i + 1) * seg) + "deg"; }).join(",");
+    return '<div class="of-wheel"><i class="of-pin" aria-hidden="true"></i><div class="of-disc" id="ofDisc" style="background:conic-gradient(' + grad + ')">' +
+      P.map(function(x, i){ return '<span class="of-lbl" style="transform:rotate(' + ((i + 0.5) * seg) + 'deg)"><b>' + prizeLbl(x) + '</b></span>'; }).join("") + '<i class="of-hub"></i></div></div>';
+  }
+  function offerResult(o){ var z = { kind: o.kind, value: o.value, cap: o.cap, min: o.min }; return '<div class="of-win" id="ofWin"><b>' + tr("مبروك! ", "You won ") + prizeLbl(z) + '</b>' + (prizeSub(z) ? '<small>' + prizeSub(z) + '</small>' : '') + '<span class="of-code">' + tr("كودك: ", "Code: ") + '<code>' + esc(o.code) + '</code> · ' + tr("ينطبق تلقائي في صفحة الطلب", "applied automatically at checkout") + '</span></div>'; }
+  function offerSheet(){
+    var o = offerLive(); if (!o) return; o.seen = 1; offerSave();
+    var old = $("ofSheet"); if (old) old.remove();
+    var cta = o.src === "cart" ? tr("كمّل طلبك", "Complete your order") : o.src === "view" ? tr("أضفه للسلة", "Add to cart") : tr("تسوّق الحين", "Shop now");
+    var body = o.src === "wheel" ? wheelHTML(o) + (o.spun ? offerResult(o) : '<button class="btn btn-orange of-spin" type="button" id="ofSpin">' + tr("لفّ العجلة", "Spin the wheel") + '</button>')
+      : o.src === "cart" ? '<div class="of-thumbs">' + (o.ids || []).map(byId).filter(Boolean).slice(0, 5).map(function(p){ return '<span class="of-img">' + imgTag(p.img, nm(p)) + '</span>'; }).join("") + '</div>' : '';
+    var w = document.createElement("div");
+    w.innerHTML = '<div class="sheet" id="ofSheet"><div class="panel of-panel" role="dialog" aria-modal="true" aria-labelledby="ofT"><button class="btn btn-ghost of-x" type="button" id="ofClose" aria-label="' + tr("إغلاق", "Close") + '">✕</button>' +
+      offerHead(o) + body + '<p class="of-left">⏳ ' + offerLeft(o) + tr(" · لهالجوال بس", " · this phone only") + '</p>' +
+      '<button class="btn btn-teal of-go" type="button" id="ofGo"' + (o.src === "wheel" && !o.spun ? ' hidden' : '') + '>' + cta + '</button></div></div>';
+    document.body.appendChild(w.firstChild);
+    var close = function(){ var x = $("ofSheet"); if (x) x.remove(); offerUi(); };
+    $("ofClose").onclick = close; $("ofSheet").addEventListener("click", function(e){ if (e.target.id === "ofSheet") close(); });
+    $("ofGo").onclick = function(){
+      close();
+      if (o.src === "cart") { var any = false; for (var k in cart) if (cart[k] > 0) any = true; if (!any) (o.ids || []).forEach(function(id){ offerAdd(id); }); show("cart"); return; }
+      if (o.src === "view") { if (offerAdd(o.need)) { sToast(tr("انضاف للسلة، والخصم ينطبق في صفحة الطلب", "Added. The discount applies at checkout")); } return; }
+    };
+    var sp = $("ofSpin"); if (sp) sp.onclick = function(){
+      sp.disabled = true; var n = (o.prizes || []).length || 1, seg = 360 / n, d = $("ofDisc");
+      var reduce = false; try { reduce = matchMedia("(prefers-reduced-motion: reduce)").matches; } catch(e){}
+      d.style.transition = reduce ? "none" : "transform 4.2s cubic-bezier(.17,.67,.12,1)";
+      d.style.transform = "rotate(" + (360 * 6 - (o.pi + 0.5) * seg) + "deg)";
+      setTimeout(function(){ o.spun = 1; OFFER.spun = 1; offerSave(); sp.insertAdjacentHTML("afterend", offerResult(o)); sp.remove(); $("ofGo").hidden = false; try { if (navigator.vibrate) navigator.vibrate(40); } catch(e){} }, reduce ? 50 : 4300);
+    };
+  }
+  function offerUi(){
+    var o = offerLive(), pill = $("ofPill");
+    var showIt = o && mode === "store" && !EMBED && ["checkout", "sent"].indexOf(screen) < 0;
+    if (!showIt) { if (pill) pill.remove(); return; }
+    if (!pill) { pill = document.createElement("button"); pill.type = "button"; pill.id = "ofPill"; pill.className = "of-pill"; pill.onclick = offerSheet; document.body.appendChild(pill); }
+    pill.textContent = "🎁 " + (o.src === "wheel" && !o.spun ? tr("عندك هدية، لفّ العجلة", "You have a gift. Spin!") : o.src === "view" ? tr("المنتج اللي شفته أرخص لك", "Your item is cheaper") : o.src === "cart" ? tr("خصم ", "") + num(o.value) + tr("٪ على سلتك", "% off your cart") : prizeLbl(o)) + " · " + offerLeft(o);
+  }
+  // صفحة الطلب: يطبّق كود العرض تلقائي لو ما فيه كود ثاني
+  function offerApply(){
+    var o = offerLive(); if (!o || promoRule || screen !== "checkout") return;
+    promoRule = { code: o.code, kind: o.kind, value: o.value, min: o.min, cap: o.cap, need: o.need || "" };
+    var inp = $("cPromo"), msg = $("cPromoMsg"), btn = $("cPromoBtn");
+    if (inp) inp.value = o.code; if (btn) btn.textContent = tr("شيل", "Remove");
+    if (msg) { msg.className = "promo-msg ok"; msg.textContent = "🎁 " + tr("خصمك الخاص مطبّق", "Your special discount is applied"); }
+    updateCheckoutTotals();
+  }
+  setInterval(function(){ if (OFFER && !offerLive()) offerDrop(); else if (offerLive()) offerUi(); }, 60000);
   function evAdd(kind, id){ var m = EV[kind]; m[id] = (m[id] || 0) + 1; }
   document.addEventListener("visibilitychange", function(){ if (document.hidden) evFlush(); });
   window.addEventListener("pagehide", evFlush);
@@ -2102,7 +2215,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   // شاشة كاملة من الموقع داخل التطبيق (screen=home|cats|cat|product|search|cart|checkout|more): أي تعديل على الموقع يطلع في التطبيق بدون تحديث
   var EMBED_SCREEN = qp("screen");
   if (EMBED) { try { cart = window.__APP_CART__ || JSON.parse(qp("cart") || "{}") || {}; } catch(e) { cart = {}; } }
-  function saveCart(){ if (EMBED) { if (EMBED_SCREEN || EMBED_PAGE) toApp({ t: "cart.sync", cart: cart }); return; } try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} cartPingCheck(); for (var ck in cart) { if (cart[ck] > 0) { hitStage(2); break; } } }
+  function saveCart(){ if (EMBED) { if (EMBED_SCREEN || EMBED_PAGE) toApp({ t: "cart.sync", cart: cart }); return; } try { localStorage.setItem("ohod-cart", JSON.stringify(cart)); } catch(e){} cartPingCheck(); hitCartSoon(); }
   // جهاز الزبون المجهول (شرائح إشعارات العروض، ١٤ نوفمبر ٢٠٢٦): رقم عشوائي d-… بدون اسم ولا جوال، ينرسل مع الاشتراك والطلب ونبضة السلة.
   // داخل التطبيق (embed) ياخذ رقم جهاز التطبيق من الرابط (dev=…) عشان يكون نفس الجهاز
   var DEV_ID = null;
@@ -3627,7 +3740,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       // أقسام الرئيسية: مكان البنر فاضي لين توصل البيانات (التطبيق يستنى ٨ ثواني بس، فما نخليه يحسب إن الصفحة ما فتحت)
       EMBED_SLOT ? '' : '<div class="embed"><div class="wrap"><div style="height:' + (Number(S.banH) || 200) + 'px;border-radius:24px;background:linear-gradient(90deg,#f3f0fa,#ebe6f7,#f3f0fa)"></div></div></div>';
       setTimeout(embedHeight, 0); return; }
-    if (screen === "product") hitStage(1); else if (screen === "checkout") hitStage(3);
+    if (screen === "product") hitView(openProd); else if (screen === "checkout") { hitStage(3); setTimeout(offerApply, 0); }
+    setTimeout(offerUi, 0);
     var h = screen === "home" ? homeHTML() : screen === "cats" ? catsHTML() : screen === "cat" ? catHTML() : screen === "product" ? productHTML() :
       screen === "search" ? searchHTML() : screen === "cart" ? cartHTML() : screen === "checkout" ? checkoutHTML() : screen === "sent" ? sentHTML() :
       screen === "fav" ? favHTML() : screen === "addrs" ? addrsHTML() : screen === "addr" ? addrEditHTML() : moreHTML();
@@ -4022,6 +4136,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
           if(!j.repeated)Object.keys(items).forEach(function(k){ var L3 = lineOf(k); if (L3 && LIVE[L3.p.id] != null) LIVE[L3.p.id] = Math.max(0, LIVE[L3.p.id] - items[k]); });
           if(walletCustomer&&walletCustomer.phone===payload.phone)walletCustomer.balance=Math.max(0,walletCustomer.balance-usedWallet);walletUseAmount=0;saveCheckoutAttempt(null);
           if (EMBED) toApp({ t: "order", no: String(j.orderNo), total: Number(j.total) || 0, phone: phone, pay: payload.pay, items: items, lat: payload.lat, lng: payload.lng, track: !!j.track });
+          if (payload.promo && OFFER && OFFER.code === payload.promo) offerDrop(payload.promo);
           if(!EMBED){CP.n=0;cpSave();}   // الخادم فضّى عدّ السلة مع الطلب
           if(sentCart&&JSON.stringify(cart)===sentCart)cart={};if(payload.free&&freeList===payload.free){setFree("");freeEdit=false;}saveCart(); form.note = ""; saveForm(); stack = []; screen = "sent"; try { var hp = nativePlug("Haptics"); if (hp && hp.notification) hp.notification({ type: "SUCCESS" }); } catch(e){} render(); loadStock(); window.scrollTo(0, 0); return;
         }
@@ -4029,6 +4144,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         if((c==='network'||c==='timeout'||j.status>=500)&&checkoutAttempt){checkoutAttempt.uncertain=true;saveCheckoutAttempt(checkoutAttempt);}
         if(!checkoutAttempt?.uncertain&&['empty','bad_phone','bad_location','unavailable','item_limit','bad_items','min_order','closed','wallet_balance','wallet_login','bad_payment','bad_request_id'].includes(c))saveCheckoutAttempt(null);
         if(c==='network'||c==='timeout'||j.status>=500)return sendErr(tr('ما قدرنا نؤكد نتيجة الطلب. اضغط أرسل مرة ثانية للتأكد من نفس الطلب بدون تكراره.','We could not confirm the order. Submit again to confirm the same order without duplicating it.'),j.status>=500);
+        if(c&&/^promo_/.test(c)&&c!=='promo_need'&&OFFER&&OFFER.code===payload.promo)offerDrop(payload.promo);
         if(c&&/^promo_/.test(c)){promoRule=null;updateCheckoutTotals();if($("cPromoBtn"))$("cPromoBtn").textContent=tr("طبّق","Apply");return sendErr(promoMsg(c)+tr(' شلنا الكود، تقدر ترسل الطلب بدونه.',' The code was removed; you can send the order without it.'));}
         if(c==='empty')return sendErr(payload.free&&!Object.keys(payload.items||{}).length?tr('الطلب بالكتابة لحاله ما يوصل المحل الحين. أضف منتج واحد على الأقل من المتجر، أو أرسل أغراضك على الواتساب.','A written list alone cannot be sent right now. Add at least one product, or send your list on WhatsApp.'):tr('سلتك فاضية.','Your cart is empty.'),true);
         if(c==='item_limit')return sendErr(tr('تجاوزت الحد المسموح لأحد المنتجات. ارجع للسلة وقلّل الكمية.','A product reached its purchase limit. Reduce its quantity in your cart.'));

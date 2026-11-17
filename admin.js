@@ -2173,6 +2173,9 @@
       ".vis-hours{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:2px;align-items:end;height:120px;padding-top:8px}.vis-hours div{background:#CFE9E0;border-radius:3px 3px 0 0;position:relative;min-height:2px}.vis-hours div.o{background:#0E8A6A}.vis-hlbl{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));font-size:9.5px;color:#66707C;text-align:center}",
       ".vis-acc{display:flex;gap:12px;align-items:center}.vis-acc .big{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}.vis-acc.good .big{color:#0E8A6A}.vis-acc.warn .big{color:#B5530A}",
       ".vis-link{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.vis-link code{font-size:12px;direction:ltr;overflow-wrap:anywhere;color:#334}",
+      ".nd-main{font-size:16px;margin:6px 0 10px}.nd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:12px}.nd-grid fieldset{border:1px solid var(--line);border-radius:12px;padding:12px;margin:0;display:grid;gap:8px;min-width:0}.nd-grid fieldset .hint{margin:0}",
+      ".nd-grid label{display:grid;grid-template-columns:minmax(0,1fr) 120px;align-items:center;gap:8px;font-size:13px}.nd-in{display:flex;align-items:center;gap:4px}.nd-in input{width:100%;min-width:0;min-height:38px}.nd-in small{color:#66707C}.nd-tg{display:flex!important;gap:8px}.nd-tg b{font-size:15px}",
+      ".nd-pz{display:grid;grid-template-columns:minmax(0,1.2fr) repeat(4,minmax(0,1fr)) auto;gap:6px}.nd-pz input,.nd-pz select{min-width:0;min-height:36px;padding:4px 6px}",
       "@media (max-width:600px){.vis-bar{grid-template-columns:96px minmax(0,1fr) 40px;font-size:12.5px}}"
     ].join("\n"); document.head.appendChild(st); }
     var chips = '<div class="vis-chips" role="group" aria-label="المدة">' + [[1, "اليوم"], [7, "٧ أيام"], [30, "٣٠ يوم"], [90, "٣ شهور"]].map(function(x){ return '<button type="button" data-visd="' + x[0] + '" aria-pressed="' + (visDays === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div>';
@@ -2214,15 +2217,55 @@
         (j.daily.length > 1 ? '<div class="card"><h2>يوم بيوم</h2><div class="vis-wrap"><table class="vis-tbl"><thead><tr><th>اليوم</th><th class="n">زوار</th><th class="n">جدد</th><th class="n">زيارات</th></tr></thead><tbody>' +
           j.daily.slice().reverse().map(function(d){ return '<tr><td>' + esc(d.day) + '</td><td class="n">' + num(d.visitors) + '</td><td class="n">' + num(d.fresh || 0) + '</td><td class="n">' + num(d.visits) + '</td></tr>'; }).join("") + '</tbody></table></div></div>' : '') +
         '<div class="card"><h2>الأجهزة</h2>' + (j.kinds.length ? j.kinds.map(function(k){ return visBar(k.visitors, j.visitors, k.kind === "m" ? "جوال" : k.kind === "d" ? "كمبيوتر" : k.kind === "ios" ? "تطبيق الآيفون" : k.kind || "غير معروف"); }).join("") : '<p class="hint">—</p>') + '</div>' +
+        '<div class="card" id="nudgeCard"><h2>عروض الرجعة</h2><p class="hint">جاري التحميل…</p></div>' +
         '<div class="card"><h2>روابط تعرف منها مصدر الزبون</h2><p class="hint">استخدم هالروابط في الملصقات والقروبات، ويطلع لك هنا كم زبون جا من كل واحد وكم طلب.</p>' +
           VIS_LINKS.map(function(x){ var u = base + "?src=" + x[0]; return '<div class="vis-link"><div><b>' + x[1] + '</b><br><code>' + esc(u) + '</code></div><button type="button" class="btn btn-soft sm" data-viscp="' + esc(u) + '">انسخ</button></div>'; }).join("") + '</div>' +
         '<div class="card"><h2>تقارير مساعدة</h2><div class="quick"><button type="button" class="btn btn-ghost" data-atab="stats">المنتجات الأكثر مبيعاً والبحث بدون نتيجة</button><button type="button" class="btn btn-ghost" data-atab="cust">الزباين اللي ما رجعوا</button><button type="button" class="btn btn-ghost" data-atab="rates">التقييمات</button></div></div>' +
         '<div class="card"><h2>أجهزة الموظفين</h2><p class="hint">أي جهاز دخل الإدارة أو صفحة المندوب ينعلّم تلقائياً وما ينحسب بالزوار. لو عندك جهاز ثاني تتصفح فيه المتجر ودخلت منه الإدارة، انعلّم خلاص.</p>' +
           '<div class="quick"><button type="button" class="btn btn-soft" id="visMe">استثني هالجهاز</button><button type="button" class="btn btn-ghost" id="visClr">صفّر القائمة (' + num(j.staffDevices) + ')</button></div><p class="status" id="visStMsg" aria-live="polite"></p>' +
           '<p class="hint">كيف ينحسب: الجهاز يرسل لحظة فتح الموقع (مو وقت الطلوع)، ولو ما وصل ينحفظ بالجهاز وينرسل بعدين بوقته. الروبوتات ما تنحسب. اللي ما يقدر نعدّه: متصفح قافل الجافاسكربت (نادر جداً). تطبيق الآيفون ينحسب من تحديثه الجاي.</p></div>';
+      renderNudge();
       $("visBody").querySelectorAll("[data-viscp]").forEach(function(b){ b.onclick = function(){ var u = b.dataset.viscp; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function(){ b.textContent = "انسخ ✓"; }).catch(function(){ window.prompt("انسخ الرابط:", u); }); }; });
       $("visMe").onclick = function(){ markStaffDev(); api("/admin/staff-dev", { pin: adminPin, dev: devId() }).then(function(x){ $("visStMsg").textContent = x.ok ? "تم، هالجهاز ما ينحسب." : "ما زبط، جرّب مرة ثانية."; }); };
       $("visClr").onclick = function(){ if (!window.confirm("تصفير القائمة يخلّي أجهزة الموظفين تنحسب لين يدخلون الإدارة مرة ثانية. متأكد؟")) return; api("/admin/staff-dev", { pin: adminPin, clear: 1, dev: devId() }).then(function(x){ if (x.ok) renderVisits(); }); };
+    });
+  }
+  /* ---------- عروض الرجعة: الإعدادات والتقرير (داخل «الزوار والتحويل») ---------- */
+  var NUDGE_SRC = { cart: "سلة متروكة", view: "منتج يبغاه", wheel: "عجلة الهدايا" };
+  function renderNudge(){
+    var box = $("nudgeCard"); if (!box) return;
+    api("/admin/nudge", { pin: adminPin, days: Math.max(30, visDays) }).then(function(j){
+      if (!$("nudgeCard")) return;
+      if (!j.ok) { box.innerHTML = '<h2>عروض الرجعة</h2><p class="hint">' + (j.code === "not_found" ? "يحتاج تحديث الخادم في Cloudflare." : "ما قدرنا نجيب الإعدادات.") + '</p>'; return; }
+      var c = j.cfg, nf = function(id, label, v, step, suf){ return '<label>' + label + '<span class="nd-in"><input id="' + id + '" type="number" inputmode="decimal" step="' + (step || 1) + '" value="' + esc(v) + '">' + (suf ? '<small>' + suf + '</small>' : '') + '</span></label>'; };
+      var tg = function(id, on, label){ return '<label class="chk nd-tg"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><b>' + label + '</b></label>'; };
+      var st = j.stats || [], tot = st.reduce(function(a, x){ a.g += x.given; a.u += x.used; a.c += x.cost; a.s += x.sales; return a; }, { g: 0, u: 0, c: 0, s: 0 });
+      box.innerHTML = '<div class="sec-head" style="margin:0"><h2>عروض الرجعة (حوّل الزائر لزبون)</h2></div>' +
+        '<p class="hint">الزائر اللي رجع وما طلب قبل ياخذ عرض شخصي لجواله بس: لو ترك سلة، أو شاف منتج وطلع، أو زارنا كثير بدون طلب. العرض ينطبق تلقائي في صفحة الطلب، ومرة وحدة لكل جوال، وما ينزل السعر تحت التكلفة.</p>' +
+        '<label class="chk nd-main"><input type="checkbox" id="ndOn"' + (c.on ? ' checked' : '') + '><b>' + (c.on ? 'شغّال' : 'مطفي') + '</b></label>' +
+        '<div class="nd-grid">' +
+          '<fieldset>' + tg("ndCartOn", c.cart.on, "ترك سلة") + '<p class="hint">رجع بعد يوم أو أكثر وسلته فيها أغراض.</p>' + nf("ndCartPct", "الخصم", c.cart.pct, 1, "٪") + nf("ndCartCap", "أقصى خصم", c.cart.cap, 1, "ر.س") + nf("ndCartH", "صالح لمدة", c.cart.hours, 1, "ساعة") + '</fieldset>' +
+          '<fieldset>' + tg("ndViewOn", c.view.on, "منتج يبغاه وما اشتراه") + '<p class="hint">يختار المنتج اللي يبغاه أكثر شي: شافه أيام أكثر وأضافه للسلة أكثر (الإضافة تحسب ٣ أضعاف المشاهدة)، ويصير أرخص له (لو السعر الجديد رقم صحيح ينقص ٥ هللات).</p>' + nf("ndViewPct", "الخصم", c.view.pct, 1, "٪") + nf("ndViewH", "صالح لمدة", c.view.hours, 1, "ساعة") + '</fieldset>' +
+          '<fieldset>' + tg("ndWheelOn", c.wheel.on, "عجلة الهدايا") + '<p class="hint">زارنا أيام كثيرة وما طلب: يلف العجلة، والجائزة يختارها النظام بالنسب تحت.</p>' + nf("ndWheelV", "بعد كم يوم زيارة", c.wheel.visits, 1, "أيام") + nf("ndWheelH", "صالح لمدة", c.wheel.hours, 1, "ساعة") +
+            '<div class="nd-prizes" id="ndPrizes">' + c.wheel.prizes.map(function(x, i){ return '<div class="nd-pz" data-pz="' + i + '"><select aria-label="نوع الجائزة"><option value="percent"' + (x.kind === "percent" ? " selected" : "") + '>نسبة ٪</option><option value="amount"' + (x.kind === "amount" ? " selected" : "") + '>ريال</option></select><input type="number" step="1" aria-label="القيمة" value="' + x.value + '" title="القيمة"><input type="number" step="1" aria-label="أقصى خصم" value="' + (x.cap || 0) + '" title="أقصى خصم (للنسبة)"><input type="number" step="1" aria-label="أقل طلب" value="' + x.min + '" title="أقل طلب"><input type="number" step="1" aria-label="فرصتها" value="' + x.w + '" title="فرصتها"><button type="button" class="del" data-pzdel="' + i + '">شيل</button></div>'; }).join("") +
+            '</div><p class="hint">الأعمدة: النوع · القيمة · أقصى خصم للنسبة (ر.س) · أقل طلب (ر.س) · فرصتها (كل ما كبر الرقم تطلع أكثر).</p><button type="button" class="btn btn-soft sm" id="ndPzAdd">+ جائزة</button></fieldset>' +
+          '<fieldset><b>حماية الربح</b>' + nf("ndMargin", "أقل ربح فوق سعر الشراء", c.minMargin, 1, "٪") + nf("ndNoCost", "أقصى خصم لمنتج ما له سعر شراء", c.noCostPct, 1, "٪") + nf("ndCool", "بين عرض وعرض للجهاز", c.cooldown, 1, "يوم") + nf("ndMax", "أقصى عدد عروض للجهاز", c.maxPerDev, 1, "") +
+            '<p class="hint">أغلب منتجاتك ما لها سعر شراء، فالخصم عليها ما يتعدى النسبة هذي. لو تبغى خصومات أقوى وآمنة: أضف سعر الشراء للمنتجات المهمة.</p></fieldset>' +
+        '</div><button type="button" class="btn btn-brand" id="ndSave">احفظ إعدادات العروض</button><p class="status" id="ndMsg" aria-live="polite"></p>' +
+        '<h3 style="margin:14px 0 6px;font-size:15px">النتيجة آخر ' + num(Math.max(30, visDays)) + ' يوم</h3><div class="vis-wrap"><table class="vis-tbl"><thead><tr><th>العرض</th><th class="n">انعطى</th><th class="n">طلبوا فيه</th><th class="n">النسبة</th><th class="n">كلفة الخصم</th><th class="n">مبيعاتها</th></tr></thead><tbody>' +
+          (st.length ? st.map(function(x){ return '<tr><td>' + (NUDGE_SRC[x.src] || x.src) + '</td><td class="n">' + num(x.given) + '</td><td class="n">' + num(x.used) + '</td><td class="n">' + visPct(x.used, x.given) + '٪</td><td class="n">' + num(x.cost) + '</td><td class="n">' + num(x.sales) + '</td></tr>'; }).join("") + '<tr><th>المجموع</th><th class="n">' + num(tot.g) + '</th><th class="n">' + num(tot.u) + '</th><th class="n">' + visPct(tot.u, tot.g) + '٪</th><th class="n">' + num(Math.round(tot.c * 100) / 100) + '</th><th class="n">' + num(Math.round(tot.s * 100) / 100) + '</th></tr>' : '<tr><td colspan="6">ما انعطى أي عرض للحين.</td></tr>') +
+        '</tbody></table></div>';
+      $("ndOn").onchange = function(){ this.nextElementSibling.textContent = this.checked ? "شغّال" : "مطفي"; };
+      box.querySelectorAll("[data-pzdel]").forEach(function(b){ b.onclick = function(){ if (box.querySelectorAll(".nd-pz").length > 2) b.closest(".nd-pz").remove(); }; });
+      $("ndPzAdd").onclick = function(){ var l = $("ndPrizes"); if (l.children.length >= 8) return; l.insertAdjacentHTML("beforeend", '<div class="nd-pz"><select aria-label="نوع الجائزة"><option value="percent">نسبة ٪</option><option value="amount">ريال</option></select><input type="number" aria-label="القيمة" value="5"><input type="number" aria-label="أقصى خصم" value="10"><input type="number" aria-label="أقل طلب" value="30"><input type="number" aria-label="فرصتها" value="10"><button type="button" class="del" onclick="this.parentNode.remove()">شيل</button></div>'); };
+      $("ndSave").onclick = function(){
+        var v = function(id){ return Number($(id).value); }, b = this; b.disabled = true; $("ndMsg").textContent = "جاري الحفظ…";
+        var prizes = Array.prototype.map.call(box.querySelectorAll(".nd-pz"), function(r){ var f = r.querySelectorAll("input"), k = r.querySelector("select").value; return { kind: k, value: Number(f[0].value), cap: k === "percent" ? Number(f[1].value) : 0, min: Number(f[2].value), w: Number(f[3].value) }; });
+        var cfg = { on: $("ndOn").checked, minMargin: v("ndMargin"), noCostPct: v("ndNoCost"), cooldown: v("ndCool"), maxPerDev: v("ndMax"),
+          cart: { on: $("ndCartOn").checked, pct: v("ndCartPct"), cap: v("ndCartCap"), hours: v("ndCartH") }, view: { on: $("ndViewOn").checked, pct: v("ndViewPct"), hours: v("ndViewH") },
+          wheel: { on: $("ndWheelOn").checked, visits: v("ndWheelV"), hours: v("ndWheelH"), prizes: prizes } };
+        api("/admin/nudge", { pin: adminPin, cfg: cfg }).then(function(x){ b.disabled = false; $("ndMsg").className = "status" + (x.ok ? " ok" : " err"); $("ndMsg").textContent = x.ok ? (x.cfg.on ? "انحفظ، والعروض شغّالة." : "انحفظ، والعروض مطفية.") : "ما انحفظ، جرّب مرة ثانية."; if (x.ok) setTimeout(renderNudge, 900); });
+      };
     });
   }
   /* ---------- لوحة الإدارة الجديدة (adm2، ١٧ نوفمبر ٢٠٢٦): شريط سفلي للجوال، قائمة كاملة، شريط حفظ عائم، منتجات خفيفة ---------- */
