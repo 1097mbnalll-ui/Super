@@ -24,7 +24,7 @@
     if (staffAuth && staffAuth.user.role === "preparer") { preparerShell(); return; }
     if (ordersOnly()) { ordersShell(); return; }
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
-    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["rates","التقييمات والاقتراحات","spark"],["sign","ورقة عرض للمحل","tag"],["visits","الزوار والتحويل","user"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
+    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["rates","التقييمات والاقتراحات","spark"],["sign","ورقة عرض للمحل","tag"],["visits","الزوار والتحويل","user"],["otimes","أوقات الطلبات","chart"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
       '<aside class="adm-side"><div class="adm-brand"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b>' + esc(D.store.name) + '</b><span>لوحة الإدارة</span></div></div>' +
       '<nav class="adm-nav" aria-label="أقسام الإدارة">' + TABS.map(function(x){ return '<button type="button" data-atab="' + x[0] + '"' + (x[0] === aTab ? ' aria-current="page"' : '') + '>' + ic(x[2]) + '<span>' + x[1] + '</span>' + (x[0] === "prods" ? '<em class="n">' + draft.products.length + '</em>' : x[0] === "cats" ? '<em class="n">' + draft.cats.length + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
@@ -34,6 +34,7 @@
       '<section class="adm-panel" data-panel="over" id="aOver"></section>' +
       '<section class="adm-panel" data-panel="stats" id="aStats"></section>' +
       '<section class="adm-panel" data-panel="visits" id="aVisits"></section>' +
+      '<section class="adm-panel" data-panel="otimes" id="aOTimes"></section>' +
       '<section class="adm-panel" data-panel="olist" id="aOList"></section>' +
       '<section class="adm-panel" data-panel="log" id="aLog"></section>' +
       '<section class="adm-panel" data-panel="cust" id="aCust"></section>' +
@@ -171,6 +172,7 @@
     if (id === "over") renderOver();
     if (id === "stats") renderStats();
     if (id === "visits") renderVisits();
+    if (id === "otimes") renderOTimes();
     if (id === "olist") { if (!staffCache && apiUrl()) loadStaff(function(){ if (aTab === "olist") renderOList(); }); renderOList(); }
     if (id === "log") renderLog();
     if (id === "cust") renderWinback();
@@ -2261,6 +2263,52 @@
   var VIS_LINKS = [["qr", "ملصق QR عند الكاشير"], ["bag", "ورقة داخل الكيس"], ["wa-group", "قروب واتساب الحي"], ["instagram", "انستقرام"], ["snapchat", "سناب شات"]];
   function visPct(a, b){ return b ? Math.round(a / b * 1000) / 10 : 0; }
   function visBar(v, max, label, sub){ var w = max ? Math.max(2, Math.round(v / max * 100)) : 0; return '<div class="vis-bar"><span class="l">' + label + '</span><span class="t"><i style="width:' + w + '%"></i></span><b>' + num(v) + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</div>'; }
+  // أوقات الطلبات (١٧ نوفمبر ٢٠٢٦، طلب المالك): كل طلب كم أخذ عند المجهز لين صار جاهز، وكم أخذ لين المندوب استلمه وطلع، وكم أخذ التوصيل
+  var otDays = 1;
+  function otDur(ms){ if (ms == null || !isFinite(ms) || ms < 0) return '—'; var m = Math.round(ms / 60000); if (m < 1) return 'أقل من دقيقة'; return m < 60 ? num(m) + ' د' : num(Math.floor(m / 60)) + ' س' + (m % 60 ? ' ' + num(m % 60) + ' د' : ''); }
+  function otPhases(o, now){
+    var end = function(t){ return t || null; };
+    var prep = o.ready ? o.ready - o.created : null;
+    var pickFrom = o.ready || o.created, pick = o.onway ? o.onway - pickFrom : null;
+    var deliv = o.onway && o.delivered ? o.delivered - o.onway : null, total = o.delivered ? o.delivered - o.created : null;
+    var live = o.status !== "delivered" ? (o.onway ? ['deliv', now - o.onway] : o.ready ? ['pick', now - o.ready] : ['prep', now - o.created]) : null;
+    return { prep: prep, pick: pick, deliv: deliv, total: total, noPrep: !o.ready && !!o.onway, live: live };
+  }
+  function renderOTimes(){
+    var box = $("aOTimes"); if (!box) return;
+    if (!$("otCss")) { var st = document.createElement("style"); st.id = "otCss"; st.textContent = [
+      ".ot-chips{display:flex;gap:6px;flex-wrap:wrap}.ot-chips button{min-height:36px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font:inherit;font-weight:700;font-size:13px;padding:0 14px;cursor:pointer}.ot-chips button[aria-pressed=true]{background:#17212B;color:#fff;border-color:#17212B}",
+      ".ot-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.ot-kpi{border-radius:14px;padding:12px;display:grid;gap:3px;background:#F4F5F7}.ot-kpi b{font-size:24px;font-variant-numeric:tabular-nums;line-height:1.2}.ot-kpi span{font-size:13px;font-weight:700}.ot-kpi small{font-size:12px;color:#66707C}",
+      ".ot-kpi.k1{background:#FFF4E5}.ot-kpi.k2{background:#EAF2FF}.ot-kpi.k3{background:#E8F6F0}.ot-kpi.k4{background:#F1EEFB}",
+      ".ot-wrap{overflow-x:auto}.ot-tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:620px}.ot-tbl th,.ot-tbl td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:start;white-space:nowrap}.ot-tbl td.n{font-variant-numeric:tabular-nums}",
+      ".ot-live{color:#B5530A;font-weight:700}.ot-slow{color:#C0392B;font-weight:700}.ot-note{font-size:11.5px;color:#66707C;display:block}",
+      ".ot-who{display:grid;gap:6px}.ot-who div{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;background:#F4F5F7;border-radius:10px;font-size:13.5px}"].join("\n"); document.head.appendChild(st); }
+    box.innerHTML = '<div class="card"><p class="status">جاري التحميل…</p></div>';
+    api("/admin/order-times", { pin: adminPin, days: otDays }).then(function(j){
+      if (!j.ok) { box.innerHTML = '<div class="card"><p class="status err">' + (j.code === "not_found" ? "هذي الميزة تحتاج تحديث الخادم." : opError(j)) + '</p></div>'; return; }
+      var now = Date.now(), rows = j.orders.map(function(o){ return { o: o, t: otPhases(o, now) }; });
+      var avg = function(k){ var l = rows.map(function(r){ return r.t[k]; }).filter(function(v){ return v != null; }); return l.length ? { v: l.reduce(function(a, b){ return a + b; }, 0) / l.length, n: l.length } : null; };
+      var A = { prep: avg("prep"), pick: avg("pick"), deliv: avg("deliv"), total: avg("total") };
+      var kpi = function(cls, a, t, sub){ return '<div class="ot-kpi ' + cls + '"><span>' + t + '</span><b>' + (a ? otDur(a.v) : '—') + '</b><small>' + (a ? 'متوسط ' + num(a.n) + ' طلب · ' : '') + sub + '</small></div>'; };
+      // لكل مندوب ولكل مجهز
+      var by = function(key, ph){ var m = {}; rows.forEach(function(r){ var k = r.o[key], v = r.t[ph]; if (!k || v == null) return; (m[k] = m[k] || []).push(v); });
+        return Object.keys(m).map(function(k){ var l = m[k]; return '<div><b>' + esc(k) + '</b><span>' + otDur(l.reduce(function(a, b){ return a + b; }, 0) / l.length) + ' · ' + num(l.length) + ' طلب</span></div>'; }).join(""); };
+      var drvPick = by("drv", "pick"), drvDel = by("drv", "deliv"), prepBy = by("prep", "prep");
+      var slow = function(v, lim){ return v != null && v > lim * 60000 ? ' class="n ot-slow"' : ' class="n"'; };
+      var cell = function(r, k, lim){ if (r.t.live && r.t.live[0] === k) return '<td class="n ot-live">جاري · ' + otDur(r.t.live[1]) + '</td>'; return '<td' + slow(r.t[k], lim) + '>' + otDur(r.t[k]) + (k === "pick" && r.t.noPrep ? '<span class="ot-note">من الطلب (بدون مجهز)</span>' : '') + '</td>'; };
+      var time = function(t){ var d = new Date(t + 3 * 36e5); return String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0"); };
+      box.innerHTML = '<div class="card"><div class="sec-head" style="margin:0"><h2>أوقات الطلبات</h2><button class="btn btn-soft" type="button" id="otRe">تحديث</button></div>' +
+        '<p class="hint">كل طلب: كم أخذ عند المجهز لين صار جاهز، وكم أخذ لين المندوب استلمه وطلع، وكم أخذ التوصيل لين وصل الزبون. الطلبات الملغية ما تنحسب.</p>' +
+        '<div class="ot-chips">' + [[1, "اليوم"], [7, "آخر ٧ أيام"], [30, "آخر ٣٠ يوم"]].map(function(x){ return '<button type="button" data-otd="' + x[0] + '" aria-pressed="' + (otDays === x[0]) + '">' + x[1] + '</button>'; }).join("") + '</div></div>' +
+        '<div class="card"><div class="ot-kpis">' + kpi("k1", A.prep, "١) التجهيز", "من وصول الطلب لين صار جاهز") + kpi("k2", A.pick, "٢) استلام المندوب", "من جاهز لين المندوب طلع فيه") + kpi("k3", A.deliv, "٣) التوصيل", "من طلع لين وصل الزبون") + kpi("k4", A.total, "الطلب كامل", "من الطلب لين وصل") + '</div></div>' +
+        (prepBy || drvPick || drvDel ? '<div class="card"><h2>لكل موظف</h2><div class="ot-who">' + (prepBy ? '<h3 style="margin:4px 0">التجهيز</h3>' + prepBy : '') + (drvPick ? '<h3 style="margin:4px 0">استلام المندوب</h3>' + drvPick : '') + (drvDel ? '<h3 style="margin:4px 0">التوصيل</h3>' + drvDel : '') + '</div></div>' : '') +
+        '<div class="card"><h2>كل طلب (' + num(rows.length) + ')</h2>' + (rows.length ? '<p class="hint">بالأحمر: تجهيز فوق ١٥ دقيقة، استلام فوق ١٠، توصيل فوق ٣٠. والبرتقالي: الطلب لسا في هالمرحلة.</p><div class="ot-wrap"><table class="ot-tbl"><thead><tr><th>الطلب</th><th>وقته</th><th>التجهيز</th><th>استلام المندوب</th><th>التوصيل</th><th>كامل</th><th>المجهز</th><th>المندوب</th></tr></thead><tbody>' +
+          rows.map(function(r){ return '<tr><td dir="ltr">' + esc(r.o.no) + '</td><td class="n">' + time(r.o.created) + (otDays > 1 ? '<span class="ot-note">' + esc(new Date(r.o.created + 3 * 36e5).toISOString().slice(5, 10)) + '</span>' : '') + '</td>' + cell(r, "prep", 15) + cell(r, "pick", 10) + cell(r, "deliv", 30) + '<td class="n">' + otDur(r.t.total) + '</td><td>' + esc(r.o.prep || '—') + '</td><td>' + esc(r.o.drv || '—') + '</td></tr>'; }).join("") +
+          '</tbody></table></div><p class="hint">الطلبات اللي قبل ١٧ نوفمبر ما لها أوقات المراحل، يطلع لها الوقت الكامل بس.</p>' : '<p class="hint">ما فيه طلبات في هالمدة.</p>') + '</div>';
+      $("otRe").onclick = renderOTimes;
+      Array.prototype.forEach.call(box.querySelectorAll("[data-otd]"), function(b){ b.onclick = function(){ otDays = Number(b.dataset.otd); renderOTimes(); }; });
+    });
+  }
   function renderVisits(){
     var box = $("aVisits"); if (!box) return;
     if (!$("visCss")) { var st = document.createElement("style"); st.id = "visCss"; st.textContent = [

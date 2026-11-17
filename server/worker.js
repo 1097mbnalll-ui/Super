@@ -859,7 +859,7 @@ export default {
       return reply(200, { ok: true, orders, now, thresholds: { new: 10, accepted: 30, onway: 45 } });
     }
 
-    if (['/admin/promo-push','/admin/promo-segs','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/wallet', '/admin/promos', '/admin/promo-save', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
+    if (['/admin/promo-push','/admin/promo-segs','/admin/pos-orders','/admin/pos-receipt','/admin/pos-issue','/admin/pos-settings', '/admin/settlement-requests', '/admin/settlement-confirm', '/admin/payment', '/admin/day-close', '/admin/day-report', '/admin/prep', '/admin/prep-save', '/admin/prep-sub', '/admin/prep-mode', '/admin/order-times', '/admin/wallet', '/admin/promos', '/admin/promo-save', '/admin/wallet-credit', '/admin/wallet-account', '/admin/cashback'].includes(path)) {
       if (!env.DB) return reply(503, { ok: false, code: 'config', missing: 'DB' });
       await ensureSchema(env);
       const result = await operationsRoute(env, path, body, principal ? staff(body) : staff(body), principal?.role || 'owner', later);
@@ -1405,6 +1405,7 @@ async function changeStatus(env, n, st, now = Date.now(), who = "", actor = null
   // المندوب ما يطلع بطلب ما جهز (وضع التجهيز شغّال). الإدارة تقدر (المالك ١٦ نوفمبر ٢٠٢٦: «طلع للتوصيل» كان يرفض لأن المجهز علّم منتجات ناقصة والوضع مطفي)
   const handoff = st === 'onway' && actor && await prepMode(env) ? [P("SELECT CASE WHEN EXISTS(SELECT 1 FROM prep_orders WHERE no=? AND stage!='ready') THEN json('not_ready') ELSE 1 END",n)] : [];
   const stmts = [guard, ...handoff, P("SELECT CASE WHEN status != ? OR data != ? THEN json('concurrent_status') ELSE 1 END FROM orders WHERE no = ?",old.status,old.data,n), ...finance, P("UPDATE orders SET status = ?, updated = ?, dms = ?, drv = ? WHERE no = ?", st, now, dms, drv, n)];
+  if (st === "accepted" || st === "onway" || st === "delivered") stmts.push(P(`INSERT INTO order_times(no, ${st}) VALUES(?, ?) ON CONFLICT(no) DO UPDATE SET ${st} = excluded.${st}`, n, now));
   if (who) stmts.push(logStmt(env, who, "status", "#" + (1000 + n), { from: old.status, to: st, total: Number(rec.total || 0) }));
   if ((st === "canceled") !== (old.status === "canceled")) {
     const back = st === "canceled";
@@ -3310,6 +3311,8 @@ async function ensureOperations(env) {
     "CREATE TABLE IF NOT EXISTS wallet_order_keys(request_id TEXT PRIMARY KEY,no INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS checkout_keys(request_id TEXT PRIMARY KEY,no INTEGER NOT NULL,fingerprint TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS delivery_times(no INTEGER PRIMARY KEY,at INTEGER NOT NULL)",
+    // أوقات مراحل الطلب (١٧ نوفمبر ٢٠٢٦، طلب المالك): جاهز من المجهز، مسكه المندوب، طلع، وصل
+    "CREATE TABLE IF NOT EXISTS order_times(no INTEGER PRIMARY KEY,ready INTEGER,accepted INTEGER,onway INTEGER,delivered INTEGER)",
     "CREATE TABLE IF NOT EXISTS app_settings(k TEXT PRIMARY KEY,v TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS late_alerts(no INTEGER PRIMARY KEY,at INTEGER NOT NULL)",
     "CREATE TABLE IF NOT EXISTS collection_changes(id INTEGER PRIMARY KEY AUTOINCREMENT,request_id TEXT UNIQUE NOT NULL,no INTEGER NOT NULL,at INTEGER NOT NULL,who TEXT NOT NULL,note TEXT NOT NULL,before_json TEXT NOT NULL,after_json TEXT NOT NULL)",
@@ -3509,6 +3512,13 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     const lm=(await prepSettings(env)).lateMin;
     return {ok:true,lateMin:lm,orders:rows.map(r=>{const d=safeJson(r.data);return {no:'#'+(1000+r.no),status:r.status,created:r.created,orderUpdated:r.order_updated,stage:r.stage||'waiting',checks:safeJson(r.checks||'{}'),version:r.version||0,who:r.who||'',updated:r.updated,lines:(d.lines||[]).map((l,i)=>({key:String(i),id:l.id,name:l.name,unit:l.unit,qty:l.qty})),note:d.note||'',free:d.free||'',sub:d.sub||'call',subs:om[r.no]||[]};})};
   }
+  // أوقات الطلبات: كم أخذ التجهيز، وكم انتظر لين المندوب استلمه وطلع، وكم أخذ التوصيل (المالك والمدير)
+  if(path==='/admin/order-times'){
+    const days=Math.min(30,Math.max(1,Math.round(Number(body.days)||1))),since=Date.parse(riyadhDate()+'T00:00:00+03:00')-(days-1)*86400000;
+    const rows=(await P("SELECT o.no,o.status,o.created,IFNULL(o.drv,'') drv,t.ready,t.accepted,t.onway,COALESCE(t.delivered,d.at) delivered,p.stage,p.updated pu,p.who pw FROM orders o LEFT JOIN order_times t ON t.no=o.no LEFT JOIN delivery_times d ON d.no=o.no LEFT JOIN prep_orders p ON p.no=o.no WHERE o.created>=? AND o.status!='canceled' ORDER BY o.created DESC LIMIT 400",since).all()).results||[];
+    const names={};for(const r of rows)if(r.drv&&!(r.drv in names))names[r.drv]=await staffName(env,r.drv);
+    return {ok:true,days,since,orders:rows.map(r=>({no:'#'+(1000+r.no),status:r.status,created:r.created,ready:r.ready||(r.stage==='ready'?r.pu:null),accepted:r.accepted||null,onway:r.onway||null,delivered:r.status==='delivered'?r.delivered||null:null,drv:r.drv?names[r.drv]||'':'',prep:r.pw?String(r.pw).split(' · ').pop():''}))};
+  }
   if(path==='/admin/prep-sub'){const r=await prepSub(env,body,who,later);return r.ok?r:fail(r.code,r.status||400);}
   if(path==='/admin/prep-save'){
     const no=Number(String(body.no||'').replace(/\D/g,''))-1000,row=await P('SELECT status,data,updated FROM orders WHERE no=?',no).first();
@@ -3520,7 +3530,7 @@ async function operationsRoute(env,path,body,who,role,later=(p)=>p){
     if(body.stage==='ready'&&!complete)return fail('missing_items');
     // بديل ينتظر رد الزبون: ما يطلع للمندوب لين يرد (أو ينسحب الاقتراح)
     if(body.stage==='ready'){const pend=await P("SELECT COUNT(*) c FROM sub_offers WHERE no=? AND state='pending'",no).first();if(pend&&pend.c)return fail('pending_sub');}
-    try{await env.DB.batch([P("SELECT CASE WHEN COALESCE((SELECT version FROM prep_orders WHERE no=?),0) != ? OR (SELECT status FROM orders WHERE no=?) NOT IN ('new','accepted') OR (SELECT updated FROM orders WHERE no=?) != ? THEN json('prep_conflict') ELSE 1 END",no,prior?.version||0,no,no,row.updated),P('INSERT INTO prep_orders(no,stage,checks,updated,who,version) VALUES(?,?,?,?,?,?) ON CONFLICT(no) DO UPDATE SET stage=excluded.stage,checks=excluded.checks,updated=excluded.updated,who=excluded.who,version=excluded.version',no,body.stage,JSON.stringify(checks),Date.now(),who,(prior?.version||0)+1),logStmt(env,who,'prep','#'+(1000+no),{stage:body.stage,missing:Object.values(checks).filter(v=>v==='missing').length})]);}catch{return fail('conflict',409);}
+    try{await env.DB.batch([P("SELECT CASE WHEN COALESCE((SELECT version FROM prep_orders WHERE no=?),0) != ? OR (SELECT status FROM orders WHERE no=?) NOT IN ('new','accepted') OR (SELECT updated FROM orders WHERE no=?) != ? THEN json('prep_conflict') ELSE 1 END",no,prior?.version||0,no,no,row.updated),P('INSERT INTO prep_orders(no,stage,checks,updated,who,version) VALUES(?,?,?,?,?,?) ON CONFLICT(no) DO UPDATE SET stage=excluded.stage,checks=excluded.checks,updated=excluded.updated,who=excluded.who,version=excluded.version',no,body.stage,JSON.stringify(checks),Date.now(),who,(prior?.version||0)+1),logStmt(env,who,'prep','#'+(1000+no),{stage:body.stage,missing:Object.values(checks).filter(v=>v==='missing').length}),...(body.stage==='ready'&&prior?.stage!=='ready'?[P('INSERT INTO order_times(no,ready) VALUES(?,?) ON CONFLICT(no) DO UPDATE SET ready=excluded.ready',no,Date.now())]:[])]);}catch{return fail('conflict',409);}
     if(body.stage==='ready'&&prior?.stage!=='ready'){const d=safeJson(row.data),drvId=(await P('SELECT drv FROM orders WHERE no=?',no).first())?.drv||null;
       later(notifyRole(env,'driver',drvId&&drvId!=='admin'?drvId:null,{title:'طلب جاهز للتوصيل #'+(1000+no),body:[d.name,d.details,money(d.total)].filter(Boolean).join(' · '),url:'./#driver',tag:'ready'+no}));}
     return {ok:true};
