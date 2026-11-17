@@ -4957,16 +4957,18 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
         submitButton.disabled=false;if(!st.isConnected)return;
         if (ok === null || ok === "moved") return;
         if (!ok) { pinFails++; if (pinFails >= 5) { pinLockUntil = Date.now() + 60000; pinFails = 0; } st.className = "status err"; st.textContent = tr("بيانات الدخول غير صحيحة.", "Incorrect login details."); $("pinIn").select(); return; }
-        adminPin = username ? "staff-session" : v; aTab = ordersOnly() ? "olist" : "over"; close(); canEdit = true; go("admin");
+        adminPin = username ? "staff-session" : v; if (!username) ownerWatch(v); aTab = ordersOnly() ? "olist" : "over"; close(); canEdit = true; go("admin");
       });
     });
   }
+  // تطبيق المالك (أندرويد): بعد الدخول بالرقم السري، التطبيق يتابع الطلبات بالخلفية ويرسل إشعار مع كل طلب جديد حتى لو مقفول
+  function ownerWatch(pin){ try { if (window.OhodOwner && OhodOwner.watch && pin && apiUrl()) OhodOwner.watch(String(pin), String(apiUrl())); } catch(e){} }
   // الدخول الموحد: الخادم يقول لمين هالرقم، وهنا نوديه لصفحته
   function routeEnter(j, v){
     if (mode === "driver" && j.go !== "driver") { geoStop(true); geo.admin = false; geo.share = false; appManifest(false); clearInterval(drv.timer); drv.timer = null; }
     if (j.go === "driver") { drv.pin = v; try { sessionStorage.setItem("ohod-driver", v); } catch(e){} appCall("session", String(apiUrl()), v, "driver"); drv.first = true; mode = "store"; openDriver(); return; }
     try { history.replaceState(null, "", location.pathname + location.search.replace(/[?&]app=(driver|pos)/, "")); } catch(e){}
-    if (j.go === "staff") { staffAuth = j; adminPin = "staff-session"; staffKeep(j); } else { staffAuth = null; adminPin = v; }
+    if (j.go === "staff") { staffAuth = j; adminPin = "staff-session"; staffKeep(j); } else { staffAuth = null; adminPin = v; ownerWatch(v); }
     aTab = ordersOnly() ? "olist" : "over"; canEdit = true; go("admin");
   }
   // في صفحة المندوب أو الكاشير: لو الرقم لقسم ثاني (مثل المجهز)، نوديه لقسمه بدل ما نقول «الرقم غلط»
