@@ -223,11 +223,33 @@
       '<h3>خلفية الصفحات</h3>' + seg("background", [["white","أبيض"],["gray","رمادي فاتح"]], A.background || "white") +
       check("showCatChip", "اسم القسم على كرت المنتج") +
       '<h3>الرئيسية</h3>' + check("showChips", "أزرار الأقسام تحت البنرات") + check("showFeatured", "«مختارات لك» (لو قفلتها تطلع العروض بدالها)") +
+      weighHTML() +
       '<h3>أيقونة كل قسم</h3><p class="hint">اكتب إيموجي (مثل 🥛 أو 🍫). فاضي = الأيقونة الافتراضية.</p><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">' +
         draft.cats.map(function(c){ return '<label style="display:flex;gap:6px;align-items:center"><input data-appcat="' + esc(c.id) + '" value="' + esc(icons[c.id] || "") + '" maxlength="4" style="width:52px;text-align:center;font-size:20px">' + esc(c.name) + '</label>'; }).join("") + '</div>' +
       '<h3>أيقونات الشريط تحت</h3>' + APP_TABS.map(function(t){ var cur = tabs[t[0]] || t[2][0];
         return '<div style="margin:6px 0"><b>' + t[1] + '</b><div class="pays" style="max-width:520px;margin-top:4px">' + t[2].map(function(n){ return '<button type="button" data-apptab="' + t[0] + '" data-v="' + n + '" aria-pressed="' + (cur === n) + '" style="font-size:20px">' + (APP_TAB_ICONS[n] || n) + '</button>'; }).join("") + '</div></div>'; }).join("");
   }
+  // شاشة الوزن (الخضار والفواكه) في التطبيق: store.app.weigh = {style, sizes, money, step, input}
+  var WEIGH_STYLES = [["chips","شرائح + عدّاد"],["ruler","مسطرة تنسحب"],["money","بالوزن أو بالمبلغ"],["wheel","عجلة اختيار"]];
+  function weighCfg(){ var A = appLook(); A.weigh = A.weigh || {}; return A.weigh; }
+  function weighHTML(){
+    var W = (draft.store.app || {}).weigh || {}, st = W.style || "chips", step = W.step || 250;
+    var b = function(k, v, cur, l){ return '<button type="button" data-wset="' + k + '" data-v="' + v + '" aria-pressed="' + (String(cur) === String(v)) + '">' + l + '</button>'; };
+    return '<h3>شاشة الوزن (الخضار والفواكه)</h3><p class="hint">شكل اختيار الوزن في صفحة المنتج اللي ينباع بالكيلو. يتغيّر عند الزبائن بدون تحديث للتطبيق (من نسخة 1.3).</p>' +
+      '<div class="pays" style="max-width:560px;margin:6px 0 12px;flex-wrap:wrap">' + WEIGH_STYLES.map(function(o){ return b("style", o[0], st, o[1]); }).join("") + '</div>' +
+      '<label class="fld" style="display:grid;gap:4px;margin:8px 0;max-width:420px"><b>الأحجام الجاهزة (بالجرام، بينها فاصلة)</b><input data-wk="sizes" dir="ltr" value="' + esc((W.sizes || [250,500,1000,1500,2000]).join(", ")) + '"></label>' +
+      '<label class="fld" style="display:grid;gap:4px;margin:8px 0;max-width:420px"><b>المبالغ الجاهزة (بالريال، لشكل «بالوزن أو بالمبلغ»)</b><input data-wk="money" dir="ltr" value="' + esc((W.money || [5,10,15,20]).join(", ")) + '"></label>' +
+      '<div style="margin:8px 0"><b>كل ضغطة + أو − تزيد</b><div class="pays" style="max-width:420px;margin-top:4px">' + [[100,"١٠٠ جرام"],[250,"ربع كيلو"],[500,"نص كيلو"]].map(function(o){ return b("step", o[0], step, o[1]); }).join("") + '</div></div>' +
+      '<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" data-wk="input"' + (W.input === false ? '' : ' checked') + '>رابط «وزن أو مبلغ آخر» (الزبون يكتب الوزن أو المبلغ بنفسه)</label>';
+  }
+  document.addEventListener("click", function(e){ var t = e.target.closest("[data-wset]"); if (!t || !draft) return; var W = weighCfg(), k = t.dataset.wset, v = t.dataset.v;
+    W[k] = /^\d+$/.test(v) ? Number(v) : v; markDirty(); renderLook(); });
+  document.addEventListener("change", function(e){ var t = e.target; if (!t.dataset || !t.dataset.wk || !draft) return; var W = weighCfg(), k = t.dataset.wk;
+    if (k === "input") { if (t.checked) delete W.input; else W.input = false; markDirty(); return; }
+    var lo = k === "sizes" ? 100 : 0.5, hi = k === "sizes" ? 50000 : 1000;
+    var l = String(t.value).replace(/[٠-٩]/g, function(d){ return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }).replace(/٫/g, ".").split(/[^\d.]+/).map(Number).filter(function(n){ return n >= lo && n <= hi; }).slice(0, 8);
+    if (l.length) W[k] = l; else delete W[k];
+    t.value = (W[k] || (k === "sizes" ? [250,500,1000,1500,2000] : [5,10,15,20])).join(", "); markDirty(); });
   function appLookInput(e){
     var t = e.target, A = appLook();
     if (t.dataset.appk) {
