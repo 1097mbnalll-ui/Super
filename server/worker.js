@@ -1728,7 +1728,7 @@ function priceOrder(data, body, quote) {
   }
   // «طلب بالكتابة» (الخضار بالوزن...): يكفي لحاله، وسعره يتحدد عند التجهيز فما يدخل في أقل طلب
   if (!count && !free) return { error: "empty" };
-  if (!quote && (S.closed || !openNow(S))) return { error: "closed" };
+  if (!quote && ((S.closed && !(S.app && S.app.closedOnly)) || !openNow(S))) return { error: "closed" };   // closedOnly: مقفل للتطبيق بس (طلباته ينرفض في /order لين الإطلاق)
   const onlyPrint = lines.length > 0 && lines.every((l) => l.p.print), PR = S.print && typeof S.print === "object" ? S.print : null;
   const minOrder = onlyPrint && PR && PR.minOrder != null ? Number(PR.minOrder) || 0 : Number(S.minOrder) || 0;
   // التسعير للتطبيق (/quote) يرجع الأسعار والعروض حتى لو السلة تحت أقل طلب، عشان الخصم يطلع في السلة من أول منتج (الحد يُفرض في /order)
@@ -2542,7 +2542,7 @@ async function cartRemindCheck(env, force) {
   if (h >= 23 || h < 9) return 0;
   let data; try { data = await loadData(env); } catch { return 0; }
   const S = data.store || {};
-  if (S.closed || !openNow(S, now)) return 0;
+  if ((S.closed && !(S.app && S.app.closedOnly)) || !openNow(S, now)) return 0;
   const cand = (await env.DB.prepare("SELECT dev FROM devices WHERE cart_n > 0 AND cart_at > ? AND cart_at < ? AND reminded_at < cart_at AND last_order_at < cart_at AND EXISTS (SELECT 1 FROM subs s WHERE s.dev = devices.dev AND s.role = 'promo') ORDER BY cart_at LIMIT ?")
     .bind(now - 48 * 3600e3, now - st.hours * 3600e3, 20).all()).results || [];
   if (!cand.length) return 0;

@@ -22,4 +22,9 @@ let r = await call('capacitor://localhost', order('0551110001')); ok(!r.ok && r.
 r = await call(O, order('0551110002')); ok(r.ok, 'الموقع يطلب عادي: ' + (r.code || ''));
 await new Promise((r) => setTimeout(r, 3000));   // الموعد يجي والقفل ينفتح لحاله
 r = await call('capacitor://localhost', order('0551110003')); ok(r.ok, 'بعد الموعد التطبيق يطلب: ' + (r.code || ''));
+// مقفل للتطبيق بس (closed + app.closedOnly): الموقع يطلب عادي
+data.store.closed = true; data.store.app.closedOnly = true; data.store.app.launch.at = new Date(Date.now() + 36e5).toISOString();
+await w.fetch(new Request('https://x.dev/save', { method: 'POST', headers: { Origin: O }, body: '{}' }), env, { waitUntil() {} }).catch(() => {});
+r = await call(O, order('0551110004')); ok(r.ok, 'closedOnly: الموقع يطلب: ' + (r.code || ''));
+delete data.store.app.closedOnly;
 console.log(fails ? fails + ' FAIL' : 'ALL PASS'); process.exit(fails ? 1 : 0);

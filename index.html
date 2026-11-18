@@ -2485,7 +2485,9 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function hm(x){ var q = String(x || "").split(":"); return (Number(q[0]) || 0) * 60 + (Number(q[1]) || 0); }
   function openNow(){ var a = S.openAt, b = S.closeAt; if (!a || !b) return true; var m = Math.floor((Date.now() / 60000 + 180) % 1440), o = hm(a), c = hm(b);
     return o === c ? true : o < c ? (m >= o && m < c) : (m >= o || m < c); }
-  function isClosed(){ return !!S.closed || !openNow(); }
+  function isClosed(){ return (!!S.closed && !appOnlyClosed()) || !openNow(); }
+  // «المتجر مقفل» للتطبيق بس (store.app.closedOnly، المالك ١٨ نوفمبر ٢٠٢٦ لين الإطلاق): نسخة 1.2 تشوف بطاقة «المحل مقفل» برسالة الإطلاق، والموقع مفتوح
+  function appOnlyClosed(){ return !!(S.app && S.app.closedOnly); }
   function hmTxt(x){ var t = hm(x), h = Math.floor(t / 60), mi = t % 60, ar = h === 0 ? 12 : h > 12 ? h - 12 : h;
     var part = h === 0 ? "بالليل" : h < 12 ? (h < 5 ? "بالليل" : "الصبح") : h === 12 ? "الظهر" : h < 16 ? "الظهر" : h < 19 ? "العصر" : "بالليل";
     return num(ar) + (mi ? ":" + (mi < 10 ? "0" : "") + mi : "") + " " + part; }
@@ -2495,7 +2497,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function durAr(t){ var h = Math.floor(t / 60), m = t % 60;
     var hs = !h ? "" : h === 1 ? "ساعة" : h === 2 ? "ساعتين" : num(h) + (h <= 10 ? " ساعات" : " ساعة"), ms = !m ? "" : m === 1 ? "دقيقة" : m === 2 ? "دقيقتين" : num(m) + (m <= 10 ? " دقايق" : " دقيقة");
     return hs && ms ? hs + " و" + ms : hs || ms || tr("شوي", "a moment"); }
-  function openInMin(){ if (S.closed || !S.openAt) return -1; var m = Math.floor((Date.now() / 60000 + 180) % 1440); return (hm(S.openAt) - m + 1440) % 1440; }
+  function openInMin(){ if ((S.closed && !appOnlyClosed()) || !S.openAt) return -1; var m = Math.floor((Date.now() / 60000 + 180) % 1440); return (hm(S.openAt) - m + 1440) % 1440; }
   function closedBarHTML(){
     var t = openInMin(), moon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" fill="currentColor"/></svg>';
     var title = t < 0 ? tr("المحل مقفل مؤقتاً", "Temporarily closed") : tr("نفتح بعد ", "Opening in ") + '<em id="clsIn">' + durAr(t) + '</em>';
