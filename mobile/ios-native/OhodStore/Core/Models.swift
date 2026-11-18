@@ -40,6 +40,9 @@ struct Category: Hashable, Sendable, Identifiable {
     let tint: String?
     let soon: Bool
     let subs: [SubCategory]
+    /// شارة «جديد» على القسم لين هالتاريخ (newUntil في data.json)، وبعدها تختفي لحالها
+    var newUntil: Date? = nil
+    var isNew: Bool { !soon && (newUntil.map { Date() < $0 } ?? false) }
 
     var emoji: String {
         if let custom = AppLook.current.catIcons[id] { return custom }
@@ -537,7 +540,8 @@ enum CatalogParser {
             }
             // قسم الطباعة «قريباً» من إعداد الطباعة (catSoon في الموقع)
             return Category(id: id, name: name, image: str(c["img"]), tint: str(c["tint"]),
-                            soon: id == "print" ? store.printSoon : ((c["soon"] as? Bool) ?? false), subs: subs)
+                            soon: id == "print" ? store.printSoon : ((c["soon"] as? Bool) ?? false), subs: subs,
+                            newUntil: str(c["newUntil"]).flatMap { ISO8601DateFormatter().date(from: $0) })
         }
 
         let products: [Product] = ((root["products"] as? [[String: Any]]) ?? []).compactMap { p in

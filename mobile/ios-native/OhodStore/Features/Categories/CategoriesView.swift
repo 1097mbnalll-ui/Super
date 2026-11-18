@@ -97,7 +97,14 @@ struct CategoryTile: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .padding(6)
                     .padding(.top, 4)
-                if category.soon {
+                if category.isNew {
+                    Text("جديد")
+                        .font(.kufi(10, .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Color(hex: 0x0E8A6A), in: Capsule())
+                        .padding(5)
+                } else if category.soon {
                     Text("قريباً")
                         .font(.kufi(10, .bold))
                         .foregroundStyle(.white)
