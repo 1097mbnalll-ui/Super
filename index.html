@@ -1230,7 +1230,7 @@ html.zs body{zoom:.86}
 .wres{font-size:12.5px;font-weight:700;color:var(--muted,#596171);text-align:center;min-height:18px}
 .wbuy .go{border-radius:999px;background:#0E8A6A;color:#fff}.wbuy .go span{color:#fff}.wbuy .go:disabled{opacity:.45}
 .stepper .wq{background:none;border:0;font:inherit;font-weight:800;padding:0 2px;min-width:52px;white-space:nowrap;cursor:pointer;color:inherit}
-.kq-badge.soon{background:#E8590C}.kq-now.soon,.price.soon{color:#E8590C;font-size:15px;font-weight:800}
+.kq-cat .soon.new{background:#0E8A6A}.kq-badge.soon{background:#E8590C}.kq-now.soon,.price.soon{color:#E8590C;font-size:15px;font-weight:800}
 .kq-badge{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;background:#E8394F;color:#fff;border-radius:8px;padding:3px 8px;font-size:10.5px;font-weight:700;z-index:2}
 /* ---------- banners v2 ---------- */
 .kq-ban.kb{padding:0;display:block;isolation:isolate}
@@ -3395,7 +3395,9 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function printSoon(){ return !!(S.print && S.print.soon); }
   // قسم «قريباً»: يظهر للزبون بشارة، وصفحته تعتذر بدل ما تعرض قائمة فاضية (الإدارة تشيل العلامة لما تنضاف المنتجات)
   function catSoon(c){ return !!c && (c.id === "print" ? printSoon() : !!c.soon); }
-  function soonTag(c){ return catSoon(c) ? '<span class="soon">' + tr("قريباً", "Soon") + '</span>' : ''; }
+  // «جديد» على القسم لين تاريخ newUntil (مثل الخضار والفواكه، طلب المالك ١٨ نوفمبر ٢٠٢٦: ٤ أيام)، وبعدها يختفي لحاله
+  function catNew(c){ return !!c && !catSoon(c) && !!c.newUntil && Date.now() < Date.parse(c.newUntil); }
+  function soonTag(c){ return catSoon(c) ? '<span class="soon">' + tr("قريباً", "Soon") + '</span>' : catNew(c) ? '<span class="soon new">' + tr("جديد", "New") + '</span>' : ''; }
   function catSoonBox(c){ return '<div class="wrap print-box" style="margin-top:16px"><div class="pr-soon"><b>' + tr("قريباً", "Coming soon") + '</b><p>' + tr("ستتم إضافة قسم «" + nm(c) + "» قريباً، نعتذر منكم.", "The “" + nm(c) + "” section is coming soon. We apologize for the wait.") + '</p><button type="button" class="btn btn-brand" data-nav="cats" style="justify-self:center">' + tr("تصفّح بقية الأقسام", "Browse other sections") + '</button></div></div>'; }
   function printOK(){ var a = printProd("bw"), b = printProd("color"); return !!(a && b && a.print && b.print); }
   function printQty(){ var pg = Math.floor(Number(asciiDigits(PR.pages))) || 0, cp = Math.max(1, Math.floor(Number(PR.copies)) || 1); return { pages: pg, copies: cp, qty: pg * cp }; }
