@@ -134,6 +134,9 @@ export default {
       if (env.DB ? await rateHit(env, "ord:" + ip, 6, 600) : await tooManyOrders(env, ip)) return reply(429, { ok: false, code: "slow_down" });
       let data;
       try { data = await loadData(env); } catch { return reply(502, { ok: false, code: "data" }); }
+      // قفل تطبيق الآيفون لين الإطلاق الرسمي (المالك ١٨ نوفمبر ٢٠٢٦، store.app.launch.at): نسخة 1.2 أصلية وما يوصلها قفل الموقع، فالخادم يرفض طلباتها لين الموعد. الموقع شغّال عادي
+      { const L = data && data.store && data.store.app && data.store.app.launch, at = L && L.at ? Date.parse(L.at) : 0;
+        if (at && Date.now() < at && /^(capacitor|ionic):\/\/|^https?:\/\/localhost(:\d+)?$/.test(origin)) return reply(403, { ok: false, code: "closed", msg: String(L.msg || "") }); }
       const priced = priceOrder(data, body);
       if (priced.error) return reply(400, { ok: false, code: priced.error, id: priced.id, max: priced.max, min: priced.min });
       // منطقة التوصيل: لو المحل حدد أقصى مسافة
