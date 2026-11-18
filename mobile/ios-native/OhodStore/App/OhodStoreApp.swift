@@ -162,7 +162,7 @@ struct RootView: View {
             .presentationDetents([.medium, .large])
         }
         // عرض الرجعة (من الخادم مع /hit): يطلع مرة وحدة، والكود ينطبق في السلة. يطفى من الإدارة بـ store.app.off = ["nudge"]
-        .sheet(isPresented: Binding(get: { OfferCenter.shared.showSheet && !showIntro && !catalog.store.isOff("nudge") && OfferCenter.shared.live != nil },
+        .sheet(isPresented: Binding(get: { OfferCenter.shared.showSheet && !showIntro && !catalog.store.launchLocked && !catalog.store.isOff("nudge") && OfferCenter.shared.live != nil },
                                     set: { OfferCenter.shared.showSheet = $0 })) {
             if let o = OfferCenter.shared.live {
                 ReturnOfferSheet(offer: o) { tab = .cart }.presentationDetents([.medium, .large])
@@ -176,6 +176,8 @@ struct RootView: View {
         .fullScreenCover(item: $previewPlaced) { order in
             OrderPlacedView(order: order, onTrack: { previewPlaced = nil }, onShop: { previewPlaced = nil })
         }
+        // قفل الإطلاق: شاشة وحدة فوق كل شي لين الموعد (store.app.launch)
+        .overlay { if let at = catalog.store.launchAt { LaunchLockView(at: at, msg: catalog.store.launchMsg, sub: catalog.store.launchSub) } }
     }
 
     /// أيقونة التبويب من «شكل التطبيق» في الإدارة (أيقونات آبل)، وإلا الافتراضية

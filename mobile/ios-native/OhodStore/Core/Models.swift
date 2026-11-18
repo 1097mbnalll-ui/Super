@@ -348,6 +348,11 @@ struct StoreInfo: Sendable {
     /// إطفاء أي ميزة في التطبيق من ملف المتجر بدون تحديث (المالك ١٦ نوفمبر ٢٠٢٦: «أقدر أحذفها وأخليها على مزاجي»):
     /// store.app.off = ["banners","banImg","featured","sky","intro","rate","wallet","favorites","addresses","subs","cancel","promoPush","search","cats","catgrid","grid","catoffers","print","map","notes","promo"]
     var off: Set<String> = []
+    /// قفل التطبيق لين الإطلاق الرسمي (store.app.launch = {at, msg, sub}، المالك ١٨ نوفمبر ٢٠٢٦): شاشة وحدة بعدّاد، وتنفتح لحالها عند الموعد
+    var launchAt: Date? = nil
+    var launchMsg = ""
+    var launchSub = ""
+    var launchLocked: Bool { (launchAt.map { $0 > Date() }) ?? false }
     func isOff(_ k: String) -> Bool { off.contains(k) }
     /// شاشة الوزن (الخضار والفواكه) من ملف المتجر بدون تحديث (store.app.weigh، طلب المالك ١٧ نوفمبر ٢٠٢٦ «مرونة وعدة تصاميم»):
     /// style = chips (شرائح + عدّاد) / ruler (مسطرة) / money (بالوزن أو بالمبلغ) / wheel (عجلة)، sizes بالجرام، money بالريال، step خطوة الزيادة، input خانة «وزن أو مبلغ آخر»
@@ -506,6 +511,13 @@ enum CatalogParser {
             else if let l = app["web"] as? [Any] { store.webScreens = Set(l.compactMap { str($0) }) }
             // من 1.2: store.app.home = "web" يخلي الرئيسية من الموقع من أعلى الشاشة (1.1 ما يقراه، فيه شريط عنوان أبيض)
             if str(app["home"]) == "web" { store.webScreens.insert("home") }
+            if let l = app["launch"] as? [String: Any], let at = str(l["at"]) {
+                let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime]
+                let f2 = ISO8601DateFormatter(); f2.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                store.launchAt = f.date(from: at) ?? f2.date(from: at)
+                store.launchMsg = str(l["msg"]) ?? ""
+                store.launchSub = str(l["sub"]) ?? ""
+            }
             if let w = app["weigh"] as? [String: Any] {
                 if let v = str(w["style"]), WeighUI.styles.contains(v) { store.weigh.style = v }
                 if let a = w["sizes"] as? [Any] {
