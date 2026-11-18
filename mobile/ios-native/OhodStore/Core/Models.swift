@@ -550,9 +550,17 @@ enum CatalogParser {
             let soon = (p["soon"] as? Bool) ?? false, price = num(p["price"]) ?? 0
             guard price > 0 || soon else { return nil }
             // نفس ترقيم الخادم (packProduct): ما نشيل أي خيار عشان ما يتغير رقم «id~رقم»؛ الخيار بدون سعر يبقى مكانه ومخفي
+            // الشدّة والكرتون والعرض: «كرتون 250 مل × 24» بدل «كرتون 24 حبة» (نفس packLabel بالموقع)
+            let oneSize = NoPhoto.parts(str(p["name"]) ?? name, unit: str(p["unit"]) ?? "").size
             let packs: [Pack] = ((p["packs"] as? [[String: Any]]) ?? []).map { pk in
-                let pr = num(pk["price"]) ?? 0
-                return Pack(unit: str(pk["u"]) ?? "", count: Swift.max(1, Int(num(pk["n"]) ?? 1)), price: pr > 0 ? pr : 0)
+                let pr = num(pk["price"]) ?? 0, n = Swift.max(1, Int(num(pk["n"]) ?? 1)), u = str(pk["u"]) ?? ""
+                var label = u
+                if n > 1, !oneSize.isEmpty, !en {
+                    let w = u.split(separator: " ").first.map(String.init) ?? ""
+                    let word = ["كرتون", "كرتونة", "شدّة", "شدة", "شده", "عرض", "علبة", "باكت", "ربطة", "كيس"].contains(w) ? w + " " : ""
+                    label = word + oneSize + " × \(n)"
+                }
+                return Pack(unit: label, count: n, price: pr > 0 ? pr : 0)
             }
             let old = num(p["old"])
             return Product(id: id, name: name, unit: en ? (str(p["unit_en"]) ?? tr(str(p["unit"]) ?? "")) : (str(p["unit"]) ?? ""), price: price,

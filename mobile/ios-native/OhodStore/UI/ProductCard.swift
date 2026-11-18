@@ -97,7 +97,8 @@ struct ProductCard: View {
                     .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)
                     .padding(.top, showCategory || product.brand != nil ? 0 : 4)
-                Text(tv: product.unit)
+                // عرض كمية: «250 مل × 24» عشان يبان حجم الحبة والعدد
+                Text(tv: product.quantityOffer.flatMap { q in let s = NoPhoto.parts(product.name, unit: product.unit).size; return s.isEmpty ? nil : "\(s) × \(q.count)" } ?? product.unit)
                     .font(.ui(size: 12.5))
                     .foregroundStyle(Theme.muted)
                     .lineLimit(1)
