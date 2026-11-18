@@ -48,6 +48,8 @@ console.log('منتجات', data.products.length, 'قابلة للبيع', sella
 // مخزون معروف لعينة كبيرة، والباقي بدون عدد (متوفر)
 const tracked = {}; for (const p of sellable) if (rnd() < 0.5) tracked[p.id] = 5 + Math.floor(rnd() * 60);
 for (const p of offers) tracked[p.id] = 200;
+// مواعيد ثابتة للمحاكاة (ما نعتمد على مواعيد المالك الحية؛ فحوص «مقفل» أدناه تفترض ١٢ الظهر–١٢:٣٠ الفجر)
+data.store.openAt = '12:00'; data.store.closeAt = '00:30';
 ok((await call('/save', { ...A, data, stock: tracked })).ok, 'حفظ الكتالوج الحقيقي والمخزون');
 const expect = { ...tracked };
 await call('/admin/team-save', { ...A, name: 'مندوب', role: 'driver', newPin: '5151' });
