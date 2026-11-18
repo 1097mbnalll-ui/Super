@@ -128,7 +128,7 @@ SHOW = {
   'care': ['paper', 'baby', 'hair', 'oral', 'body', 'deo', 'women', 'shave', 'tools'],
 }
 # ترتيب الأقسام الرئيسية: الأساسيات أول، والمشروبات ثم السناكس جنب بعض، و«قريباً» آخر شي
-CAT_ORDER = ['dairy', 'cheese', 'drinks', 'juice', 'tea', 'snacks', 'sweets', 'biscuits', 'icecream', 'pantry', 'grains', 'meat', 'cartons', 'clean', 'care', 'misc', 'bakery', 'veg', 'roast', 'print']  # الترتيب الجديد (REORG-PLAN)؛ بعد subs.py شغّل reorg.py
+CAT_ORDER = ['dairy', 'cheese', 'drinks', 'juice', 'cartons', 'tea', 'snacks', 'sweets', 'biscuits', 'icecream', 'pantry', 'grains', 'meat', 'clean', 'care', 'misc', 'bakery', 'veg', 'roast', 'print']  # الترتيب الجديد (REORG-PLAN)؛ بعد subs.py شغّل reorg.py
 
 def run(path, apply=False):
     d = json.load(open(path, encoding='utf-8'))
@@ -168,3 +168,6 @@ def run(path, apply=False):
 
 if __name__ == '__main__':
     run(sys.argv[1], '--apply' in sys.argv)
+    # الترتيب الأخير (المالك ١٨ نوفمبر ٢٠٢٦): أسماء الأقسام والأقسام الفرعية الجديدة وتصنيف «أخرى» من subfix.py فوق قواعد هالملف
+    if '--apply' in sys.argv:
+        import subfix; sys.argv = [sys.argv[0], sys.argv[1], '--all', '--apply']; subfix.main()
