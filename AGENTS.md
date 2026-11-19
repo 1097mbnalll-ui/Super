@@ -444,3 +444,8 @@ KV: `pin` (رقم الإدارة مشفّر)، `driver_pin` (قديم)، `fail:<
 
 ### «رسالة جماعية بالواتساب» في الإدارة (١٩ نوفمبر ٢٠٢٦)
 - تبويب `bulk` (`renderBulk` في admin.js): المالك يكتب الرسالة ويلصق الأرقام (أي شكل، أرقام عربية، مكرر ينشال)، و«أرسل للتالي» يفتح `wa.me/<رقم>?text=` للرقم اللي بعده ويعلّمه. بدون خادم؛ الأرقام والتقدّم في `localStorage` (`ohod-bulk`) بجهاز المالك بس. الإرسال التلقائي للكل يحتاج WhatsApp Business API (مدفوع).
+
+### دور «مشرف» (supervisor) — المالك ١٩ نوفمبر ٢٠٢٦ (أول حساب: نجيب الشميري)
+- `staffMay`: `/login /admin/catalog /admin/orders /admin/alerts /admin/assign /admin/team /admin/driver-loc /driver/status /driver/pending /driver/orders /admin/today /admin/winback /admin/winback-mark /admin/ratings /admin/order-times` بس. بدون حفظ ولا أسعار ولا كاش ولا محافظ ولا حسابات، والردود بدون تكلفة/ربح (`withoutCosts`).
+- الواجهة: `SUP_TABS` (اليوم، الطلبات، المتأخرة، التواصل، الرسالة الجماعية، التقييمات، أوقات الطلبات)، وزر إيقاف الطلبات مخفي له.
+- جدول `staff_users` انبنى من جديد بـ CHECK فيه `supervisor` (`ensureStaffSchema`، الحسابات تنسخ كما هي). اختبار: `node --test server/test/supervisor.mjs`.

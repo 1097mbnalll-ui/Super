@@ -151,6 +151,7 @@
     if (id === "offers") setTimeout(renderOffProds, 0);
     if(staffAuth && staffAuth.user.role==='cashier' && ['pos','settlement'].indexOf(id)<0)return;
     if (staffAuth && staffAuth.user.role === "preparer" && id !== "prep") return;
+    if (supervisorOnly() && SUP_TABS.indexOf(id) < 0) id = "olist";
     if (ordersOnly() && ["olist", "alerts"].indexOf(id) < 0) return;
     if ((id === "staff" || id === "costs") && staffAuth) return;
     if ((id === "pos" || id === "prep") && !(staffAuth && staffAuth.user.role === (id === "pos" ? "cashier" : "preparer"))) return;
@@ -283,6 +284,7 @@
     simplifyOverview(); a2Over();
     if (apiUrl()) { loadToday(); loadDrvLoc(); $("aDrvRe").addEventListener("click", function(){ loadDrvLoc(true); }); }
     $("aToggleOpen").disabled=!catalogSaveAvailable();
+    if (supervisorOnly()) { var tgl = $("aToggleOpen"); if (tgl) tgl.style.display = "none"; }
     $("aToggleOpen").addEventListener("click", function(){ if(!catalogSaveAvailable()){sToast("تغيير استقبال الطلبات يحتاج تحديث الخدمة أولًا");return;}if(dirty){sToast("احفظ تعديلات المتجر أولًا قبل تغيير استقبال الطلبات");return;}if(!draft.store.closed&&!confirm("إيقاف استقبال طلبات جديدة مؤقتًا؟ الطلبات الحالية تستمر."))return; if (draft.store.closed) delete draft.store.closed; else draft.store.closed = true; if ($("sClosed")) $("sClosed").checked = !!draft.store.closed; markDirty(); renderOver(); publish(); });
     if (apiUrl()) overApi("/driver/orders", { pin: adminPin }).then(function(j){
       var el = $("aOrders"); if (!el) return;
@@ -1817,7 +1819,7 @@
 
   /* ---------- staff name (for the activity log) ---------- */
   function staffBox(){
-    if (staffAuth) return '<div class="staffline">' + ic("user") + '<span>أنت داخل باسم <b>' + esc(staffAuth.user.name) + '</b> · مدير</span></div>';
+    if (staffAuth) return '<div class="staffline">' + ic("user") + '<span>أنت داخل باسم <b>' + esc(staffAuth.user.name) + '</b> · ' + ({ supervisor: 'مشرف', manager: 'مدير', orders: 'موظف طلبات' }[staffAuth.user.role] || 'مدير') + '</span></div>';
     if (STAFF) return '<div class="staffline">' + ic("user") + '<span>أنت داخل باسم <b>' + esc(STAFF) + '</b></span><button type="button" class="linkbtn" data-staffchg>غيّر</button></div>';
     return '<div class="card staffask"><b>وش اسمك؟</b><p class="hint">عشان يطلع اسمك في «سجل العمليات» لما تغيّر سعر أو تلغي طلب. ينحفظ على هذا الجهاز بس.</p><div class="o-tools"><input id="staffIn" maxlength="30" placeholder="مثال: فهد"><button class="btn btn-brand" type="button" id="staffSave">احفظ</button></div></div>';
   }
@@ -1992,7 +1994,7 @@
   }
 
   /* ---------- activity log ---------- */
-  var LOGROLE = { manager: "مدير", orders: "موظف طلبات", preparer: "مجهّز", cashier: "كاشير توصيل", driver: "مندوب" };
+  var LOGROLE = { supervisor: "مشرف", manager: "مدير", orders: "موظف طلبات", preparer: "مجهّز", cashier: "كاشير توصيل", driver: "مندوب" };
   var LOGACT = {
     staff_account: function(i, r){ return 'حفظ حساب الموظف <b>' + esc(i.name || r) + '</b> · ' + (i.active ? 'مفعّل' : 'موقوف') + ' · ' + (LOGROLE[i.role] || 'موظف') + (i.pin ? ' · رقم سري جديد' : ''); },
     staff_add: function(i){ return 'أضاف ' + (LOGROLE[i.role] || 'موظف') + ' <b>' + esc(i.name || "") + '</b>'; },
