@@ -41,7 +41,7 @@
       '<section class="adm-panel" data-panel="rates" id="aRates"></section>' +
       '<section class="adm-panel" data-panel="sign" id="aSign"></section>' +
       '<section class="adm-panel" data-panel="bans" id="aBans"></section>' +
-      '<section class="adm-panel" data-panel="prods"><div class="card" id="aImport"></div><div class="card" id="openItems" hidden></div><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث بالاسم أو الباركود…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-soft" type="button" id="offProds">🔥 منتجات العروض</button><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
+      '<section class="adm-panel" data-panel="prods"><div class="card" id="aDrafts" hidden></div><div class="card" id="aImport"></div><div class="card" id="openItems" hidden></div><div class="card"><div class="adm-tools"><input class="search" id="aQ" type="search" placeholder="ابحث بالاسم أو الباركود…" aria-label="بحث في المنتجات"><select id="aCat" aria-label="فلتر القسم"></select><button class="btn btn-soft" type="button" id="offProds">🔥 منتجات العروض</button><button class="btn btn-brand" type="button" id="addProd">+ منتج جديد</button></div>' +
         '<p class="hint">«قبل الخصم» اختياري: لو كتبته أكبر من السعر، يطلع المنتج في العروض مع نسبة الخصم. اضغط على الصورة لتغييرها أو رفع صورة من جهازك. الأسهم ترتّب المنتج داخل قسمه.</p></div><div class="alist prods" id="aProds"></div></section>' +
       '<section class="adm-panel" data-panel="cats"><div class="card"><div class="sec-head" style="margin:0"><h2>الأقسام</h2><button class="btn btn-brand" type="button" id="addCat">+ قسم جديد</button></div><p class="hint">الأسهم ترتّب الأقسام في المتجر كله: الدوائر والشبكة وصفحة الأقسام.</p><div class="alist" id="aCats"></div></div></section>' +
       '<section class="adm-panel" data-panel="offers"><div class="card" id="aOffProds"></div><div class="card" id="aPromos"></div></section>' +
@@ -570,6 +570,7 @@
     var r = id && document.querySelector('#aProds [data-row="' + id + '"]'); if (r) r.scrollIntoView({ block: "start", behavior: "smooth" });
   });
   function renderAProds(){
+    try { renderDrafts(); } catch(e){}
     var words = normAr(aFilter.q).split(/\s+/).filter(Boolean), shown = aFilter.show || 40;
     var offF = OFF_F[aFilter.cat] ? aFilter.cat : "";
     var all = draft.products.filter(function(p){ if (offF) { var ok = offKind(p); if (!ok || (offF !== "__offers" && "__" + ok !== offF)) return false; } else if (aFilter.cat !== "all" && p.cat !== aFilter.cat) return false; if (!words.length) return true; var h = normAr(p.name + " " + (p.bc || "")); return words.every(function(w){ return h.indexOf(w) > -1; }); });
@@ -904,6 +905,7 @@
   // دمج ثلاثي: تعديلاتك (مقارنة بالنسخة اللي فتحت عليها) تنحط فوق آخر نسخة محفوظة، فما يضيع حفظ أحد
   function mergeCatalog(base, mine, theirs){
     var J = JSON.stringify, out = JSON.parse(J(theirs)); base = base || { store: {}, products: [], cats: [], imgs: {} };
+    if (J(mine.drafts || []) !== J(base.drafts || [])) out.drafts = mine.drafts || [];
     out.store = out.store || {}; var ks = {}; [base.store || {}, mine.store || {}].forEach(function(o){ Object.keys(o).forEach(function(k){ ks[k] = 1; }); });
     Object.keys(ks).forEach(function(k){ if (J(mine.store[k]) !== J((base.store || {})[k])) { if (mine.store[k] === undefined) delete out.store[k]; else out.store[k] = mine.store[k]; } });
     ["products", "cats"].forEach(function(key){
@@ -2673,3 +2675,19 @@
   }
   if (!window.__oaTimer) { window.__oaTimer = setInterval(function(){ if (mode === "admin" && adminPin) oaPoll(); else if (oa.seen !== null || oa.pending.length) { oa.seen = null; oaStop(); } }, 10000); }
   oa.seen = null; setTimeout(function(){ oaUi(); oaPoll(); }, 1500);
+
+  /* منتجات خاصة (طلب المالك ١٩ نوفمبر ٢٠٢٦): data.json → drafts. ما تنعرض للزبائن بالموقع ولا التطبيقات، تظهر هنا بس للمالك.
+     «انشره» ينقله للمنتجات العادية (وبعدها «احفظ» مثل أي تعديل) */
+  function renderDrafts(){
+    var box = $("aDrafts"); if (!box || !draft) return;
+    var L = Array.isArray(draft.drafts) ? draft.drafts : [];
+    if (!L.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = '<h2>منتجات خاصة (' + num(L.length) + ')</h2><p class="hint">ما تنعرض للزبائن. أضف الصورة وراجع السعر، وبعدها اضغط «انشره» ثم «احفظ».</p>' +
+      '<div style="display:grid;gap:6px">' + L.map(function(x, i){ return '<div style="display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 10px"><span style="flex:1;font-weight:700">' + esc(x.name) + ' <small class="hint">' + esc(x.unit || "") + '</small></span><b>' + num(x.price) + ' ر.س</b><button class="btn btn-soft sm" type="button" data-pubdraft="' + i + '">انشره</button></div>'; }).join("") + '</div>';
+  }
+  document.addEventListener("click", function(e){ var b = e.target.closest && e.target.closest("[data-pubdraft]"); if (!b || mode !== "admin" || !draft) return;
+    var i = Number(b.dataset.pubdraft), x = draft.drafts[i]; if (!x) return;
+    draft.drafts.splice(i, 1); var np = JSON.parse(JSON.stringify(x)); np.stock = true; draft.products.unshift(np);
+    markDirty(); renderDrafts(); if (typeof renderAProds === "function") renderAProds(); });
+  setTimeout(renderDrafts, 0);
