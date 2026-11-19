@@ -1,0 +1,114 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#cfd9de;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+const W = 1800, H = 1200;
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(W, H); r.setPixelRatio(1); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.95; r.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene();
+const pm = new THREE.PMREMGenerator(r); scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+// السما: تدرّج
+{ const c = document.createElement('canvas'); c.width = 4; c.height = 512; const g = c.getContext('2d'); const gr = g.createLinearGradient(0, 0, 0, 512);
+  gr.addColorStop(0, '#8FB9D6'); gr.addColorStop(0.55, '#DCE8EE'); gr.addColorStop(1, '#F1E9DA'); g.fillStyle = gr; g.fillRect(0, 0, 4, 512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t; }
+scene.fog = new THREE.Fog(0xE6E4DC, 9, 26);
+const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 100);
+cam.position.set(3.7, 1.5, 2.1); cam.lookAt(0.18, 0.78, 0);
+// إضاءة
+scene.add(new THREE.HemisphereLight(0xEAF3FF, 0x8A7F70, 0.55));
+const sun = new THREE.DirectionalLight(0xFFF2DD, 2.6); sun.position.set(4, 7, 3.5); sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096); Object.assign(sun.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 1, far: 20 }); sun.shadow.radius = 4; sun.shadow.bias = -0.0004;
+scene.add(sun);
+// الأرض: إسفلت + رصيف + خط
+{ const c = document.createElement('canvas'); c.width = c.height = 1024; const g = c.getContext('2d'); g.fillStyle = '#5E5C5A'; g.fillRect(0, 0, 1024, 1024);
+  for (let i = 0; i < 60000; i++) { const v = 70 + Math.random() * 60 | 0; g.fillStyle = `rgba(${v},${v},${v - 4},.35)`; g.fillRect(Math.random() * 1024, Math.random() * 1024, 2, 2); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(8, 8); t.colorSpace = THREE.SRGBColorSpace;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ map: t, roughness: 0.95 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  for (let i = -6; i < 8; i++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.12), new THREE.MeshStandardMaterial({ color: 0xF2EEE4, roughness: .8 })); m.rotation.x = -Math.PI / 2; m.position.set(i * 3, 0.002, 1.6); m.receiveShadow = true; scene.add(m); }
+  const curb = new THREE.Mesh(new THREE.BoxGeometry(60, 0.16, 3), new THREE.MeshStandardMaterial({ color: 0xC9C1B2, roughness: .9 })); curb.position.set(0, 0.08, -3.4); curb.receiveShadow = true; scene.add(curb);
+  // مباني بعيدة
+  const bc = [0xD8CBB4, 0xCDBFA6, 0xE2D7C3, 0xC4B49A];
+  for (let i = 0; i < 12; i++) { const h = 2.5 + Math.random() * 3.5, w = 2 + Math.random() * 2.5; const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 2.5), new THREE.MeshStandardMaterial({ color: bc[i % 4], roughness: .95 }));
+    b.position.set(-12 + i * 2.6, h / 2, -6.5 - Math.random() * 1.5); b.castShadow = b.receiveShadow = true; scene.add(b);
+    for (let k = 0; k < 3; k++) for (let j = 0; j < Math.floor(h / 1.2); j++) { const win = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.55), new THREE.MeshStandardMaterial({ color: 0x5C6F7A, roughness: .3, metalness: .4 })); win.position.set(b.position.x - w / 3 + k * w / 3, 0.9 + j * 1.2, b.position.z + 1.26); scene.add(win); } }
+}
+const M = (o) => new THREE.MeshStandardMaterial(o);
+const green = M({ color: 0x0E9F7B, roughness: .32, metalness: .15 }), greenD = M({ color: 0x0A7D60, roughness: .35, metalness: .15 });
+const black = M({ color: 0x18191C, roughness: .55 }), rubber = M({ color: 0x141414, roughness: .9 }), chrome = M({ color: 0xDADDE0, roughness: .12, metalness: 1 });
+const alu = M({ color: 0xA9AFB5, roughness: .35, metalness: .85 }), dark = M({ color: 0x2C3035, roughness: .5, metalness: .4 }), seatM = M({ color: 0x1C1A19, roughness: .7 });
+const bike = new THREE.Group(); scene.add(bike);
+const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.scale.set(sx, sy, sz); m.castShadow = m.receiveShadow = true; bike.add(m); return m; };
+const tube = (pts, rad, mat, seg = 40) => add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p))), seg, rad, 14), mat);
+// العجلة: إطار + جنط + أسلاك + دسك
+function wheel(x) { const R = 0.3;
+  add(new THREE.TorusGeometry(R - 0.045, 0.048, 22, 64), rubber, x, R, 0);
+  add(new THREE.TorusGeometry(R - 0.085, 0.012, 10, 64), alu, x, R, 0);
+  add(new THREE.CylinderGeometry(0.05, 0.05, 0.13, 24), alu, x, R, 0, Math.PI / 2);
+  for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2, side = i % 2 ? 0.04 : -0.04; const s = add(new THREE.CylinderGeometry(0.003, 0.003, R - 0.12, 6), chrome, x + Math.cos(a) * (R - 0.08) / 2, R + Math.sin(a) * (R - 0.08) / 2, side / 2, 0, 0, a + Math.PI / 2); }
+  add(new THREE.CylinderGeometry(0.11, 0.11, 0.006, 40), alu, x, R, 0.07, Math.PI / 2); }
+wheel(-0.68); wheel(0.66);
+// الشوكة الأمامية
+const fork = (z) => tube([[-0.68, 0.3, z], [-0.6, 0.62, z], [-0.5, 0.98, z]], 0.024, chrome);
+fork(0.075); fork(-0.075);
+// الرفارف
+add(new THREE.TorusGeometry(0.33, 0.065, 12, 40, Math.PI * 0.75), green, -0.68, 0.3, 0, 0, 0, Math.PI * 0.18, 1, 1, 0.9);
+add(new THREE.TorusGeometry(0.34, 0.06, 12, 40, Math.PI * 0.62), greenD, 0.66, 0.3, 0, 0, 0, Math.PI * 0.12, 1, 1, 0.9);
+// الهيكل
+tube([[-0.5, 0.98, 0], [-0.36, 0.7, 0], [-0.18, 0.46, 0], [0.2, 0.42, 0], [0.5, 0.6, 0], [0.78, 0.8, 0]], 0.03, dark);
+// الدرع الأمامي والرأس
+add(new THREE.SphereGeometry(0.2, 32, 24), green, -0.5, 1.02, 0, 0, 0, 0.35, 0.9, 0.62, 0.78);
+add(new THREE.CylinderGeometry(0.075, 0.08, 0.06, 32), chrome, -0.66, 1.02, 0, 0, 0, Math.PI / 2 - 0.25);
+add(new THREE.CircleGeometry(0.068, 32), M({ color: 0xFFF6D8, emissive: 0xFFF1C2, emissiveIntensity: 1.2, roughness: .1 }), -0.695, 1.01, 0, 0, -Math.PI / 2, 0).rotation.set(0, -Math.PI / 2, 0.25);
+// الخزان والجوانب
+add(new THREE.SphereGeometry(0.2, 40, 28), green, -0.17, 0.8, 0, 0, 0, -0.12, 1.5, 0.62, 0.72);
+add(new RoundedBoxGeometry(0.52, 0.22, 0.3, 6, 0.08), green, 0.38, 0.74, 0, 0, 0, 0.12);
+add(new RoundedBoxGeometry(0.2, 0.05, 0.31, 4, 0.02), M({ color: 0xFF8A1F, roughness: .4 }), 0.45, 0.79, 0, 0, 0, 0.12);
+// المقعد
+add(new RoundedBoxGeometry(0.62, 0.09, 0.27, 8, 0.045), seatM, 0.22, 0.9, 0, 0, 0, 0.06);
+// المكينة
+add(new RoundedBoxGeometry(0.3, 0.24, 0.24, 4, 0.04), alu, -0.06, 0.42, 0);
+for (let i = 0; i < 5; i++) add(new THREE.BoxGeometry(0.008, 0.2, 0.27), alu, -0.16 + i * 0.05, 0.5, 0, 0, 0, -0.5);
+add(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 30), dark, 0.05, 0.36, 0.13, Math.PI / 2);
+// الشكمان
+tube([[-0.12, 0.38, 0.1], [0.0, 0.27, 0.17], [0.3, 0.27, 0.19], [0.62, 0.38, 0.2]], 0.026, chrome);
+add(new THREE.CylinderGeometry(0.05, 0.045, 0.32, 24), chrome, 0.55, 0.37, 0.2, 0, 0, Math.PI / 2 - 0.2);
+// الجنزير وغطاه
+add(new RoundedBoxGeometry(0.62, 0.06, 0.03, 4, 0.012), black, 0.33, 0.33, -0.07, 0, 0, 0.05);
+// الشداد الخلفي
+tube([[0.66, 0.3, 0.07], [0.55, 0.62, 0.07]], 0.018, dark); tube([[0.66, 0.3, -0.07], [0.55, 0.62, -0.07]], 0.018, dark);
+add(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 12), chrome, 0.6, 0.47, 0.11, 0, 0, -0.35);
+// المقود والمرايات
+add(new THREE.CylinderGeometry(0.014, 0.014, 0.66, 16), chrome, -0.47, 1.15, 0, Math.PI / 2);
+for (const z of [0.3, -0.3]) { add(new THREE.CylinderGeometry(0.022, 0.022, 0.11, 16), black, -0.47, 1.15, z, Math.PI / 2);
+  tube([[-0.47, 1.16, z * 0.75], [-0.48, 1.3, z * 0.85], [-0.45, 1.38, z * 0.95]], 0.007, chrome, 12);
+  add(new THREE.SphereGeometry(0.05, 20, 14), black, -0.45, 1.4, z * 0.97, 0, 0, 0, 0.4, 0.75, 1); }
+// الرف الخلفي
+add(new THREE.BoxGeometry(0.5, 0.025, 0.36), dark, 0.68, 0.96, 0);
+tube([[0.48, 0.92, 0.15], [0.55, 0.95, 0.17], [0.92, 0.95, 0.17]], 0.012, dark, 10); tube([[0.48, 0.92, -0.15], [0.55, 0.95, -0.17], [0.92, 0.95, -0.17]], 0.012, dark, 10);
+// الضوء الخلفي واللوحة
+add(new RoundedBoxGeometry(0.05, 0.06, 0.16, 3, 0.015), M({ color: 0xD22E22, emissive: 0xFF2A1A, emissiveIntensity: .8, roughness: .2 }), 0.86, 0.86, 0);
+add(new THREE.BoxGeometry(0.01, 0.13, 0.22), M({ color: 0xF4F4F0, roughness: .5 }), 0.86, 0.73, 0, 0, 0, 0.25);
+// الستاند
+tube([[0.0, 0.3, -0.12], [-0.05, 0.02, -0.28]], 0.012, dark, 6);
+bike.rotation.z = 0.05; bike.position.y = 0.0;
+// الصندوق
+const tl = new THREE.TextureLoader(); const tex = (f) => { const t = tl.load(f); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 16; return t; };
+const S = 0.52, bm = (f) => M({ map: tex(f), roughness: .6, metalness: 0, envMapIntensity: .25 });
+const box = new THREE.Mesh(new RoundedBoxGeometry(S, S, S, 6, 0.012), [bm('box-back2.png'), bm('box-side.png'), bm('box-top.png'), M({ color: 0x222 }), bm('box-side.png'), bm('box-side.png')]);
+box.position.set(0.68, 0.975 + S / 2, 0); box.castShadow = box.receiveShadow = true; bike.add(box);
+// أوجه الصندوق: RoundedBox يحط UV لكل وجه؛ +x = الخلفي
+box.geometry.groups.forEach((g, i) => { g.materialIndex = i; });
+// تصحيح اتجاه الصور على الأوجه الجانبية والخلفي
+[0, 1, 4, 5].forEach((i) => { const m = box.material[i]; m.map.center.set(.5, .5); });
+box.material[2].map.center.set(.5, .5); box.material[2].map.rotation = Math.PI / 2;
+// إطار الحواف
+const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(S + .002, S + .002, S + .002)), new THREE.LineBasicMaterial({ color: 0x0B6B53 })); edge.position.copy(box.position); bike.add(edge);
+bike.position.x = 0;
+THREE.DefaultLoadingManager.onLoad = () => { r.render(scene, cam); document.body.dataset.ready = '1'; };
+r.render(scene, cam);
+</script></body></html>
