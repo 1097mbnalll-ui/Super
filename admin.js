@@ -24,7 +24,7 @@
     if (staffAuth && staffAuth.user.role === "preparer") { preparerShell(); return; }
     if (ordersOnly()) { ordersShell(); return; }
     draft = JSON.parse(JSON.stringify(D)); dirty = false;
-    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["rates","التقييمات والاقتراحات","spark"],["sign","ورقة عرض للمحل","tag"],["visits","الزوار والتحويل","user"],["otimes","أوقات الطلبات","chart"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
+    var TABS = [["over","نظرة عامة","home"],["olist","الطلبات","cart"],["cust","استرجاع الزبائن","user"],["rates","التقييمات والاقتراحات","spark"],["sign","ورقة عرض للمحل","tag"],["visits","الزوار والتحويل","user"],["otimes","أوقات الطلبات","chart"],["bulk","رسالة جماعية","user"],["stats","التحليل","chart"],["prods","المنتجات","box"],["cats","الأقسام","grid"],["offers","العروض","tag"],["codes","أكواد الخصم","tag"],["costs","التكاليف ومستشار العروض","chart"],["layout","ترتيب الواجهة","layers"],["bans","البنرات و«لك»","spark"],["look","المظهر واللغة","palette"],["store","بيانات المحل","store"],["orders","المندوب والإشعارات","truck"],["log","سجل العمليات","layers"]];
     app.innerHTML = '<div class="adm">' +
       '<aside class="adm-side"><div class="adm-brand"><img class="logo" src="' + D.imgs.logo + '" alt=""><div><b>' + esc(D.store.name) + '</b><span>لوحة الإدارة</span></div></div>' +
       '<nav class="adm-nav" aria-label="أقسام الإدارة">' + TABS.map(function(x){ return '<button type="button" data-atab="' + x[0] + '"' + (x[0] === aTab ? ' aria-current="page"' : '') + '>' + ic(x[2]) + '<span>' + x[1] + '</span>' + (x[0] === "prods" ? '<em class="n">' + draft.products.length + '</em>' : x[0] === "cats" ? '<em class="n">' + draft.cats.length + '</em>' : '') + '</button>'; }).join("") + '</nav>' +
@@ -35,6 +35,7 @@
       '<section class="adm-panel" data-panel="stats" id="aStats"></section>' +
       '<section class="adm-panel" data-panel="visits" id="aVisits"></section>' +
       '<section class="adm-panel" data-panel="otimes" id="aOTimes"></section>' +
+      '<section class="adm-panel" data-panel="bulk" id="aBulk"></section>' +
       '<section class="adm-panel" data-panel="olist" id="aOList"></section>' +
       '<section class="adm-panel" data-panel="log" id="aLog"></section>' +
       '<section class="adm-panel" data-panel="cust" id="aCust"></section>' +
@@ -173,6 +174,7 @@
     if (id === "stats") renderStats();
     if (id === "visits") renderVisits();
     if (id === "otimes") renderOTimes();
+    if (id === "bulk") renderBulk();
     if (id === "olist") { if (!staffCache && apiUrl()) loadStaff(function(){ if (aTab === "olist") renderOList(); }); renderOList(); }
     if (id === "log") renderLog();
     if (id === "cust") renderWinback();
@@ -2308,6 +2310,53 @@
     var deliv = o.onway && o.delivered ? o.delivered - o.onway : null, total = o.delivered ? o.delivered - o.created : null;
     var live = o.status !== "delivered" ? (o.onway ? ['deliv', now - o.onway] : o.ready ? ['pick', now - o.ready] : ['prep', now - o.created]) : null;
     return { prep: prep, pick: pick, deliv: deliv, total: total, noPrep: !o.ready && !!o.onway, live: live };
+  }
+  // «رسالة جماعية» (المالك ١٩ نوفمبر ٢٠٢٦): يلصق الأرقام ويكتب الرسالة، وكل ضغطة تفتح واتساب للرقم التالي والرسالة جاهزة.
+  // بدون خادم ولا خدمة مدفوعة: واتساب ما يسمح بإرسال تلقائي مجاني، فالإرسال ضغطة لكل رقم. الأرقام تنحفظ في جهاز المالك بس.
+  var BK = "ohod-bulk";
+  function bulkGet(){ try { return JSON.parse(localStorage.getItem(BK) || "{}"); } catch(e){ return {}; } }
+  function bulkSet(o){ try { localStorage.setItem(BK, JSON.stringify(o)); } catch(e){} }
+  function bulkNums(t){
+    t = String(t || "").replace(/[٠-٩]/g, function(c){ return "٠١٢٣٤٥٦٧٨٩".indexOf(c); }).replace(/[۰-۹]/g, function(c){ return "۰۱۲۳۴۵۶۷۸۹".indexOf(c); });
+    var out = [], seen = {};
+    (t.match(/\+?\d[\d \t\-() ]{7,}\d/g) || []).forEach(function(r){
+      var d = r.replace(/\D/g, "");
+      if (/^00/.test(d)) d = d.slice(2);
+      if (/^05\d{8}$/.test(d)) d = "966" + d.slice(1); else if (/^5\d{8}$/.test(d)) d = "966" + d;
+      if (!/^\d{10,15}$/.test(d) || seen[d]) return; seen[d] = 1; out.push(d); });
+    return out;
+  }
+  function bulkShow(d){ return /^9665\d{8}$/.test(d) ? "0" + d.slice(3) : "+" + d; }
+  function renderBulk(){
+    var box = $("aBulk"); if (!box) return;
+    if (!$("bkCss")) { var st = document.createElement("style"); st.id = "bkCss"; st.textContent = [
+      ".bk{display:grid;gap:12px}.bk textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:15px;resize:vertical;box-sizing:border-box}",
+      ".bk-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.bk-prog{height:10px;border-radius:9px;background:#EEF0F3;overflow:hidden}.bk-prog i{display:block;height:100%;background:#0E8A6A;border-radius:9px}",
+      ".bk-list{display:grid;gap:6px;max-height:420px;overflow:auto}.bk-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#F7F8FA;font-variant-numeric:tabular-nums}.bk-row b{flex:1;direction:ltr;text-align:end}.bk-row.done{opacity:.55}.bk-row.done b::before{content:'✓ ';color:#0E8A6A}",
+      ".bk-big{min-height:52px;font-size:17px}"].join(""); document.head.appendChild(st); }
+    var o = bulkGet(), sent = o.sent || {}, nums = bulkNums(o.nums || ""), left = nums.filter(function(n){ return !sent[n]; });
+    if (o.msg == null) o.msg = "السلام عليكم 🌿\nمعك *متاجر أحد – حي الرمال*\n\nنزل تطبيقنا رسمياً 🎉 واطلب منه أسهل وأسرع من الاتصال، والدفع عند الاستلام.\n\n📲 آيفون: https://apps.apple.com/sa/app/id6833559955\n🌐 أندرويد وأي جوال: https://1097mbnalll-ui.github.io/Super/\n\nوحنا في الافتتاح التجريبي، أي ملاحظة ردّ علينا هنا 🤍";
+    var done = nums.length - left.length, pct = nums.length ? Math.round(done * 100 / nums.length) : 0;
+    box.innerHTML = '<div class="card bk"><h3 style="margin:0">رسالة جماعية بالواتساب</h3>' +
+      '<p class="hint" style="margin:0">١) اكتب الرسالة. ٢) الصق الأرقام (من جهات الاتصال أو أي قائمة، بأي شكل: ٠٥… أو ٩٦٦… أو أرقام عربية). ٣) اضغط «أرسل للتالي»: يفتح واتساب والرسالة جاهزة، اضغط إرسال وارجع هنا للي بعده.</p>' +
+      '<label><b>الرسالة</b><textarea id="bkMsg">' + esc(o.msg) + '</textarea></label>' +
+      '<label><b>الأرقام</b><textarea id="bkNums" placeholder="0551234567&#10;0509876543&#10;...">' + esc(o.nums || "") + '</textarea></label>' +
+      '<div class="bk-bar"><b>' + nums.length + ' رقم</b><span class="hint">أرسلت ' + done + ' · باقي ' + left.length + '</span></div>' +
+      (nums.length ? '<div class="bk-prog"><i style="width:' + pct + '%"></i></div>' : '') +
+      '<div class="bk-bar">' + (left.length ? '<button class="btn btn-teal bk-big" type="button" data-bknext>أرسل للتالي (' + esc(bulkShow(left[0])) + ')</button>' : nums.length ? '<b style="color:#0E8A6A">✓ أرسلت للكل</b>' : '') +
+      (done ? '<button class="btn btn-soft sm" type="button" data-bkreset>ابدأ من جديد</button>' : '') + (nums.length ? '<button class="btn btn-soft sm" type="button" data-bkclear>امسح الأرقام</button>' : '') + '</div>' +
+      (nums.length ? '<div class="bk-list">' + nums.map(function(n){ return '<div class="bk-row' + (sent[n] ? ' done' : '') + '"><b>' + esc(bulkShow(n)) + '</b><button class="btn btn-soft sm" type="button" data-bkone="' + n + '">' + (sent[n] ? 'أرسل مرة ثانية' : 'واتساب') + '</button></div>'; }).join("") + '</div>' : '') +
+      '<p class="hint" style="margin:0">الأرقام تنحفظ في جهازك هذا بس. واتساب ما يسمح بالإرسال التلقائي للكل بضغطة وحدة إلا بخدمة مدفوعة، عشان كذا كل رقم بضغطة.</p></div>';
+    var save = function(){ var x = bulkGet(); x.msg = $("bkMsg").value; x.nums = $("bkNums").value; bulkSet(x); };
+    $("bkMsg").oninput = save;
+    $("bkNums").onchange = function(){ save(); setTimeout(renderBulk, 0); };
+    var send = function(n){ save(); var x = bulkGet(); x.sent = x.sent || {}; x.sent[n] = Date.now(); bulkSet(x);
+      window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(x.msg || ""), "_blank", "noopener"); renderBulk(); };
+    box.onclick = function(e){ var t = e.target.closest("button"); if (!t) return;
+      if (t.hasAttribute("data-bknext")) { var l = bulkNums($("bkNums").value).filter(function(n){ return !(bulkGet().sent || {})[n]; }); if (l[0]) send(l[0]); }
+      else if (t.dataset.bkone) send(t.dataset.bkone);
+      else if (t.hasAttribute("data-bkreset")) { if (confirm("تبدأ من أول رقم من جديد؟")) { var x = bulkGet(); x.sent = {}; bulkSet(x); renderBulk(); } }
+      else if (t.hasAttribute("data-bkclear")) { if (confirm("تمسح كل الأرقام؟")) { var y = bulkGet(); y.nums = ""; y.sent = {}; bulkSet(y); renderBulk(); } } };
   }
   function renderOTimes(){
     var box = $("aOTimes"); if (!box) return;
