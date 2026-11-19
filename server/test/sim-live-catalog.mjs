@@ -50,7 +50,7 @@ const tracked = {}; for (const p of sellable) if (rnd() < 0.5) tracked[p.id] = 5
 for (const p of offers) tracked[p.id] = 200;
 // مواعيد ثابتة للمحاكاة (ما نعتمد على مواعيد المالك الحية؛ فحوص «مقفل» أدناه تفترض ١٢ الظهر–١٢:٣٠ الفجر)
 data.store.openAt = '12:00'; data.store.closeAt = '00:30';
-ok((await call('/save', { ...A, data, stock: tracked })).ok, 'حفظ الكتالوج الحقيقي والمخزون');
+{ const sv = await call('/save', { ...A, data, stock: tracked }); ok(sv.ok, 'حفظ الكتالوج الحقيقي والمخزون: ' + JSON.stringify(sv).slice(0, 300)); }
 const expect = { ...tracked };
 await call('/admin/team-save', { ...A, name: 'مندوب', role: 'driver', newPin: '5151' });
 const D = { pin: '5151' };
@@ -61,7 +61,7 @@ ok(r.code === 'closed', 'الساعة ١١:٣٠ الصبح مقفل: ' + r.code)
 Date.now = () => at(3); r = await call('/order', { items: { [offers[0].id]: 1 }, phone: '0550000001', lat: 24.845, lng: 46.815 });
 ok(r.code === 'closed', 'الساعة ٣ الفجر مقفل: ' + r.code);
 Date.now = realNow;
-const openTimes = [at(12, 5), at(15), at(20), at(23, 30), at(0, 40)];
+const openTimes = [at(12, 5), at(15), at(20), at(23, 30), at(0, 10)];
 
 const zone = S.zone && S.zone.length >= 3 ? S.zone : null;
 const inZone = () => { if (!zone) return [24.845, 46.815]; const la = zone.reduce((s, p) => s + p[0], 0) / zone.length, ln = zone.reduce((s, p) => s + p[1], 0) / zone.length; return [la, ln]; };
