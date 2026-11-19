@@ -1,0 +1,29 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+const W = 1800, H = 1800;
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(W, H); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.95; r.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene();
+const pm = new THREE.PMREMGenerator(r); scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+{ const c = document.createElement('canvas'); c.width = 512; c.height = 512; const g = c.getContext('2d'); const gr = g.createRadialGradient(256, 200, 20, 256, 256, 420);
+  gr.addColorStop(0, '#FFFFFF'); gr.addColorStop(1, '#DCD6CA'); g.fillStyle = gr; g.fillRect(0, 0, 512, 512); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t; }
+const cam = new THREE.PerspectiveCamera(18, 1, 0.1, 50); cam.position.set(2.15, 1.55, 1.75); cam.lookAt(0, 0.24, 0);
+scene.add(new THREE.HemisphereLight(0xFFFFFF, 0xB8AE9C, 0.7));
+const sun = new THREE.DirectionalLight(0xFFF6EA, 2.2); sun.position.set(2.5, 4, 1.5); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -1.5, right: 1.5, top: 1.5, bottom: -1.5 }); sun.shadow.radius = 8; sun.shadow.bias = -0.0003; scene.add(sun);
+const fill = new THREE.DirectionalLight(0xEAF2FF, 0.6); fill.position.set(-2, 1.5, 2.5); scene.add(fill);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ opacity: 0.28 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const tl = new THREE.TextureLoader(); const tex = (f) => { const t = tl.load(f); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 16; return t; };
+const S = 0.45, bm = (f) => new THREE.MeshStandardMaterial({ map: tex(f), roughness: .5, envMapIntensity: .3 });
+const box = new THREE.Mesh(new RoundedBoxGeometry(S, S, S, 8, 0.014), [bm('box-back2.png'), bm('box-side.png'), bm('box-top.png'), new THREE.MeshStandardMaterial({ color: 0x222 }), bm('box-side.png'), bm('box-side.png')]);
+box.geometry.groups.forEach((g, i) => { g.materialIndex = i; });
+box.material[2].map.center.set(.5, .5); box.material[2].map.rotation = Math.PI / 2;
+box.position.y = S / 2; box.castShadow = true; scene.add(box);
+THREE.DefaultLoadingManager.onLoad = () => { r.render(scene, cam); document.body.dataset.ready = '1'; };
+</script></body></html>
