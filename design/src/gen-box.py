@@ -48,6 +48,24 @@ back = '''<div class="f bk"><div class="hd"><div class="emb">%s</div><b class="l
 <div class="ph">%s ☎</div></div></div><i class="stripe"></i></div>''' % (EMB, qr_svg(N, '#FFFFFF'), APPLE, PHONE)
 side = '''<div class="f sd"><div class="emb">%s</div><div class="nm lz">متاجر أحد</div><div class="s">بقالتك في جوالك<i></i>حي الرمال</div><i class="stripe"></i></div>''' % EMB
 top = '''<div class="f tp"><div class="emb">%s</div><div class="nm lz">متاجر أحد</div><i class="stripe"></i></div>''' % EMB
-for n, b in [('box-back', back), ('box-side', side), ('box-top', top)]:
+# الخلفي (نسخة ٢، المالك ١٩ نوفمبر): خلفية خضراء كاملة تنشاف من بعيد، الشعار والاسم كبار، والباركود في كرت أبيض
+CSS += ('''.bk2{background:%(G)s;color:#fff}
+.bk2 .hd2{position:absolute;top:34mm;left:30mm;right:30mm;display:flex;align-items:center;justify-content:center;gap:14mm}
+.bk2 .hd2 .emb{width:84mm;height:84mm;flex:none;box-shadow:0 0 0 5mm rgba(255,255,255,.22)}
+.bk2 .hd2 b{font-size:82mm;line-height:1;white-space:nowrap}
+.bk2 .h{position:absolute;top:168mm;left:20mm;right:20mm;text-align:center;font-size:58mm;line-height:1;white-space:nowrap}.bk2 .h em{font-style:normal;color:#FFD08A}
+.bk2 .card{position:absolute;left:26mm;right:26mm;bottom:40mm;height:166mm;background:#fff;border-radius:16mm;display:flex;align-items:center;gap:12mm;padding:0 14mm;color:%(N)s}
+.bk2 .qr{flex:none;width:136mm;height:136mm}
+.bk2 .tx{flex:1;min-width:0;display:grid;gap:7mm;justify-items:center;text-align:center}
+.bk2 .tx .t{font-size:40mm;line-height:1.05}.bk2 .tx .t em{font-style:normal;color:%(G)s}
+.bk2 .ph{justify-content:center;font-size:14mm}
+.bk2 .stripe{background:linear-gradient(to left,%(O)s 0 30%%,%(N)s 30%%)}
+''') % dict(N=N, G=G, O=O, C=C)
+back2 = '''<div class="f bk2"><div class="hd2"><div class="emb">%s</div><b class="lz">متاجر أحد</b></div>
+<div class="h lz">بقالتك في <em>جوالك</em></div>
+<div class="card"><div class="qr">%s</div><div class="tx"><div class="t lz">امسح<br><em>واطلب</em></div>
+<div class="ap"><span class="ai e">%s</span><span><small>حمّله من</small><b>App Store</b></span></div>
+<div class="ph">☎ %s</div></div></div><i class="stripe"></i></div>''' % (EMB, qr_svg(N, '#FFFFFF'), APPLE, PHONE)
+for n, b in [('box-back', back), ('box-back2', back2), ('box-side', side), ('box-top', top)]:
     open(n + '.html', 'w').write(page(W, H, CSS, b, 'صندوق الدباب · متاجر أحد'))
 print('ok')

@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;width:1600px;height:1100px;overflow:hidden;background:linear-gradient(#DCEBF2 0 62%,#C9C3B8 62% 64%,#8E8A84 64% 100%);position:relative;font-family:sans-serif}
+.road{position:absolute;left:0;right:0;top:820px;height:10px;background:repeating-linear-gradient(90deg,#F4F1EA 0 120px,transparent 120px 220px);opacity:.8}
+.bld{position:absolute;bottom:396px;background:#BFD4DC;border-radius:6px 6px 0 0}
+svg.bike{position:absolute;left:180px;top:420px;width:1150px}
+.scene{position:absolute;left:1000px;top:318px;perspective:2400px}
+.box{position:relative;width:320px;height:320px;transform-style:preserve-3d;transform:rotateX(-8deg) rotateY(-52deg)}
+.f{position:absolute;width:320px;height:320px;background-size:cover;border-radius:8px}
+.bk{background-image:url(box-back2.png);transform:rotateY(90deg) translateZ(160px)}
+.sd2{background-image:url(box-side.png);transform:translateZ(160px);filter:brightness(.86)}
+.tp{background:#E9E3D6;transform:rotateX(90deg) translateZ(160px)}
+.shadow{position:absolute;left:250px;top:905px;width:1050px;height:60px;background:radial-gradient(ellipse,rgba(0,0,0,.35),transparent 70%)}
+</style></head><body>
+<i class="bld" style="left:40px;width:260px;height:240px"></i><i class="bld" style="left:330px;width:180px;height:320px;background:#C8DAE1"></i><i class="bld" style="left:1180px;width:300px;height:270px"></i>
+<i class="road"></i><i class="shadow"></i>
+<svg class="bike" viewBox="0 0 1150 560">
+ <!-- العجلات -->
+ <g><circle cx="220" cy="420" r="118" fill="#1E1E22"/><circle cx="220" cy="420" r="70" fill="#9AA3AB"/><circle cx="220" cy="420" r="22" fill="#4A5058"/></g>
+ <g><circle cx="900" cy="420" r="118" fill="#1E1E22"/><circle cx="900" cy="420" r="70" fill="#9AA3AB"/><circle cx="900" cy="420" r="22" fill="#4A5058"/></g>
+ <!-- الشوكة الأمامية والمقود -->
+ <path d="M220 420 L300 140" stroke="#3B4148" stroke-width="26" stroke-linecap="round"/>
+ <path d="M300 140 L250 92 M300 140 L360 118" stroke="#24282E" stroke-width="18" stroke-linecap="round"/>
+ <rect x="232" y="78" width="40" height="24" rx="8" fill="#24282E"/>
+ <!-- الهيكل -->
+ <path d="M300 170 C 330 300, 380 360, 520 360 L 760 360 C 840 360, 900 330, 960 260 L 990 230 L 800 200 L 640 250 L 470 250 C 410 250, 360 220, 330 170 Z" fill="#0E9F7B"/>
+ <path d="M290 160 C 280 240, 300 330, 360 370 L 420 370 C 380 320, 360 250, 362 170 Z" fill="#0B7F62"/>
+ <path d="M470 250 L 640 250 L 800 200 L 990 230 L 960 262 L 800 236 L 640 282 L 470 282 Z" fill="#13213C" opacity=".18"/>
+ <!-- المقعد -->
+ <path d="M600 222 C 650 196, 820 178, 900 196 C 920 202, 918 222, 896 226 L 610 246 C 586 246, 584 230, 600 222 Z" fill="#1E1E22"/>
+ <!-- الرف الخلفي -->
+ <rect x="850" y="214" width="250" height="16" rx="6" fill="#30353B"/><path d="M880 230 L 940 330 M1080 230 L 1010 330" stroke="#30353B" stroke-width="12"/>
+ <!-- الضوء الخلفي والعادم -->
+ <rect x="1000" y="238" width="44" height="22" rx="8" fill="#E2463A"/>
+ <path d="M700 380 L 960 380" stroke="#7D858D" stroke-width="22" stroke-linecap="round"/>
+ <!-- الضوء الأمامي -->
+ <ellipse cx="300" cy="190" rx="26" ry="20" fill="#FFE8A3" stroke="#24282E" stroke-width="6"/>
+</svg>
+<div class="scene"><div class="box"><div class="f tp"></div><div class="f sd2"></div><div class="f bk"></div></div></div>
+</body></html>
