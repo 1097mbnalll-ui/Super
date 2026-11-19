@@ -7,7 +7,7 @@
 - ما يغيّر أسعار ولا أسماء ولا مخزون. يتكرر بأمان.
 الاستخدام: python3 tools/daily/subfix.py data.json [--apply] [--all]
   --all: يعيد تصنيف كل منتجات الأقسام اللي تحت (TEA وغيرها)، مو بس اللي بدون قسم فرعي."""
-import json, re, sys, collections
+import os, json, re, sys, collections
 
 def nz(s):
     s = re.sub('[أإآ]', 'ا', ' ' + str(s) + ' ')
@@ -185,6 +185,19 @@ def main():
             if every and p['cat'] in ('tea',) or not p.get('sub') or p.get('sub') not in valid:
                 s = sub_of(p['cat'], p['name'])
                 if s and s != p.get('sub'): p['sub'] = s; assigned[(p['cat'], s)] += 1
+    # تصحيحات المراجعة اليدوية منتج منتج (١٩ نوفمبر ٢٠٢٦): تغلب أي قاعدة
+    ov = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'recat_overrides.json')
+    if os.path.exists(ov):
+        O = json.load(open(ov)); fixed = 0
+        for p in d['products']:
+            o = O.get(p['id'])
+            if not o or o[0] not in cats: continue
+            if (p.get('cat'), p.get('sub')) != (o[0], o[1]):
+                p['cat'] = o[0]
+                if o[1]: p['sub'] = o[1]
+                else: p.pop('sub', None)
+                fixed += 1
+        print('تصحيحات يدوية رجعت:', fixed)
     left = collections.Counter(p['cat'] for p in d['products'] if p['cat'] in SUBS and not p.get('sub'))
     print('نقل', len(moved), '· تصنيف', sum(assigned.values()), '· بدون قسم فرعي', dict(left))
     if apply: json.dump(d, open(path, 'w'), ensure_ascii=False, separators=(',', ':'))
