@@ -1044,6 +1044,7 @@ body[data-screen="home"],body[data-screen="cats"],body[data-screen="search"]{bac
 .kq-ban.dk .k b{background:rgba(0,0,0,.08)}
 .kq-ban.img{padding:0;background:#ddd}
 .kq-ban.img::before{display:none}
+.pinban{margin-top:12px}.pinban img{display:block;width:100%;aspect-ratio:393/170;object-fit:cover;border-radius:18px;box-shadow:0 6px 18px rgba(14,138,106,.18)}
 .kq-banimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .kq-ban.img .t{padding:18px 18px 16px;z-index:2}
 .kq-ban.img:not(.dk) .t{text-shadow:0 1px 8px rgba(0,0,0,.35)}
@@ -3041,6 +3042,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
     var E = S.banEdit || {}, B = {}, pk = function(id, def){ var ids = S.banPicks && S.banPicks[id]; return ids && ids.length ? ids.filter(function(x){ return byId(x); }) : def; };
     var idsOf = function(list){ return list.map(function(p){ return p.id; }); };
     (S.bans || []).forEach(function(b){
+      if (!EMBED && S.pinBan && S.pinBan.id === b.id) return;   // البنر الثابت ينعرض لحاله فوق، مو داخل الدوّار (التطبيق يعرضه مع البنرات)
       var ps = (b.ids || []).map(byId).filter(Boolean), tgc = String(b.target || "").indexOf("cat:") === 0 ? String(b.target).slice(4) : "";
       // بنر بدون منتجات مختارة وهدفه قسم: نعرض صور من القسم نفسه عشان ما يطلع فاضي
       if (!ps.length && tgc) ps = D.products.filter(function(p){ return p.cat === tgc && avail(p) && hasPic(p.img); }).sort(shelfSort).slice(0, 3);
@@ -3381,6 +3383,8 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       '<ol><li><i>١</i>' + tr("اختر أغراضك واضغط ＋", "Pick items, tap ＋") + '</li><li><i>٢</i>' + tr("افتح السلة", "Open the cart") + '</li><li><i>٣</i>' + tr("اكتب جوالك وموقعك واطلب", "Add phone & location, order") + '</li></ol>' +
       '<p>' + tr("الدفع كاش أو شبكة عند الاستلام · بدون تسجيل", "Pay cash or card on delivery · no sign-up") + '</p>' +
       '<div class="howto-b"><button type="button" class="btn btn-teal" data-freewrite>✍️ ' + tr("اكتب طلبك بنفسك", "Just write your order") + '</button><button type="button" class="btn btn-soft" data-nav="cats">' + tr("تصفّح الأقسام", "Browse aisles") + '</button></div></div></div>';
+    // بنر ثابت (store.pinBan = {id, img, alt}): صورة واحدة ما تتبدّل، تحت البنرات (المالك ١٩ نوفمبر ٢٠٢٦: «تم افتتاح التطبيق · افتتاح تجريبي»)
+    var PB = S.pinBan; if (!EMBED && PB && PB.img && !PB.off) h += '<div class="wrap pinban"><img src="' + esc(PB.img) + '" alt="' + esc(PB.alt || "") + '" loading="eager"></div>';
     h += launchHeroHTML();
     orderOf(S.layout, LAYOUT_DEF).forEach(function(x){ if (x.on && SEC[x.id]) h += SEC[x.id]; });
     return h;
