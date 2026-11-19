@@ -3275,6 +3275,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
   function lhText(st){
     var open = st.left <= 0;
     var badge = open && st.url ? '<a class="lh-badge" href="' + esc(st.url) + '" target="_blank" rel="noopener">' + LH_APPLE + '<span><small>' + tr("حمّله الحين من", "Download on the") + '</small><b>App Store</b></span></a>'
+      : st.url ? '<a class="lh-badge soon" href="' + esc(st.url) + '" target="_blank" rel="noopener">' + LH_APPLE + '<span><small>' + tr("حمّله من", "Get it on the") + '</small><b>App Store</b></span></a>'
       : '<span class="lh-badge soon">' + LH_APPLE + '<span><small>' + tr("قريباً على", "Coming soon to") + '</small><b>App Store</b></span></span>';
     return open ? '<h2>' + tr("فتحنا! 🎉", "We're open! 🎉") + '</h2><p>' + tr("تطبيق متاجر أحد نزل في متجر آبل (App Store)، حمّله واطلب منه", "The Matajer Ohod app is on the App Store. Download it and order") + '</p>' + badge
       : st.today ? '<h2>' + tr("تطبيق متاجر أحد ينزل اليوم", "Our app is out today") + '</h2><p>' + tr("في متجر آبل (App Store) ", "On the App Store ") + lhHour(st.AT) + tr("، وتقدر تحمّله وتطلب منه", ". Download it and order") + '</p>' + badge

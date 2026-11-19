@@ -170,4 +170,4 @@ if __name__ == '__main__':
     run(sys.argv[1], '--apply' in sys.argv)
     # الترتيب الأخير (المالك ١٨ نوفمبر ٢٠٢٦): أسماء الأقسام والأقسام الفرعية الجديدة وتصنيف «أخرى» من subfix.py فوق قواعد هالملف
     if '--apply' in sys.argv:
-        import subfix; sys.argv = [sys.argv[0], sys.argv[1], '--all', '--apply']; subfix.main()
+        import subfix; sys.argv = [sys.argv[0], sys.argv[1], '--apply']; subfix.main()

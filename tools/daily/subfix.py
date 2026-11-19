@@ -61,7 +61,7 @@ MOVES = [
     ('sweets', 'باجه مشكل', 'snacks', 'nuts'),
     ('sweets', 'كروبانز|كرواسون|كرواسان', 'biscuits', 'cakes'),
     ('care', 'سور بينيت', 'sweets', 'candy'),
-    ('tea', 'شاي تايم', 'biscuits', 'biscuits'),
+    ('tea', 'شاي تايم|بسكويت|كوكيز', 'biscuits', 'biscuits'),
     ('tea', 'بودنق|بودنج', 'dairy', 'desserts'),
     ('tea', 'كورسان|كورسون', 'biscuits', 'cakes'),
     ('drinks', 'قهوه', 'tea', 'cold'),
@@ -70,7 +70,6 @@ MOVES = [
     ('sweets', 'ليز!|بطاطس|شيبس', 'snacks', 'chips'),
     ('sweets', 'كويكز|كوكيز|بسكويت|ويفر', 'biscuits', 'biscuits'),
     ('pantry', 'مينو عمان|مينو ذره', 'snacks', 'chips'),
-    ('biscuits', 'قهوه', 'tea', 'cold'),
 ]
 
 # تصحيحات تنطبق دايماً حتى لو للمنتج قسم فرعي (subs.py يحطها غلط): (قسم، كلمات، قسم فرعي، كلمات تمنع)
@@ -83,7 +82,9 @@ FORCE = [
     ('care', 'سيجنال|كولجيت|معجون اسنان', 'oral', ''), ('misc', 'حافظه', 'kitchen', ''),
     ('dairy', 'يوبرو|بروتين', 'milk', ''), ('sweets', 'جوديفا', 'chocolate', ''), ('pantry', 'السنبله بازلاء|السنبله بامي|السنبله ملوخيه|السنبله سبانخ|السنبله خضروات', 'frozen', ''),
     ('clean', 'عملاق ملون', 'laundry', ''), ('sweets', 'هولو', 'candy', ''),
-    ('drinks', 'شاي مثلج|ايس تي', 'icedtea', ''), ('drinks', 'ريتا', 'soft', ''), ('tea', 'ستاريكس|ستاربكس|دانكن', 'cold', ''),
+    ('drinks', 'شاي مثلج|ايس تي', 'icedtea', ''),
+    ('pantry', 'ذره', 'canned', 'فشار|كورن|رقائق|نشا|زيت'), ('pantry', 'زيت!', 'oil', 'سردين|تونه|فول|بخاخ الطبخ'), ('pantry', 'طحينه', 'sauces', 'حلاوه'), ('clean', 'مناديل|محارم', 'paper', 'مبلل|مبللة'), ('clean', 'ورق زبده|مصاص|اكواب|صحون ورق|ملاعق|سفره|المنيوم', 'disposable', 'مناديل|محارم'),
+    ('meat', 'لانشون|لوشن|مرتديلا|نقانق|سجق|هوت دوج', 'processed', ''), ('drinks', 'ريتا', 'soft', ''), ('tea', 'ستاريكس|ستاربكس|دانكن', 'cold', ''),
 ]
 
 # القسم الفرعي من الاسم (أول قاعدة تنطبق)، وآخر سطر الافتراضي
@@ -165,6 +166,8 @@ def main():
     moved, assigned = [], collections.Counter()
     for p in d['products']:
         n = nz(p['name'])
+        valid0 = {x for x, _ in SUBS.get(p['cat'], [])}
+        if not every and p.get('sub') in valid0 or (not every and p['cat'] not in SUBS): continue   # بدون --all: الجديد واللي بدون قسم فرعي بس
         for frm, words, to, ts in MOVES:
             if p['cat'] == frm and hit(n, words):
                 moved.append((p['name'], frm, to)); p['cat'] = to
