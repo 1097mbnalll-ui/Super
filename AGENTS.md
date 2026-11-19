@@ -449,3 +449,7 @@ KV: `pin` (رقم الإدارة مشفّر)، `driver_pin` (قديم)، `fail:<
 - `staffMay`: `/login /admin/catalog /admin/orders /admin/alerts /admin/assign /admin/team /admin/driver-loc /driver/status /driver/pending /driver/orders /admin/today /admin/winback /admin/winback-mark /admin/ratings /admin/order-times` بس. بدون حفظ ولا أسعار ولا كاش ولا محافظ ولا حسابات، والردود بدون تكلفة/ربح (`withoutCosts`).
 - الواجهة: `SUP_TABS` (اليوم، الطلبات، المتأخرة، التواصل، الرسالة الجماعية، التقييمات، أوقات الطلبات)، وزر إيقاف الطلبات مخفي له.
 - جدول `staff_users` انبنى من جديد بـ CHECK فيه `supervisor` (`ensureStaffSchema`، الحسابات تنسخ كما هي). اختبار: `node --test server/test/supervisor.mjs`.
+
+### مصدر الطلب (via) — المالك ١٩ نوفمبر ٢٠٢٦
+- `/order` يحفظ `data.via` (`viaOf`): `ios_app` / `android_app` (Origin `capacitor://localhost` أو `https://localhost`، أو `via:"app"` من صفحات الموقع داخل التطبيق `EMBED/NATIVE`) و`site_iphone` / `site_android` / `site_pc` من User-Agent. الطلبات قبل ١٩ نوفمبر ما لها مصدر.
+- الإدارة: شارة جنب كل طلب (`viaChip`، `VIA` في admin.js) و«طلب من …» في تفاصيل الطلب. اختبار: `server/test/app-launch-lock.mjs`.

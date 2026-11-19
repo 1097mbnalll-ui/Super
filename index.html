@@ -810,6 +810,7 @@ button.stat:hover{border-color:var(--teal)}
 .nf-done h3{margin:0;font-size:1.2rem}
 .nf-done .actions{justify-content:center}
 .orow2 .src{font-style:normal;font-size:.7rem;font-weight:700;border-radius:999px;padding:1px 8px;margin-inline-end:6px;background:#EEE8FF;color:#5B3DB8}
+.orow2 .src.via{background:#EAF2FF;color:#1D4ED8}.orow2 .src.via.app{background:#E6F6F0;color:#0B6B53}
 .orow2 .src.whatsapp{background:#E3F7EA;color:#1C7A43}.orow2 .src.store{background:#FFF1E0;color:#9A5410}
 /* staff, today, tips, cash, log */
 .staffline{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--muted);padding:2px 4px}
@@ -4346,7 +4347,7 @@ html.android .kq-nav{box-shadow:0 -1px 0 var(--line),0 8px 24px rgba(13,20,32,.1
       payload=JSON.parse(JSON.stringify(checkoutAttempt.payload));items=payload.items;phone=payload.phone;sentCart=null;
     }else if(!checkoutAttempt){var id=opId();payload.requestId=id;payload.walletRequestId=id;saveCheckoutAttempt({signature:signature,payload:payload});}
     else payload=JSON.parse(JSON.stringify(checkoutAttempt.payload));
-    payload.walletToken=walletCustomer&&walletCustomer.phone===payload.phone?walletCustomer.token:'';payload.dev=devId();
+    payload.walletToken=walletCustomer&&walletCustomer.phone===payload.phone?walletCustomer.token:'';payload.dev=devId();if(EMBED||NATIVE)payload.via='app';
     var usedWallet=Number(payload.walletAmount)||0;
     btn.disabled = true; btn.firstChild.textContent = tr("جاري الإرسال…", "Sending…");
     fetchJSON(apiUrl()+'/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})

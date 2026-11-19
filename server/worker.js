@@ -175,6 +175,7 @@ export default {
         if (moneyCents(priced.total) !== Number(body.paid.amount)) return reply(409, { ok: false, code: "price_changed" });
       }
       const record = orderRecord(priced, body);
+      record.via = viaOf(origin, request.headers.get("User-Agent") || "", body.via);   // من وين طلب: تطبيق الآيفون/الأندرويد أو الموقع (المالك ١٩ نوفمبر ٢٠٢٦)
       const walletPart = moneyCents(body.walletAmount || 0);
       if (walletPart === null || walletPart > moneyCents(record.total)) return reply(400,{ok:false,code:'bad_payment'});
       if (walletPart) {
@@ -1319,6 +1320,12 @@ async function ensureSchema(env) {
     env.DB.prepare("INSERT OR IGNORE INTO driver_settlements2(day,drv,requested_at,who,expected,state,revision,actual,confirmed_at,confirmed_by,note) SELECT day,'d0',requested_at,who,expected,state,revision,actual,confirmed_at,confirmed_by,note FROM driver_settlements WHERE NOT EXISTS (SELECT 1 FROM driver_settlements2)"),
   ]);
   schemaReady = true;
+}
+// من وين انطلب الطلب: التطبيق الأصلي يرسل من capacitor://localhost (أندرويد: https://localhost)، وصفحات الموقع داخل التطبيق ترسل via:"app"
+function viaOf(origin, ua, hint) {
+  const ios = /iPhone|iPad|iPod|CFNetwork|Darwin/i.test(ua), android = /Android/i.test(ua);
+  if (/^(capacitor|ionic):\/\//.test(origin) || /^https?:\/\/localhost(:\d+)?$/.test(origin) || hint === "app") return android ? "android_app" : "ios_app";
+  return ios ? "site_iphone" : android ? "site_android" : "site_pc";
 }
 function orderRecord(o, body) {
   return {
