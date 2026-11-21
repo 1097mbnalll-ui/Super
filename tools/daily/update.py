@@ -188,6 +188,13 @@ def main(data_path, xlsx, dry=False):
         for p in ps:
             if not p.get('stock') and not p.get('soon'): p['stock'] = True; rep['all_on'] += 1
         rep['stock_off'] = 0
+    # أسعار ثبّتها المالك (price_lock.json: المعرّف ← السعر): تغلب سعر ملف الكاشير لين ينشال السطر
+    _pl = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'price_lock.json')
+    if os.path.exists(_pl):
+        LOCK = {k: v for k, v in json.load(open(_pl, encoding='utf-8')).items() if not k.startswith('_')}
+        for p in ps:
+            if p['id'] in LOCK and p.get('old') is None and abs(float(p.get('price') or 0) - float(LOCK[p['id']])) >= 0.01:
+                p['price'] = float(LOCK[p['id']]); rep['price_locked'] += 1
     if not dry: json.dump(d, open(data_path, 'w'), ensure_ascii=False, separators=(',', ':'))
     # الكميات بالعدد للخادم (D1 جدول stock): python3 tools/daily/d1_stock.py الملف_هذا
     out = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--stock-out=')), None)
