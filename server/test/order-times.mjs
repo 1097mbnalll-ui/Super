@@ -33,7 +33,7 @@ const tok = (await call('/enter', { pin: '5555' })).token; r = await call('/admi
 ok((await call('/driver/status', { pin: '1111', no: o, status: 'accepted' })).ok, 'المندوب مسكه');
 ok((await call('/driver/status', { pin: '1111', no: o, status: 'onway' })).ok, 'طلع');
 ok((await call('/driver/status', { pin: '1111', no: o, status: 'delivered' })).ok, 'وصل');
-r = await call('/admin/order-times', A); const x = r.orders && r.orders.find((y) => y.no === o);
+r = await call('/admin/order-times', { ...A, days: 2 }); const x = r.orders && r.orders.find((y) => y.no === o);
 ok(r.ok && x, 'التقرير فيه الطلب');
 ok(x && x.created < x.ready && x.ready <= x.accepted && x.accepted <= x.onway && x.onway <= x.delivered, 'الأوقات بالترتيب: ' + JSON.stringify(x));
 ok(x && x.drv === 'سعيد' && x.prep === 'المجهز', 'اسم المندوب والمجهز: ' + (x && [x.drv, x.prep]));
