@@ -1091,6 +1091,26 @@ export default {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       return reply(200, { ok: true, ...(await readVisits(env, Number(body.days) || 7)) });
     }
+    // مكافأة المندوب على طلبات التطبيق والموقع (المالك ٢٤ نوفمبر ٢٠٢٦): من الطلب رقم (الحد + ١) في اليوم، مبلغ لكل طلب. الاتصال والواتساب ما تنحسب
+    if (path === "/admin/app-bonus") {
+      if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
+      await ensureSchema(env);
+      if (body.cfg) {
+        const c = { min: Math.min(500, Math.max(0, Math.round(Number(body.cfg.min) || 0))), amt: Math.min(20, Math.max(0, Math.round((Number(body.cfg.amt) || 0) * 100) / 100)), on: body.cfg.on !== false };
+        await env.DB.batch([env.DB.prepare("INSERT INTO app_settings (k, v) VALUES ('app_bonus', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(JSON.stringify(c)), logStmt(env, staff(body), "app_bonus_save", "", c)]);
+      }
+      const cr = await env.DB.prepare("SELECT v FROM app_settings WHERE k = 'app_bonus'").first().catch(() => null);
+      const cfg = Object.assign({ min: 10, amt: 1, on: true }, cr ? safeJson(cr.v) : {});
+      const days = Math.min(90, Math.max(1, Math.floor(Number(body.days) || 30)));
+      const since = riyadhDateAt(Date.now() - (days - 1) * 864e5);
+      const APP = "src NOT IN ('phone','whatsapp','store','pos')";
+      const tot = (await env.DB.prepare(`SELECT day, COUNT(*) n, SUM(CASE WHEN ${APP} THEN 1 ELSE 0 END) app, SUM(CASE WHEN src IN ('phone','whatsapp') THEN 1 ELSE 0 END) call FROM orders WHERE status != 'canceled' AND src != 'pos' AND day >= ? GROUP BY day ORDER BY day DESC`).bind(since).all()).results || [];
+      const per = (await env.DB.prepare(`SELECT day, IFNULL(drv,'') drv, COUNT(*) n, SUM(CASE WHEN ${APP} THEN 1 ELSE 0 END) app FROM orders WHERE status = 'delivered' AND src != 'pos' AND day >= ? GROUP BY day, drv`).bind(since).all()).results || [];
+      const st = (await env.DB.prepare("SELECT id, name FROM staff WHERE role = 'driver'").all()).results || [], names = staffNames(st);
+      const byDay = {};
+      for (const r of per) { const extra = Math.max(0, (r.app || 0) - cfg.min); (byDay[r.day] ||= []).push({ drv: r.drv, name: names[r.drv] || (r.drv ? r.drv : "المندوب"), delivered: r.n, app: r.app || 0, extra, bonus: cfg.on ? round2(extra * cfg.amt) : 0 }); }
+      return reply(200, { ok: true, cfg, days: tot.map((r) => ({ day: r.day, total: r.n, app: r.app || 0, call: r.call || 0, drivers: byDay[r.day] || [] })) });
+    }
     if (path === "/admin/nudge") {
       if (!env.DB) return reply(500, { ok: false, code: "config", missing: "DB" });
       await ensureSchema(env);
