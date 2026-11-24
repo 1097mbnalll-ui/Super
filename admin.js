@@ -1508,7 +1508,8 @@
   function renderOList(force){
     var box = $("aOList"); if (!box) return;
     if (!apiUrl()) { box.innerHTML = '<div class="card"><p class="hint">قائمة الطلبات تحتاج خادم الطلبات.</p></div>'; return; }
-    if ((!oState.list || force) && !oState.loading) { oState.loading = true; api("/admin/orders", { pin: adminPin, limit: 500, src: oState.src || "online" }).then(function(j){ oState.loading = false; oState.list = j.ok ? j.orders : []; oState.more = !!j.more; oState.err = j.ok ? "" : j.code; if (aTab === "olist") renderOList(); }); }
+    // القائمة تتحدث لحالها: لو صار لها أكثر من ٢٠ ثانية تنجاب من جديد (كانت تبقى قديمة وطلبات ما تطلع، المالك ٢٤ نوفمبر)
+    if ((!oState.list || force || Date.now() - (oState.at || 0) > 20000) && !oState.loading) { oState.loading = true; api("/admin/orders", { pin: adminPin, limit: 500, src: oState.src || "online" }).then(function(j){ oState.loading = false; if (j.ok || !oState.list) { oState.list = j.ok ? j.orders : []; oState.more = !!j.more; } oState.err = j.ok ? "" : j.code; oState.at = Date.now(); if (aTab === "olist" && !$("oSheet")) renderOList(); }).catch(function(){ oState.loading = false; }); }
     var seg = function(arr, key){ return '<div class="pays seg mini" role="group">' + arr.map(function(x){ return '<button type="button" data-of="' + key + ':' + x[0] + '" aria-pressed="' + (String(oState[key]) === String(x[0])) + '">' + x[1] + '</button>'; }).join("") + '</div>'; };
     var head = '<div class="card"><div class="o-tools"><input class="search" id="oQ" type="search" placeholder="ابحث برقم الطلب أو الجوال أو الاسم…" value="' + esc(oState.q) + '" aria-label="بحث في الطلبات">' +
       (ordersOnly() ? '' : '<button class="btn btn-brand" type="button" data-onew>+ طلب جديد</button>') + '<button class="btn btn-soft" type="button" id="oRefresh">تحديث</button><button class="btn btn-soft" type="button" id="oExport">نزّل Excel</button></div>' +
@@ -1592,7 +1593,7 @@
     var t;
     if ((t = e.target.closest("[data-of]"))) { var k = t.dataset.of.split(":"); if (k[0] === "src" && (oState.src || "online") !== k[1]) { oState.list = null; oState.more = false; oState.f = k[1] === "pos" ? "all" : "active"; } oState[k[0]] = k[0] === "range" ? Number(k[1]) : k[1]; renderOList(); return; }
     if ((t = e.target.closest("[data-oopen]"))) { openOrder(t.dataset.oopen); return; }
-    if (e.target.closest("[data-oclose]") || e.target.id === "oSheet") { var sh = $("oSheet"); if (sh) sh.remove(); return; }
+    if (e.target.closest("[data-oclose]") || e.target.id === "oSheet") { var sh = $("oSheet"); if (sh) sh.remove(); if (aTab === "olist") renderOList(); return; }
     if ((t = e.target.closest("[data-oprint]"))) { printOrder(oFind(t.dataset.oprint)); return; }
     if ((t = e.target.closest("[data-ost]"))) {
       if (t.dataset.ost === "canceled" && t.dataset.c !== "1") { t.dataset.c = "1"; t.textContent = "متأكد؟ اضغط مرة ثانية"; return; }
@@ -2723,10 +2724,10 @@
       if (!fresh.length) return;
       oa.pending = oa.pending.concat(fresh.reverse()); if (!oa.title) oa.title = document.title; document.title = "🛎 طلب جديد · " + oa.title;
       oaChime(); clearInterval(oa.ring); var n = 0; oa.ring = setInterval(function(){ if (++n > 14 || !oa.pending.length) { clearInterval(oa.ring); oa.ring = 0; return; } oaChime(); }, 8000);
-      oaUi(); if (aTab === "olist" && !$("oSheet")) { oState.list = null; if (typeof renderOList === "function") renderOList(); }
+      oaUi(); oState.at = 0; if (aTab === "olist" && !$("oSheet") && typeof renderOList === "function") renderOList();
     }).catch(function(){ oa.busy = false; });
   }
-  if (!window.__oaTimer) { window.__oaTimer = setInterval(function(){ if (mode === "admin" && adminPin) oaPoll(); else if (oa.seen !== null || oa.pending.length) { oa.seen = null; oaStop(); } }, 10000); }
+  if (!window.__oaTimer) { window.__oaTimer = setInterval(function(){ if (mode === "admin" && adminPin && aTab === "olist" && !$("oSheet") && !document.hidden && Date.now() - (oState.at || 0) > 30000 && typeof renderOList === "function") renderOList(); if (mode === "admin" && adminPin) oaPoll(); else if (oa.seen !== null || oa.pending.length) { oa.seen = null; oaStop(); } }, 10000); }
   oa.seen = null; setTimeout(function(){ oaUi(); oaPoll(); }, 1500);
 
   /* منتجات خاصة (طلب المالك ١٩ نوفمبر ٢٠٢٦): data.json → drafts. ما تنعرض للزبائن بالموقع ولا التطبيقات، تظهر هنا بس للمالك.
