@@ -761,7 +761,7 @@ export default {
       // اسم المستخدم وكلمة المرور صاروا اختياريين: يكفي رقم سري للدخول الموحد
       const username = String(body.username || "").trim().toLowerCase() || (existing ? existing.username : "staff-" + randomHex(4));
       if (pin && !/^\d{4,12}$/.test(pin)) return reply(400, { ok: false, code: "bad_pin_format" });
-      if (!/^[a-z0-9._-]{3,32}$/.test(username) || !name || name.length > 30 || !["manager", "orders", "preparer", "cashier", "supervisor"].includes(body.role) ||
+      if (!/^[a-z0-9._-]{3,32}$/.test(username) || !name || name.length > 30 || !["manager", "orders", "preparer", "cashier", "supervisor", "reader"].includes(body.role) ||
           (password && (password.length < 10 || password.length > 128)) || (!id && !password && !pin)) {
         return reply(400, { ok: false, code: "bad_staff" });
       }
@@ -3270,14 +3270,14 @@ const staffSchemas = new WeakSet();
 async function ensureStaffSchema(env) {
   if (staffSchemas.has(env.DB)) return;
   await env.DB.batch([
-    env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer','cashier','supervisor')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer','cashier','supervisor','reader')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL)"),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS staff_session_user ON staff_sessions(user_id)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS staff_pins (user_id INTEGER PRIMARY KEY, pin_hash TEXT NOT NULL UNIQUE)"),
   ]);
   const definition = await env.DB.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'staff_users'").first();
-  if (!definition.sql.includes("'supervisor'")) await env.DB.batch([
-    env.DB.prepare("CREATE TABLE staff_users_next (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer','cashier','supervisor')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
+  if (!definition.sql.includes("'reader'")) await env.DB.batch([
+    env.DB.prepare("CREATE TABLE staff_users_next (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('manager','orders','preparer','cashier','supervisor','reader')), active INTEGER NOT NULL DEFAULT 1, password_hash TEXT NOT NULL, salt TEXT NOT NULL)"),
     env.DB.prepare("INSERT INTO staff_users_next SELECT * FROM staff_users"), env.DB.prepare("DROP TABLE staff_users"), env.DB.prepare("ALTER TABLE staff_users_next RENAME TO staff_users")
   ]);
   staffSchemas.add(env.DB);
@@ -3315,6 +3315,8 @@ function staffMay(role, path, body) {
   if (role === 'preparer') return ['/login','/admin/prep','/admin/prep-save','/admin/prep-sub','/push/sub'].includes(path);
   if (role === 'manager') return !(path === '/save' && (body.newPin || body.newDriverPin));
   // المشرف (المالك ١٩ نوفمبر ٢٠٢٦): متابعة الطلبات والتواصل مع العملاء بس. لا أسعار ولا حفظ ولا كاش ولا أرباح ولا حسابات
+  // قارئ المكتب (المالك ٢٥ نوفمبر ٢٠٢٦): حساب لمراقب «مكتب متاجر أحد». يقرأ بس، ما يعدّل أي شي، ويشوف التكاليف عشان ينبه على البيع بخسارة
+  if (role === 'reader') return ['/admin/alerts', '/admin/stock', '/admin/today'].includes(path) || (path === '/admin/cash' && body.add == null);
   if (role === 'supervisor') return ['/login', '/admin/catalog', '/admin/orders', '/admin/alerts', '/admin/assign', '/admin/team', '/admin/driver-loc', '/driver/status', '/driver/pending', '/driver/orders', '/admin/today', '/admin/winback', '/admin/winback-mark', '/admin/ratings', '/admin/order-times'].includes(path);
   return role === 'orders' && ['/login', '/admin/orders', '/admin/alerts', '/driver/status', '/driver/pending', '/admin/assign', '/admin/team', '/pos/login', '/pos/sale', '/pos/shift', '/pos/close', '/pos/delivery-orders', '/pos/delivery-receipt', '/pos/delivery-issue'].includes(path);
 }
